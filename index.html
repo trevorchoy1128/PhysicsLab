@@ -3,67 +3,108 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>物理實驗室 PhysicsLab - 目錄</title>
+    <title>物理實驗室 PhysicsLab - 線上目錄</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             line-height: 1.6;
             margin: 40px auto;
-            max-width: 600px;
+            max-width: 650px;
             padding: 0 20px;
-            background-color: #f8f9fa;
+            background-color: #f4f7f6;
             color: #333;
         }
+        .container {
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
         h1 {
-            color: #212529;
-            border-bottom: 2px solid #dee2e6;
-            padding-bottom: 10px;
+            color: #1a1a1a;
+            border-bottom: 3px solid #007bff;
+            padding-bottom: 12px;
             text-align: center;
+            margin-top: 0;
+        }
+        .user-info {
+            text-align: center;
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 25px;
+            background: #e9ecef;
+            padding: 8px;
+            border-radius: 6px;
         }
         ul {
             list-style-type: none;
             padding: 0;
-            margin-top: 20px;
         }
         li {
-            margin: 15px 0;
-            padding: 15px;
-            background: #ffffff;
+            margin-bottom: 18px;
+            padding: 15px 20px;
+            background: #fff;
             border-radius: 8px;
-            border-left: 5px solid #007bff;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            border: 1px solid #e1e4e8;
+            border-left: 6px solid #007bff;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        li:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+        }
+        .chapter {
+            font-size: 0.85em;
+            font-weight: bold;
+            color: #6c757d;
+            text-transform: uppercase;
+            margin-bottom: 5px;
         }
         a {
             color: #007bff;
             text-decoration: none;
             font-weight: bold;
-            display: inline-block;
-            margin-top: 5px;
+            font-size: 1.1em;
+            display: block;
         }
         a:hover {
-            text-decoration: underline;
             color: #0056b3;
+            text-decoration: underline;
         }
-        .chapter-title {
-            font-size: 0.9em;
-            color: #6c757d;
+        .url-text {
+            font-size: 0.8em;
+            color: #888;
+            word-break: break-all;
+            margin-top: 5px;
         }
     </style>
 </head>
 <body>
 
-    <h1>物理實驗室 PhysicsLab 模擬目錄</h1>
-    
-    <ul>
-        <li>
-            <div class="chapter-title">第 3 冊 / 第 1 章</div>
-            <a href="book3/chapter1/diffuse-reflection-3D-sim/sim.html">漫反射 3D 模擬 (進入網頁)</a>
-        </li>
-        <li>
-            <div class="chapter-title">第 3 冊 / 第 2 章</div>
-            <a href="book3/chapter2/basic-refraction-2D-sim/sim.html">基礎折射 2D 模擬 (進入網頁)</a>
-        </li>
-    </ul>
+    <div class="container">
+        <h1>物理實驗室 PhysicsLab</h1>
+        <div class="user-info">
+            🚀 擁有者：<strong>trevorchoy1128</strong> &nbsp;|&nbsp; 🌐 平台：GitHub Pages 線上版
+        </div>
+        
+        <ul>
+            <li>
+                <div class="chapter">第 3 冊 / 第 1 章</div>
+                <a href="https://trevorchoy1128.github.io/PhysicsLab/book3/chapter1/diffuse-reflection-3D-sim/sim.html" target="_blank">
+                    🌌 漫反射 3D 模擬 ── 進入線上網頁
+                </a>
+                <div class="url-text">https://trevorchoy1128.github.io/PhysicsLab/book3/chapter1/diffuse-reflection-3D-sim/sim.html</div>
+            </li>
+            
+            <li>
+                <div class="chapter">第 3 冊 / 第 2 章</div>
+                <a href="https://trevorchoy1128.github.io/PhysicsLab/book3/chapter2/basic-refraction-2D-sim/sim.html" target="_blank">
+                    ⚡ 基礎折射 2D 模擬 ── 進入線上網頁
+                </a>
+                <div class="url-text">https://trevorchoy1128.github.io/PhysicsLab/book3/chapter2/basic-refraction-2D-sim/sim.html</div>
+            </li>
+        </ul>
+    </div>
 
 </body>
 </html>
