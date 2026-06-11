@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <title>HKDSE 潛望鏡光學與虛像解析 (完美無縫與真實多重反射版)</title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #95a5a6; }
+        #canvas-container { width: 100vw; height: 100vh; }
+        #ui-panel {
+            position: absolute; top: 15px; left: 15px;
+            background: rgba(250, 250, 250, 0.95); padding: 15px;
+            border-radius: 12px; box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+            pointer-events: auto; width: 360px; z-index: 100;
+            max-height: 95vh; overflow-y: auto;
+        }
+        h2 { margin-top: 0; font-size: 1.15rem; color: #111; text-align: center; border-bottom: 3px solid #2980b9; padding-bottom: 10px; }
+        .control-group { margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #ddd; }
+        .control-group:last-child { border-bottom: none; padding-bottom: 0; margin-bottom: 0; }
+        label { font-size: 0.85rem; font-weight: bold; color: #444; display: block; margin-bottom: 8px; }
+        
+        .btn-row { display: flex; gap: 5px; margin-bottom: 5px; }
+        button {
+            flex: 1; padding: 8px; margin-bottom: 5px;
+            background: #3498db; color: white; border: none;
+            border-radius: 6px; cursor: pointer; font-size: 0.9rem; font-weight: bold;
+            transition: all 0.2s ease;
+        }
+        button.full-width { width: 100%; flex: none; }
+        button:hover { background: #2980b9; transform: translateY(-1px); }
+        button.active { background: #e74c3c; }
+        button.toggle-btn { background: #555; }
+        button.toggle-btn:hover { background: #333; }
+        
+        input[type=range] { width: 100%; margin-top: 5px; cursor: pointer; }
+        .range-value { text-align: center; font-size: 1rem; color: #e74c3c; font-weight: bold; margin-top: 5px;}
+        
+        #labels-container { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 50; display: none; }
+        .physics-label {
+            position: absolute; color: #fff; background: rgba(0, 0, 0, 0.8);
+            padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; font-weight: bold;
+            transform: translate(-50%, -50%); border: 1px solid rgba(255,255,255,0.4);
+            text-shadow: 1px 1px 2px black; transition: opacity 0.2s; white-space: nowrap;
+        }
+        .dist-label { color: #f1c40f; background: transparent; border: none; font-style: italic; font-size: 1.15rem; text-shadow: 1px 1px 4px rgba(0,0,0,1);}
+        .dist-h { color: #34dbcc; }
+    </style>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+</head>
+<body>
+
+    <div id="ui-panel">
+        <h2>🔬 潛望鏡物理光學模擬</h2>
+        
+        <div class="control-group">
+            <label>1. 光學元件切換 (TIR 測試)</label>
+            <button id="btn-mirror-prism" class="full-width active" style="font-size: 0.95rem; padding: 10px;">🪞 當前: 一般平面鏡 (模糊 / 多重反射)</button>
+        </div>
+
+        <div class="control-group">
+            <label>2. 目標物件</label>
+            <div class="btn-row">
+                <button id="btn-obj-f" class="active">字母 F</button>
+                <button id="btn-obj-p">字母 P</button>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label>3. 潛望鏡管長比較 (h)</label>
+            <div class="btn-row">
+                <button id="btn-h-10" class="active">標準管 (10 cm)</button>
+                <button id="btn-h-40">加長管 (40 cm)</button>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label>4. 動態物距調整 (d)</label>
+            <input type="range" id="slider-d" min="6" max="25" value="12" step="0.5">
+            <div class="range-value">物距 d = <span id="val-d">12</span> cm</div>
+        </div>
+
+        <div class="control-group">
+            <label>5. 視覺控制</label>
+            <div class="btn-row">
+                <button id="btn-cam-lock" style="background: #e67e22;">🎯 固定在觀察窗</button>
+                <button id="btn-cam-reset" style="background: #34495e;">🔄 重置視覺</button>
+            </div>
+            <button id="btn-toggle-cover" class="full-width toggle-btn" style="margin-top: 5px;">👁️ 顯示/隱藏 側面管壁</button>
+        </div>
+
+        <div class="control-group">
+            <label>6. 鏡頭投影模式 (解決縮放比例錯覺)</label>
+            <div class="btn-row">
+                <button id="btn-cam-persp" class="active" style="background: #16a085;">👁️ 真實透視</button>
+                <button id="btn-cam-ortho" style="background: #8e44ad;">📏 正交投影 (固定)</button>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label>7. 輔助顯示與標記 (預設隱藏)</label>
+            <div class="btn-row">
+                <button id="btn-toggle-rays" class="toggle-btn">👁️ 顯示 光線</button>
+                <button id="btn-toggle-labels" class="toggle-btn">👁️ 顯示 標記</button>
+            </div>
+            <button id="btn-toggle-s" class="full-width toggle-btn" style="background: #9b59b6;">👁️ 顯示 一次虛像 S</button>
+            <button id="btn-toggle-p" class="full-width toggle-btn" style="background: #c0392b;">👁️ 顯示 二次虛像 P</button>
+        </div>
+    </div>
+    
+    <div id="labels-container">
+        <div id="lbl-O" class="physics-label" style="border-color: #2ecc71; color: #2ecc71;">O (物件)</div>
+        <div id="lbl-M1" class="physics-label">M1 (上鏡)</div>
+        <div id="lbl-M2" class="physics-label">M2 (下鏡)</div>
+        <div id="lbl-S" class="physics-label" style="border-color: #9b59b6; color: #9b59b6; display:none;">S (一次虛像)</div>
+        <div id="lbl-P" class="physics-label" style="border-color: #e74c3c; color: #e74c3c; display:none;">P (最終成像)</div>
+        
+        <div id="lbl-d1" class="physics-label dist-label" style="display:none;">d = 12</div>
+        <div id="lbl-h" class="physics-label dist-label dist-h">h = 10 (管長)</div>
+        <div id="lbl-D1" class="physics-label dist-label" style="display:none;">d = 12</div>
+        <div id="lbl-D2" class="physics-label dist-label" style="display:none;">d + h = 22</div>
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { Reflector } from 'three/addons/objects/Reflector.js';
+
+        // ==========================================
+        // 1. 初始化場景與雙相機系統
+        // ==========================================
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x95a5a6); 
+
+        const aspect = window.innerWidth / window.innerHeight;
+        const perspCam = new THREE.PerspectiveCamera(45, aspect, 0.1, 1000);
+        
+        const frustumSize = 35;
+        const orthoCam = new THREE.OrthographicCamera(
+            frustumSize * aspect / -2, frustumSize * aspect / 2,
+            frustumSize / 2, frustumSize / -2,
+            0.1, 1000
+        );
+        
+        let camera = perspCam; 
+        let isOrtho = false;
+
+        // 徹底隱藏特殊隔離層 (2為內部實心成像, 4與5為平面鏡專用的多重反射疊影層)
+        perspCam.layers.enableAll(); perspCam.layers.disable(2); perspCam.layers.disable(4); perspCam.layers.disable(5);
+        orthoCam.layers.enableAll(); orthoCam.layers.disable(2); orthoCam.layers.disable(4); orthoCam.layers.disable(5);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        container.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+        ambientLight.layers.enableAll();
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        dirLight.position.set(10, 20, 20);
+        dirLight.layers.enableAll();
+        scene.add(dirLight);
+
+        // ==========================================
+        // 2. 完美無縫的外殼與鏡片系統
+        // ==========================================
+        const matOuter = new THREE.MeshPhongMaterial({ color: 0x34495e, shininess: 10 });
+        const matFront = new THREE.MeshPhongMaterial({ color: 0xbdc3c7, transparent: true, opacity: 0.15 }); 
+        const backingMat = new THREE.MeshPhongMaterial({ color: 0x222222 });
+        const prismMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, transmission: 0.9, opacity: 1, transparent: true, roughness: 0.05, ior: 1.5 });
+
+        function addBlock(group, x, y, z, w, h, d, mat) {
+            const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+            mesh.position.set(x, y, z); mesh.layers.set(3);
+            group.add(mesh);
+        }
+
+        const topCasingGroup = new THREE.Group();
+        const topFrontCasingGroup = new THREE.Group();
+        addBlock(topCasingGroup, 1.3, 5, 0, 0.2, 2.4, 2.8, matOuter); 
+        addBlock(topCasingGroup, 0, 5, -1.3, 2.4, 2.4, 0.2, matOuter); 
+        addBlock(topFrontCasingGroup, 0, 5, 1.3, 2.4, 2.4, 0.2, matFront); 
+        addBlock(topCasingGroup, -2.5, 3.7, 0, 2.6, 0.2, 2.8, matOuter); 
+        addBlock(topCasingGroup, -2.5, 5, -1.3, 2.6, 2.4, 0.2, matOuter); 
+        addBlock(topFrontCasingGroup, -2.5, 5, 1.3, 2.6, 2.4, 0.2, matFront); 
+        addBlock(topCasingGroup, -1.2, 6.3, 0, 5.2, 0.2, 2.8, matOuter); 
+        scene.add(topCasingGroup, topFrontCasingGroup);
+
+        const bottomCasingGroup = new THREE.Group();
+        const bottomFrontCasingGroup = new THREE.Group();
+        addBlock(bottomCasingGroup, -1.3, -5, 0, 0.2, 2.4, 2.8, matOuter); 
+        addBlock(bottomCasingGroup, 0, -5, -1.3, 2.4, 2.4, 0.2, matOuter); 
+        addBlock(bottomFrontCasingGroup, 0, -5, 1.3, 2.4, 2.4, 0.2, matFront); 
+        addBlock(bottomCasingGroup, 2.5, -3.7, 0, 2.6, 0.2, 2.8, matOuter); 
+        addBlock(bottomCasingGroup, 2.5, -5, -1.3, 2.6, 2.4, 0.2, matOuter); 
+        addBlock(bottomFrontCasingGroup, 2.5, -5, 1.3, 2.6, 2.4, 0.2, matFront); 
+        addBlock(bottomCasingGroup, 1.2, -6.3, 0, 5.2, 0.2, 2.8, matOuter); 
+        scene.add(bottomCasingGroup, bottomFrontCasingGroup);
+
+        const pipeGroup = new THREE.Group();
+        const pipeFrontGroup = new THREE.Group();
+        addBlock(pipeGroup, -1.3, 0, 0, 0.2, 1, 2.8, matOuter); 
+        addBlock(pipeGroup, 1.3, 0, 0, 0.2, 1, 2.8, matOuter);  
+        addBlock(pipeGroup, 0, 0, -1.3, 2.4, 1, 0.2, matOuter); 
+        addBlock(pipeFrontGroup, 0, 0, 1.3, 2.4, 1, 0.2, matFront); 
+        scene.add(pipeGroup, pipeFrontGroup);
+
+        const topPos = new THREE.Vector3(0, 5, 0);
+        const mirrorOptions = { clipBias: 0.003, textureWidth: window.innerWidth * window.devicePixelRatio, textureHeight: window.innerHeight * window.devicePixelRatio, color: 0xffffff };
+        const reflectorGeo = new THREE.PlaneGeometry(2.38, 3.394);
+        
+        const topReflector = new Reflector(reflectorGeo, mirrorOptions);
+        topReflector.position.copy(topPos); topReflector.lookAt(-1, 4, 0); 
+        topReflector.layers.set(3); 
+        topReflector.camera.layers.set(0); 
+        topReflector.camera.layers.enable(1); 
+        scene.add(topReflector);
+
+        const bottomReflector = new Reflector(reflectorGeo, mirrorOptions);
+        bottomReflector.lookAt(1, 4, 0); 
+        bottomReflector.layers.set(3);
+        bottomReflector.camera.layers.set(2); 
+        scene.add(bottomReflector);
+
+        const backingGeo = new THREE.BoxGeometry(2.4, 3.4, 0.1);
+        const topBacking = new THREE.Mesh(backingGeo, backingMat);
+        topBacking.position.copy(topPos); topBacking.lookAt(-1, 4, 0); topBacking.translateZ(-0.06); 
+        topBacking.layers.set(3); scene.add(topBacking);
+        
+        const botBacking = new THREE.Mesh(backingGeo, backingMat);
+        botBacking.layers.set(3); scene.add(botBacking);
+
+        const prismGroup = new THREE.Group(); prismGroup.visible = false; scene.add(prismGroup);
+        function createPrism(isTop) {
+            const shape = new THREE.Shape();
+            if (isTop) { shape.moveTo(-1.2, 1.2); shape.lineTo(-1.2, -1.2); shape.lineTo(1.2, -1.2); shape.lineTo(-1.2, 1.2); }
+            else { shape.moveTo(-1.2, 1.2); shape.lineTo(1.2, 1.2); shape.lineTo(1.2, -1.2); shape.lineTo(-1.2, 1.2); }
+            const mesh = new THREE.Mesh(new THREE.ExtrudeGeometry(shape, { depth: 2.38, bevelEnabled: false }), prismMat);
+            mesh.geometry.center(); mesh.layers.set(3); return mesh;
+        }
+        const topPrism = createPrism(true); topPrism.position.copy(topPos); prismGroup.add(topPrism);
+        const botPrism = createPrism(false); prismGroup.add(botPrism);
+
+        // ==========================================
+        // 3. 狀態變數與光學模式控制 (核心升級與修復)
+        // ==========================================
+        let currentD = 12;
+        let tubeH = 10;
+        let currentShapeStr = 'F';
+        let raysVisible = false;
+        let labelsVisible = false;
+        let S_visible = false;
+        let P_visible = false;
+        let isCamLocked = false;
+        let isPrismMode = false;
+        let mirrorResMult = 0.35; // 預設平面鏡模式的模糊係數
+
+        const dynamicObjects = new THREE.Group(); scene.add(dynamicObjects);
+        const rayVisuals = new THREE.Group(); scene.add(rayVisuals);
+
+        // 核心切換機制：處理平面鏡與稜鏡的清晰度及疊影
+        function setOpticsMode(isPrism) {
+            isPrismMode = isPrism;
+            prismGroup.visible = isPrism;
+            
+            // 當進入稜鏡模式時，隱藏鏡底黑板，讓反射體完美化身為透明稜鏡的斜面（全內反射）
+            topBacking.visible = botBacking.visible = !isPrism;
+            
+            // 稜鏡 100% 清晰，平面鏡降解析度變模糊 (35%)
+            mirrorResMult = isPrism ? 1.0 : 0.35; 
+            
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            const dpr = window.devicePixelRatio;
+            
+            topReflector.getRenderTarget().setSize(width * dpr * mirrorResMult, height * dpr * mirrorResMult);
+            bottomReflector.getRenderTarget().setSize(width * dpr * mirrorResMult, height * dpr * mirrorResMult);
+            
+            if (isPrism) {
+                // 【修復 Bug】: Reflector 使用 ShaderMaterial，必須透過 uniforms 存取顏色
+                topReflector.material.uniforms.color.value.setHex(0xffffff);
+                bottomReflector.material.uniforms.color.value.setHex(0xffffff);
+                topReflector.camera.layers.disable(4); // 關閉頂部鏡像疊影
+                bottomReflector.camera.layers.disable(5); // 關閉底部鏡像疊影
+            } else {
+                // 模擬玻璃吸收能量，成像較暗
+                topReflector.material.uniforms.color.value.setHex(0xaaaaaa); 
+                bottomReflector.material.uniforms.color.value.setHex(0xaaaaaa);
+                topReflector.camera.layers.enable(4); // 開啟頂部鏡像疊影 (模擬玻璃表面反射)
+                bottomReflector.camera.layers.enable(5); // 開啟底部鏡像疊影
+            }
+        }
+
+        function updateCameraLock() {
+            if (isCamLocked) {
+                const botY = 5 - tubeH;
+                camera.position.set(8, botY, 0); 
+                controls.target.set(0, botY, 0);
+                if(isOrtho) { camera.zoom = 4; camera.updateProjectionMatrix(); }
+                controls.enabled = false;
+            } else {
+                if (tubeH === 40) {
+                    camera.position.set(30, -15, 60);
+                    controls.target.set(-5, -15, 0);
+                    if(isOrtho) { camera.zoom = 0.5; camera.updateProjectionMatrix(); }
+                } else {
+                    camera.position.set(20, -5, 45);
+                    controls.target.set(-5, -5, 0);
+                    if(isOrtho) { camera.zoom = 1.2; camera.updateProjectionMatrix(); }
+                }
+                controls.enabled = true;
+            }
+            controls.update();
+        }
+
+        function updateTubeLength(h) {
+            tubeH = h;
+            const shiftY = 10 - h;
+            bottomCasingGroup.position.y = shiftY; bottomFrontCasingGroup.position.y = shiftY;
+            pipeGroup.scale.y = h - 2.4; pipeGroup.position.y = 5 - h/2;
+            pipeFrontGroup.scale.y = h - 2.4; pipeFrontGroup.position.y = 5 - h/2;
+
+            const botY = 5 - h;
+            bottomReflector.position.set(0, botY, 0); bottomReflector.lookAt(1, botY + 1, 0); 
+            botBacking.position.set(0, botY, 0); botBacking.lookAt(1, botY + 1, 0); botBacking.translateZ(-0.06);
+            botPrism.position.set(0, botY, 0);
+
+            updateCameraLock(); updateOptics();
+        }
+
+        // ==========================================
+        // 4. 光學引擎 (含 Ghosting 多重反射疊影計算)
+        // ==========================================
+        function createReflectedGeometry(sourceGeo, planeNormal, planePoint) {
+            const geo = sourceGeo.clone();
+            const mat = new THREE.Matrix4();
+            const nx = planeNormal.x, ny = planeNormal.y, nz = planeNormal.z;
+            const d = -planeNormal.dot(planePoint);
+            mat.set(
+                1 - 2*nx*nx,  -2*nx*ny,     -2*nx*nz,     -2*nx*d,
+                -2*ny*nx,     1 - 2*ny*ny,  -2*ny*nz,     -2*ny*d,
+                -2*nz*nx,     -2*nz*ny,     1 - 2*nz*nz,  -2*nz*d,
+                0,            0,            0,            1
+            );
+            geo.applyMatrix4(mat); return geo;
+        }
+
+        function getShapeGeo(type) {
+            const shape = new THREE.Shape();
+            if(type === 'F') {
+                shape.moveTo(0, 0); shape.lineTo(0.5, 0); shape.lineTo(0.5, 1.25);
+                shape.lineTo(1.5, 1.25); shape.lineTo(1.5, 1.75); shape.lineTo(0.5, 1.75);
+                shape.lineTo(0.5, 2.5); shape.lineTo(2.0, 2.5); shape.lineTo(2.0, 3.0);
+                shape.lineTo(0, 3.0); shape.lineTo(0, 0);
+            } else {
+                shape.moveTo(0, 0); shape.lineTo(0.5, 0); shape.lineTo(0.5, 1.25);
+                shape.lineTo(2.0, 1.25); shape.lineTo(2.0, 3.0); shape.lineTo(0, 3.0); shape.lineTo(0, 0);
+                const hole = new THREE.Path();
+                hole.moveTo(0.5, 1.75); hole.lineTo(1.5, 1.75); hole.lineTo(1.5, 2.5); hole.lineTo(0.5, 2.5); hole.lineTo(0.5, 1.75);
+                shape.holes.push(hole);
+            }
+            const geo = new THREE.ExtrudeGeometry(shape, { depth: 0.4, bevelEnabled: false });
+            geo.center(); geo.rotateY(Math.PI / 2); 
+            return geo;
+        }
+
+        const matO = new THREE.MeshPhongMaterial({ color: 0x2ecc71, side: THREE.DoubleSide });
+        const matS_Ghost = new THREE.MeshPhongMaterial({ color: 0x9b59b6, transparent: true, opacity: 0.4, side: THREE.DoubleSide, depthWrite: false });
+        const matP_Ghost = new THREE.MeshPhongMaterial({ color: 0xe74c3c, transparent: true, opacity: 0.4, side: THREE.DoubleSide, depthWrite: false });
+        const matS_Solid = new THREE.MeshPhongMaterial({ color: 0x2ecc71, side: THREE.DoubleSide }); 
+
+        function updateOptics() {
+            while(dynamicObjects.children.length > 0) dynamicObjects.remove(dynamicObjects.children[0]);
+            while(rayVisuals.children.length > 0) rayVisuals.remove(rayVisuals.children[0]);
+
+            // [1] 主實體物件
+            const baseGeo = getShapeGeo(currentShapeStr);
+            const O_pos = new THREE.Vector3(-currentD, 5, 0);
+            baseGeo.translate(O_pos.x, O_pos.y, O_pos.z);
+            const meshO = new THREE.Mesh(baseGeo, matO); meshO.layers.set(0); 
+            dynamicObjects.add(meshO);
+
+            // [2] 建立鏡面多重疊影 (僅在平面鏡模式下的反射相機可見)
+            const ghostGeo1 = baseGeo.clone(); ghostGeo1.translate(0.15, 0.15, 0); // 第一重反覆疊影
+            const ghostGeo2 = baseGeo.clone(); ghostGeo2.translate(0.30, 0.30, 0); // 第二重反覆疊影
+            const mG1 = new THREE.MeshPhongMaterial({ color: 0x2ecc71, transparent: true, opacity: 0.4, side: THREE.DoubleSide, depthWrite: false });
+            const mG2 = new THREE.MeshPhongMaterial({ color: 0x2ecc71, transparent: true, opacity: 0.15, side: THREE.DoubleSide, depthWrite: false });
+            
+            const meshGO1 = new THREE.Mesh(ghostGeo1, mG1); meshGO1.layers.set(4); // Layer 4 (Top Mirror Ghost)
+            const meshGO2 = new THREE.Mesh(ghostGeo2, mG2); meshGO2.layers.set(4);
+            dynamicObjects.add(meshGO1, meshGO2);
+
+            // [3] 光學鏡面與虛像計算
+            const botPos = new THREE.Vector3(0, 5 - tubeH, 0);
+            const N1 = new THREE.Vector3(-1, -1, 0).normalize();
+            const P1 = new THREE.Vector3(0, 5, 0);
+            const N2 = new THREE.Vector3(1, 1, 0).normalize();
+            const P2 = botPos;
+
+            const geoS = createReflectedGeometry(baseGeo, N1, P1);
+            const meshS_Ghost = new THREE.Mesh(geoS, matS_Ghost); meshS_Ghost.layers.set(1); meshS_Ghost.visible = S_visible;
+            const meshS_Solid = new THREE.Mesh(geoS, matS_Solid); meshS_Solid.layers.set(2); 
+            dynamicObjects.add(meshS_Ghost, meshS_Solid);
+
+            // [4] 底部鏡片的疊影運算 (承接上方疊影 + 底部自身疊影)
+            const geoS_G1 = createReflectedGeometry(ghostGeo1, N1, P1); 
+            const geoS_G2 = createReflectedGeometry(ghostGeo2, N1, P1); 
+            const meshGS1 = new THREE.Mesh(geoS_G1, mG1); meshGS1.layers.set(5); // Layer 5 (Bottom Mirror Ghost)
+            const meshGS2 = new THREE.Mesh(geoS_G2, mG2); meshGS2.layers.set(5);
+            
+            const geoS_BotGhost = geoS.clone(); geoS_BotGhost.translate(-0.15, -0.15, 0); // 底部玻璃前表面反射
+            const meshGS_Bot = new THREE.Mesh(geoS_BotGhost, mG1); meshGS_Bot.layers.set(5);
+            dynamicObjects.add(meshGS1, meshGS2, meshGS_Bot);
+
+            const geoP = createReflectedGeometry(geoS, N2, P2);
+            const meshP_Ghost = new THREE.Mesh(geoP, matP_Ghost); meshP_Ghost.layers.set(1); meshP_Ghost.visible = P_visible;
+            dynamicObjects.add(meshP_Ghost);
+
+            // 光線輔助繪圖
+            const drawEdges = (geo, color, isVisible) => {
+                const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineDashedMaterial({ color: color, dashSize: 0.3, gapSize: 0.2 }));
+                edges.computeLineDistances(); edges.layers.set(1); edges.visible = isVisible;
+                dynamicObjects.add(edges);
+            };
+            drawEdges(geoS, 0x9b59b6, S_visible); drawEdges(geoP, 0xe74c3c, P_visible);
+
+            const matLine = new THREE.LineBasicMaterial({ color: 0xf39c12, linewidth: 2 });
+            const drawArrow = (p1, p2) => {
+                const dir = new THREE.Vector3().subVectors(p2, p1);
+                const len = dir.length(); dir.normalize();
+                const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([p1, p2]), matLine);
+                const arrow = new THREE.ArrowHelper(dir, p1.clone().addScaledVector(dir, len/2 - 0.2), 1.0, 0xf39c12, 0.4, 0.3);
+                line.layers.set(1); arrow.layers.set(1); arrow.cone.layers.set(1); arrow.line.layers.set(1);
+                rayVisuals.add(line, arrow);
+            };
+            drawArrow(O_pos, topPos); drawArrow(topPos, botPos); drawArrow(botPos, new THREE.Vector3(8, 5 - tubeH, 0)); 
+
+            const lineS = new THREE.Line(new THREE.BufferGeometry().setFromPoints([topPos, new THREE.Vector3(0, 5 + currentD, 0)]), new THREE.LineDashedMaterial({ color: 0x9b59b6, dashSize: 0.4, gapSize: 0.2 }));
+            lineS.computeLineDistances(); lineS.layers.set(1); lineS.visible = S_visible;
+            
+            const lineP = new THREE.Line(new THREE.BufferGeometry().setFromPoints([botPos, new THREE.Vector3(-(currentD+tubeH), 5 - tubeH, 0)]), new THREE.LineDashedMaterial({ color: 0xe74c3c, dashSize: 0.4, gapSize: 0.2 }));
+            lineP.computeLineDistances(); lineP.layers.set(1); lineP.visible = P_visible;
+            
+            rayVisuals.add(lineS, lineP); rayVisuals.visible = raysVisible;
+            updateLabels();
+        }
+
+        // ==========================================
+        // 5. HTML 標籤與 UI 事件綁定
+        // ==========================================
+        function updateLabels() {
+            document.getElementById('labels-container').style.display = labelsVisible ? 'block' : 'none';
+            if(!labelsVisible) return;
+
+            const lblData = [
+                { id: 'lbl-O', pos: new THREE.Vector3(-currentD, 7.5, 0) }, 
+                { id: 'lbl-M1', pos: new THREE.Vector3(3.0, 6.5, 0) },
+                { id: 'lbl-M2', pos: new THREE.Vector3(-3.0, 5 - tubeH - 1.5, 0) }, 
+                { id: 'lbl-S', pos: new THREE.Vector3(0, 5 + currentD + 2.5, 0) },
+                { id: 'lbl-P', pos: new THREE.Vector3(-(currentD + tubeH), 5 - tubeH + 2.5, 0) }, 
+                { id: 'lbl-d1', pos: new THREE.Vector3(-currentD/2, 5.5, 0) },
+                { id: 'lbl-h', pos: new THREE.Vector3(1.0, 5 - tubeH/2, 0) }, 
+                { id: 'lbl-D1', pos: new THREE.Vector3(-0.5, 5 + currentD/2, 0) },
+                { id: 'lbl-D2', pos: new THREE.Vector3(-(currentD + tubeH)/2, 5 - tubeH + 0.5, 0) }
+            ];
+
+            lblData.forEach(l => {
+                const el = document.getElementById(l.id);
+                if(el && el.style.display !== 'none') {
+                    const screenPos = l.pos.clone().project(camera);
+                    if(screenPos.z > 1) { el.style.display = 'none'; return; }
+                    el.style.left = `${(screenPos.x * 0.5 + 0.5) * window.innerWidth}px`; 
+                    el.style.top = `${(-(screenPos.y * 0.5) + 0.5) * window.innerHeight}px`;
+                }
+            });
+            
+            document.getElementById('lbl-d1').innerText = `d = ${currentD}`;
+            document.getElementById('lbl-D1').innerText = `d = ${currentD}`;
+            document.getElementById('lbl-h').innerText = `h = ${tubeH} (管長)`;
+            document.getElementById('lbl-D2').innerText = `d + h = ${currentD + tubeH}`;
+        }
+
+        document.getElementById('slider-d').addEventListener('input', (e) => { currentD = parseFloat(e.target.value); document.getElementById('val-d').innerText = currentD; updateOptics(); });
+        document.getElementById('btn-obj-f').addEventListener('click', (e) => { currentShapeStr = 'F'; updateOptics(); document.getElementById('btn-obj-p').classList.remove('active'); e.target.classList.add('active'); });
+        document.getElementById('btn-obj-p').addEventListener('click', (e) => { currentShapeStr = 'P'; updateOptics(); document.getElementById('btn-obj-f').classList.remove('active'); e.target.classList.add('active'); });
+        
+        document.getElementById('btn-h-10').addEventListener('click', (e) => { updateTubeLength(10); document.getElementById('btn-h-40').classList.remove('active'); e.target.classList.add('active'); });
+        document.getElementById('btn-h-40').addEventListener('click', (e) => { updateTubeLength(40); document.getElementById('btn-h-10').classList.remove('active'); e.target.classList.add('active'); });
+
+        document.getElementById('btn-cam-persp').addEventListener('click', (e) => {
+            if(!isOrtho) return;
+            isOrtho = false;
+            e.target.classList.add('active'); document.getElementById('btn-cam-ortho').classList.remove('active');
+            perspCam.position.copy(orthoCam.position); perspCam.quaternion.copy(orthoCam.quaternion);
+            camera = perspCam; controls.object = camera;
+            updateCameraLock(); updateLabels();
+        });
+
+        document.getElementById('btn-cam-ortho').addEventListener('click', (e) => {
+            if(isOrtho) return;
+            isOrtho = true;
+            e.target.classList.add('active'); document.getElementById('btn-cam-persp').classList.remove('active');
+            orthoCam.position.copy(perspCam.position); orthoCam.quaternion.copy(perspCam.quaternion);
+            orthoCam.zoom = 1; orthoCam.updateProjectionMatrix();
+            camera = orthoCam; controls.object = camera;
+            updateCameraLock(); updateLabels();
+        });
+
+        document.getElementById('btn-cam-lock').addEventListener('click', (e) => {
+            isCamLocked = true; updateCameraLock();
+            document.getElementById('btn-cam-reset').classList.remove('active'); e.target.classList.add('active');
+        });
+        document.getElementById('btn-cam-reset').addEventListener('click', (e) => {
+            isCamLocked = false; updateCameraLock();
+            document.getElementById('btn-cam-lock').classList.remove('active'); e.target.classList.add('active');
+        });
+
+        document.getElementById('btn-toggle-cover').addEventListener('click', () => {
+            const isVis = !topFrontCasingGroup.visible;
+            topFrontCasingGroup.visible = bottomFrontCasingGroup.visible = pipeFrontGroup.visible = isVis;
+        });
+        document.getElementById('btn-toggle-rays').addEventListener('click', (e) => { raysVisible = !raysVisible; updateOptics(); e.target.classList.toggle('active'); });
+        document.getElementById('btn-toggle-labels').addEventListener('click', (e) => { labelsVisible = !labelsVisible; updateOptics(); e.target.classList.toggle('active'); });
+        document.getElementById('btn-toggle-s').addEventListener('click', (e) => { S_visible = !S_visible; updateOptics(); ['lbl-S', 'lbl-d1', 'lbl-D1'].forEach(id => document.getElementById(id).style.display = S_visible && labelsVisible ? 'block' : 'none'); e.target.classList.toggle('active'); });
+        document.getElementById('btn-toggle-p').addEventListener('click', (e) => { P_visible = !P_visible; updateOptics(); ['lbl-P', 'lbl-D2'].forEach(id => document.getElementById(id).style.display = P_visible && labelsVisible ? 'block' : 'none'); e.target.classList.toggle('active'); });
+
+        document.getElementById('btn-mirror-prism').addEventListener('click', (e) => {
+            const willBePrism = !isPrismMode;
+            setOpticsMode(willBePrism);
+            
+            if(willBePrism) { 
+                e.target.innerText = "✨ 當前: 全內反射稜鏡 (極度清晰)"; 
+                e.target.classList.remove('active');
+                e.target.style.background = "#27ae60";
+                document.getElementById('lbl-M1').innerText = "P1 (上稜鏡)"; 
+                document.getElementById('lbl-M2').innerText = "P2 (下稜鏡)";
+            } else { 
+                e.target.innerText = "🪞 當前: 一般平面鏡 (模糊 / 多重反射)"; 
+                e.target.classList.add('active'); 
+                e.target.style.background = ""; 
+                document.getElementById('lbl-M1').innerText = "M1 (上鏡)"; 
+                document.getElementById('lbl-M2').innerText = "M2 (下鏡)";
+            }
+        });
+
+        // 系統啟動與初始化
+        setOpticsMode(false); // 預設為平面鏡
+        updateTubeLength(10);
+        isCamLocked = false; updateCameraLock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update(); updateLabels();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        window.addEventListener('resize', () => {
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            const newAspect = width / height;
+            
+            perspCam.aspect = newAspect; 
+            perspCam.updateProjectionMatrix();
+
+            orthoCam.left = -frustumSize * newAspect / 2;
+            orthoCam.right = frustumSize * newAspect / 2;
+            orthoCam.top = frustumSize / 2;
+            orthoCam.bottom = -frustumSize / 2;
+            orthoCam.updateProjectionMatrix();
+
+            renderer.setSize(width, height);
+            
+            const dpr = window.devicePixelRatio;
+            // 套用當下光學模式的模糊係數
+            topReflector.getRenderTarget().setSize(width * dpr * mirrorResMult, height * dpr * mirrorResMult);
+            bottomReflector.getRenderTarget().setSize(width * dpr * mirrorResMult, height * dpr * mirrorResMult);
+        });
+    </script>
+</body>
+</html>
