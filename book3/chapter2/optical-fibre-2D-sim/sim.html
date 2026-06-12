@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>光纖全內反射互動教學模擬器 v3.5 (自由移動污跡版)</title>
+    
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>
+        window.MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] } };
+    </script>
+
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #eef2f5;
+            color: #2c3e50;
+            margin: 0;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: hidden;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 1600px; 
+        }
+        .canvas-container {
+            width: 100%;
+            position: relative;
+        }
+        canvas {
+            background-color: #1a1a24;
+            border-radius: 8px;
+            cursor: grab;
+            width: 100%;
+            display: block;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+        }
+        
+        .canvas-tools {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            display: flex;
+            gap: 10px;
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 8px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            border: 1px solid #cbd5e1;
+            align-items: center;
+        }
+        .tool-btn {
+            background-color: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            color: #334155;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .tool-btn:hover {
+            background-color: #e2e8f0;
+            transform: scale(1.05);
+        }
+        .zoom-display {
+            font-size: 0.9em;
+            font-weight: bold;
+            color: #0f172a;
+            min-width: 45px;
+            text-align: center;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            gap: 15px;
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+        .controls-left, .controls-right {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+            gap: 15px;
+            flex: 1;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            min-width: 180px;
+            flex: 1;
+        }
+        .toggle-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            background: #fff;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            height: fit-content;
+        }
+        label { font-weight: 600; margin-bottom: 4px; font-size: 0.95em; color: #334155; }
+        input[type="range"] { width: 100%; cursor: pointer; }
+        input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
+        .value-display { font-size: 0.95em; color: #0284c7; text-align: right; font-weight: bold; }
+        
+        .math-panel {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            margin-top: 5px;
+            padding: 15px;
+            background-color: #f0f9ff;
+            border-left: 5px solid #0ea5e9;
+            border-radius: 6px;
+            font-size: 0.95em;
+            color: #0f172a;
+        }
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-weight: bold;
+            color: white;
+            font-size: 1em;
+            text-align: center;
+        }
+        .bend-highlight { color: #d946ef; }
+        .physics-note { font-size: 0.8em; color: #8b5a2b; margin-top: 4px; font-style: italic; display: none; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="canvas-container" id="canvasHolder">
+            <canvas id="simCanvas"></canvas>
+            <div class="canvas-tools">
+                <button class="tool-btn" id="zoomOutBtn" title="縮小">➖</button>
+                <span class="zoom-display" id="zoomVal">100%</span>
+                <button class="tool-btn" id="zoomInBtn" title="放大">➕</button>
+                <div style="width: 1px; height: 20px; background-color: #cbd5e1; margin: 0 5px;"></div>
+                <button class="tool-btn" id="resetCamBtn">🔄 重置視角</button>
+            </div>
+            <div style="text-align: center; font-size: 0.9em; color: #64748b; margin-top: 8px;">
+                💡 提示：開啟污跡後，可<b>無限制地左右拖曳污跡</b>，甚至將其拖入彎曲段來測試漏光現象！
+            </div>
+        </div>
+
+        <div class="controls">
+            <div class="controls-left">
+                <div class="control-group" style="border-left: 4px solid #d946ef; padding-left: 10px;">
+                    <label class="bend-highlight">光纖彎曲程度 (Bend Degree):</label>
+                    <input type="range" id="bendLevel" min="0" max="100" value="0" step="1">
+                    <span class="value-display bend-highlight" id="bendLevelVal">直線 (0)</span>
+                </div>
+
+                <div class="control-group">
+                    <label>外部入射角 ($\theta_i$):</label>
+                    <input type="range" id="angle" min="-90" max="90" value="25" step="1">
+                    <span class="value-display" id="angleVal">25°</span>
+                </div>
+
+                <div class="control-group">
+                    <label>纖芯折射率 ($n_1$):</label>
+                    <input type="range" id="nCore" min="1.0" max="2.0" value="1.5" step="0.01">
+                    <span class="value-display" id="nCoreVal">1.50</span>
+                </div>
+            </div>
+
+            <div class="controls-right">
+                <div class="control-group">
+                    <label>纖殼折射率 ($n_2$):</label>
+                    <input type="range" id="nClad" min="1.0" max="2.0" value="1.2" step="0.01">
+                    <span class="value-display" id="nCladVal">1.20</span>
+                </div>
+
+                <div class="control-group" id="dirtControlBox">
+                    <label style="color:#8b5a2b;">污跡折射率 ($n_{dirt}$):</label>
+                    <input type="range" id="nDirt" min="1.0" max="2.0" value="1.45" step="0.01">
+                    <span class="value-display" id="nDirtVal" style="color:#8b5a2b;">1.45</span>
+                    <div id="dirtNote" class="physics-note">💡 有纖殼保護時，外部污跡不會影響內部光線。</div>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <div class="toggle-group" style="border-left: 4px solid #10b981;">
+                        <input type="checkbox" id="showAngles" checked>
+                        <label for="showAngles" style="margin:0;">顯示角度與法線</label>
+                    </div>
+                    <div class="toggle-group">
+                        <input type="checkbox" id="hasClad" checked>
+                        <label for="hasClad" style="margin:0;">顯示纖殼 (Cladding)</label>
+                    </div>
+                    <div class="toggle-group" style="border-left: 4px solid #8b5a2b;">
+                        <input type="checkbox" id="hasDirt">
+                        <label for="hasDirt" style="margin:0;">加入外部污跡</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="math-panel">
+                <div>當前碰撞邊界: <strong id="boundaryType">--</strong></div>
+                <div>邊界折射率 ($n_{bound}$): <span id="nBoundDisplay" class="value-display">--</span></div>
+                <div>臨界角 ($\theta_c = \arcsin\frac{n_{bound}}{n_1}$): 
+                    <span id="criticalAngle" style="font-size: 1.2em; font-weight: bold; color: #d97706;">--</span>
+                </div>
+                <div class="status-badge" id="statusBadge" style="background-color: gray;">計算中...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const canvasHolder = document.getElementById('canvasHolder');
+
+        // UI 綁定
+        const angleSlider = document.getElementById('angle');
+        const nCoreSlider = document.getElementById('nCore');
+        const nCladSlider = document.getElementById('nClad');
+        const nDirtSlider = document.getElementById('nDirt');
+        const bendLevelSlider = document.getElementById('bendLevel');
+        
+        const showAnglesCheckbox = document.getElementById('showAngles');
+        const hasCladCheckbox = document.getElementById('hasClad');
+        const hasDirtCheckbox = document.getElementById('hasDirt');
+        const dirtControlBox = document.getElementById('dirtControlBox');
+        const dirtNote = document.getElementById('dirtNote');
+        
+        const resetCamBtn = document.getElementById('resetCamBtn');
+        const zoomInBtn = document.getElementById('zoomInBtn');
+        const zoomOutBtn = document.getElementById('zoomOutBtn');
+        const zoomValDisplay = document.getElementById('zoomVal');
+
+        // 顯示綁定
+        const angleVal = document.getElementById('angleVal');
+        const nCoreVal = document.getElementById('nCoreVal');
+        const nCladVal = document.getElementById('nCladVal');
+        const nDirtVal = document.getElementById('nDirtVal');
+        const bendLevelVal = document.getElementById('bendLevelVal');
+        const criticalAngleDisplay = document.getElementById('criticalAngle');
+        const statusBadge = document.getElementById('statusBadge');
+        const boundaryTypeDisplay = document.getElementById('boundaryType');
+        const nBoundDisplay = document.getElementById('nBoundDisplay');
+
+        // 模擬器全域常數
+        const fiberStartX = 120; 
+        const centerY = 120; 
+        const thickness = 140;
+        const halfThick = thickness / 2;
+        const cladThick = 40;
+        const bendStartX = fiberStartX + 300; 
+        
+        // 攝影機與縮放狀態
+        let offsetX = 0;
+        let offsetY = 0;
+        let scale = 1.0;
+        const MIN_SCALE = 0.3;
+        const MAX_SCALE = 3.0;
+
+        // 拖曳狀態
+        let isDraggingAngle = false;
+        let isPanning = false;
+        let isDraggingDirt = false;
+        let lastPanX = 0;
+        let lastPanY = 0;
+
+        // 污跡狀態
+        let dirtRadius = 50;
+        let dirtCenterX = fiberStartX + 150; 
+        let dirtY = 0; // 動態計算
+        
+        let topSegments = [];
+        let botSegments = [];
+
+        function resizeCanvas() {
+            const rect = canvasHolder.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = 450; 
+            runSimulation();
+        }
+
+        function getScreenToWorld(mouseX, mouseY) {
+            return {
+                x: (mouseX - offsetX) / scale,
+                y: (mouseY - offsetY) / scale
+            };
+        }
+
+        function applyZoom(zoomFactor, mouseX, mouseY) {
+            const oldWorldX = (mouseX - offsetX) / scale;
+            const oldWorldY = (mouseY - offsetY) / scale;
+            
+            scale *= zoomFactor;
+            scale = Math.max(MIN_SCALE, Math.min(scale, MAX_SCALE));
+            
+            offsetX = mouseX - oldWorldX * scale;
+            offsetY = mouseY - oldWorldY * scale;
+            
+            zoomValDisplay.textContent = Math.round(scale * 100) + '%';
+            runSimulation();
+        }
+
+        function drawVectorAngle(x, y, v1x, v1y, v2x, v2y, radius, text, color) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            ctx.lineWidth = 1.5 / scale; 
+
+            let a1 = Math.atan2(v1y, v1x);
+            let a2 = Math.atan2(v2y, v2x);
+
+            let start = Math.min(a1, a2);
+            let end = Math.max(a1, a2);
+            if (end - start > Math.PI) {
+                let temp = start;
+                start = end;
+                end = temp + Math.PI * 2;
+            }
+
+            ctx.arc(x, y, radius, start, end);
+            ctx.stroke();
+
+            let midAngle = (start + end) / 2;
+            let textX = x + (radius + 20/scale) * Math.cos(midAngle);
+            let textY = y + (radius + 20/scale) * Math.sin(midAngle);
+
+            ctx.font = `${13/scale}px "Segoe UI", Arial, sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            let textWidth = ctx.measureText(text).width;
+            ctx.fillStyle = 'rgba(26, 26, 36, 0.7)';
+            ctx.fillRect(textX - textWidth/2 - 2/scale, textY - 8/scale, textWidth + 4/scale, 16/scale);
+
+            ctx.fillStyle = color;
+            ctx.fillText(text, textX, textY);
+            ctx.restore();
+        }
+
+        function getIntersection(rayOrigin, rayDir, segment) {
+            let Ox = rayOrigin.x, Oy = rayOrigin.y;
+            let Dx = rayDir.x, Dy = rayDir.y;
+            let Ax = segment.x1, Ay = segment.y1;
+            let Bx = segment.x2, By = segment.y2;
+
+            let vx = Bx - Ax;
+            let vy = By - Ay;
+
+            let cross = Dx * vy - Dy * vx;
+            if (Math.abs(cross) < 1e-8) return null; 
+
+            let t = ((Ax - Ox) * vy - (Ay - Oy) * vx) / cross;
+            let u = ((Ax - Ox) * Dy - (Ay - Oy) * Dx) / cross;
+
+            if (t > 0.0001 && u >= 0 && u <= 1) {
+                return { x: Ox + t * Dx, y: Oy + t * Dy, t: t, nx: segment.nx, ny: segment.ny };
+            }
+            return null;
+        }
+
+        function runSimulation() {
+            let n1 = parseFloat(nCoreSlider.value);
+            let n2 = parseFloat(nCladSlider.value);
+            let nDirt = parseFloat(nDirtSlider.value);
+            let angleDeg = parseFloat(angleSlider.value);
+            let bendLevel = parseInt(bendLevelSlider.value);
+            
+            let hasClad = hasCladCheckbox.checked;
+            let hasDirt = hasDirtCheckbox.checked;
+            let showAngles = showAnglesCheckbox.checked;
+
+            nCoreVal.textContent = n1.toFixed(2);
+            nCladVal.textContent = n2.toFixed(2);
+            nDirtVal.textContent = nDirt.toFixed(2);
+            angleVal.textContent = angleDeg.toFixed(1) + '°';
+            
+            if (bendLevel === 0) bendLevelVal.textContent = "直線 (0)";
+            else bendLevelVal.textContent = `彎曲程度 ${bendLevel}`;
+            
+            if (hasDirt) {
+                dirtControlBox.style.opacity = '1';
+                dirtControlBox.style.pointerEvents = 'auto';
+                dirtNote.style.display = hasClad ? 'block' : 'none';
+            } else {
+                dirtControlBox.style.opacity = '0.5';
+                dirtControlBox.style.pointerEvents = 'none';
+                dirtNote.style.display = 'none';
+            }
+
+            const canvasWidth = canvas.width;
+            const canvasHeight = canvas.height;
+            const FAR_END_X = 4000; 
+
+            // 清空畫布
+            ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+            // 套用攝影機位移與縮放
+            ctx.save();
+            ctx.translate(offsetX, offsetY);
+            ctx.scale(scale, scale);
+
+            // 背景網格
+            ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+            ctx.lineWidth = 1 / scale;
+            let startX = -offsetX / scale;
+            let startY = -offsetY / scale;
+            let endX = startX + canvasWidth / scale;
+            let endY = startY + canvasHeight / scale;
+
+            let firstX = Math.floor(startX / 40) * 40;
+            let firstY = Math.floor(startY / 40) * 40;
+            for(let i = firstX; i < endX; i += 40) { 
+                ctx.beginPath(); ctx.moveTo(i, startY); ctx.lineTo(i, endY); ctx.stroke(); 
+            }
+            for(let i = firstY; i < endY; i += 40) { 
+                ctx.beginPath(); ctx.moveTo(startX, i); ctx.lineTo(endX, i); ctx.stroke(); 
+            }
+
+            // === 產生幾何 ===
+            topSegments = []; botSegments = [];
+            let topCladSegments = []; let botCladSegments = [];
+            
+            // 起始直線段
+            topSegments.push({x1: fiberStartX, y1: centerY - halfThick, x2: bendStartX, y2: centerY - halfThick, nx: 0, ny: 1});
+            botSegments.push({x1: fiberStartX, y1: centerY + halfThick, x2: bendStartX, y2: centerY + halfThick, nx: 0, ny: -1});
+            topCladSegments.push({x1: fiberStartX, y1: centerY - halfThick - cladThick, x2: bendStartX, y2: centerY - halfThick - cladThick});
+            botCladSegments.push({x1: fiberStartX, y1: centerY + halfThick + cladThick, x2: bendStartX, y2: centerY + halfThick + cladThick});
+
+            // 彎曲幾何參數
+            let R = 150 + (100 - bendLevel) * 18.5; 
+            let Cx = bendStartX;
+            let Cy = centerY + R; 
+
+            if (bendLevel > 0) {
+                let maxTheta = Math.PI / 1.5; 
+                let steps = 80;
+                let dTheta = maxTheta / steps;
+
+                let currT_X = bendStartX, currT_Y = centerY - halfThick;
+                let currB_X = bendStartX, currB_Y = centerY + halfThick;
+                let currTC_X = bendStartX, currTC_Y = centerY - halfThick - cladThick;
+                let currBC_X = bendStartX, currBC_Y = centerY + halfThick + cladThick;
+
+                for (let i = 1; i <= steps; i++) {
+                    let theta = i * dTheta;
+                    let nextT_X = Cx + (R + halfThick) * Math.sin(theta);
+                    let nextT_Y = Cy - (R + halfThick) * Math.cos(theta);
+                    let nextB_X = Cx + (R - halfThick) * Math.sin(theta);
+                    let nextB_Y = Cy - (R - halfThick) * Math.cos(theta);
+                    let nextTC_X = Cx + (R + halfThick + cladThick) * Math.sin(theta);
+                    let nextTC_Y = Cy - (R + halfThick + cladThick) * Math.cos(theta);
+                    let nextBC_X = Cx + (R - halfThick - cladThick) * Math.sin(theta);
+                    let nextBC_Y = Cy - (R - halfThick - cladThick) * Math.cos(theta);
+
+                    let nxTop = -Math.sin(theta); let nyTop = Math.cos(theta);
+                    let nxBot = Math.sin(theta); let nyBot = -Math.cos(theta);
+
+                    topSegments.push({x1: currT_X, y1: currT_Y, x2: nextT_X, y2: nextT_Y, nx: nxTop, ny: nyTop});
+                    botSegments.push({x1: currB_X, y1: currB_Y, x2: nextB_X, y2: nextB_Y, nx: nxBot, ny: nyBot});
+                    topCladSegments.push({x1: currTC_X, y1: currTC_Y, x2: nextTC_X, y2: nextTC_Y});
+                    botCladSegments.push({x1: currBC_X, y1: currBC_Y, x2: nextBC_X, y2: nextBC_Y});
+
+                    currT_X = nextT_X; currT_Y = nextT_Y; currB_X = nextB_X; currB_Y = nextB_Y;
+                    currTC_X = nextTC_X; currTC_Y = nextTC_Y; currBC_X = nextBC_X; currBC_Y = nextBC_Y;
+                }
+            } else {
+                topSegments.push({x1: bendStartX, y1: centerY - halfThick, x2: FAR_END_X, y2: centerY - halfThick, nx: 0, ny: 1});
+                botSegments.push({x1: bendStartX, y1: centerY + halfThick, x2: FAR_END_X, y2: centerY + halfThick, nx: 0, ny: -1});
+                topCladSegments.push({x1: bendStartX, y1: centerY - halfThick - cladThick, x2: FAR_END_X, y2: centerY - halfThick - cladThick});
+                botCladSegments.push({x1: bendStartX, y1: centerY + halfThick + cladThick, x2: FAR_END_X, y2: centerY + halfThick + cladThick});
+            }
+
+            // === 繪製纖殼 ===
+            if (hasClad) {
+                ctx.fillStyle = '#1e3547';
+                ctx.beginPath();
+                ctx.moveTo(topCladSegments[0].x1, topCladSegments[0].y1);
+                for (let seg of topCladSegments) ctx.lineTo(seg.x2, seg.y2);
+                for (let i = botCladSegments.length-1; i >= 0; i--) ctx.lineTo(botCladSegments[i].x2, botCladSegments[i].y2);
+                ctx.lineTo(botCladSegments[0].x1, botCladSegments[0].y1);
+                ctx.closePath();
+                ctx.fill();
+            }
+
+            // === 繪製污跡 (全自由移動並貼合邊界) ===
+            let dirtAngle = 0;
+            let targetRadius = hasClad ? (R + halfThick + cladThick) : (R + halfThick);
+            let flatY = hasClad ? (centerY - halfThick - cladThick) : (centerY - halfThick);
+
+            // 動態計算污跡高度與旋轉角度，讓它順著彎曲向下滑動
+            if (bendLevel > 0 && dirtCenterX > bendStartX) {
+                let dx = dirtCenterX - bendStartX;
+                if (dx < targetRadius) {
+                    dirtAngle = Math.asin(dx / targetRadius);
+                    dirtY = Cy - targetRadius * Math.cos(dirtAngle);
+                } else {
+                    dirtAngle = Math.PI / 2;
+                    dirtY = Cy; 
+                }
+            } else {
+                dirtY = flatY;
+                dirtAngle = 0;
+            }
+
+            if (hasDirt) {
+                ctx.fillStyle = isDraggingDirt ? '#8b6033' : '#6b4c2a'; 
+                ctx.save();
+                ctx.translate(dirtCenterX, dirtY);
+                ctx.rotate(dirtAngle);
+                ctx.beginPath();
+                ctx.ellipse(0, 0, dirtRadius, 16, 0, Math.PI, 0);
+                ctx.fill();
+                
+                // 畫個小箭頭提示可拖曳
+                ctx.fillStyle = 'rgba(255,255,255,0.4)';
+                ctx.font = `${14/scale}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText("↔", 0, -22);
+                ctx.restore();
+            }
+
+            // === 繪製纖芯 ===
+            ctx.fillStyle = '#0284c7';
+            ctx.beginPath();
+            ctx.moveTo(topSegments[0].x1, topSegments[0].y1);
+            for (let seg of topSegments) ctx.lineTo(seg.x2, seg.y2);
+            for (let i = botSegments.length-1; i >= 0; i--) ctx.lineTo(botSegments[i].x2, botSegments[i].y2);
+            ctx.lineTo(botSegments[0].x1, botSegments[0].y1);
+            ctx.closePath();
+            ctx.fill();
+
+            // 邊緣光暈
+            ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+            ctx.lineWidth = 1 / scale;
+            ctx.beginPath();
+            for (let seg of topSegments) { ctx.moveTo(seg.x1, seg.y1); ctx.lineTo(seg.x2, seg.y2); }
+            for (let seg of botSegments) { ctx.moveTo(seg.x1, seg.y1); ctx.lineTo(seg.x2, seg.y2); }
+            ctx.stroke();
+
+            // 端面與中心虛線
+            ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+            ctx.lineWidth = 2 / scale;
+            ctx.beginPath();
+            ctx.moveTo(fiberStartX, centerY - halfThick);
+            ctx.lineTo(fiberStartX, centerY + halfThick);
+            ctx.stroke();
+
+            ctx.setLineDash([5/scale, 5/scale]);
+            ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+            ctx.beginPath();
+            ctx.moveTo(startX, centerY); 
+            ctx.lineTo(fiberStartX, centerY);
+            ctx.stroke();
+            ctx.setLineDash([]); 
+
+            // === 計算初始入射與折射 ===
+            let angleRadExternal = angleDeg * Math.PI / 180;
+            let drawAngleRad = Math.max(-89.9, Math.min(89.9, angleDeg)) * Math.PI / 180;
+            let rayStartY = centerY - Math.tan(drawAngleRad) * fiberStartX;
+
+            ctx.beginPath();
+            ctx.strokeStyle = '#ff3366';
+            ctx.lineWidth = 3 / scale; 
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#ff3366';
+            
+            let inStartX = startX;
+            let inStartY = centerY - Math.tan(drawAngleRad) * (fiberStartX - inStartX);
+            ctx.moveTo(inStartX, inStartY);
+            ctx.lineTo(fiberStartX, centerY);
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+
+            if (showAngles) {
+                drawVectorAngle(fiberStartX, centerY, -1, 0, -Math.cos(angleRadExternal), -Math.sin(angleRadExternal), 30, `θi=${Math.abs(angleDeg).toFixed(1)}°`, '#ffff00');
+            }
+
+            let sinThetaCore = Math.sin(angleRadExternal) / n1;
+            let thetaCore = 0;
+
+            if (Math.abs(sinThetaCore) <= 1) {
+                thetaCore = Math.asin(sinThetaCore); 
+                if (showAngles) {
+                    drawVectorAngle(fiberStartX, centerY, 1, 0, Math.cos(thetaCore), Math.sin(thetaCore), 35, `θt=${Math.abs(thetaCore*180/Math.PI).toFixed(1)}°`, '#00ffcc');
+                }
+            } else {
+                statusBadge.textContent = "光線於端面發生全反射！";
+                statusBadge.style.backgroundColor = "#dc2626"; 
+                criticalAngleDisplay.innerHTML = "--";
+                ctx.restore();
+                return; 
+            }
+
+            // === 光線追蹤 ===
+            let rayOrigin = {x: fiberStartX, y: centerY};
+            let rayDir = {x: Math.cos(thetaCore), y: Math.sin(thetaCore)};
+            let bounces = 0;
+            const MAX_BOUNCES = 150;
+
+            while (bounces < MAX_BOUNCES) {
+                let minT = Infinity;
+                let bestHit = null;
+                let hitType = null; 
+
+                for (let seg of topSegments) {
+                    let hit = getIntersection(rayOrigin, rayDir, seg);
+                    if (hit && hit.t < minT) { minT = hit.t; bestHit = hit; hitType = 'top'; }
+                }
+                for (let seg of botSegments) {
+                    let hit = getIntersection(rayOrigin, rayDir, seg);
+                    if (hit && hit.t < minT) { minT = hit.t; bestHit = hit; hitType = 'bot'; }
+                }
+
+                if (!bestHit) {
+                    let endX = rayOrigin.x + rayDir.x * 2000;
+                    let endY = rayOrigin.y + rayDir.y * 2000;
+                    ctx.beginPath();
+                    ctx.strokeStyle = '#00ffcc';
+                    ctx.lineWidth = 3 / scale;
+                    ctx.moveTo(rayOrigin.x, rayOrigin.y);
+                    ctx.lineTo(endX, endY);
+                    ctx.stroke();
+                    statusBadge.textContent = bounces > 0 ? "光線傳輸順暢" : "光線平行傳輸";
+                    statusBadge.style.backgroundColor = "#3b82f6";
+                    break;
+                }
+
+                ctx.beginPath();
+                ctx.strokeStyle = '#00ffcc';
+                ctx.lineWidth = 3 / scale;
+                ctx.shadowBlur = 8;
+                ctx.shadowColor = '#00ffcc';
+                ctx.moveTo(rayOrigin.x, rayOrigin.y);
+                ctx.lineTo(bestHit.x, bestHit.y);
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+
+                let nx = bestHit.nx, ny = bestHit.ny;
+                let dot = rayDir.x * nx + rayDir.y * ny; 
+                let cosThetaI = -dot; 
+                if (cosThetaI < 0) cosThetaI = 0;
+                if (cosThetaI > 1) cosThetaI = 1;
+                let thetaI = Math.acos(cosThetaI);
+
+                let currentBoundaryN = 1.0; 
+                let boundaryName = "空氣 (無包層)";
+
+                if (hasClad) {
+                    currentBoundaryN = n2;
+                    boundaryName = "纖殼 (Cladding)";
+                } else {
+                    // 使用歐氏距離進行判定，讓彎曲段的判定也能 100% 精準
+                    if (hitType === 'top' && hasDirt) {
+                        let distToDirt = Math.hypot(bestHit.x - dirtCenterX, bestHit.y - dirtY);
+                        if (distToDirt <= dirtRadius) {
+                            currentBoundaryN = nDirt;
+                            boundaryName = "外部污跡 (Dirt)";
+                        }
+                    }
+                }
+
+                boundaryTypeDisplay.textContent = boundaryName;
+                nBoundDisplay.textContent = currentBoundaryN.toFixed(2);
+
+                let critRad = 0;
+                if (n1 > currentBoundaryN) {
+                    critRad = Math.asin(currentBoundaryN / n1);
+                    criticalAngleDisplay.innerHTML = (critRad * 180 / Math.PI).toFixed(1) + "°";
+                } else {
+                    criticalAngleDisplay.innerHTML = "無 (n1 ≤ n2)";
+                }
+
+                if (showAngles) {
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.setLineDash([4/scale, 4/scale]);
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+                    ctx.moveTo(bestHit.x - nx * 40/scale, bestHit.y - ny * 40/scale);
+                    ctx.lineTo(bestHit.x + nx * 40/scale, bestHit.y + ny * 40/scale);
+                    ctx.stroke();
+                    ctx.restore();
+
+                    drawVectorAngle(bestHit.x, bestHit.y, nx, ny, -rayDir.x, -rayDir.y, 25, `θi=${(thetaI*180/Math.PI).toFixed(1)}°`, '#ffff00');
+                }
+
+                if (n1 > currentBoundaryN && thetaI >= critRad) {
+                    bounces++;
+                    statusBadge.textContent = "完美全內反射 (TIR)";
+                    statusBadge.style.backgroundColor = "#16a34a"; 
+                    
+                    let refX = rayDir.x - 2 * dot * nx;
+                    let refY = rayDir.y - 2 * dot * ny;
+                    let mag = Math.hypot(refX, refY);
+                    rayDir = {x: refX / mag, y: refY / mag};
+                    rayOrigin = {x: bestHit.x, y: bestHit.y};
+
+                } else {
+                    statusBadge.textContent = bendLevel > 0 ? `彎曲損耗！從 ${boundaryName} 漏失` : `光線從 ${boundaryName} 漏失！`;
+                    statusBadge.style.backgroundColor = "#dc2626"; 
+
+                    let r = n1 / currentBoundaryN;
+                    let c = cosThetaI;
+                    let radical = 1 - r * r * (1 - c * c);
+                    let transX, transY;
+                    
+                    if (radical >= 0) {
+                        let coeff = r * c - Math.sqrt(radical);
+                        transX = r * rayDir.x + coeff * nx;
+                        transY = r * rayDir.y + coeff * ny;
+                    } else {
+                        transX = nx; transY = ny; 
+                    }
+
+                    ctx.beginPath();
+                    ctx.moveTo(bestHit.x, bestHit.y);
+                    ctx.lineTo(bestHit.x + transX * 200, bestHit.y + transY * 200);
+                    ctx.strokeStyle = '#ff4444';
+                    ctx.lineWidth = 3 / scale;
+                    ctx.shadowBlur = 8;
+                    ctx.shadowColor = '#ff4444';
+                    ctx.stroke();
+                    ctx.shadowBlur = 0;
+
+                    if (showAngles) {
+                        let escapeAngleRad = Math.acos(Math.abs(transX * nx + transY * ny));
+                        drawVectorAngle(bestHit.x, bestHit.y, -nx, -ny, transX, transY, 40, `θt=${(escapeAngleRad*180/Math.PI).toFixed(1)}°`, '#ff4444');
+                    }
+                    break;
+                }
+            }
+
+            ctx.restore();
+        }
+
+        // === 滑鼠與互動事件 ===
+        function checkHoverRegion(mouseX, mouseY) {
+            const worldPos = getScreenToWorld(mouseX, mouseY);
+            
+            // 檢查是否在污跡範圍內
+            if (hasDirtCheckbox.checked) {
+                let dist = Math.hypot(worldPos.x - dirtCenterX, worldPos.y - dirtY);
+                if (dist <= dirtRadius) { 
+                    return 'dirt';
+                }
+            }
+            
+            // 檢查是否在左側入射角控制區
+            if (worldPos.x <= fiberStartX + 30) {
+                return 'angle';
+            }
+            
+            return 'pan';
+        }
+
+        canvas.addEventListener('mousedown', (e) => { 
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            const region = checkHoverRegion(mouseX, mouseY);
+
+            if (region === 'dirt') {
+                isDraggingDirt = true;
+                canvas.style.cursor = 'ew-resize';
+            } else if (region === 'angle') {
+                isDraggingAngle = true; 
+                updateAngleFromMouse(mouseX, mouseY); 
+            } else {
+                isPanning = true;
+                lastPanX = mouseX;
+                lastPanY = mouseY;
+                canvas.style.cursor = 'grabbing';
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => { 
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            if (isDraggingDirt) {
+                const worldPos = getScreenToWorld(mouseX, mouseY);
+                // 移除之前的 min/max 限制，現在污跡可以完全自由地跟隨滑鼠 X 座標左右移動
+                dirtCenterX = worldPos.x;
+                runSimulation();
+            } else if (isDraggingAngle) {
+                updateAngleFromMouse(mouseX, mouseY); 
+            } else if (isPanning) {
+                offsetX += (mouseX - lastPanX);
+                offsetY += (mouseY - lastPanY);
+                lastPanX = mouseX;
+                lastPanY = mouseY;
+                runSimulation();
+            } else {
+                // 更新游標樣式
+                const region = checkHoverRegion(mouseX, mouseY);
+                if (region === 'dirt') canvas.style.cursor = 'ew-resize';
+                else if (region === 'angle') canvas.style.cursor = 'crosshair';
+                else canvas.style.cursor = 'grab';
+            }
+        });
+
+        window.addEventListener('mouseup', () => { 
+            isDraggingAngle = false; 
+            isPanning = false; 
+            isDraggingDirt = false;
+            canvas.style.cursor = 'grab';
+        });
+
+        window.addEventListener('mouseleave', () => { 
+            isDraggingAngle = false; 
+            isPanning = false; 
+            isDraggingDirt = false;
+            canvas.style.cursor = 'grab';
+        });
+
+        // 滾輪縮放事件
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault(); 
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            
+            const zoomFactor = e.deltaY < 0 ? 1.1 : 0.909; 
+            applyZoom(zoomFactor, mouseX, mouseY);
+        }, { passive: false });
+
+        function updateAngleFromMouse(mouseX, mouseY) {
+            const worldPos = getScreenToWorld(mouseX, mouseY);
+            
+            let dy = centerY - worldPos.y;
+            let dx = fiberStartX - worldPos.x;
+            if (dx <= 0) dx = 0.001; 
+            
+            let angleRad = Math.atan2(dy, dx);
+            let angleDeg = angleRad * 180 / Math.PI;
+            angleDeg = Math.max(-90, Math.min(90, angleDeg));
+            
+            angleSlider.value = angleDeg;
+            runSimulation();
+        }
+
+        // 按鈕事件
+        resetCamBtn.addEventListener('click', () => {
+            offsetX = 0;
+            offsetY = 0;
+            scale = 1.0;
+            zoomValDisplay.textContent = '100%';
+            runSimulation();
+        });
+        
+        zoomInBtn.addEventListener('click', () => {
+            applyZoom(1.2, canvas.width / 2, canvas.height / 2);
+        });
+
+        zoomOutBtn.addEventListener('click', () => {
+            applyZoom(1 / 1.2, canvas.width / 2, canvas.height / 2);
+        });
+
+        angleSlider.addEventListener('input', runSimulation);
+        nCoreSlider.addEventListener('input', runSimulation);
+        nCladSlider.addEventListener('input', runSimulation);
+        nDirtSlider.addEventListener('input', runSimulation);
+        bendLevelSlider.addEventListener('input', runSimulation);
+        showAnglesCheckbox.addEventListener('change', runSimulation);
+        hasCladCheckbox.addEventListener('change', runSimulation);
+        hasDirtCheckbox.addEventListener('change', runSimulation);
+        window.addEventListener('resize', resizeCanvas);
+
+        resizeCanvas();
+    </script>
+</body>
+</html>
