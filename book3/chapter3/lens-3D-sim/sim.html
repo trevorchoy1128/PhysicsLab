@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D 凸透鏡成像模擬實驗室 (最終版 - 正確實像反轉 + 浮空像預設關閉)</title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #1a252f; }
+        #canvas-container { width: 100vw; height: 100vh; display: block; }
+       
+        #ui-panel {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(236, 240, 241, 0.92);
+            padding: 8px 12px;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            z-index: 10;
+            border: 1px solid #bdc3c7;
+            width: 96vw;
+            max-width: 1400px;
+        }
+        .ui-row {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+        }
+        .top-row {
+            padding-bottom: 6px;
+            border-bottom: 1px solid rgba(189, 195, 199, 0.5);
+        }
+        .bottom-row {
+            align-items: flex-start;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 130px;
+            flex: 1;
+            max-width: 180px;
+        }
+       
+        label { font-weight: bold; margin-bottom: 3px; color: #2c3e50; font-size: 0.75em; }
+        .value-display { font-family: monospace; font-size: 0.95em; color: #c0392b; margin-top: 2px; font-weight: bold;}
+        .value-display.green { color: #27ae60; }
+        .value-display.blue { color: #2980b9; }
+        .value-display.purple { color: #8e44ad; }
+       
+        .slider-with-btns { display: flex; align-items: center; width: 100%; gap: 4px; }
+        .slider-with-btns input[type="range"] { flex-grow: 1; cursor: pointer; height: 4px;}
+       
+        .step-btn { background: #ecf0f1; border: 1px solid #bdc3c7; border-radius: 4px; cursor: pointer; padding: 1px 5px; font-size: 0.75em; color: #2c3e50; user-select: none; font-weight: bold;}
+        .step-btn:hover { background: #d5dbdb; }
+        .step-btn:active { background: #aeb6bf; }
+        select, button { padding: 4px 10px; border-radius: 4px; border: 1px solid #7f8c8d; cursor: pointer; font-family: inherit; font-weight: bold; font-size: 0.85em;}
+        .checkbox-label { display:flex; align-items:center; gap:4px; cursor:pointer; font-size: 0.85em; margin: 0;}
+       
+        .nav-btn { background: #27ae60; color: white; border: none; font-size: 0.9em; padding: 2px 8px; transition: 0.2s; user-select: none; border-radius: 4px; }
+        .nav-btn:hover { background: #2ecc71; }
+        .nav-btn:active { background: #1e8449; }
+        
+        #info-panel {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: rgba(255, 255, 255, 0.92);
+            color: #333;
+            padding: 12px 15px;
+            border-radius: 8px;
+            pointer-events: none;
+            border-left: 5px solid #f39c12;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            min-width: 250px;
+        }
+        #info-panel h3 { margin: 0 0 8px 0; color: #2c3e50; font-size: 1em; border-bottom: 1px solid #eee; padding-bottom: 4px;}
+        #status-text { line-height: 1.5; font-size: 0.9em; }
+       
+        .focus-badge {
+            display: none;
+            background: #2ecc71;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 8px;
+            font-size: 0.9em;
+            animation: popIn 0.3s ease-out;
+        }
+        @keyframes popIn { 0% { transform: scale(0.8); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+        .instructions {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(255, 255, 255, 0.92);
+            color: #333;
+            padding: 12px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            border: 1px solid #ccc;
+            width: 180px;
+            font-size: 0.8em;
+        }
+        .instructions h4 { margin: 0 0 8px 0; color: #e74c3c; border-bottom: 1px solid #eee; padding-bottom: 4px; }
+        .instructions ul { margin: 0; padding-left: 15px; line-height: 1.5; }
+       
+        .mode-btn { background: #8e44ad; color: white; border: none; transition: 0.2s; }
+        .mode-btn:hover { background: #9b59b6; }
+        .mode-btn.active { background: #f39c12; color: #fff; box-shadow: 0 0 8px rgba(243, 156, 18, 0.5);}
+        
+        /* 新功能提示 */
+        .new-feature { background: #e8f6f3; padding: 2px 6px; border-radius: 3px; font-size: 0.75em; }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+    <div id="info-panel">
+        <div id="focus-badge" class="focus-badge">✨ 找到清晰成像 ✨</div>
+        <h3>實驗室光學軌道數據</h3>
+        <div id="status-text">載入中...</div>
+    </div>
+    <div class="instructions">
+        <h4>操作指南</h4>
+        <ul>
+            <li>左鍵：旋轉視角</li>
+            <li>右鍵：平移</li>
+            <li>滾輪：縮放</li>
+            <li><strong style="color:#e74c3c;">長按 ◀/▶</strong>：動態加速</li>
+            <li>隱藏屏幕 + 顯示浮空像（預設關閉，可手動開啟）</li>
+        </ul>
+        <button id="reset-cam-btn" style="width:100%; margin-top:8px; background:#3498db; color:white; border:none;">🔄 重設視角</button>
+    </div>
+    <div id="canvas-container"></div>
+    <div id="ui-panel">
+        <div class="ui-row top-row">
+            <button id="infinity-toggle-btn" class="mode-btn">🌌 切換無限遠光源</button>
+            <select id="shape-select">
+                <option value="F">發光 F 字</option>
+                <option value="arrow">發光箭頭</option>
+            </select>
+            <select id="ray-mode-select">
+                <option value="7">顯示多束光線 (7條)</option>
+                <option value="2">主要作圖光線 (2條)</option>
+                <option value="0">隱藏光線</option>
+            </select>
+            
+            <!-- 新功能 1 & 2 -->
+            <label class="checkbox-label" style="color:#e74c3c; font-weight:bold;">
+                <input type="checkbox" id="hide-screen-toggle"> 隱藏屏幕
+            </label>
+            <label class="checkbox-label" style="color:#9b59b6; font-weight:bold;">
+                <input type="checkbox" id="show-image-toggle"> 顯示浮空像
+            </label>
+            
+            <label class="checkbox-label" style="color:#2c3e50; font-weight:bold;">
+                <input type="checkbox" id="marker-toggle" checked> F/2F 標記
+            </label>
+            <label class="checkbox-label" style="color:#8e44ad; font-weight:bold;">
+                <input type="checkbox" id="dist-toggle" checked> 顯示距離標示器
+            </label>
+        </div>
+       
+        <div class="ui-row bottom-row">
+            <div class="control-group">
+                <label>🔎 透鏡座標 (長按)</label>
+                <div style="display:flex; gap:6px; align-items:center; width:100%; justify-content:center;">
+                    <button id="lens-left-btn" class="nav-btn">◀</button>
+                    <span class="value-display green" id="lens-val" style="min-width:45px; text-align:center;">0.0 cm</span>
+                    <button id="lens-right-btn" class="nav-btn">▶</button>
+                </div>
+            </div>
+           
+            <div class="control-group" id="obj-group">
+                <label>🍎 物距 (u)</label>
+                <div class="slider-with-btns">
+                    <button class="step-btn" data-target="obj-slider" data-dir="-1">◀</button>
+                    <input type="range" id="obj-slider" min="5" max="300" value="40" step="0.1">
+                    <button class="step-btn" data-target="obj-slider" data-dir="1">▶</button>
+                </div>
+                <span class="value-display" id="obj-val">40.0 cm</span>
+            </div>
+           
+            <div class="control-group">
+                <label>📄 屏幕距離</label>
+                <div class="slider-with-btns">
+                    <button class="step-btn" data-target="screen-slider" data-dir="-1">◀</button>
+                    <input type="range" id="screen-slider" min="5" max="300" value="50" step="0.1">
+                    <button class="step-btn" data-target="screen-slider" data-dir="1">▶</button>
+                </div>
+                <span class="value-display blue" id="screen-val">50.0 cm</span>
+            </div>
+           
+            <div class="control-group">
+                <label>🔍 透鏡焦距 (f)</label>
+                <div class="slider-with-btns">
+                    <button class="step-btn" data-target="focal-slider" data-dir="-1">◀</button>
+                    <input type="range" id="focal-slider" min="10" max="40" value="20" step="0.1">
+                    <button class="step-btn" data-target="focal-slider" data-dir="1">▶</button>
+                </div>
+                <span class="value-display" style="color:#f39c12;" id="focal-val">20.0 cm</span>
+            </div>
+            <div class="control-group" id="angle-group" style="display:none;">
+                <label>📐 無限遠入射角</label>
+                <div class="slider-with-btns">
+                    <button class="step-btn" data-target="angle-slider" data-dir="-1">◀</button>
+                    <input type="range" id="angle-slider" min="-15" max="15" value="0" step="1">
+                    <button class="step-btn" data-target="angle-slider" data-dir="1">▶</button>
+                </div>
+                <span class="value-display purple" id="angle-val">0°</span>
+            </div>
+           
+            <div class="control-group">
+                <label>⬛ 遮蓋透鏡</label>
+                <input type="range" id="cover-slider" min="0" max="100" value="0" step="1" style="width:100%;">
+                <span class="value-display" style="color:#555;" id="cover-val">0%</span>
+            </div>
+           
+            <div class="control-group">
+                <label>📏 屏幕大小</label>
+                <input type="range" id="screen-size-slider" min="0.5" max="2.5" value="1.0" step="0.1" style="width:100%;">
+                <span class="value-display" style="color:#555;" id="screen-size-val">1.0x</span>
+            </div>
+        </div>
+    </div>
+    <script>
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1a252f);
+        scene.fog = new THREE.FogExp2(0x1a252f, 0.001);
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 3000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true; controls.dampingFactor = 0.05;
+        function resetCamera() {
+            camera.position.set(90, 40, 120);
+            controls.target.set(0, 5, 10);
+            controls.update();
+        }
+        resetCamera();
+        document.getElementById('reset-cam-btn').addEventListener('click', resetCamera);
+        
+        scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.5);
+        hemiLight.position.set(0, 200, 0); scene.add(hemiLight);
+        const ledMat = new THREE.MeshStandardMaterial({ color: 0xff3300, emissive: 0xff2200, emissiveIntensity: 1.0 });
+        const fGroup = new THREE.Group();
+        const vBar = new THREE.Mesh(new THREE.BoxGeometry(1.5, 10, 1.5), ledMat); vBar.position.set(-2, 0, 0);
+        const hBar1 = new THREE.Mesh(new THREE.BoxGeometry(6, 1.5, 1.5), ledMat); hBar1.position.set(1.5, 4.25, 0);
+        const hBar2 = new THREE.Mesh(new THREE.BoxGeometry(4, 1.5, 1.5), ledMat); hBar2.position.set(0.5, 0, 0);
+        fGroup.add(vBar, hBar1, hBar2);
+        const arrowGroup = new THREE.Group();
+        const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 7), ledMat); shaft.position.y = -1.5;
+        const head = new THREE.Mesh(new THREE.ConeGeometry(2.5, 3), ledMat); head.position.y = 3.5;
+        arrowGroup.add(shaft, head);
+        const mainObjectGroup = new THREE.Group();
+        mainObjectGroup.add(fGroup);
+        scene.add(mainObjectGroup);
+        
+        // === 新功能 2：浮空像視覺化群組 (實像倒立 / 虛像正立) ===
+        const imageVizGroup = new THREE.Group();
+        scene.add(imageVizGroup);
+        
+        // 使用青色發光材質區分「像」與實物
+        const imageLedMat = new THREE.MeshStandardMaterial({ 
+            color: 0x00ffff, 
+            emissive: 0x00cccc, 
+            emissiveIntensity: 0.9, 
+            transparent: true, 
+            opacity: 0.78,
+            depthWrite: false
+        });
+        
+        const imageFGroup = new THREE.Group();
+        const imgVBar = new THREE.Mesh(new THREE.BoxGeometry(1.5, 10, 1.5), imageLedMat); imgVBar.position.set(-2, 0, 0);
+        const imgHBar1 = new THREE.Mesh(new THREE.BoxGeometry(6, 1.5, 1.5), imageLedMat); imgHBar1.position.set(1.5, 4.25, 0);
+        const imgHBar2 = new THREE.Mesh(new THREE.BoxGeometry(4, 1.5, 1.5), imageLedMat); imgHBar2.position.set(0.5, 0, 0);
+        imageFGroup.add(imgVBar, imgHBar1, imgHBar2);
+        
+        const imageArrowGroup = new THREE.Group();
+        const imgShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 7), imageLedMat); imgShaft.position.y = -1.5;
+        const imgHead = new THREE.Mesh(new THREE.ConeGeometry(2.5, 3), imageLedMat); imgHead.position.y = 3.5;
+        imageArrowGroup.add(imgShaft, imgHead);
+        
+        imageVizGroup.add(imageFGroup, imageArrowGroup);
+        // 預設隱藏，交由 updateSimulation 控制
+        imageVizGroup.visible = false;
+        
+        const lensRadius = 18;
+        const pts = [];
+        for (let i = 0; i <= 20; i++) pts.push(new THREE.Vector2(lensRadius * (i / 20), 2.5 * (1 - Math.pow(i / 20, 2))));
+        for (let i = 1; i <= 20; i++) pts.push(new THREE.Vector2(lensRadius * (1 - i / 20), -2.5 * (1 - Math.pow(1 - i / 20, 2))));
+        const lensGeo = new THREE.LatheGeometry(pts, 64); lensGeo.rotateX(Math.PI / 2);
+        const lensMesh = new THREE.Mesh(lensGeo, new THREE.MeshPhysicalMaterial({ color: 0xcfeaf3, transmission: 0.9, opacity: 1, roughness: 0.05, ior: 1.5, thickness: 2.0 }));
+        scene.add(lensMesh);
+        const coverMesh = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.MeshBasicMaterial({ color: 0x111111, side: THREE.DoubleSide }));
+        scene.add(coverMesh);
+        const screenGroup = new THREE.Group();
+        const projCanvas = document.createElement('canvas');
+        projCanvas.width = 1024; projCanvas.height = 1024;
+        const ctx = projCanvas.getContext('2d');
+        const projTexture = new THREE.CanvasTexture(projCanvas);
+       
+        const screenGeo = new THREE.PlaneGeometry(60, 60);
+        const screenMesh = new THREE.Mesh(screenGeo, new THREE.MeshStandardMaterial({ map: projTexture, transparent: true, opacity: 0.9, side: THREE.DoubleSide, color: 0xffffff }));
+        screenGroup.add(screenMesh, new THREE.LineSegments(new THREE.EdgesGeometry(screenGeo), new THREE.LineBasicMaterial({ color: 0x333333, linewidth: 3 })));
+        scene.add(screenGroup);
+        const opticalAxis = new THREE.Line(
+            new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 5, -1000), new THREE.Vector3(0, 5, 1000)]),
+            new THREE.LineDashedMaterial({ color: 0xaaaaaa, dashSize: 2, gapSize: 2 })
+        );
+        opticalAxis.computeLineDistances(); scene.add(opticalAxis);
+        const numRays = 7;
+        const solidRays = [], dashedRays = [];
+        for(let i=0; i<numRays; i++){
+            const solid = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0xf1c40f, linewidth: 2, transparent: true, opacity: 0.8 }));
+            const dashed = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineDashedMaterial({ color: 0xf1c40f, dashSize: 1.5, gapSize: 1.5, transparent: true, opacity: 0.6 }));
+            solidRays.push(solid); dashedRays.push(dashed);
+            scene.add(solid, dashed);
+        }
+        const distIndicatorGroup = new THREE.Group(); scene.add(distIndicatorGroup);
+        function createAxisMarker(text, colorStr) {
+            const group = new THREE.Group();
+            group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 3.5, 0), new THREE.Vector3(0, 6.5, 0)]), new THREE.LineBasicMaterial({ color: colorStr, linewidth: 3 })));
+            const canvas = document.createElement('canvas'); canvas.width = 64; canvas.height = 64;
+            const context = canvas.getContext('2d'); context.fillStyle = colorStr; context.font = 'bold 36px Arial'; context.textAlign = 'center'; context.fillText(text, 32, 48);
+            const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), depthTest: false }));
+            sprite.scale.set(6, 6, 1); sprite.position.set(0, 1.5, 0); group.add(sprite);
+            scene.add(group); return group;
+        }
+        const markerF1 = createAxisMarker('F', '#e74c3c'), markerF2 = createAxisMarker('F', '#e74c3c');
+        const marker2F1 = createAxisMarker('2F', '#3498db'), marker2F2 = createAxisMarker('2F', '#3498db');
+        let stepInterval, stepTimeout, speedMultiplier = 1;
+        document.querySelectorAll('.step-btn').forEach(btn => {
+            const handlePress = (e) => {
+                e.preventDefault();
+                const targetId = btn.getAttribute('data-target');
+                const dir = parseFloat(btn.getAttribute('data-dir'));
+                const slider = document.getElementById(targetId);
+                const stepBase = parseFloat(slider.step) || 0.1;
+                const stepFunc = () => {
+                    let val = parseFloat(slider.value);
+                    val += dir * stepBase * Math.floor(speedMultiplier);
+                    val = Math.max(parseFloat(slider.min), Math.min(parseFloat(slider.max), val));
+                    slider.value = val.toFixed(1); slider.dispatchEvent(new Event('input'));
+                    if (speedMultiplier < 15) speedMultiplier += 0.5;
+                };
+                stepFunc(); speedMultiplier = 1;
+                stepTimeout = setTimeout(() => { stepInterval = setInterval(stepFunc, 40); }, 300);
+            };
+            btn.addEventListener('mousedown', handlePress);
+            btn.addEventListener('touchstart', handlePress, {passive: false});
+        });
+        const handleReleaseAll = () => { clearTimeout(stepTimeout); clearInterval(stepInterval); speedMultiplier = 1; };
+        window.addEventListener('mouseup', handleReleaseAll); window.addEventListener('touchend', handleReleaseAll);
+        let lensWorldZ = 0, lensMoveInterval = null, lensTimeout = null, lensSpeed = 1;
+        const uiObj = document.getElementById('obj-slider'), uiScreen = document.getElementById('screen-slider');
+        function checkLimitsAndMove(dir) {
+            let currentU = parseFloat(uiObj.value), currentScreenD = parseFloat(uiScreen.value);
+            let objWorldZ = isInfinityMode ? -2000 : (lensWorldZ - currentU);
+            let screenWorldZ = lensWorldZ + currentScreenD;
+            let nextZ = lensWorldZ + dir * 0.1 * Math.floor(lensSpeed);
+           
+            if (isInfinityMode) { lensWorldZ = Math.min(nextZ, screenWorldZ - 5); }
+            else { lensWorldZ = Math.max(objWorldZ + 5, Math.min(nextZ, screenWorldZ - 5)); }
+            if (!isInfinityMode) uiObj.value = (lensWorldZ - objWorldZ).toFixed(1);
+            uiScreen.value = (screenWorldZ - lensWorldZ).toFixed(1);
+            updateSimulation(); if(lensSpeed < 15) lensSpeed += 0.5;
+        }
+        function startMovingLens(dir) {
+            lensSpeed = 1; checkLimitsAndMove(dir);
+            lensTimeout = setTimeout(() => { lensMoveInterval = setInterval(() => checkLimitsAndMove(dir), 40); }, 300);
+        }
+        function stopMovingLens() { clearTimeout(lensTimeout); clearInterval(lensMoveInterval); }
+        document.getElementById('lens-left-btn').addEventListener('mousedown', () => startMovingLens(-1));
+        document.getElementById('lens-right-btn').addEventListener('mousedown', () => startMovingLens(1));
+        document.getElementById('lens-left-btn').addEventListener('touchstart', (e) => { e.preventDefault(); startMovingLens(-1); });
+        document.getElementById('lens-right-btn').addEventListener('touchstart', (e) => { e.preventDefault(); startMovingLens(1); });
+        window.addEventListener('mouseup', stopMovingLens); window.addEventListener('touchend', stopMovingLens);
+        let isInfinityMode = false;
+        document.getElementById('infinity-toggle-btn').addEventListener('click', function() {
+            isInfinityMode = !isInfinityMode; this.classList.toggle('active');
+            this.innerText = isInfinityMode ? "🔙 返回一般模式" : "🌌 切換無限遠光源";
+            document.getElementById('shape-select').disabled = isInfinityMode;
+            document.getElementById('angle-group').style.display = isInfinityMode ? 'flex' : 'none';
+            document.getElementById('obj-group').style.display = isInfinityMode ? 'none' : 'flex';
+            if(!isInfinityMode) document.getElementById('angle-slider').value = 0;
+            updateSimulation();
+        });
+        function drawShape(ctx, size, shape) {
+            if (isInfinityMode) {
+                ctx.fillStyle = '#2ecc71'; ctx.beginPath(); ctx.moveTo(0, -size); ctx.lineTo(-size*0.5, -size*0.2); ctx.lineTo(size*0.5, -size*0.2); ctx.fill();
+                ctx.fillStyle = '#8e44ad'; ctx.beginPath(); ctx.moveTo(-size*0.8, -size*0.2); ctx.lineTo(-size*1.5, size*0.5); ctx.lineTo(-size*0.1, size*0.5); ctx.fill();
+                ctx.fillStyle = '#8b4513'; ctx.fillRect(-size*0.1, -size*0.2, size*0.2, size*0.7);
+            } else if (shape === 'F') {
+                ctx.fillStyle = '#ff3300'; const barT = size * 0.2;
+                ctx.fillRect(-size/2, -size, barT, size * 2); ctx.fillRect(-size/2, -size, size * 1.2, barT); ctx.fillRect(-size/2, -size * 0.1, size * 0.8, barT);
+            } else {
+                ctx.fillStyle = '#ff3300'; const shaftW = size * 0.2, shaftH = size * 1.4;
+                ctx.fillRect(-shaftW/2, -size*0.8, shaftW, shaftH);
+                ctx.beginPath(); ctx.moveTo(0, -size); ctx.lineTo(-size*0.4, -size*0.3); ctx.lineTo(size*0.4, -size*0.3); ctx.fill();
+            }
+        }
+        function createDimensionLine(text, color, zStart, zEnd, yLevel) {
+            const group = new THREE.Group(); const mat = new THREE.LineBasicMaterial({ color: color, linewidth: 2 });
+            group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, yLevel, zStart), new THREE.Vector3(0, yLevel, zEnd)]), mat));
+            group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, yLevel-0.8, zStart), new THREE.Vector3(0, yLevel+0.8, zStart)]), mat));
+            group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, yLevel-0.8, zEnd), new THREE.Vector3(0, yLevel+0.8, zEnd)]), mat));
+            const canvas = document.createElement('canvas'); canvas.width = 160; canvas.height = 64;
+            const context = canvas.getContext('2d'); context.fillStyle = color; context.font = 'bold 28px Arial'; context.textAlign = 'center'; context.fillText(text, 80, 45);
+            const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), depthTest: false }));
+            sprite.scale.set(12, 4.8, 1); sprite.position.set(0, yLevel + 2, (zStart + zEnd) / 2); group.add(sprite); return group;
+        }
+        const uiFocal = document.getElementById('focal-slider'), uiCover = document.getElementById('cover-slider'), uiScreenSize = document.getElementById('screen-size-slider');
+        const uiAngle = document.getElementById('angle-slider'), uiShape = document.getElementById('shape-select'), uiRayMode = document.getElementById('ray-mode-select');
+        const uiMarker = document.getElementById('marker-toggle'), uiDistToggle = document.getElementById('dist-toggle');
+        
+        // 新功能 UI 元素
+        const uiHideScreen = document.getElementById('hide-screen-toggle');
+        const uiShowImage = document.getElementById('show-image-toggle');
+        
+        const statusText = document.getElementById('status-text'), focusBadge = document.getElementById('focus-badge');
+        
+        // === 物理一致的尺寸常數 (v1 已修復 2F 大小問題) ===
+        const OBJECT_HEIGHT_WORLD = 10;
+        const SCREEN_WORLD_HEIGHT = 60;
+        const CANVAS_RESOLUTION = 1024;
+        const BASE_DRAW_SIZE = (OBJECT_HEIGHT_WORLD / 2) * (CANVAS_RESOLUTION / SCREEN_WORLD_HEIGHT);
+        
+        function updateSimulation() {
+            const u = isInfinityMode ? Infinity : parseFloat(uiObj.value);
+            const screenD = parseFloat(uiScreen.value), objWorldZ = isInfinityMode ? -2000 : (lensWorldZ - u), screenWorldZ = lensWorldZ + screenD;
+            const f = parseFloat(uiFocal.value), coverPercent = parseFloat(uiCover.value), screenScale = parseFloat(uiScreenSize.value);
+            const rayMode = parseInt(uiRayMode.value), infinityAngle = parseFloat(uiAngle.value) * Math.PI / 180;
+            document.getElementById('lens-val').innerText = `${lensWorldZ.toFixed(1)} cm`;
+            document.getElementById('obj-val').innerText = isInfinityMode ? '∞' : `${u.toFixed(1)} cm`;
+            document.getElementById('focal-val').innerText = `${f.toFixed(1)} cm`;
+            document.getElementById('cover-val').innerText = `${coverPercent}%`;
+            document.getElementById('screen-val').innerText = `${screenD.toFixed(1)} cm`;
+            document.getElementById('screen-size-val').innerText = `${screenScale.toFixed(1)}x`;
+            document.getElementById('angle-val').innerText = `${uiAngle.value}°`;
+            uiShape.style.display = isInfinityMode ? 'none' : 'block';
+            lensMesh.position.set(0, 5, lensWorldZ); mainObjectGroup.position.set(0, 5, objWorldZ); mainObjectGroup.visible = !isInfinityMode;
+            screenGroup.position.set(0, 5, screenWorldZ); screenGroup.scale.set(screenScale, screenScale, 1);
+            if(uiShape.value === 'F') { fGroup.visible = true; arrowGroup.visible = false; } else { fGroup.visible = false; arrowGroup.visible = true; }
+            markerF1.position.set(0, 5, lensWorldZ - f); marker2F1.position.set(0, 5, lensWorldZ - 2*f);
+            markerF2.position.set(0, 5, lensWorldZ + f); marker2F2.position.set(0, 5, lensWorldZ + 2*f);
+            markerF1.visible = marker2F1.visible = markerF2.visible = marker2F2.visible = uiMarker.checked;
+            const lensTopY = 5 + lensRadius, coverHeight = (lensRadius * 2) * (coverPercent / 100);
+            if (coverPercent > 0) { coverMesh.visible = true; coverMesh.scale.set(1, coverHeight / 40, 1); coverMesh.position.set(0, lensTopY - coverHeight / 2, lensWorldZ - 3.5); }
+            else coverMesh.visible = false;
+            const coverEdgeY = lensTopY - coverHeight;
+            let v = (u === f) ? Infinity : (u * f) / (u - f), M = (u === f) ? 0 : (isInfinityMode ? 0 : -v / u);
+            let isRealImage = (v > 0 && v !== Infinity), imageWorldZ = lensWorldZ + v;
+            while(distIndicatorGroup.children.length > 0) distIndicatorGroup.remove(distIndicatorGroup.children[0]);
+            if (uiDistToggle.checked) {
+                if (!isInfinityMode) distIndicatorGroup.add(createDimensionLine(`u = ${u.toFixed(1)}`, '#c0392b', objWorldZ, lensWorldZ, -3));
+                distIndicatorGroup.add(createDimensionLine(`f = ${f.toFixed(1)}`, '#f39c12', lensWorldZ, lensWorldZ + f, -8));
+                if (isRealImage || u < f) { distIndicatorGroup.add(createDimensionLine(`v = ${Math.abs(v).toFixed(1)}`, isRealImage ? '#2ecc71' : '#8e44ad', lensWorldZ, imageWorldZ, -13)); }
+            }
+            solidRays.forEach(l => l.visible = false); dashedRays.forEach(l => l.visible = false);
+            ctx.fillStyle = '#f0f0f0'; ctx.fillRect(0, 0, 1024, 1024);
+            const topY = isInfinityMode ? 15 : 10, startPt = new THREE.Vector3(0, topY, objWorldZ);
+            const imgTipY = isInfinityMode ? (5 - f * Math.tan(infinityAngle)) : (5 + (topY - 5) * M), imgTipPt = new THREE.Vector3(0, imgTipY, imageWorldZ);
+            if (rayMode !== 0) {
+                solidRays.forEach((line, index) => {
+                    let hitY;
+                    if (rayMode === 7) hitY = 5 + 12 * (1 - 2 * (index / (numRays - 1))); else if (rayMode === 2) { if (index > 1) return; hitY = (index === 0) ? topY : 5; }
+                    line.visible = true; const hitPt = new THREE.Vector3(0, hitY, lensWorldZ);
+                   
+                    if (hitY > coverEdgeY) {
+                        line.geometry.setFromPoints([isInfinityMode ? new THREE.Vector3(0, hitY + 100*Math.tan(infinityAngle), lensWorldZ - 100) : startPt, hitPt]);
+                        line.material.color.setHex(0xe74c3c); line.material.opacity = 0.3;
+                    } else {
+                        line.material.color.setHex(0xf1c40f); line.material.opacity = 0.8;
+                        let endPt;
+                        if (isInfinityMode) {
+                            const infStart = new THREE.Vector3(0, hitY + 100 * Math.tan(infinityAngle), lensWorldZ - 100);
+                            const focusPt = new THREE.Vector3(0, 5 - f * Math.tan(infinityAngle), lensWorldZ + f);
+                            endPt = new THREE.Vector3().copy(hitPt).add(new THREE.Vector3().subVectors(focusPt, hitPt).normalize().multiplyScalar(200));
+                            line.geometry.setFromPoints([infStart, hitPt, endPt]);
+                        } else if (u === f) {
+                            endPt = new THREE.Vector3().copy(hitPt).add(new THREE.Vector3(0, 5 - topY, u).normalize().multiplyScalar(200));
+                            line.geometry.setFromPoints([startPt, hitPt, endPt]);
+                        } else {
+                            endPt = new THREE.Vector3().copy(hitPt).add(new THREE.Vector3().subVectors(imgTipPt, hitPt).multiplyScalar(Math.sign(v)).normalize().multiplyScalar(200));
+                            line.geometry.setFromPoints([startPt, hitPt, endPt]);
+                            if (!isRealImage) { dashedRays[index].geometry.setFromPoints([imgTipPt, hitPt]); dashedRays[index].computeLineDistances(); dashedRays[index].visible = true; }
+                        }
+                    }
+                });
+            }
+            
+            // === 新功能 1：隱藏/顯示半透明屏幕 ===
+            screenGroup.visible = !uiHideScreen.checked;
+            
+            // === 新功能 2：浮空像直接觀察 (實像倒立、虛像正立) ===
+            const showFloatingImage = uiShowImage && uiShowImage.checked;
+            const shouldShowImage = showFloatingImage && (isRealImage || (u < f && !isInfinityMode));
+            
+            if (shouldShowImage) {
+                const absM = Math.abs(M) || 0.001; // 避免 M=0 時縮放為 0
+                const useFShape = uiShape.value === 'F';
+                
+                imageFGroup.visible = useFShape;
+                imageArrowGroup.visible = !useFShape;
+                
+                // 放置位置（實像在透鏡另一側，虛像在物體同一側）
+                imageVizGroup.position.set(0, 5, imageWorldZ);
+                
+                // === 修正：實像應上下左右完全反轉（2F 位置尤為明顯）===
+                // 凸透鏡實像具有「倒立 + 左右反轉」特性（相當於 180° 旋轉）
+                // 使用 x 和 y 同時負縮放實現完整反轉
+                if (isRealImage) {
+                    imageVizGroup.scale.set(-absM, -absM, absM);
+                } else {
+                    imageVizGroup.scale.set(absM, absM, absM);
+                }
+                imageVizGroup.rotation.set(0, 0, 0); // 清除多餘旋轉
+                
+                imageVizGroup.visible = true;
+            } else {
+                imageVizGroup.visible = false;
+            }
+            
+            if (isRealImage) {
+                const distanceError = Math.abs(screenD - v), blurAmount = (distanceError * 4.0) / screenScale;
+                const drawSize = isInfinityMode ? 200 / screenScale : BASE_DRAW_SIZE * Math.abs(M) * (screenD / v) / screenScale;
+                const physicalYOffset = isInfinityMode ? (screenD * Math.tan(infinityAngle)) : 0;
+                ctx.save(); ctx.translate(512, 512 + (physicalYOffset * (1024 / 60) / screenScale));
+                if (!isInfinityMode) ctx.scale(-1, -1);
+                ctx.globalAlpha = Math.max(0, 1.0 - (coverPercent / 100));
+                if (ctx.globalAlpha > 0) { ctx.filter = `blur(${blurAmount}px)`; drawShape(ctx, drawSize, uiShape.value); }
+                ctx.restore();
+                if (distanceError < 1.5) {
+                    if(isInfinityMode) { 
+                        statusText.innerHTML = `<span style="color:#2ecc71; font-weight:bold;">✨ 成功找到焦平面！</span><br>平行光匯聚於焦點。屏幕距 (v) = ${v.toFixed(1)} cm`; 
+                    } else {
+                        let text = `<span style="color:#2ecc71; font-weight:bold;">找到清晰倒立實像！</span><br>物距 (u) = ${u.toFixed(1)} cm<br>像距 (v) = ${v.toFixed(1)} cm<br><span style="color:#9b59b6;">|M| = ${Math.abs(M).toFixed(2)}</span>`;
+                        if (showFloatingImage) text += `<br><span style="color:#00cccc;">浮空像已顯示（倒立、等大/縮放）</span>`;
+                        text += coverPercent === 100 ? `<br><span style="color:#e74c3c;">⚠️ 透鏡已被完全遮蓋！</span>` : (coverPercent > 0 ? `<br><span style="color:#9b59b6;">⚠️ 透鏡被部分遮蓋：成像變暗</span>` : "");
+                        statusText.innerHTML = text;
+                    }
+                    document.getElementById('info-panel').style.borderLeftColor = coverPercent === 100 ? '#e74c3c' : '#2ecc71';
+                    focusBadge.style.display = coverPercent === 100 ? 'none' : 'block';
+                } else {
+                    statusText.innerHTML = `影像模糊中...<br>請移動屏幕至像距 (v) 位置。<br><span style="color:#888;">(距清晰點差 ${distanceError.toFixed(1)} cm)</span>`;
+                    document.getElementById('info-panel').style.borderLeftColor = '#f39c12'; focusBadge.style.display = 'none';
+                }
+            } else if (u < f) {
+                const distanceToScreen = screenD + Math.abs(v);
+                ctx.save(); ctx.translate(512, 512); ctx.globalAlpha = 0.1 * Math.max(0, 1.0 - (coverPercent/100));
+                if (ctx.globalAlpha > 0) { ctx.filter = `blur(${(40 + distanceToScreen * 0.8) / screenScale}px)`; drawShape(ctx, BASE_DRAW_SIZE * Math.abs(M) * (distanceToScreen / Math.abs(v) / screenScale), uiShape.value); }
+                ctx.restore();
+                
+                let text = `⚠️ 物距 (${u.toFixed(1)}) < 焦距 (${f.toFixed(1)})<br><span style="color:#e74c3c; font-weight:bold;">形成「正立放大虛像」</span><br>M = +${Math.abs(M).toFixed(2)}（正立、放大）`;
+                if (showFloatingImage) text += `<br><span style="color:#00cccc;">浮空像已顯示（正立、放大）</span>`;
+                statusText.innerHTML = text;
+                document.getElementById('info-panel').style.borderLeftColor = '#e74c3c'; focusBadge.style.display = 'none';
+            } else {
+                statusText.innerHTML = `⚠️ 物體位於焦點上<br>光線平行射出，無法成像。`;
+                document.getElementById('info-panel').style.borderLeftColor = '#e74c3c'; focusBadge.style.display = 'none';
+            }
+            projTexture.needsUpdate = true;
+        }
+        
+        // 綁定所有控制項事件
+        [uiObj, uiScreen, uiFocal, uiCover, uiScreenSize, uiAngle, uiRayMode, uiShape, uiMarker, uiDistToggle, uiHideScreen, uiShowImage].forEach(el => {
+            if (el) el.addEventListener(el.tagName === 'INPUT' && el.type === 'range' ? 'input' : 'change', updateSimulation);
+        });
+        
+        window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+        updateSimulation();
+        function animate() { requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); } animate();
+    </script>
+</body>
+</html>
