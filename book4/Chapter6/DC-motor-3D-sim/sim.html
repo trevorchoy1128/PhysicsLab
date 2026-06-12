@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D 直流電動機模擬器 (終極效能極致版)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    /* 確保 3D 場景的子元素能夠在 3D 空間內正確交疊渲染 */
+    .preserve-3d { transform-style: preserve-3d; }
+    .select-none { user-select: none; -webkit-user-select: none; }
+    /* 視角中心點 */
+    .orbit-center {
+      position: absolute;
+      top: 50%; left: 50%;
+      width: 0; height: 0;
+      transform-style: preserve-3d;
+    }
+    /* 自訂精細滾動條 */
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    /* 電池 180 度翻轉平滑動畫 */
+    .battery-transition { transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
+  </style>
+</head>
+<body class="bg-slate-100 p-2 sm:p-4 min-h-screen select-none font-sans antialiased m-0 overflow-x-hidden">
+
+  <div id="main-container" class="w-full max-w-7xl mx-auto bg-slate-50 rounded-xl shadow-lg p-3 sm:p-5 flex flex-col transition-all duration-300">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+      
+      <div id="visual-area" class="lg:col-span-8 flex flex-col gap-4 transition-all duration-300">
+        
+        <div id="3d-viewport" class="w-full h-[450px] sm:h-[520px] bg-slate-900 rounded-lg overflow-hidden relative cursor-grab active:cursor-grabbing touch-none shadow-inner" style="perspective: 1000px;">
+          
+          <div class="absolute top-3 left-3 text-slate-400 text-xs flex items-center gap-1.5 pointer-events-none z-10 bg-slate-900/60 px-2 py-1 rounded backdrop-blur-sm">
+            <i data-lucide="move" class="w-3.5 h-3.5"></i> <span class="i18n" data-zh="拖曳可繞著實驗裝置旋轉視角" data-en="Drag to rotate view around the apparatus">拖曳可繞著實驗裝置旋轉視角</span>
+          </div>
+
+          <div class="absolute bottom-3 left-3 z-10 bg-slate-900/80 border border-slate-700/50 text-slate-200 text-xs rounded-lg p-2.5 shadow-lg backdrop-blur-md flex flex-col gap-1 min-w-[140px] pointer-events-none">
+            <div class="text-[10px] uppercase tracking-wider text-slate-400 font-bold border-b border-slate-700/60 pb-1 mb-1 flex items-center gap-1">
+              <i data-lucide="gauge" class="w-3 h-3 text-indigo-400"></i> <span class="i18n" data-zh="即時狀態監測" data-en="Live Status Monitor">即時狀態監測</span>
+            </div>
+            <div class="flex justify-between items-center gap-4">
+              <span class="text-slate-400 i18n" data-zh="旋轉角度:" data-en="Rotation Angle:">旋轉角度:</span>
+              <span id="live-angle" class="font-mono font-bold text-amber-400 text-right">0.0°</span>
+            </div>
+            <div class="flex justify-between items-center gap-4">
+              <span class="text-slate-400 i18n" data-zh="實時力矩:" data-en="Live Torque:">實時力矩:</span>
+              <span id="live-torque" class="font-mono font-bold text-pink-400 text-right">0.00 N·m</span>
+            </div>
+          </div>
+
+          <div class="absolute top-3 right-3 flex items-center gap-2 z-20">
+            <button id="btn-lang" class="p-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg shadow-md transition-colors font-bold text-xs flex items-center justify-center w-8" title="Language / 語言">
+              EN
+            </button>
+            <button id="btn-toggle-play" class="p-2 rounded-lg shadow-md bg-emerald-500 hover:bg-emerald-600 text-white transition-colors i18n-title" data-zh="播放/暫停" data-en="Play/Pause" title="播放/暫停">
+              <i id="icon-play" data-lucide="play" class="w-4 h-4"></i>
+              <i id="icon-pause" data-lucide="pause" class="w-4 h-4 hidden"></i>
+            </button>
+            <button id="btn-reset" class="p-2 bg-slate-800/80 hover:bg-slate-700 text-white rounded-lg shadow-md transition-colors i18n-title" data-zh="重置" data-en="Reset" title="重置">
+              <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+            </button>
+            <button id="btn-toggle-controls" class="p-2 bg-slate-800/80 hover:bg-slate-700 text-white rounded-lg shadow-md transition-all flex items-center gap-1 text-xs font-bold i18n-title" data-zh="隱藏/顯示控制面板" data-en="Toggle Control Panel" title="隱藏/顯示控制面板">
+              <i id="icon-eye-off" data-lucide="eye-off" class="w-4 h-4"></i>
+              <i id="icon-eye" data-lucide="eye" class="w-4 h-4 hidden"></i>
+              <span id="text-toggle-controls">隱藏控制</span>
+            </button>
+            <button id="btn-fullscreen" class="p-2 bg-slate-800/80 hover:bg-slate-700 text-white rounded-lg shadow-md transition-colors i18n-title" data-zh="全螢幕模式" data-en="Fullscreen Mode" title="全螢幕模式">
+              <i id="icon-maximize" data-lucide="maximize-2" class="w-4 h-4"></i>
+              <i id="icon-minimize" data-lucide="minimize-2" class="w-4 h-4 hidden"></i>
+            </button>
+          </div>
+
+          <div class="orbit-center">
+            <div id="3d-world" class="preserve-3d" style="transform: rotateX(-20deg) rotateY(-35deg);">
+              </div>
+          </div>
+        </div>
+
+        <div class="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex flex-col flex-grow">
+          <h3 class="text-sm font-bold text-slate-800 mb-3 flex items-center gap-1.5">
+            <i data-lucide="activity" class="w-4 h-4 text-blue-600"></i> <span class="i18n" data-zh="實時力矩 (Torque) 圖" data-en="Live Torque Chart">實時力矩 (Torque) 圖</span>
+          </h3>
+          <div class="w-full h-[180px] relative">
+            <canvas id="torque-canvas" class="w-full h-full"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div id="control-panel" class="lg:col-span-4 flex flex-col gap-4 transition-all duration-300 max-h-[780px] overflow-y-auto custom-scrollbar pr-1">
+        
+        <div class="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex flex-col gap-4">
+          <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5 border-b pb-2">
+            <i data-lucide="settings-2" class="w-4 h-4 text-indigo-600"></i> <span class="i18n" data-zh="核心參數控制" data-en="Core Parameters">核心參數控制</span>
+          </h3>
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <span class="text-xs font-semibold text-slate-700 flex items-center gap-1 i18n" data-zh="電壓 / 電流方向 (V)" data-en="Voltage / Current Dir (V)">電壓 / 電流方向 (V)</span>
+              <div class="flex items-center gap-2">
+                <button id="btn-swap-v" class="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded border border-slate-200 flex items-center gap-0.5"><i data-lucide="arrow-left-right" class="w-2.5 h-2.5"></i><span class="i18n" data-zh="對調" data-en="Swap">對調</span></button>
+                <span id="val-v" class="text-xs font-bold text-blue-600 w-12 text-right">3.0 V</span>
+              </div>
+            </div>
+            <input id="slider-v" type="range" min="-5" max="5" step="0.1" value="3.0" class="w-full cursor-pointer accent-blue-600">
+          </div>
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <span class="text-xs font-semibold text-slate-700 flex items-center gap-1 i18n" data-zh="磁場強度與方向 (B)" data-en="B-Field Strength/Dir (B)">磁場強度與方向 (B)</span>
+              <div class="flex items-center gap-2">
+                <button id="btn-swap-b" class="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded border border-slate-200 flex items-center gap-0.5"><i data-lucide="arrow-left-right" class="w-2.5 h-2.5"></i><span class="i18n" data-zh="對調" data-en="Swap">對調</span></button>
+                <span id="val-b" class="text-xs font-bold text-emerald-600 w-12 text-right">3.0 T</span>
+              </div>
+            </div>
+            <input id="slider-b" type="range" min="-5" max="5" step="0.1" value="3.0" class="w-full cursor-pointer accent-emerald-600">
+          </div>
+        </div>
+
+        <div class="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex flex-col gap-3">
+          <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5 border-b pb-2">
+            <i data-lucide="eye" class="w-4 h-4 text-purple-600"></i> <span class="i18n" data-zh="視覺顯示設定" data-en="Visual Settings">視覺顯示設定</span>
+          </h3>
+          <div class="grid grid-cols-2 gap-2 text-xs text-slate-600">
+            <label class="flex items-center gap-1.5 cursor-pointer hover:text-slate-900"><input id="chk-labels" type="checkbox" checked class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"> <span class="i18n" data-zh="ABCD 節點標記" data-en="ABCD Node Labels">ABCD 節點標記</span></label>
+            <label class="flex items-center gap-1.5 cursor-pointer hover:text-slate-900"><input id="chk-polarity" type="checkbox" checked class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"> <span class="i18n" data-zh="極性動態著色" data-en="Dynamic Polarity Color">極性動態著色</span></label>
+            <label class="flex items-center gap-1.5 cursor-pointer hover:text-slate-900"><input id="chk-force" type="checkbox" checked class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"> <span class="i18n" data-zh="磁力向量箭頭 (F)" data-en="Force Vectors (F)">磁力向量箭頭 (F)</span></label>
+            <label class="flex items-center gap-1.5 cursor-pointer hover:text-slate-900"><input id="chk-bfield" type="checkbox" checked class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"> <span class="i18n" data-zh="磁場線分佈 (B)" data-en="B-Field Lines (B)">磁場線分佈 (B)</span></label>
+            <label class="flex items-center gap-1.5 cursor-pointer hover:text-slate-900"><input id="chk-arrows" type="checkbox" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"> <span class="i18n" data-zh="電流方向箭頭 (I)" data-en="Current Arrows (I)">電流方向箭頭 (I)</span></label>
+            <label class="flex items-center gap-1.5 cursor-pointer hover:text-slate-900"><input id="chk-dots" type="checkbox" checked class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"> <span class="i18n" data-zh="動態電流粒子" data-en="Dynamic Current Particles">動態電流粒子</span></label>
+            <label class="flex items-center gap-1.5 cursor-pointer hover:text-slate-900 col-span-2"><input id="chk-battery" type="checkbox" checked class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"> <span class="i18n" data-zh="顯示外電路與直流電源" data-en="Show External Circuit & DC Power">顯示外電路與直流電源</span></label>
+          </div>
+        </div>
+
+        <div class="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex flex-col gap-3">
+          <div>
+            <span class="text-xs font-bold text-slate-500 block mb-1.5 i18n" data-zh="模擬運行速度" data-en="Simulation Speed">模擬運行速度</span>
+            <div class="flex gap-1" id="speed-group">
+              <button id="btn-sm-0.25" class="btn-sm flex-1 py-1 text-xs font-medium rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors">0.25x</button>
+              <button id="btn-sm-0.5" class="btn-sm flex-1 py-1 text-xs font-medium rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors">0.5x</button>
+              <button id="btn-sm-1" class="btn-sm flex-1 py-1 text-xs font-medium rounded-md bg-indigo-600 text-white transition-colors">1.0x</button>
+              <button id="btn-sm-2" class="btn-sm flex-1 py-1 text-xs font-medium rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors">2.0x</button>
+            </div>
+          </div>
+          <div>
+            <span class="text-xs font-bold text-slate-500 block mb-1.5 i18n" data-zh="電流粒子速度" data-en="Particle Speed">電流粒子速度</span>
+            <div class="flex gap-1" id="pspeed-group">
+              <button id="btn-ps-0.5" class="btn-ps flex-1 py-1 text-xs font-medium rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"><span class="i18n" data-zh="慢" data-en="Slow">慢</span></button>
+              <button id="btn-ps-1" class="btn-ps flex-1 py-1 text-xs font-medium rounded-md bg-yellow-500 text-white transition-colors"><span class="i18n" data-zh="中" data-en="Med">中</span></button>
+              <button id="btn-ps-2" class="btn-ps flex-1 py-1 text-xs font-medium rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"><span class="i18n" data-zh="快" data-en="Fast">快</span></button>
+              <button id="btn-ps-4" class="btn-ps flex-1 py-1 text-xs font-medium rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"><span class="i18n" data-zh="極快" data-en="Ultra">極快</span></button>
+            </div>
+          </div>
+          <div class="pt-1 border-t border-slate-100">
+            <label class="flex items-center gap-1.5 cursor-pointer text-xs text-slate-600 hover:text-slate-900">
+              <input id="chk-startzero" type="checkbox" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5">
+              <span class="i18n" data-zh="圖表從時間 0 開始完整紀錄" data-en="Record chart strictly from time 0">圖表從時間 0 開始完整紀錄</span>
+            </label>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script>
+    lucide.createIcons();
+
+    // --- 多語言支援邏輯 ---
+    let currentLang = 'zh';
+    const dynI18n = {
+      hide_ctrl: { zh: "隱藏控制", en: "Hide Ctrl" },
+      show_ctrl: { zh: "顯示控制", en: "Show Ctrl" },
+      fs_block: { zh: "全螢幕遭阻擋：", en: "Fullscreen blocked: " }
+    };
+
+    function updateLangUI() {
+      document.querySelectorAll('.i18n').forEach(el => {
+        el.innerHTML = el.getAttribute(`data-${currentLang}`);
+      });
+      document.querySelectorAll('.i18n-title').forEach(el => {
+        el.title = el.getAttribute(`data-${currentLang}`);
+      });
+      document.getElementById('text-toggle-controls').innerText = isPanelVisible ? dynI18n.hide_ctrl[currentLang] : dynI18n.show_ctrl[currentLang];
+      document.getElementById('btn-lang').innerText = currentLang === 'zh' ? 'EN' : '中';
+    }
+
+    document.getElementById('btn-lang').onclick = () => {
+      currentLang = currentLang === 'zh' ? 'en' : 'zh';
+      updateLangUI();
+    };
+    // ----------------------
+
+    let state = {
+      v: 3.0, b: 3.0, isPlaying: false, showLabels: true, colorByPolarity: true,
+      showForce: true, showBField: true, showCurrentArrows: false, showCurrentDots: true,
+      showBattery: true, startFromZero: false, speedMultiplier: 1.0, particleSpeed: 1.0,
+      angle: 0, extProgress: 0, coilProgress: 0, viewAngle: { x: -20, y: -35 }, chartData: [],
+      lastBDir: null, lastVPos: null
+    };
+
+    let lastFrameTime = null;
+    let lastChartTime = 0;
+    let totalSimulatedTime = 0;
+    
+    // 效能快取：不再頻繁讀取 DOM
+    const dom = {}; 
+    const dotData = {};
+
+    const world = document.getElementById('3d-world');
+    const canvas = document.getElementById('torque-canvas');
+    const liveAngleText = document.getElementById('live-angle');
+    const liveTorqueText = document.getElementById('live-torque');
+
+    // ==========================================
+    // 核心工具：產生高效靜態 3D 節點
+    // ==========================================
+    function createBoxHTML({id='', w, h, d, color, transform='', opacity=1, text='', textClass='', faceClass=''}) {
+      return `
+        <div ${id ? `id="${id}"` : ''} class="absolute preserve-3d" style="width:0; height:0; transform:${transform};">
+          <div class="absolute flex items-center justify-center font-black text-white ${textClass} ${faceClass} face-front" style="width:${w}px; height:${h}px; background:${color}; opacity:${opacity}; transform:translate3d(${-w/2}px, ${-h/2}px, ${d/2}px);">${text}</div>
+          <div class="absolute ${faceClass} face-back" style="width:${w}px; height:${h}px; background:${color}; opacity:${opacity}; transform:translate3d(${-w/2}px, ${-h/2}px, ${-d/2}px) rotateY(180deg);"></div>
+          <div class="absolute flex items-center justify-center font-black text-white ${textClass} ${faceClass} face-left" style="width:${d}px; height:${h}px; background:${color}; opacity:${opacity}; filter:brightness(0.85); transform:translate3d(${-w/2 - d/2}px, ${-h/2}px, 0) rotateY(-90deg);">${text}</div>
+          <div class="absolute flex items-center justify-center font-black text-white ${textClass} ${faceClass} face-right" style="width:${d}px; height:${h}px; background:${color}; opacity:${opacity}; filter:brightness(0.85); transform:translate3d(${w/2 - d/2}px, ${-h/2}px, 0) rotateY(90deg);">${text}</div>
+          <div class="absolute ${faceClass} face-top" style="width:${w}px; height:${d}px; background:${color}; opacity:${opacity}; filter:brightness(0.95); transform:translate3d(${-w/2}px, ${-h/2 - d/2}px, 0) rotateX(90deg);"></div>
+          <div class="absolute ${faceClass} face-bottom" style="width:${w}px; height:${d}px; background:${color}; opacity:${opacity}; filter:brightness(0.95); transform:translate3d(${-w/2}px, ${h/2 - d/2}px, 0) rotateX(-90deg);"></div>
+        </div>
+      `;
+    }
+
+    function createHalfRingHTML(id, r, d, color, transform) {
+      let segments = 12, thick = 4, angleStep = 150/segments, R = r - thick/2;
+      let w = 2 * R * Math.tan((Math.PI/180)*(angleStep/2)), html = `<div id="${id}" class="absolute preserve-3d" style="transform:${transform};">`;
+      for(let i=0; i<segments; i++) html += createBoxHTML({w: w+0.6, h: thick, d: d, color: color, transform: `rotateZ(${15 + i*angleStep + angleStep/2}deg) translateY(${-R}px)`, faceClass: 'transition-colors duration-150'});
+      return html + `</div>`;
+    }
+
+    function createBrushHTML(id, r, d, thick, color, transform, isLeft) {
+      let segments = 4, angleStep = 20/segments, startAngle = (isLeft ? 270 : 90) - 10 + angleStep/2;
+      let R = r + thick/2, w = 2 * R * Math.tan((Math.PI/180)*(angleStep/2)), html = `<div id="${id}" class="absolute preserve-3d" style="transform:${transform};">`;
+      for(let i=0; i<segments; i++) html += createBoxHTML({w: w+0.5, h: thick, d: d, color: color, transform: `rotateZ(${startAngle + i*angleStep}deg) translateY(${-R}px)`, faceClass: 'transition-colors duration-150'});
+      return html + `</div>`;
+    }
+
+    function generateBLinesHTML(bDir) {
+      let html = '';
+      [-50, 0, 50].forEach(z => {
+        html += `<div class="absolute preserve-3d" style="transform:translate3d(0,0,${z}px);">
+            <div class="absolute" style="width:340px; height:2px; background:#34d399; transform:translate(-50%,-50%); opacity:0.5;"></div>
+            <div class="absolute" style="width:340px; height:2px; background:#34d399; transform:translate(-50%,-50%) rotateX(90deg); opacity:0.5;"></div>
+            <div class="absolute smooth-transition" style="transform:translate3d(${bDir*40}px,0,0); border-top:5px solid transparent; border-bottom:5px solid transparent; ${bDir>0?'border-left:10px solid #34d399':'border-right:10px solid #34d399'}; transform:translate(-50%,-50%);"></div>
+            <div class="absolute smooth-transition" style="transform:translate3d(${bDir*-40}px,0,0); border-top:5px solid transparent; border-bottom:5px solid transparent; ${bDir>0?'border-left:10px solid #34d399':'border-right:10px solid #34d399'}; transform:translate(-50%,-50%);"></div>
+          </div>`;
+      });
+      return html;
+    }
+
+    function createArrow3DHTML(length, color, transform) {
+      return `<div class="absolute preserve-3d" style="transform:${transform};">
+          <div class="absolute" style="width:6px; height:${length-12}px; background:${color}; transform:translate(-50%, ${-(length-12)}px);"></div>
+          <div class="absolute" style="width:0; height:0; border-left:9px solid transparent; border-right:9px solid transparent; border-bottom:14px solid ${color}; transform:translate(-50%, ${-length+2}px);"></div>
+          <div class="absolute" style="width:6px; height:${length-12}px; background:${color}; transform:translate(-50%, ${-(length-12)}px) rotateY(90deg);"></div>
+          <div class="absolute" style="width:0; height:0; border-left:9px solid transparent; border-right:9px solid transparent; border-bottom:14px solid ${color}; transform:translate(-50%, ${-length+2}px) rotateY(90deg);"></div>
+        </div>`;
+    }
+
+    function createLabelStaticHTML(id, text, transform, colorClass) {
+      return `<div id="${id}" class="absolute preserve-3d" style="transform:${transform};">
+          <div id="${id}_inner" class="absolute flex items-center justify-center w-8 h-8 font-black text-sm rounded-full border-2 shadow-lg text-white border-white ${colorClass}">
+            ${text}
+          </div>
+        </div>`;
+    }
+
+    // ==========================================
+    // 效能優化核心：在載入時建置一次所有 DOM 結構
+    // ==========================================
+    function initSceneDOM() {
+      let html = '';
+      
+      // 磁鐵
+      html += createBoxHTML({id:'el_mag_left', w:42, h:150, d:150, color:'#ef4444', transform:'translate3d(-190px,0,0)', text:'N', textClass:'text-2xl', faceClass:'transition-colors duration-500'});
+      html += createBoxHTML({id:'el_mag_right', w:42, h:150, d:150, color:'#3b82f6', transform:'translate3d(190px,0,0)', text:'S', textClass:'text-2xl', faceClass:'transition-colors duration-500'});
+      
+      // 磁場線與碳刷
+      html += `<div id="el_b_lines" class="absolute preserve-3d"></div>`;
+      html += createBrushHTML('el_brush_l', 15, 22, 5, '#64748b', 'translate3d(0,0,125px)', true);
+      html += createBrushHTML('el_brush_r', 15, 22, 5, '#64748b', 'translate3d(0,0,125px)', false);
+      
+      // 極性動態標籤 (將安全地放在下方)
+      html += `<div id="el_pol_l" class="absolute preserve-3d"></div><div id="el_pol_r" class="absolute preserve-3d"></div>`;
+
+      // 固定外部電路
+      html += `<div id="el_circuit" class="absolute preserve-3d">`;
+      html += createBoxHTML({w:34, h:5, d:5, color:'#64748b', transform:'translate3d(-37px,0,125px)'});
+      html += createBoxHTML({w:5, h:5, d:110, color:'#64748b', transform:'translate3d(-54px,0,180px)'});
+      html += createBoxHTML({w:32, h:5, d:5, color:'#64748b', transform:'translate3d(-38px,0,235px)'});
+      html += createBoxHTML({w:34, h:5, d:5, color:'#64748b', transform:'translate3d(37px,0,125px)'});
+      html += createBoxHTML({w:5, h:5, d:110, color:'#64748b', transform:'translate3d(54px,0,180px)'});
+      html += createBoxHTML({w:32, h:5, d:5, color:'#64748b', transform:'translate3d(38px,0,235px)'});
+
+      // 電池本體 (乾淨外觀 + 180 度翻轉功能)
+      html += `<div id="el_battery_wrap" class="absolute preserve-3d battery-transition" style="transform:translate3d(0,0,237px) rotateY(0deg);">`;
+      html += createBoxHTML({w:46, h:32, d:32, color:'#ef4444', transform:'translate3d(-23px,0,0)'});
+      html += createBoxHTML({w:46, h:32, d:32, color:'#1e293b', transform:'translate3d(23px,0,0)'});
+      html += createBoxHTML({w:8, h:14, d:14, color:'#cbd5e1', transform:'translate3d(-50px,0,0)'});
+      html += `</div>`;
+      
+      // 外部電路粒子容器
+      for(let i=1; i<=6; i++) html += `<div id="el_ext_dots_${i}" class="absolute preserve-3d"></div>`;
+      html += `</div>`; // End circuit
+
+      // 轉子核心
+      let cFace = 'transition-colors duration-150';
+      html += `<div id="el_rotor" class="absolute preserve-3d">`;
+      html += createBoxHTML({id:'el_coil_ab', w:8, h:8, d:170, color:'#d97706', transform:'translate3d(-65px,0,0)', faceClass:cFace});
+      html += createBoxHTML({id:'el_coil_bc', w:138, h:8, d:8, color:'#d97706', transform:'translate3d(0,0,-81px)', faceClass:cFace});
+      html += createBoxHTML({id:'el_coil_cd', w:8, h:8, d:170, color:'#d97706', transform:'translate3d(65px,0,0)', faceClass:cFace});
+      html += createBoxHTML({id:'el_coil_da1', w:50, h:8, d:8, color:'#d97706', transform:'translate3d(-40px,0,81px)', faceClass:cFace});
+      html += createBoxHTML({id:'el_coil_da2', w:8, h:8, d:38, color:'#d97706', transform:'translate3d(-15px,0,100px)', faceClass:cFace});
+      html += createBoxHTML({id:'el_coil_da3', w:50, h:8, d:8, color:'#d97706', transform:'translate3d(40px,0,81px)', faceClass:cFace});
+      html += createBoxHTML({id:'el_coil_da4', w:8, h:8, d:38, color:'#d97706', transform:'translate3d(15px,0,100px)', faceClass:cFace});
+      html += createHalfRingHTML('el_ring_l', 14, 34, '#d97706', 'translate3d(0,0,125px) rotateZ(180deg)');
+      html += createHalfRingHTML('el_ring_r', 14, 34, '#d97706', 'translate3d(0,0,125px)');
+      
+      // ABCD 標籤
+      html += createLabelStaticHTML('el_lbl_a', 'A', 'translate3d(-78px,0,88px)', 'bg-slate-800 border-orange-500');
+      html += createLabelStaticHTML('el_lbl_b', 'B', 'translate3d(-78px,0,-88px)', 'bg-slate-800 border-emerald-500');
+      html += createLabelStaticHTML('el_lbl_c', 'C', 'translate3d(78px,0,-88px)', 'bg-slate-800 border-purple-500');
+      html += createLabelStaticHTML('el_lbl_d', 'D', 'translate3d(78px,0,88px)', 'bg-slate-800 border-blue-500');
+      
+      // 內部線圈粒子容器
+      for(let i=1; i<=7; i++) html += `<div id="el_coil_dots_${i}" class="absolute preserve-3d"></div>`;
+
+      // 向量箭頭
+      html += `<div class="absolute preserve-3d" style="transform:translate3d(-65px,0,0);"><div id="el_arr_cur_l" class="absolute preserve-3d"></div><div id="el_arr_f1_rot" class="absolute preserve-3d"><div id="el_arr_f1" class="absolute preserve-3d"></div></div></div>`;
+      html += `<div class="absolute preserve-3d" style="transform:translate3d(65px,0,0);"><div id="el_arr_cur_r" class="absolute preserve-3d"></div><div id="el_arr_f2_rot" class="absolute preserve-3d"><div id="el_arr_f2" class="absolute preserve-3d"></div></div></div>`;
+      html += `</div>`; // End rotor
+
+      world.innerHTML = html;
+      
+      // 快取所有 DOM 節點，日後 100% 只靠 JS 更新 CSS，消除效能卡頓
+      let ids = ['mag_left','mag_right','b_lines','brush_l','brush_r','pol_l','pol_r','circuit','battery_wrap','rotor','coil_ab','coil_bc','coil_cd','coil_da1','coil_da2','coil_da3','coil_da4','ring_l','ring_r','lbl_a','lbl_b','lbl_c','lbl_d','lbl_a_inner','lbl_b_inner','lbl_c_inner','lbl_d_inner','arr_cur_l','arr_cur_r','arr_f1_rot','arr_f2_rot','arr_f1','arr_f2'];
+      for(let i=1; i<=6; i++) ids.push('ext_dots_'+i);
+      for(let i=1; i<=7; i++) ids.push('coil_dots_'+i);
+      ids.forEach(id => { dom[id] = document.getElementById('el_' + id); });
+
+      // 初始化向量箭頭結構 (只生成一次)
+      dom.arr_cur_l.innerHTML = createArrow3DHTML(50, '#eab308', '');
+      dom.arr_cur_r.innerHTML = createArrow3DHTML(50, '#eab308', '');
+      dom.arr_f1.innerHTML = createArrow3DHTML(80, '#ec4899', '');
+      dom.arr_f2.innerHTML = createArrow3DHTML(80, '#ec4899', '');
+
+      // 初始化粒子系統
+      initDots('ext_dots_1', [-22,-8,235], [-54,-8,235], 32, '#facc15');
+      initDots('ext_dots_2', [-54,-8,235], [-54,-8,125], 32, '#facc15');
+      initDots('ext_dots_3', [-54,-8,125], [-20,-8,125], 32, '#facc15');
+      initDots('ext_dots_4', [20,-8,125], [54,-8,125], 32, '#facc15');
+      initDots('ext_dots_5', [54,-8,125], [54,-8,235], 32, '#facc15');
+      initDots('ext_dots_6', [54,-8,235], [22,-8,235], 32, '#facc15');
+
+      initDots('coil_dots_1', [-15,-8,118], [-15,-8,81], 32, '#facc15');
+      initDots('coil_dots_2', [-15,-8,81], [-65,-8,81], 32, '#facc15');
+      initDots('coil_dots_3', [-65,-8,81], [-65,-8,-81], 32, '#facc15');
+      initDots('coil_dots_4', [-65,-8,-81], [65,-8,-81], 32, '#facc15');
+      initDots('coil_dots_5', [65,-8,-81], [65,-8,81], 32, '#facc15');
+      initDots('coil_dots_6', [65,-8,81], [15,-8,81], 32, '#facc15');
+      initDots('coil_dots_7', [15,-8,81], [15,-8,118], 32, '#facc15');
+    }
+
+    // 粒子系統初始化輔助
+    function initDots(idKey, start, end, spacing, color) {
+      let container = dom[idKey];
+      if(!container) return;
+      let dx = end[0]-start[0], dy = end[1]-start[1], dz = end[2]-start[2];
+      let len = Math.sqrt(dx*dx + dy*dy + dz*dz), count = Math.max(1, Math.floor(len/spacing));
+      let html = '';
+      for(let i=0; i<count; i++) html += `<div class="absolute rounded-full" style="width:7px; height:7px; background:${color}; box-shadow:0 0 6px ${color};"></div>`;
+      container.innerHTML = html;
+      dotData[idKey] = { start, dx, dy, dz, count };
+    }
+
+    // 只更新粒子的 Transform，不觸碰 innerHTML
+    function updateDotsTransform(idKey, progress) {
+      let container = dom[idKey], data = dotData[idKey];
+      if(!container || !data) return;
+      for(let i=0; i<data.count; i++) {
+        let p = (i/data.count + progress) % 1; if(p < 0) p += 1;
+        container.children[i].style.transform = `translate3d(${data.start[0]+data.dx*p-3.5}px, ${data.start[1]+data.dy*p-3.5}px, ${data.start[2]+data.dz*p}px) rotateX(90deg)`;
+      }
+    }
+
+    // 高效顏色更新
+    function updateBoxColor(el, color) {
+      if(el && el.dataset.color !== color) {
+        el.querySelectorAll('.face-front, .face-back, .face-left, .face-right, .face-top, .face-bottom').forEach(f => f.style.background = color);
+        el.dataset.color = color;
+      }
+    }
+    // 高效文字更新
+    function updateBoxText(el, text) {
+      if(el && el.dataset.text !== text) {
+        el.querySelectorAll('.face-front, .face-left, .face-right').forEach(f => f.innerHTML = text);
+        el.dataset.text = text;
+      }
+    }
+
+    // ==========================================
+    // 3D 核心渲染機制 (完全消除掉幀卡頓)
+    // ==========================================
+    function render3D() {
+      world.style.transform = `rotateX(${state.viewAngle.x}deg) rotateY(${state.viewAngle.y}deg)`;
+
+      let isFlipped = state.angle > 90 && state.angle < 270;
+      let isCommutating = (state.angle > 82 && state.angle < 98) || (state.angle > 262 && state.angle < 278);
+      let mDir = state.v > 0 ? 1 : (state.v < 0 ? -1 : 0);
+      let wire1Current = mDir * (isFlipped ? -1 : 1);
+      let f1Dir = -wire1Current * (state.b >= 0 ? 1 : -1);
+      let f2Dir = wire1Current * (state.b >= 0 ? 1 : -1);
+
+      let posC = "#ef4444", negC = "#3b82f6", neuC = "#64748b";
+      let leftBrush = state.v > 0 ? posC : (state.v < 0 ? negC : neuC);
+      let rightBrush = state.v > 0 ? negC : (state.v < 0 ? posC : neuC);
+
+      let cAB = state.colorByPolarity ? (isCommutating ? neuC : (!isFlipped ? leftBrush : rightBrush)) : "#d97706";
+      let cCD = state.colorByPolarity ? (isCommutating ? neuC : (!isFlipped ? rightBrush : leftBrush)) : "#d97706";
+      let cBC = state.colorByPolarity ? (isCommutating ? neuC : "#22c55e") : "#d97706";
+      let cDA = state.colorByPolarity ? (isCommutating ? neuC : "#a855f7") : "#d97706";
+
+      // 磁鐵更新
+      updateBoxColor(dom.mag_left, state.b>=0?posC:negC); updateBoxColor(dom.mag_right, state.b>=0?negC:posC);
+      updateBoxText(dom.mag_left, state.b>=0?'N':'S'); updateBoxText(dom.mag_right, state.b>=0?'S':'N');
+
+      // 磁場線
+      if(state.showBField && Math.abs(state.b) > 0) {
+        if(state.lastBDir !== (state.b > 0)) { state.lastBDir = (state.b > 0); dom.b_lines.innerHTML = generateBLinesHTML(state.b > 0 ? 1 : -1); }
+        dom.b_lines.style.display = 'block';
+      } else { dom.b_lines.style.display = 'none'; state.lastBDir = null; }
+
+      // 碳刷與極性指示球
+      updateBoxColor(dom.brush_l, leftBrush); updateBoxColor(dom.brush_r, rightBrush);
+      if(state.showLabels && Math.abs(state.v) > 0) {
+        let vPos = state.v > 0;
+        if(state.lastVPos !== vPos) {
+          state.lastVPos = vPos;
+          dom.pol_l.innerHTML = createBoxHTML({w:12, h:12, d:12, color: vPos?posC:negC, transform:'translate3d(-45px,35px,140px)'}) + createLabelStaticHTML('el_pol_lbl_l', vPos?'+':'-', 'translate3d(-45px,35px,152px)', vPos?'bg-red-500':'bg-blue-500');
+          dom.pol_r.innerHTML = createBoxHTML({w:12, h:12, d:12, color: vPos?negC:posC, transform:'translate3d(45px,35px,140px)'}) + createLabelStaticHTML('el_pol_lbl_r', vPos?'-':'+', 'translate3d(45px,35px,152px)', vPos?'bg-blue-500':'bg-red-500');
+          dom.pol_lbl_l_inner = document.getElementById('el_pol_lbl_l_inner');
+          dom.pol_lbl_r_inner = document.getElementById('el_pol_lbl_r_inner');
+        }
+        if(dom.pol_lbl_l_inner) dom.pol_lbl_l_inner.style.transform = `translate(-50%, -50%) rotateY(${-state.viewAngle.y}deg) rotateX(${-state.viewAngle.x}deg)`;
+        if(dom.pol_lbl_r_inner) dom.pol_lbl_r_inner.style.transform = `translate(-50%, -50%) rotateY(${-state.viewAngle.y}deg) rotateX(${-state.viewAngle.x}deg)`;
+        dom.pol_l.style.display = 'block'; dom.pol_r.style.display = 'block';
+      } else { dom.pol_l.style.display = 'none'; dom.pol_r.style.display = 'none'; state.lastVPos = null; }
+
+      // 電池與外部電路
+      dom.circuit.style.display = state.showBattery ? 'block' : 'none';
+      if(state.showBattery) {
+        // 電池翻轉機制 (靠 CSS Transition 自動平滑旋轉)
+        dom.battery_wrap.style.transform = `translate3d(0,0,237px) rotateY(${state.v < 0 ? 180 : 0}deg)`;
+        
+        // 粒子更新
+        if(state.showCurrentDots && Math.abs(state.v) > 0) {
+          for(let i=1; i<=6; i++) { dom['ext_dots_'+i].style.display='block'; updateDotsTransform('ext_dots_'+i, state.extProgress); }
+        } else { for(let i=1; i<=6; i++) dom['ext_dots_'+i].style.display='none'; }
+      }
+
+      // 轉子與線圈顏色
+      dom.rotor.style.transform = `rotateZ(${state.angle}deg)`;
+      updateBoxColor(dom.coil_ab, cAB); updateBoxColor(dom.coil_bc, cBC); updateBoxColor(dom.coil_cd, cCD);
+      updateBoxColor(dom.coil_da1, cDA); updateBoxColor(dom.coil_da2, cDA); updateBoxColor(dom.coil_da3, cDA); updateBoxColor(dom.coil_da4, cDA);
+      updateBoxColor(dom.ring_l, cAB); updateBoxColor(dom.ring_r, cCD);
+
+      // 看板旋轉抵銷
+      if(state.showLabels) {
+        ['a','b','c','d'].forEach(lbl => {
+          dom['lbl_'+lbl].style.display = 'block';
+          if(dom['lbl_'+lbl+'_inner']) dom['lbl_'+lbl+'_inner'].style.transform = `translate(-50%, -50%) rotateZ(${-state.angle}deg) rotateY(${-state.viewAngle.y}deg) rotateX(${-state.viewAngle.x}deg)`;
+        });
+      } else { ['a','b','c','d'].forEach(lbl => dom['lbl_'+lbl].style.display = 'none'); }
+
+      // 轉子粒子
+      if(state.showCurrentDots && Math.abs(state.v) > 0 && !isCommutating) {
+        for(let i=1; i<=7; i++) { dom['coil_dots_'+i].style.display='block'; updateDotsTransform('coil_dots_'+i, state.coilProgress); }
+      } else { for(let i=1; i<=7; i++) dom['coil_dots_'+i].style.display='none'; }
+
+      // 向量箭頭更新 (全靠 Transform，極致順暢)
+      if(Math.abs(state.v) > 0 && !isCommutating) {
+        if(state.showCurrentArrows) {
+          dom.arr_cur_l.style.display = 'block'; dom.arr_cur_r.style.display = 'block';
+          dom.arr_cur_l.style.transform = `translate3d(0,-18px,${-wire1Current>0?-18:18}px) rotateX(${-wire1Current>0?90:-90}deg)`;
+          dom.arr_cur_r.style.transform = `translate3d(0,-18px,${wire1Current>0?-18:18}px) rotateX(${wire1Current>0?90:-90}deg)`;
+        } else { dom.arr_cur_l.style.display = 'none'; dom.arr_cur_r.style.display = 'none'; }
+
+        if(state.showForce && Math.abs(state.b) > 0) {
+          dom.arr_f1.style.display = 'block'; dom.arr_f2.style.display = 'block';
+          dom.arr_f1_rot.style.transform = `rotateZ(${-state.angle}deg)`; dom.arr_f2_rot.style.transform = `rotateZ(${-state.angle}deg)`;
+          dom.arr_f1.style.transform = f1Dir>0 ? 'translateY(36px) rotateX(180deg)' : 'translateY(-36px)';
+          dom.arr_f2.style.transform = f2Dir>0 ? 'translateY(36px) rotateX(180deg)' : 'translateY(-36px)';
+        } else { dom.arr_f1.style.display = 'none'; dom.arr_f2.style.display = 'none'; }
+      } else {
+        dom.arr_cur_l.style.display = 'none'; dom.arr_cur_r.style.display = 'none';
+        dom.arr_f1.style.display = 'none'; dom.arr_f2.style.display = 'none';
+      }
+    }
+
+    // HTML5 Canvas 繪圖
+    function drawChart() {
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width; canvas.height = rect.height;
+      const ctx = canvas.getContext('2d'), w = canvas.width, h = canvas.height;
+      const pad = { top: 20, right: 15, bottom: 25, left: 35 }, cW = w - pad.left - pad.right, cH = h - pad.top - pad.bottom;
+      ctx.clearRect(0, 0, w, h); if(cW <= 0 || cH <= 0) return;
+
+      const yMax = 30, yMin = -30, yRange = yMax - yMin;
+      ctx.strokeStyle = '#f1f5f9'; ctx.lineWidth = 1;
+      [-30, -15, 0, 15, 30].forEach(tick => {
+        const y = pad.top + cH - ((tick - yMin) / yRange) * cH;
+        ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + cW, y); ctx.stroke();
+        ctx.fillStyle = '#94a3b8'; ctx.font = '10px sans-serif'; ctx.fillText(tick, pad.left - 24, y + 3);
+      });
+
+      const yZero = pad.top + cH - ((0 - yMin) / yRange) * cH;
+      ctx.strokeStyle = '#f87171'; ctx.lineWidth = 1.2; ctx.setLineDash([4, 4]);
+      ctx.beginPath(); ctx.moveTo(pad.left, yZero); ctx.lineTo(pad.left + cW, yZero); ctx.stroke(); ctx.setLineDash([]);
+
+      if(state.chartData.length > 1) {
+        ctx.beginPath(); ctx.strokeStyle = '#ec4899'; ctx.lineWidth = 2.5; ctx.lineJoin = 'round';
+        state.chartData.forEach((pt, i) => {
+          const x = pad.left + (i / (state.chartData.length - 1)) * cW;
+          const val = Math.max(yMin, Math.min(yMax, pt.torque));
+          const y = pad.top + cH - ((val - yMin) / yRange) * cH;
+          if(i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+      }
+
+      ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(pad.left, pad.top); ctx.lineTo(pad.left, pad.top + cH); ctx.lineTo(pad.left + cW, pad.top + cH); ctx.stroke();
+
+      if(state.chartData.length > 0) {
+        ctx.fillStyle = '#64748b';
+        ctx.fillText(state.chartData[0].time.toFixed(1) + 's', pad.left, pad.top + cH + 14);
+        ctx.fillText(state.chartData[state.chartData.length-1].time.toFixed(1) + 's', pad.left + cW - 25, pad.top + cH + 14);
+      }
+    }
+
+    // 左下角數據即時更新
+    function updateLiveStatsPanel(currentAngle, currentTorque) {
+      liveAngleText.innerText = currentAngle.toFixed(1) + "°";
+      liveTorqueText.innerText = currentTorque.toFixed(2) + " N·m";
+    }
+
+    // 完美順暢的主動畫循環
+    function loop(timestamp) {
+      if (!lastFrameTime) { lastFrameTime = timestamp; requestAnimationFrame(loop); return; }
+      let dt = timestamp - lastFrameTime; lastFrameTime = timestamp; if(dt > 100) dt = 16;
+
+      let torque = state.v * state.b * 1.0 * Math.cos(state.angle * Math.PI / 180);
+      if((state.angle > 82 && state.angle < 98) || (state.angle > 262 && state.angle < 278)) torque = 0;
+      updateLiveStatsPanel(state.angle, torque);
+
+      if(state.isPlaying) {
+        let speed = state.v * state.b * 0.005 * state.speedMultiplier;
+        state.angle = (state.angle + speed * dt) % 360;
+        if(state.angle < 0) state.angle += 360;
+
+        let mDir = state.v > 0 ? 1 : (state.v < 0 ? -1 : 0);
+        let isFlipped = state.angle > 90 && state.angle < 270;
+        let coilDir = mDir * (isFlipped ? -1 : 1);
+
+        let pStep = Math.abs(state.v) * 0.00015 * state.speedMultiplier * state.particleSpeed;
+        state.extProgress = (state.extProgress + pStep * dt * mDir) % 1; if(state.extProgress < 0) state.extProgress += 1;
+        state.coilProgress = (state.coilProgress + pStep * dt * coilDir) % 1; if(state.coilProgress < 0) state.coilProgress += 1;
+
+        if(timestamp - lastChartTime > 50) {
+          totalSimulatedTime += 50 * state.speedMultiplier;
+          state.chartData.push({ time: totalSimulatedTime / 1000, torque: torque });
+          if(!state.startFromZero && state.chartData.length > 100) state.chartData.shift();
+          lastChartTime = timestamp; drawChart();
+        }
+      }
+
+      render3D();
+      requestAnimationFrame(loop);
+    }
+
+    // 拖曳旋轉視角 (過濾按鈕的點擊)
+    let isDragging = false, lastPos = { x: 0, y: 0 };
+    const viewport = document.getElementById('3d-viewport');
+    viewport.onpointerdown = (e) => { 
+      if (e.target.closest('button') || e.target.closest('.z-10') || e.target.closest('.z-20')) return;
+      isDragging = true; lastPos.x = e.clientX; lastPos.y = e.clientY; viewport.setPointerCapture(e.pointerId); 
+    };
+    viewport.onpointermove = (e) => {
+      if(!isDragging) return;
+      state.viewAngle.y += (e.clientX - lastPos.x) * 0.4;
+      state.viewAngle.x = Math.max(-85, Math.min(85, state.viewAngle.x - (e.clientY - lastPos.y) * 0.4));
+      lastPos.x = e.clientX; lastPos.y = e.clientY;
+    };
+    const endDrag = (e) => { if(isDragging) { isDragging = false; try{viewport.releasePointerCapture(e.pointerId);}catch(c){} } };
+    viewport.onpointerup = endDrag; viewport.onpointercancel = endDrag;
+
+    // --- 完全原生、不卡頓的滑桿控制 ---
+    const sliderV = document.getElementById('slider-v'), sliderB = document.getElementById('slider-b');
+    const valV = document.getElementById('val-v'), valB = document.getElementById('val-b');
+    
+    sliderV.addEventListener('input', (e) => { state.v = parseFloat(e.target.value); valV.innerText = state.v.toFixed(1) + " V"; });
+    sliderB.addEventListener('input', (e) => { state.b = parseFloat(e.target.value); valB.innerText = state.b.toFixed(1) + " T"; });
+
+    document.getElementById('btn-swap-v').onclick = () => { state.v = -state.v; sliderV.value = state.v; valV.innerText = state.v.toFixed(1) + " V"; };
+    document.getElementById('btn-swap-b').onclick = () => { state.b = -state.b; sliderB.value = state.b; valB.innerText = state.b.toFixed(1) + " T"; };
+
+    // 播放與重置按鈕
+    const btnTogglePlay = document.getElementById('btn-toggle-play'), iconPlay = document.getElementById('icon-play'), iconPause = document.getElementById('icon-pause');
+    function updatePlayBtnUI() {
+      if(state.isPlaying) {
+        iconPlay.classList.add('hidden'); iconPause.classList.remove('hidden');
+        btnTogglePlay.className = "p-2 rounded-lg shadow-md bg-rose-500 hover:bg-rose-600 text-white transition-colors i18n-title";
+      } else {
+        iconPlay.classList.remove('hidden'); iconPause.classList.add('hidden');
+        btnTogglePlay.className = "p-2 rounded-lg shadow-md bg-emerald-500 hover:bg-emerald-600 text-white transition-colors i18n-title";
+      }
+    }
+    
+    btnTogglePlay.onclick = (e) => { 
+      e.preventDefault();
+      state.isPlaying = !state.isPlaying; 
+      updatePlayBtnUI(); 
+    };
+
+    document.getElementById('btn-reset').onclick = () => {
+      state.angle=0; state.extProgress=0; state.coilProgress=0; state.v=3.0; state.b=3.0; state.isPlaying=false;
+      state.viewAngle={x:-20,y:-35}; state.chartData=[]; totalSimulatedTime=0;
+      sliderV.value=3.0; sliderB.value=3.0; valV.innerText="3.0 V"; valB.innerText="3.0 T";
+      updatePlayBtnUI(); drawChart();
+    };
+
+    // 其他 UI 選單設定
+    document.getElementById('chk-labels').onchange = (e) => state.showLabels = e.target.checked;
+    document.getElementById('chk-polarity').onchange = (e) => state.colorByPolarity = e.target.checked;
+    document.getElementById('chk-force').onchange = (e) => state.showForce = e.target.checked;
+    document.getElementById('chk-bfield').onchange = (e) => state.showBField = e.target.checked;
+    document.getElementById('chk-arrows').onchange = (e) => state.showCurrentArrows = e.target.checked;
+    document.getElementById('chk-dots').onchange = (e) => state.showCurrentDots = e.target.checked;
+    document.getElementById('chk-battery').onchange = (e) => state.showBattery = e.target.checked;
+    document.getElementById('chk-startzero').onchange = (e) => {
+      state.startFromZero = e.target.checked;
+      if (!state.startFromZero && state.chartData.length > 100) state.chartData = state.chartData.slice(-100);
+    };
+
+    function updateBtnGrp(pid, id) {
+      document.querySelectorAll(`#${pid} button`).forEach(b => {
+        b.className = b.id===id ? (b.classList.contains('btn-ps')?"btn-ps flex-1 py-1 text-xs font-medium rounded-md bg-yellow-500 text-white":"btn-sm flex-1 py-1 text-xs font-medium rounded-md bg-indigo-600 text-white") : (b.classList.contains('btn-ps')?"btn-ps flex-1 py-1 text-xs font-medium rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200":"btn-sm flex-1 py-1 text-xs font-medium rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200");
+      });
+    }
+    document.querySelectorAll('.btn-sm').forEach(b => b.onclick = () => { state.speedMultiplier = parseFloat(b.id.replace('btn-sm-','')); updateBtnGrp('speed-group', b.id); });
+    document.querySelectorAll('.btn-ps').forEach(b => b.onclick = () => { state.particleSpeed = parseFloat(b.id.replace('btn-ps-','')); updateBtnGrp('pspeed-group', b.id); });
+
+    // 面板顯隱控制
+    let isPanelVisible = true;
+    document.getElementById('btn-toggle-controls').onclick = () => {
+      isPanelVisible = !isPanelVisible;
+      document.getElementById('control-panel').classList.toggle('hidden', !isPanelVisible);
+      document.getElementById('visual-area').className = isPanelVisible ? "lg:col-span-8 flex flex-col gap-4 transition-all duration-300" : "lg:col-span-12 flex flex-col gap-4 transition-all duration-300";
+      document.getElementById('icon-eye-off').classList.toggle('hidden', !isPanelVisible);
+      document.getElementById('icon-eye').classList.toggle('hidden', isPanelVisible);
+      document.getElementById('text-toggle-controls').innerText = isPanelVisible ? dynI18n.hide_ctrl[currentLang] : dynI18n.show_ctrl[currentLang];
+      setTimeout(drawChart, 120);
+    };
+
+    // 全螢幕控制
+    const mainContainer = document.getElementById('main-container');
+    document.getElementById('btn-fullscreen').onclick = () => {
+      if(!document.fullscreenElement) { mainContainer.requestFullscreen().catch(err => alert(`${dynI18n.fs_block[currentLang]}${err.message}`)); }
+      else { document.exitFullscreen(); }
+    };
+    document.addEventListener('fullscreenchange', () => {
+      let isFS = !!document.fullscreenElement;
+      document.getElementById('icon-maximize').classList.toggle('hidden', isFS);
+      document.getElementById('icon-minimize').classList.toggle('hidden', !isFS);
+      mainContainer.className = isFS ? "w-full h-screen bg-slate-50 p-4 sm:p-6 flex flex-col transition-all duration-300 overflow-y-auto custom-scrollbar" : "w-full max-w-7xl mx-auto bg-slate-50 rounded-xl shadow-lg p-3 sm:p-5 flex flex-col transition-all duration-300";
+      setTimeout(drawChart, 150);
+    });
+
+    window.onresize = drawChart;
+
+    // 啟動程式 (建構 HTML 結構後啟動循環)
+    initSceneDOM();
+    updatePlayBtnUI();
+    drawChart();
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>
