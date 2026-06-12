@@ -1,0 +1,1187 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>橫波教學模擬器 | HKDSE 物理</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Roboto:wght@400;500&display=swap');
+        
+        body {
+            font-family: 'Noto Sans TC', 'Roboto', system-ui, sans-serif;
+        }
+        
+        .physics-label {
+            font-weight: 500;
+            color: #334155;
+        }
+        
+        .wave-canvas {
+            background: linear-gradient(to bottom, #f8fafc 0%, #e0f2fe 100%);
+            border: 3px solid #64748b;
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+        
+        .control-card {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .slider-label {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #1e40af;
+        }
+        
+        .value-badge {
+            background-color: #dbeafe;
+            color: #1e40af;
+            font-weight: 700;
+            padding: 0.125rem 0.5rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            min-width: 3.5rem;
+            text-align: center;
+        }
+        
+        .particle {
+            transition: transform 0.05s linear;
+        }
+        
+        .section-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #1e3a8a;
+            border-bottom: 2px solid #bfdbfe;
+            padding-bottom: 0.25rem;
+            margin-bottom: 0.75rem;
+        }
+        
+        .info-box {
+            background-color: #f0f9ff;
+            border-left: 4px solid #0ea5e9;
+        }
+    </style>
+</head>
+<body class="bg-slate-100">
+    <header class="bg-white border-b border-slate-200 shadow-sm">
+        <div class="max-w-screen-xl mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div></div>
+                
+                <div class="flex items-center gap-x-2 text-sm">
+                    <div class="px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-full flex items-center gap-x-1.5 text-xs font-semibold">
+                        <i class="fa-solid fa-check-circle"></i>
+                        <span>適合 Google Sites 嵌入</span>
+                    </div>
+                    <button onclick="resetAll()" 
+                            class="flex items-center gap-x-2 px-4 py-2 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 rounded-xl text-sm font-medium transition-colors">
+                        <i class="fa-solid fa-undo"></i>
+                        <span>重置全部</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="max-w-screen-xl mx-auto px-6 pt-6">
+        
+        <div class="flex flex-col lg:flex-row gap-6">
+            
+            <div class="flex-1 lg:order-1">
+                <div class="bg-white rounded-3xl shadow-xl p-5 border border-slate-200">
+                    <div class="flex items-center justify-end mb-3 px-1">
+                        <div class="flex items-center gap-x-2">
+                            <button id="playBtn"
+                                    onclick="togglePlay()"
+                                    class="flex items-center justify-center gap-x-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 transition-all text-white rounded-2xl font-semibold shadow-md text-sm w-36">
+                                <i class="fa-solid fa-play mr-1.5" id="playIcon"></i>
+                                <span id="playText">開始播放</span>
+                            </button>
+                            
+                            <button onclick="resetTime()"
+                                    class="flex items-center gap-x-2 px-4 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-2xl font-medium text-sm transition-colors">
+                                <i class="fa-solid fa-clock-rotate-left"></i>
+                                <span>重置時間</span>
+                            </button>
+
+                            <div class="flex items-center gap-x-1 ml-2 border-l pl-2 border-slate-300">
+                                <span class="text-xs text-slate-500 mr-1">慢動作</span>
+                                <button onclick="setPlaybackSpeed(0.1)" class="px-2.5 py-1 text-xs bg-white border border-slate-300 hover:bg-slate-100 rounded-lg font-mono">0.1×</button>
+                                <button onclick="setPlaybackSpeed(0.25)" class="px-2.5 py-1 text-xs bg-white border border-slate-300 hover:bg-slate-100 rounded-lg font-mono">0.25×</button>
+                                <button onclick="setPlaybackSpeed(0.5)" class="px-2.5 py-1 text-xs bg-white border border-slate-300 hover:bg-slate-100 rounded-lg font-mono">0.5×</button>
+                                <button onclick="setPlaybackSpeed(1)" class="px-2.5 py-1 text-xs bg-blue-600 text-white hover:bg-blue-700 rounded-lg font-mono">1×</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="relative">
+                        <canvas id="waveCanvas" width="720" height="400" 
+                                class="wave-canvas rounded-2xl w-full cursor-crosshair"></canvas>
+                        
+                        <div class="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-xl shadow border border-slate-200 text-xs">
+                            <div class="flex items-center gap-x-4 text-slate-600">
+                                <div><span class="font-mono font-bold text-blue-700" id="timeDisplay">t = 0.00 s</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
+                        <div class="bg-slate-50 rounded-2xl p-3 border border-slate-100">
+                            <div class="text-[10px] text-slate-500 font-medium tracking-wider">波速 v</div>
+                            <div class="font-mono text-xl font-bold text-emerald-600" id="speedDisplay">200 px/s</div>
+                        </div>
+                        <div class="bg-slate-50 rounded-2xl p-3 border border-slate-100">
+                            <div class="text-[10px] text-slate-500 font-medium tracking-wider">週期 T</div>
+                            <div class="font-mono text-xl font-bold text-amber-600" id="periodDisplay">1.00 s</div>
+                        </div>
+                        <div class="bg-slate-50 rounded-2xl p-3 border border-slate-100">
+                            <div class="text-[10px] text-slate-500 font-medium tracking-wider">頻率 f</div>
+                            <div class="font-mono text-xl font-bold text-violet-600" id="freqDisplay">1.00 Hz</div>
+                        </div>
+                        <div class="bg-slate-50 rounded-2xl p-3 border border-slate-100">
+                            <div class="text-[10px] text-slate-500 font-medium tracking-wider">振幅 A</div>
+                            <div class="font-mono text-xl font-bold text-rose-600" id="ampDisplay">3 cm</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="w-full lg:w-80 flex-shrink-0 lg:order-2">
+                <div class="bg-white rounded-3xl shadow-xl border border-slate-200 p-5 sticky top-4">
+                    
+                    <details open class="mb-6 group">
+                        <summary class="section-title flex items-center gap-x-2 cursor-pointer list-none hover:text-blue-700 transition-colors">
+                            <i class="fa-solid fa-sliders-h text-blue-600"></i>
+                            <span>波的參數控制</span>
+                            <i class="fa-solid fa-chevron-down ml-auto transition-transform group-open:rotate-180 text-blue-400"></i>
+                        </summary>
+                        <div class="pt-3">
+                        
+                        <div class="mb-4">
+                            <div class="flex justify-between items-center mb-1.5">
+                                <label class="slider-label flex items-center gap-x-1.5">
+                                    <i class="fa-solid fa-arrows-alt-v text-rose-500"></i>
+                                    <span>振幅（平衡位置至波峰）A</span>
+                                </label>
+                                <span id="ampVal" class="value-badge">3</span>
+                            </div>
+                            <input type="range" id="ampSlider" 
+                                   class="w-full accent-rose-500" 
+                                   min="0.5" max="8" step="0.5" value="3">
+                            <div class="flex justify-between text-[10px] text-slate-400 mt-0.5 px-0.5">
+                                <div>小</div><div>大</div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <div class="flex justify-between items-center mb-1.5">
+                                <label class="slider-label flex items-center gap-x-1.5">
+                                    <i class="fa-solid fa-sync text-violet-500"></i>
+                                    <span>頻率 (Frequency) f</span>
+                                </label>
+                                <span id="freqVal" class="value-badge">1.00</span>
+                            </div>
+                            <input type="range" id="freqSlider" 
+                                   class="w-full accent-violet-500" 
+                                   min="0.2" max="4.0" step="0.05" value="1.0">
+                            <div class="flex justify-between text-[10px] text-slate-400 mt-0.5 px-0.5">
+                                <div>慢</div><div>快</div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <div class="flex justify-between items-center mb-1.5">
+                                <label class="slider-label flex items-center gap-x-1.5">
+                                    <i class="fa-solid fa-clock text-amber-500"></i>
+                                    <span>週期 (Period) T</span>
+                                </label>
+                                <span id="periodVal" class="value-badge">1.00</span>
+                            </div>
+                            <input type="range" id="periodSlider" 
+                                   class="w-full accent-amber-500" 
+                                   min="0.25" max="5.0" step="0.05" value="1.0">
+                            <div class="flex justify-between text-[10px] text-slate-400 mt-0.5 px-0.5">
+                                <div>短</div><div>長</div>
+                            </div>
+                            <p class="text-[10px] text-amber-600 mt-0.5">T = 1/f（自動同步）</p>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <div class="flex justify-between items-center mb-1.5">
+                                <label class="slider-label flex items-center gap-x-1.5">
+                                    <i class="fa-solid fa-ruler-horizontal text-emerald-500"></i>
+                                    <span>波長 (Wavelength) λ</span>
+                                </label>
+                                <span id="lambdaVal" class="value-badge">200</span>
+                            </div>
+                            <input type="range" id="lambdaSlider" 
+                                   class="w-full accent-emerald-500" 
+                                   min="60" max="320" step="5" value="200">
+                            <div class="flex justify-between text-[10px] text-slate-400 mt-0.5 px-0.5">
+                                <div>短</div><div>長</div>
+                            </div>
+                        </div>
+
+                        <div class="mb-4 mt-4 border-t pt-3 border-slate-100">
+                            <div class="flex justify-between items-center mb-1.5">
+                                <label class="slider-label flex items-center gap-x-1.5">
+                                    <i class="fa-solid fa-arrows-up-down text-indigo-500"></i>
+                                    <span>起點初始位置（相對位移）</span>
+                                </label>
+                                <span id="startPosValLabel" class="value-badge bg-indigo-100 text-indigo-700">波峰</span>
+                            </div>
+                            <input type="range" id="startPosSlider" 
+                                   class="w-full accent-indigo-500" 
+                                   min="-1" max="1" step="0.1" value="1">
+                            <div class="flex justify-between text-[10px] text-slate-400 mt-0.5 px-0.5">
+                                <div>波谷 (-A)</div><div>平衡 (0)</div><div>波峰 (+A)</div>
+                            </div>
+                        </div>
+
+                        <div class="mb-2">
+                            <label class="slider-label flex items-center gap-x-1.5 mb-1.5">
+                                <i class="fa-solid fa-compass text-indigo-500"></i>
+                                <span>起點初始移動方向</span>
+                            </label>
+                            <div class="flex gap-2">
+                                <button id="startDirUpBtn" type="button" onclick="setStartDirection('up')"
+                                        class="flex-1 py-1.5 text-xs font-semibold rounded-xl border transition-all bg-slate-100 text-slate-700 border-slate-300">
+                                    向上 ↑
+                                </button>
+                                <button id="startDirDownBtn" type="button" onclick="setStartDirection('down')"
+                                        class="flex-1 py-1.5 text-xs font-semibold rounded-xl border transition-all bg-indigo-600 text-white border-indigo-600">
+                                    向下 ↓
+                                </button>
+                            </div>
+                        </div>
+
+                    </div>
+                    </details>
+
+                    <div class="mb-5">
+                        <div class="section-title flex items-center gap-x-2">
+                            <i class="fa-solid fa-exchange-alt text-blue-600"></i>
+                            <span>波的傳播方向</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <button id="dirRightBtn"
+                                    onclick="setWaveDirection('right')"
+                                    class="flex-1 flex items-center justify-center gap-x-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-sm font-semibold shadow active:scale-[0.985] transition-all">
+                                <i class="fa-solid fa-arrow-right"></i>
+                                <span>向右傳播 →</span>
+                            </button>
+                            <button id="dirLeftBtn"
+                                    onclick="setWaveDirection('left')"
+                                    class="flex-1 flex items-center justify-center gap-x-2 px-4 py-2.5 bg-slate-300 hover:bg-slate-400 text-slate-700 rounded-2xl text-sm font-semibold active:scale-[0.985] transition-all">
+                                <i class="fa-solid fa-arrow-left"></i>
+                                <span>向左傳播 ←</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="mb-5">
+                        <div class="section-title flex items-center gap-x-2">
+                            <i class="fa-solid fa-plug text-orange-600"></i>
+                            <span>震動源模式（驅動端）</span>
+                        </div>
+                        <label class="flex items-center cursor-pointer select-none">
+                            <div class="relative">
+                                <input type="checkbox" id="driverToggle" onchange="toggleDriverMode()" class="sr-only peer">
+                                <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
+                            </div>
+                            <span class="ml-3 text-sm font-medium text-slate-700">啟用震動源 + 初始平衡位置</span>
+                        </label>
+                        <p class="text-[10px] text-orange-600 mt-1.5 leading-tight">整條介質初始在平衡位置，震動源放在傳播方向的起點端</p>
+                    </div>
+
+                    <div class="mb-5">
+                        <div class="section-title flex items-center gap-x-2">
+                            <i class="fa-solid fa-history text-purple-600"></i>
+                            <span>波形快照比較（虛線）</span>
+                        </div>
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-xs font-medium text-slate-600">經過的週期數</span>
+                            <span id="snapshotVal" class="value-badge bg-purple-100 text-purple-700">0 T</span>
+                        </div>
+                        <input type="range" id="snapshotSlider" 
+                               class="w-full accent-purple-500" 
+                               min="0" max="2" step="0.125" value="0">
+                        <div class="flex justify-between text-[9px] text-slate-400 mt-0.5 px-0.5">
+                            <div>0</div>
+                            <div>0.5T</div>
+                            <div>1T</div>
+                            <div>1.5T</div>
+                            <div>2T</div>
+                        </div>
+                        <p class="text-[9px] text-purple-500 -mt-1">（每格 1/8 T）</p>
+                        <p class="text-[10px] text-purple-600 mt-1">用虛線顯示經過 n 個週期後的波形（幫助理解週期性）</p>
+                    </div>
+
+                    <div id="forwardMoveSection" class="mb-5 hidden">
+                        <div class="section-title flex items-center gap-x-2">
+                            <i class="fa-solid fa-step-forward text-orange-600"></i>
+                            <span>向前移動（震動源模式）</span>
+                        </div>
+                        <div class="flex items-center gap-x-2">
+                            <input type="number" id="forwardPeriods" 
+                                   class="w-20 px-2 py-1.5 border border-slate-300 rounded-xl text-sm text-center font-mono"
+                                   value="1" step="0.05" min="0.05">
+                            <button onclick="forwardMovePeriods()"
+                                    class="flex-1 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-2xl text-sm font-semibold transition-colors">
+                                向前移動
+                            </button>
+                        </div>
+                        <p class="text-[9px] text-orange-600 mt-1">輸入周期數（step = 0.05）</p>
+                    </div>
+
+                    <div class="mb-5">
+                        <div class="section-title flex items-center gap-x-2">
+                            <i class="fa-solid fa-eye text-slate-600"></i>
+                            <span>顯示設定</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
+                            <label class="flex items-center gap-x-2 cursor-pointer">
+                                <input type="checkbox" id="showRangeChk" checked onchange="updateDisplayFlags()" class="accent-blue-600">
+                                <span>質點振動範圍</span>
+                            </label>
+                            <label class="flex items-center gap-x-2 cursor-pointer">
+                                <input type="checkbox" id="showArrowChk" checked onchange="updateDisplayFlags()" class="accent-blue-600">
+                                <span>移動方向箭頭</span>
+                            </label>
+                            <label class="flex items-center gap-x-2 cursor-pointer">
+                                <input type="checkbox" id="showLambdaChk" onchange="updateDisplayFlags()" class="accent-blue-600">
+                                <span>波長標示</span>
+                            </label>
+                            <label class="flex items-center gap-x-2 cursor-pointer">
+                                <input type="checkbox" id="showPropChk" checked onchange="updateDisplayFlags()" class="accent-blue-600">
+                                <span>傳播方向</span>
+                            </label>
+                            
+                            <label class="flex items-center gap-x-2 cursor-pointer mt-1 pt-1 border-t border-slate-200">
+                                <input type="checkbox" id="customParticleToggle" onchange="toggleCustomParticles()" class="accent-orange-500">
+                                <span class="text-orange-600 font-medium">自訂粒子模式（點擊畫面加入）</span>
+                            </label>
+                        </div>
+                        
+                        <button onclick="clearCustomParticles()" 
+                                class="mt-2 w-full text-xs py-1.5 bg-orange-100 hover:bg-orange-200 text-orange-700 rounded-xl font-medium transition-colors">
+                            清除所有自訂粒子
+                        </button>
+                        
+                        <button onclick="toggleAllMarkers()" 
+                                class="mt-1 w-full text-xs py-1.5 bg-slate-100 hover:bg-slate-200 rounded-xl font-medium text-slate-600 transition-colors">
+                            全部顯示 / 全部隱藏
+                        </button>
+                    </div>
+                    
+                    <div class="info-box rounded-2xl p-4 mb-5">
+                        <div class="text-xs font-bold text-sky-700 mb-2 flex items-center gap-x-1.5">
+                            <i class="fa-solid fa-calculator"></i>
+                            <span>計算結果（HKDSE 重點）</span>
+                        </div>
+                        <div class="space-y-1.5 text-sm">
+                            <div class="flex justify-between items-center">
+                                <span class="text-slate-600">波速 v = f × λ</span>
+                                <span class="font-mono font-bold text-emerald-700" id="waveSpeedVal">200 px/s</span>
+                            </div>
+                            <div class="text-[10px] text-slate-500">
+                                波速 v = f × λ（已轉換為 m s⁻¹，100 px = 1 m）
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <div class="section-title">圖例說明</div>
+                        <div class="space-y-2 text-xs">
+                            <div class="flex items-center gap-x-2.5">
+                                <div class="w-5 h-0.5 bg-indigo-500 rounded"></div>
+                                <span class="text-slate-600">實線：波的位移曲線</span>
+                            </div>
+                            <div class="flex items-center gap-x-2.5">
+                                <div class="flex items-center">
+                                    <div class="w-5 border-t border-dashed border-purple-400"></div>
+                                </div>
+                                <span class="text-slate-600">紫色虛線：經過 n 週期後的波形快照</span>
+                            </div>
+                            <div class="flex items-center gap-x-2.5">
+                                <div class="flex items-center">
+                                    <div class="w-5 border-t border-dashed border-slate-400"></div>
+                                </div>
+                                <span class="text-slate-600">灰色虛線：質點振動範圍（拉前拉後）</span>
+                            </div>
+                            <div class="flex items-center gap-x-2.5">
+                                <i class="fa-solid fa-circle text-amber-500 text-sm"></i>
+                                <span class="text-slate-600">圓點：介質質點位置</span>
+                            </div>
+                            <div class="flex items-center gap-x-2.5">
+                                <i class="fa-solid fa-arrow-up text-emerald-500"></i>
+                                <i class="fa-solid fa-arrow-down text-red-500"></i>
+                                <span class="text-slate-600">箭頭：質點現時移動方向</span>
+                            </div>
+                            <div class="flex items-center gap-x-2.5">
+                                <i class="fa-solid fa-plug text-orange-500"></i>
+                                <span class="text-slate-600">橙色圓：震動源（啟用時顯示）</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+        
+        <div class="mt-6 bg-white rounded-3xl shadow border border-slate-200 p-6">
+            <div class="flex items-start gap-x-3">
+                <div class="mt-1">
+                    <i class="fa-solid fa-lightbulb text-yellow-500 text-xl"></i>
+                </div>
+                <div class="flex-1">
+                    <h3 class="font-bold text-slate-800 mb-2">HKDSE 物理學習重點（橫波）</h3>
+                    <div class="grid md:grid-cols-2 gap-x-8 gap-y-2 text-sm text-slate-600">
+                        <div class="flex gap-x-2">
+                            <span class="font-semibold text-blue-700">•</span> 
+                            <span>橫波中，<strong>質點振動方向</strong>與<strong>波傳播方向</strong>互相垂直。</span>
+                        </div>
+                        <div class="flex gap-x-2">
+                            <span class="font-semibold text-blue-700">•</span> 
+                            <span><strong>振幅 A</strong>：質點偏離平衡位置的最大位移。</span>
+                        </div>
+                        <div class="flex gap-x-2">
+                            <span class="font-semibold text-blue-700">•</span> 
+                            <span><strong>頻率 f</strong>：每秒振動次數（Hz）；<strong>週期 T = 1/f</strong>。</span>
+                        </div>
+                        <div class="flex gap-x-2">
+                            <span class="font-semibold text-blue-700">•</span> 
+                            <span><strong>波長 λ</strong>：相鄰兩個波峰（或波谷）之間的距離。</span>
+                        </div>
+                        <div class="flex gap-x-2 md:col-span-2">
+                            <span class="font-semibold text-blue-700">•</span> 
+                            <span><strong>波速 v = f × λ</strong>（波速由頻率和波長決定，與振幅無關）。</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+    </div>
+    
+    <footer class="text-center py-6 text-xs text-slate-400">
+        專為 HKDSE 物理科設計 • 適合 Google Sites 直接嵌入使用 • 所有用語符合《中學物理科常用英漢辭彙》
+    </footer>
+
+    <script>
+        // Canvas and context
+        let canvas, ctx;
+        let isPlaying = false;
+        let t = 0; // simulation time in seconds
+        let animationFrameId = null;
+        let lastTimestamp = null;
+        
+        // 波形邊界
+        let currentWaveStartX = 50;
+        let currentWaveEndX = 670;
+        
+        // Wave parameters
+        let amplitude = 3;          // 預設 3 cm
+        let frequency = 1.0;
+        let period = 1.0;
+        let waveSpeed = 2.0;        // m/s
+        let wavelength = 200;       // px
+        const pxPerMeter = 100;     
+        const amplitudeVisualScale = 20;   
+
+        // New features
+        let waveDirection = 'right';      
+        let showDriver = false;           
+        let snapshotOffset = 0;           
+        let playbackSpeed = 1;            
+
+        // 顯示設定旗標
+        let showVibrationRange = true;    
+        let showDirectionArrows = true;   
+        let showWavelengthLabel = false;   // 修改：預設改為關閉 (false)
+        let showPropagationArrow = true;  
+        
+        // 自訂粒子功能
+        let enableCustomParticles = false;
+        let customParticles = [];  
+
+        // 新增變數：自訂起點位移與移動方向引起的初始相位
+        let startPosVal = 1;       // 預設 1 (波峰)
+        let startDirVal = 'down';   // 預設 'down' (向下)
+        let initialPhase = 0;      // 依據上述兩者計算出的總初始相位
+        
+        function initCanvas() {
+            canvas = document.getElementById('waveCanvas');
+            ctx = canvas.getContext('2d', { alpha: true });
+            
+            canvas.style.width = '100%';
+            canvas.style.maxWidth = '720px';
+            canvas.style.height = 'auto';
+            
+            canvas.addEventListener('click', function(e) {
+                if (!enableCustomParticles) return;
+                
+                const rect = canvas.getBoundingClientRect();
+                let clickX = e.clientX - rect.left;
+                const scaleX = canvas.width / rect.width;
+                clickX = clickX * scaleX;
+                
+                if (clickX >= currentWaveStartX && clickX <= currentWaveEndX) {
+                    customParticles.push(clickX);
+                    if (!isPlaying) drawWave();
+                }
+            });
+        }
+        
+        function updateAllDisplays() {
+            document.getElementById('ampVal').textContent = amplitude;
+            document.getElementById('freqVal').textContent = frequency.toFixed(2);
+            document.getElementById('periodVal').textContent = period.toFixed(2);
+            document.getElementById('lambdaVal').textContent = wavelength;
+            
+            document.getElementById('ampDisplay').textContent = amplitude + ' cm';
+            document.getElementById('freqDisplay').textContent = frequency.toFixed(2) + ' Hz';
+            document.getElementById('periodDisplay').textContent = period.toFixed(2) + ' s';
+            
+            const waveSpeedPxPerS = frequency * wavelength;
+            const waveSpeedMS = waveSpeedPxPerS / 100;   
+            document.getElementById('waveSpeedVal').textContent = waveSpeedMS.toFixed(2) + ' m s⁻¹';
+            document.getElementById('speedDisplay').textContent = waveSpeedMS.toFixed(2) + ' m s⁻¹';
+            
+            document.getElementById('timeDisplay').textContent = `t = ${t.toFixed(2)} s`;
+            
+            const snapEl = document.getElementById('snapshotVal');
+            if (snapEl) snapEl.textContent = snapshotOffset.toFixed(3) + ' T';
+        }
+
+        // 新增功能：計算初始相位並更新 UI 顯示文字
+        function updateInitialPhase() {
+            const posSlider = document.getElementById('startPosSlider');
+            if (posSlider) startPosVal = parseFloat(posSlider.value);
+            
+            const label = document.getElementById('startPosValLabel');
+            if (label) {
+                if (startPosVal === 1) label.textContent = "波峰";
+                else if (startPosVal === -1) label.textContent = "波谷";
+                else if (startPosVal === 0) label.textContent = "平衡位置";
+                else if (startPosVal > 0) label.textContent = "+" + startPosVal.toFixed(1) + " A";
+                else label.textContent = startPosVal.toFixed(1) + " A";
+            }
+            
+            // 獲取按鈕元素
+            const upBtn = document.getElementById('startDirUpBtn');
+            const downBtn = document.getElementById('startDirDownBtn');
+            
+            // 當設定為波峰 (1) 或波谷 (-1) 時的自動切換與停用邏輯
+            if (startPosVal === 1) {
+                startDirVal = 'down'; // 自動更改為向下移動
+                if (upBtn) upBtn.disabled = true;
+                if (downBtn) downBtn.disabled = false;
+            } else if (startPosVal === -1) {
+                startDirVal = 'up'; // 自動更改為向上移動
+                if (upBtn) upBtn.disabled = false;
+                if (downBtn) downBtn.disabled = true;
+            } else {
+                if (upBtn) upBtn.disabled = false;
+                if (downBtn) downBtn.disabled = false;
+            }
+            
+            // 使用反餘弦函數計算基礎相角
+            let clampedPos = Math.max(-1, Math.min(1, startPosVal));
+            let theta = Math.acos(clampedPos);
+            
+            // 根據運動方向決定相角正負符號
+            if (startDirVal === 'up') {
+                initialPhase = theta;
+            } else {
+                initialPhase = -theta;
+            }
+            
+            // 更新方向按鈕樣式與灰色停用外觀
+            if (upBtn && downBtn) {
+                if (upBtn.disabled) {
+                    upBtn.className = "flex-1 py-1.5 text-xs font-semibold rounded-xl border transition-all bg-slate-200 text-slate-400 border-slate-300 cursor-not-allowed opacity-50";
+                } else if (startDirVal === 'up') {
+                    upBtn.className = "flex-1 py-1.5 text-xs font-semibold rounded-xl border transition-all bg-indigo-600 text-white border-indigo-600";
+                } else {
+                    upBtn.className = "flex-1 py-1.5 text-xs font-semibold rounded-xl border transition-all bg-slate-100 text-slate-700 border-slate-300";
+                }
+
+                if (downBtn.disabled) {
+                    downBtn.className = "flex-1 py-1.5 text-xs font-semibold rounded-xl border transition-all bg-slate-200 text-slate-400 border-slate-300 cursor-not-allowed opacity-50";
+                } else if (startDirVal === 'down') {
+                    downBtn.className = "flex-1 py-1.5 text-xs font-semibold rounded-xl border transition-all bg-indigo-600 text-white border-indigo-600";
+                } else {
+                    downBtn.className = "flex-1 py-1.5 text-xs font-semibold rounded-xl border transition-all bg-slate-100 text-slate-700 border-slate-300";
+                }
+            }
+            
+            if (!isPlaying) drawWave();
+        }
+
+        function setStartDirection(dir) {
+            // 如果按鈕當前處於停用狀態則不進行操作
+            const upBtn = document.getElementById('startDirUpBtn');
+            const downBtn = document.getElementById('startDirDownBtn');
+            if (dir === 'up' && upBtn && upBtn.disabled) return;
+            if (dir === 'down' && downBtn && downBtn.disabled) return;
+
+            startDirVal = dir;
+            updateInitialPhase();
+        }
+
+        function setWaveDirection(dir) {
+            waveDirection = dir;
+            const rightBtn = document.getElementById('dirRightBtn');
+            const leftBtn = document.getElementById('dirLeftBtn');
+            
+            if (dir === 'right') {
+                rightBtn.classList.add('bg-emerald-600', 'text-white');
+                rightBtn.classList.remove('bg-slate-300', 'text-slate-700');
+                leftBtn.classList.add('bg-slate-300', 'text-slate-700');
+                leftBtn.classList.remove('bg-emerald-600', 'text-white');
+            } else {
+                leftBtn.classList.add('bg-emerald-600', 'text-white');
+                leftBtn.classList.remove('bg-slate-300', 'text-slate-700');
+                rightBtn.classList.add('bg-slate-300', 'text-slate-700');
+                rightBtn.classList.remove('bg-emerald-600', 'text-white');
+            }
+            if (!isPlaying) drawWave();
+        }
+
+        function toggleDriverMode() {
+            showDriver = document.getElementById('driverToggle').checked;
+            const forwardSection = document.getElementById('forwardMoveSection');
+            if (forwardSection) {
+                forwardSection.classList.toggle('hidden', !showDriver);
+            }
+            if (!isPlaying) drawWave();
+        }
+
+        function forwardMovePeriods() {
+            const input = document.getElementById('forwardPeriods');
+            if (!input) return;
+            const periods = parseFloat(input.value);
+            if (isNaN(periods) || periods <= 0) return;
+            t += periods * period;   
+            if (!isPlaying) drawWave();
+        }
+
+        function setPlaybackSpeed(speed) {
+            playbackSpeed = speed;
+        }
+
+        function setupSnapshotSlider() {
+            const slider = document.getElementById('snapshotSlider');
+            if (!slider) return;
+            slider.oninput = () => {
+                snapshotOffset = parseFloat(slider.value);
+                updateAllDisplays();
+                if (!isPlaying) drawWave();
+            };
+        }
+
+        function updateDisplayFlags() {
+            showVibrationRange   = document.getElementById('showRangeChk').checked;
+            showDirectionArrows  = document.getElementById('showArrowChk').checked;
+            showWavelengthLabel  = document.getElementById('showLambdaChk').checked;
+            showPropagationArrow = document.getElementById('showPropChk').checked;
+            if (!isPlaying) drawWave();
+        }
+
+        function toggleCustomParticles() {
+            enableCustomParticles = document.getElementById('customParticleToggle').checked;
+            if (!isPlaying) drawWave();
+        }
+
+        function clearCustomParticles() {
+            customParticles = [];
+            if (!isPlaying) drawWave();
+        }
+
+        function toggleAllMarkers() {
+            const allChecked = showVibrationRange && showDirectionArrows && showWavelengthLabel && showPropagationArrow;
+            const newState = !allChecked;
+            
+            showVibrationRange = newState;
+            showDirectionArrows = newState;
+            showWavelengthLabel = newState;
+            showPropagationArrow = newState;
+            
+            document.getElementById('showRangeChk').checked = newState;
+            document.getElementById('showArrowChk').checked = newState;
+            document.getElementById('showLambdaChk').checked = newState;
+            document.getElementById('showPropChk').checked = newState;
+            
+            if (!isPlaying) drawWave();
+        }
+        
+        function syncFrequencyAndPeriod(changed) {
+            if (changed === 'freq') {
+                period = 1 / frequency;
+                document.getElementById('periodSlider').value = period;
+                document.getElementById('periodVal').textContent = period.toFixed(2);
+            } else if (changed === 'period') {
+                frequency = 1 / period;
+                document.getElementById('freqSlider').value = frequency;
+                document.getElementById('freqVal').textContent = frequency.toFixed(2);
+            }
+        }
+        
+        function setupControls() {
+            const ampSlider = document.getElementById('ampSlider');
+            ampSlider.value = amplitude;
+            ampSlider.oninput = () => {
+                amplitude = parseFloat(ampSlider.value);
+                updateAllDisplays();
+                if (!isPlaying) drawWave();
+            };
+            
+            const freqSlider = document.getElementById('freqSlider');
+            freqSlider.value = frequency;
+            freqSlider.oninput = () => {
+                frequency = parseFloat(freqSlider.value);
+                syncFrequencyAndPeriod('freq');
+                updateAllDisplays();
+                if (!isPlaying) drawWave();
+            };
+            
+            const periodSlider = document.getElementById('periodSlider');
+            periodSlider.value = period;
+            periodSlider.oninput = () => {
+                period = parseFloat(periodSlider.value);
+                syncFrequencyAndPeriod('period');
+                updateAllDisplays();
+                if (!isPlaying) drawWave();
+            };
+            
+            const lambdaSlider = document.getElementById('lambdaSlider');
+            lambdaSlider.value = wavelength;
+            lambdaSlider.oninput = () => {
+                wavelength = parseFloat(lambdaSlider.value);
+                updateAllDisplays();
+                if (!isPlaying) drawWave();
+            };
+
+            // 註冊起點位移滑桿事件
+            const startPosSlider = document.getElementById('startPosSlider');
+            if (startPosSlider) {
+                startPosSlider.value = startPosVal;
+                startPosSlider.oninput = () => {
+                    updateInitialPhase();
+                };
+            }
+            
+            updateAllDisplays();
+        }
+        
+        function drawWave() {
+            if (!ctx || !canvas) return;
+            
+            const w = canvas.width;
+            const h = canvas.height;
+            const centerY = 200;   
+            
+            const leftMargin = 40;
+            const rightMargin = 40;
+            const waveStartX = leftMargin;
+            const waveEndX = w - rightMargin;
+            
+            currentWaveStartX = waveStartX;
+            currentWaveEndX = waveEndX;
+            
+            const driverX = (waveDirection === 'right') ? waveStartX : (waveEndX);
+            const waveSpeedPx = frequency * wavelength; 
+            
+            ctx.clearRect(0, 0, w, h);
+            
+            const usableWidth = waveEndX - waveStartX;
+            const gridSizeX = Math.floor(usableWidth / 70);  
+            const gridSizeY = 20;    
+            
+            // Background grid
+            ctx.strokeStyle = '#e2e8f0';
+            ctx.lineWidth = 1;
+            for (let x = leftMargin; x < waveEndX; x += gridSizeX) {
+                ctx.beginPath();
+                ctx.moveTo(x, 20);
+                ctx.lineTo(x, h - 20);
+                ctx.stroke();
+            }
+            for (let y = 0; y <= h; y += gridSizeY) {
+                ctx.beginPath();
+                ctx.moveTo(leftMargin, y);
+                ctx.lineTo(waveEndX, y);
+                ctx.stroke();
+            }
+            
+            // Equilibrium line
+            ctx.strokeStyle = '#1e40af';
+            ctx.lineWidth = 3.5;
+            ctx.setLineDash([10, 4]);
+            ctx.beginPath();
+            ctx.moveTo(waveStartX, centerY);
+            ctx.lineTo(waveEndX, centerY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            ctx.fillStyle = '#1e40af';
+            ctx.font = 'bold 16px Noto Sans TC, sans-serif';
+            ctx.fillText('0', waveStartX - 16, centerY + 18);
+            ctx.font = '10px Noto Sans TC, sans-serif';
+            ctx.fillStyle = '#475569';
+            ctx.fillText('起點', waveStartX - 12, centerY + 32);
+            
+            ctx.fillStyle = '#475569';
+            ctx.font = '12px Noto Sans TC, sans-serif';
+            ctx.fillText('平衡位置', waveEndX - 70, centerY + 18);
+            
+            // === 核心波動參數與修正後的通用波動方程 ===
+            const k = (2 * Math.PI) / wavelength;
+            const omega = (2 * Math.PI) * frequency;
+            const effectiveAmp = amplitude * amplitudeVisualScale;
+            
+            // === 1. 快照波形 ===
+            if (snapshotOffset > 0) {
+                const timeOffset = snapshotOffset * period;
+                ctx.strokeStyle = '#a855f7';
+                ctx.lineWidth = 2.2;
+                ctx.setLineDash([6, 4]);
+                
+                ctx.beginPath();
+                for (let x = waveStartX; x <= waveEndX; x += 2) {
+                    let y;
+                    const dist = Math.abs(x - driverX);
+                    const tEff = t + timeOffset;
+                    
+                    if (showDriver) {
+                        const travelTime = dist / waveSpeedPx;
+                        if (tEff >= travelTime) {
+                            let phase = k * dist - omega * tEff + initialPhase;
+                            y = effectiveAmp * Math.cos(phase);
+                        } else {
+                            y = 0;
+                        }
+                    } else {
+                        let phase = k * dist - omega * tEff + initialPhase;
+                        y = effectiveAmp * Math.cos(phase);
+                    }
+                    const canvasY = centerY - y;
+                    if (x === waveStartX) ctx.moveTo(x, canvasY);
+                    else ctx.lineTo(x, canvasY);
+                }
+                ctx.stroke();
+                ctx.setLineDash([]);
+                
+                ctx.fillStyle = '#7e22ce';
+                ctx.font = 'bold 11px Noto Sans TC, sans-serif';
+                ctx.fillText(`t + ${snapshotOffset.toFixed(2)}T (虛線)`, waveEndX - 145, 28);
+            }
+            
+            // === 2. 實時橫波 ===
+            ctx.strokeStyle = '#4f46e5';
+            ctx.lineWidth = 3.5;
+            ctx.shadowColor = 'rgba(79, 70, 229, 0.35)';
+            ctx.shadowBlur = 8;
+            ctx.shadowOffsetY = 2;
+            
+            ctx.beginPath();
+            for (let x = waveStartX; x <= waveEndX; x += 1.5) {
+                let y;
+                const dist = Math.abs(x - driverX);
+                
+                if (showDriver) {
+                    const travelTime = dist / waveSpeedPx;
+                    if (t >= travelTime) {
+                        let phase = k * dist - omega * t + initialPhase;
+                        y = effectiveAmp * Math.cos(phase);
+                    } else {
+                        y = 0;  
+                    }
+                } else {
+                    let phase = k * dist - omega * t + initialPhase;
+                    y = effectiveAmp * Math.cos(phase);
+                }
+                
+                const canvasY = centerY - y;
+                if (x === waveStartX) ctx.moveTo(x, canvasY);
+                else ctx.lineTo(x, canvasY);
+            }
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+            ctx.shadowOffsetY = 0;
+            
+            // 波長標示
+            if (showWavelengthLabel) {
+                const startX = 80;
+                const endX = startX + wavelength;
+                if (endX < w - 50) {
+                    ctx.strokeStyle = '#10b981';
+                    ctx.lineWidth = 2.5;
+                    const labelY = 38;
+                    ctx.beginPath();
+                    ctx.moveTo(startX, labelY);
+                    ctx.lineTo(endX, labelY);
+                    ctx.stroke();
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(startX, labelY - 6); ctx.lineTo(startX, labelY + 6);
+                    ctx.moveTo(endX, labelY - 6); ctx.lineTo(endX, labelY + 6);
+                    ctx.stroke();
+                    
+                    ctx.fillStyle = '#059669';
+                    ctx.font = 'bold 13px Noto Sans TC, sans-serif';
+                    ctx.fillText('波長 λ', startX + wavelength / 2 - 28, labelY - 12);
+                }
+            }
+            
+            // 振幅 A
+            {
+                const ampX = waveStartX + 25;
+                ctx.strokeStyle = '#ef4444';
+                ctx.fillStyle = '#ef4444';
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.moveTo(ampX, centerY);
+                ctx.lineTo(ampX, centerY - effectiveAmp);
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.moveTo(ampX - 7, centerY - effectiveAmp); ctx.lineTo(ampX + 7, centerY - effectiveAmp);
+                ctx.moveTo(ampX - 7, centerY); ctx.lineTo(ampX + 7, centerY);
+                ctx.stroke();
+                
+                ctx.font = 'bold 14px Noto Sans TC, sans-serif';
+                ctx.fillText('A', ampX + 12, centerY - effectiveAmp / 2 + 4);
+            }
+            
+            // === 3. 自訂粒子與速度方向箭頭 ===
+            if (enableCustomParticles && customParticles.length > 0) {
+                const particleRadius = 7;
+                for (let i = 0; i < customParticles.length; i++) {
+                    const px = customParticles[i];
+                    let yDisp;
+                    let velocitySign; 
+                    
+                    const dist = Math.abs(px - driverX);
+                    if (showDriver) {
+                        const travelTime = dist / waveSpeedPx;
+                        if (t >= travelTime) {
+                            let phase = k * dist - omega * t + initialPhase;
+                            yDisp = effectiveAmp * Math.cos(phase);
+                            velocitySign = Math.sin(phase);
+                        } else {
+                            yDisp = 0;
+                            velocitySign = 0;
+                        }
+                    } else {
+                        let phase = k * dist - omega * t + initialPhase;
+                        yDisp = effectiveAmp * Math.cos(phase);
+                        velocitySign = Math.sin(phase);
+                    }
+                    const py = centerY - yDisp;
+                    
+                    if (showVibrationRange) {
+                        ctx.strokeStyle = '#94a3b8';
+                        ctx.lineWidth = 1.8;
+                        ctx.setLineDash([5, 4]);
+                        ctx.beginPath();
+                        ctx.moveTo(px, centerY - effectiveAmp);
+                        ctx.lineTo(px, centerY + effectiveAmp);
+                        ctx.stroke();
+                        ctx.setLineDash([]);
+                    }
+                    
+                    ctx.fillStyle = (velocitySign > 0) ? '#15803d' : '#ef4444';
+                    ctx.strokeStyle = '#78350f';
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.arc(px, py, particleRadius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                    
+                    if (showDirectionArrows && velocitySign !== 0) {
+                        const arrowSize = 9;
+                        const arrowX = px + 18;
+                        ctx.fillStyle = (velocitySign > 0) ? '#15803d' : '#b91c1c';
+                        
+                        ctx.save();
+                        ctx.translate(arrowX, py);
+                        ctx.beginPath();
+                        if (velocitySign > 0) { // 向上運動
+                            ctx.moveTo(0, -arrowSize);
+                            ctx.lineTo(-5, 2);
+                            ctx.lineTo(5, 2);
+                        } else { // 向下運動
+                            ctx.moveTo(0, arrowSize);
+                            ctx.lineTo(-5, -2);
+                            ctx.lineTo(5, -2);
+                        }
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.restore();
+                    }
+                }
+            }
+
+            // === 4. 震動源模式 ===
+            if (showDriver) {
+                let driverPhase = 0 - omega * t + initialPhase;
+                const driverY = centerY - effectiveAmp * Math.cos(driverPhase);
+                
+                ctx.strokeStyle = '#ea580c';
+                ctx.fillStyle = '#fed7aa';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(driverX, driverY, 14, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                
+                ctx.fillStyle = '#ea580c';
+                ctx.beginPath();
+                ctx.arc(driverX, driverY, 8, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.strokeStyle = '#f97316';
+                ctx.lineWidth = 2.5;
+                ctx.setLineDash([3, 3]);
+                ctx.beginPath();
+                if (waveDirection === 'right') {
+                    ctx.moveTo(driverX + 16, driverY); ctx.lineTo(driverX + 55, driverY);
+                } else {
+                    ctx.moveTo(driverX - 16, driverY); ctx.lineTo(driverX - 55, driverY);
+                }
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+            
+            document.getElementById('timeDisplay').textContent = `t = ${t.toFixed(2)} s`;
+        }
+        
+        function animationLoop(timestamp) {
+            if (!lastTimestamp) lastTimestamp = timestamp;
+            const deltaTime = (timestamp - lastTimestamp) / 1000; 
+            lastTimestamp = timestamp;
+            
+            if (isPlaying) {
+                t += deltaTime * playbackSpeed;
+                document.getElementById('timeDisplay').textContent = `t = ${t.toFixed(2)} s`;
+            }
+            drawWave();
+            animationFrameId = requestAnimationFrame(animationLoop);
+        }
+        
+        function togglePlay() {
+            isPlaying = !isPlaying;
+            const playBtn = document.getElementById('playBtn');
+            const playIcon = document.getElementById('playIcon');
+            const playText = document.getElementById('playText');
+            
+            if (isPlaying) {
+                playBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                playBtn.classList.add('bg-emerald-600', 'hover:bg-emerald-700');
+                playIcon.classList.remove('fa-play');
+                playIcon.classList.add('fa-pause');
+                playText.textContent = '暫停模擬';
+                
+                if (!animationFrameId) {
+                    lastTimestamp = null;
+                    animationFrameId = requestAnimationFrame(animationLoop);
+                }
+            } else {
+                playBtn.classList.remove('bg-emerald-600', 'hover:bg-emerald-700');
+                playBtn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+                playIcon.classList.remove('fa-pause');
+                playIcon.classList.add('fa-play');
+                playText.textContent = '繼續播放';
+            }
+        }
+        
+        function resetTime() {
+            t = 0;
+            document.getElementById('timeDisplay').textContent = `t = ${t.toFixed(2)} s`;
+            drawWave();
+        }
+        
+        function resetAll() {
+            amplitude = 3;          
+            frequency = 1.0;
+            period = 1.0;
+            waveSpeed = 2.0;        
+            t = 0;
+            waveDirection = 'right';
+            showDriver = false;
+            snapshotOffset = 0;
+            playbackSpeed = 1;
+            customParticles = [];
+            enableCustomParticles = false;
+
+            // 新增功能重置
+            startPosVal = 1;
+            startDirVal = 'down';
+            document.getElementById('startPosSlider').value = 1;
+            updateInitialPhase();
+            
+            document.getElementById('ampSlider').value = amplitude;
+            document.getElementById('freqSlider').value = frequency;
+            document.getElementById('periodSlider').value = period;
+            document.getElementById('snapshotSlider').value = 0;
+            document.getElementById('driverToggle').checked = false;
+            document.getElementById('customParticleToggle').checked = false;
+
+            // 預設關閉波長標示
+            showWavelengthLabel = false;
+            document.getElementById('showLambdaChk').checked = false;
+            
+            isPlaying = false;
+            const playBtn = document.getElementById('playBtn');
+            const playIcon = document.getElementById('playIcon');
+            const playText = document.getElementById('playText');
+            playBtn.classList.remove('bg-emerald-600', 'hover:bg-emerald-700');
+            playBtn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+            playIcon.classList.remove('fa-pause'); playIcon.classList.add('fa-play');
+            playText.textContent = '開始播放';
+            
+            updateAllDisplays();
+            drawWave();
+        }
+        
+        function initializeSimulator() {
+            initCanvas();
+            setupControls();
+            setupSnapshotSlider();
+            updateInitialPhase(); // 初始化計算初始相位
+            updateAllDisplays();
+            
+            const rightBtn = document.getElementById('dirRightBtn');
+            if (rightBtn) {
+                rightBtn.classList.add('bg-emerald-600', 'text-white');
+                rightBtn.classList.remove('bg-slate-300', 'text-slate-700');
+            }
+            
+            drawWave();
+            
+            lastTimestamp = null;
+            animationFrameId = requestAnimationFrame(animationLoop);
+            
+            document.addEventListener('keydown', function(e) {
+                if (e.key === ' ' || e.key === 'Spacebar') {
+                    e.preventDefault();
+                    togglePlay();
+                }
+                if (e.key.toLowerCase() === 'r') {
+                    resetTime();
+                }
+            });
+        }
+        
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+            initializeSimulator();
+        } else {
+            window.addEventListener('DOMContentLoaded', initializeSimulator);
+        }
+    </script>
+</body>
+</html>
