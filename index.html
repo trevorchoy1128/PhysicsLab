@@ -3,108 +3,171 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>物理實驗室 PhysicsLab - 線上目錄</title>
+    <title>PhysicsLab - 物理模擬實驗室</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans min-h-screen flex flex-col">
+
+    <header class="bg-gradient-to-r from-blue-600 to-indigo-700 text-white shadow-md">
+        <div class="max-w-6xl mx-auto px-4 py-8 text-center sm:text-left sm:flex sm:justify-between sm:items-center">
+            <div>
+                <h1 class="text-3xl font-bold tracking-wide flex items-center justify-center sm:justify-start gap-3">
+                    <i class="fa-solid fa-atom animate-spin-slow"></i> PhysicsLab 物理模擬實驗室
+                </h1>
+                <p class="text-blue-100 mt-2 text-sm sm:text-base">互動式物理現象模擬與可視化工具</p>
+            </div>
+            <div class="mt-4 sm:mt-0">
+                <a href="https://github.com/trevorchoy1128/PhysicsLab" target="_blank" class="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-full transition-all text-sm font-medium border border-white/20">
+                    <i class="fa-brands fa-github text-lg"></i> GitHub 專案倉庫
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-6xl w-full mx-auto px-4 py-10">
+        
+        <section class="mb-12">
+            <div class="border-b-2 border-blue-500 pb-2 mb-6 flex items-center gap-2">
+                <span class="bg-blue-600 text-white text-xs font-bold px-2.5 py-1 rounded-sm uppercase tracking-wider">Book 3</span>
+                <h2 class="text-2xl font-bold text-gray-900">波動與光學領域</h2>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="bg-white rounded-xl shadow-xs border border-gray-100 overflow-hidden">
+                    <div class="bg-gray-100 px-4 py-3 border-b border-gray-200 font-semibold text-gray-700 flex items-center gap-2">
+                        <i class="fa-solid fa-square-rss text-blue-500"></i> Chapter 1: 光的反射
+                    </div>
+                    <div class="p-4 space-y-3">
+                        <a href="book3/chapter1/basic-reflection-2D-sim/sim.html" class="flex justify-between items-center p-2.5 hover:bg-blue-50 rounded-lg group transition-colors">
+                            <span class="group-hover:text-blue-600 font-medium">基礎反射模擬</span>
+                            <span class="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2 py-0.5 rounded">2D</span>
+                        </a>
+                        <a href="book3/chapter1/plane-mirror-reflection-2D-sim/sim.html" class="flex justify-between items-center p-2.5 hover:bg-blue-50 rounded-lg group transition-colors">
+                            <span class="group-hover:text-blue-600 font-medium">平面鏡反射模擬</span>
+                            <span class="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2 py-0.5 rounded">2D</span>
+                        </a>
+                        <a href="book3/chapter1/diffuse-reflection-3D-sim/sim.html" class="flex justify-between items-center p-2.5 hover:bg-blue-50 rounded-lg group transition-colors">
+                            <span class="group-hover:text-blue-600 font-medium">漫反射模擬</span>
+                            <span class="bg-purple-100 text-purple-800 text-xs font-semibold px-2 py-0.5 rounded">3D</span>
+                        </a>
+                        <a href="book3/chapter1/periscope-3D-sim/sim.html" class="flex justify-between items-center p-2.5 hover:bg-blue-50 rounded-lg group transition-colors">
+                            <span class="group-hover:text-blue-600 font-medium">潛望鏡模擬</span>
+                            <span class="bg-purple-100 text-purple-800 text-xs font-semibold px-2 py-0.5 rounded">3D</span>
+                        </a>
+                        <a href="book3/chapter1/plane-mirror-reflection-3D-sim/sim.html" class="flex justify-between items-center p-2.5 hover:bg-blue-50 rounded-lg group transition-colors">
+                            <span class="group-hover:text-blue-600 font-medium">平面鏡反射空間模擬</span>
+                            <span class="bg-purple-100 text-purple-800 text-xs font-semibold px-2 py-0.5 rounded">3D</span>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-xs border border-gray-100 overflow-hidden">
+                    <div class="bg-gray-100 px-4 py-3 border-b border-gray-200 font-semibold text-gray-700 flex items-center gap-2">
+                        <i class="fa-solid fa-glass-water text-blue-500"></i> Chapter 2: 光的折射
+                    </div>
+                    <div class="p-4 space-y-3">
+                        <a href="book3/chapter2/basic-refraction-2D-sim/sim.html" class="flex justify-between items-center p-2.5 hover:bg-blue-50 rounded-lg group transition-colors">
+                            <span class="group-hover:text-blue-600 font-medium">基礎折射模擬</span>
+                            <span class="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2 py-0.5 rounded">2D</span>
+                        </a>
+                        <a href="book3/chapter2/glassblock-prism-2D-sim/sim.html" class="flex justify-between items-center p-2.5 hover:bg-blue-50 rounded-lg group transition-colors">
+                            <span class="group-hover:text-blue-600 font-medium">玻璃磚與三稜鏡</span>
+                            <span class="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2 py-0.5 rounded">2D</span>
+                        </a>
+                        <a href="book3/chapter2/manylayers-2D-sim/sim.html" class="flex justify-between items-center p-2.5 hover:bg-blue-50 rounded-lg group transition-colors">
+                            <span class="group-hover:text-blue-600 font-medium">多層介質折射</span>
+                            <span class="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2 py-0.5 rounded">2D</span>
+                        </a>
+                        <a href="book3/chapter2/optical-fibre-2D-sim/sim.html" class="flex justify-between items-center p-2.5 hover:bg-blue-50 rounded-lg group transition-colors">
+                            <span class="group-hover:text-blue-600 font-medium">光纖全反射</span>
+                            <span class="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2 py-0.5 rounded">2D</span>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-xs border border-gray-100 overflow-hidden">
+                    <div class="bg-gray-100 px-4 py-3 border-b border-gray-200 font-semibold text-gray-700 flex items-center gap-2">
+                        <i class="fa-solid fa-eye text-blue-500"></i> Chapter 3: 透鏡成像
+                    </div>
+                    <div class="p-4 space-y-3">
+                        <a href="book3/chapter3/lens-2D-sim/sim.html" class="flex justify-between items-center p-2.5 hover:bg-blue-50 rounded-lg group transition-colors">
+                            <span class="group-hover:text-blue-600 font-medium">透鏡 2D 光路模擬</span>
+                            <span class="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2 py-0.5 rounded">2D</span>
+                        </a>
+                        <a href="book3/chapter3/lens-3D-sim/sim.html" class="flex justify-between items-center p-2.5 hover:bg-blue-50 rounded-lg group transition-colors">
+                            <span class="group-hover:text-blue-600 font-medium">透鏡 3D 成像模擬</span>
+                            <span class="bg-purple-100 text-purple-800 text-xs font-semibold px-2 py-0.5 rounded">3D</span>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-xs border border-gray-100 overflow-hidden">
+                    <div class="bg-gray-100 px-4 py-3 border-b border-gray-200 font-semibold text-gray-700 flex items-center gap-2">
+                        <i class="fa-solid fa-chart-line text-blue-500"></i> Chapter 4: 波動圖像
+                    </div>
+                    <div class="p-4 space-y-3">
+                        <a href="book3/chapter4/sd-st-graph-2D-sim/sim.html" class="flex justify-between items-center p-2.5 hover:bg-blue-50 rounded-lg group transition-colors">
+                            <span class="group-hover:text-blue-600 font-medium">s-d / s-t 波動圖像</span>
+                            <span class="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2 py-0.5 rounded">2D</span>
+                        </a>
+                        <a href="book3/chapter4/transverse-wave-2D-sim/sim.html" class="flex justify-between items-center p-2.5 hover:bg-blue-50 rounded-lg group transition-colors">
+                            <span class="group-hover:text-blue-600 font-medium">橫波傳播模擬</span>
+                            <span class="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2 py-0.5 rounded">2D</span>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-xs border border-gray-100 overflow-hidden">
+                    <div class="bg-gray-100 px-4 py-3 border-b border-gray-200 font-semibold text-gray-700 flex items-center gap-2">
+                        <i class="fa-solid fa-water text-blue-500"></i> Chapter 5: 水波槽
+                    </div>
+                    <div class="p-4 space-y-3">
+                        <a href="book3/chapter5/watertank-3D-sim/sim.html" class="flex justify-between items-center p-2.5 hover:bg-blue-50 rounded-lg group transition-colors">
+                            <span class="group-hover:text-blue-600 font-medium">水箱波紋模擬</span>
+                            <span class="bg-purple-100 text-purple-800 text-xs font-semibold px-2 py-0.5 rounded">3D</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="mb-12">
+            <div class="border-b-2 border-amber-500 pb-2 mb-6 flex items-center gap-2">
+                <span class="bg-amber-500 text-white text-xs font-bold px-2.5 py-1 rounded-sm uppercase tracking-wider">Book 4</span>
+                <h2 class="text-2xl font-bold text-gray-900">電磁學領域</h2>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="bg-white rounded-xl shadow-xs border border-gray-100 overflow-hidden">
+                    <div class="bg-gray-100 px-4 py-3 border-b border-gray-200 font-semibold text-gray-700 flex items-center gap-2">
+                        <i class="fa-solid fa-bolt text-amber-500"></i> Chapter 6: 電磁感應與馬達
+                    </div>
+                    <div class="p-4 space-y-3">
+                        <a href="book4/Chapter6/DC-motor-3D-sim/sim.html" class="flex justify-between items-center p-2.5 hover:bg-amber-50 rounded-lg group transition-colors">
+                            <span class="group-hover:text-amber-600 font-medium">直流馬達模擬 (DC Motor)</span>
+                            <span class="bg-purple-100 text-purple-800 text-xs font-semibold px-2 py-0.5 rounded">3D</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-gray-800 text-gray-400 py-6 text-center text-sm border-t border-gray-700">
+        <p>© 2026 trevorchoy1128. Hosted on GitHub Pages.</p>
+        <p class="text-xs text-gray-500 mt-1">透過 HTML5、CSS 與 JavaScript 進行物理即時運算</p>
+    </footer>
+
     <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            line-height: 1.6;
-            margin: 40px auto;
-            max-width: 650px;
-            padding: 0 20px;
-            background-color: #f4f7f6;
-            color: #333;
+        .animate-spin-slow {
+            animation: spin 8s linear infinite;
         }
-        .container {
-            background: #ffffff;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-        }
-        h1 {
-            color: #1a1a1a;
-            border-bottom: 3px solid #007bff;
-            padding-bottom: 12px;
-            text-align: center;
-            margin-top: 0;
-        }
-        .user-info {
-            text-align: center;
-            font-size: 0.9em;
-            color: #666;
-            margin-bottom: 25px;
-            background: #e9ecef;
-            padding: 8px;
-            border-radius: 6px;
-        }
-        ul {
-            list-style-type: none;
-            padding: 0;
-        }
-        li {
-            margin-bottom: 18px;
-            padding: 15px 20px;
-            background: #fff;
-            border-radius: 8px;
-            border: 1px solid #e1e4e8;
-            border-left: 6px solid #007bff;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        li:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 10px rgba(0,0,0,0.08);
-        }
-        .chapter {
-            font-size: 0.85em;
-            font-weight: bold;
-            color: #6c757d;
-            text-transform: uppercase;
-            margin-bottom: 5px;
-        }
-        a {
-            color: #007bff;
-            text-decoration: none;
-            font-weight: bold;
-            font-size: 1.1em;
-            display: block;
-        }
-        a:hover {
-            color: #0056b3;
-            text-decoration: underline;
-        }
-        .url-text {
-            font-size: 0.8em;
-            color: #888;
-            word-break: break-all;
-            margin-top: 5px;
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
         }
     </style>
-</head>
-<body>
-
-    <div class="container">
-        <h1>物理實驗室 PhysicsLab</h1>
-        <div class="user-info">
-            🚀 擁有者：<strong>trevorchoy1128</strong> &nbsp;|&nbsp; 🌐 平台：GitHub Pages 線上版
-        </div>
-        
-        <ul>
-            <li>
-                <div class="chapter">第 3 冊 / 第 1 章</div>
-                <a href="https://trevorchoy1128.github.io/PhysicsLab/book3/chapter1/diffuse-reflection-3D-sim/sim.html" target="_blank">
-                    🌌 漫反射 3D 模擬 ── 進入線上網頁
-                </a>
-                <div class="url-text">https://trevorchoy1128.github.io/PhysicsLab/book3/chapter1/diffuse-reflection-3D-sim/sim.html</div>
-            </li>
-            
-            <li>
-                <div class="chapter">第 3 冊 / 第 2 章</div>
-                <a href="https://trevorchoy1128.github.io/PhysicsLab/book3/chapter2/basic-refraction-2D-sim/sim.html" target="_blank">
-                    ⚡ 基礎折射 2D 模擬 ── 進入線上網頁
-                </a>
-                <div class="url-text">https://trevorchoy1128.github.io/PhysicsLab/book3/chapter2/basic-refraction-2D-sim/sim.html</div>
-            </li>
-        </ul>
-    </div>
-
 </body>
 </html>
