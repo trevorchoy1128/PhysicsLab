@@ -1,0 +1,721 @@
+﻿<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>透鏡光線圖模擬器 V15.4 - 成像性質教材標準版</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 90vh;
+        }
+        /* 橫向大框架佈局 */
+        .main-layout {
+            display: flex;
+            flex-direction: row;
+            gap: 20px;
+            align-items: flex-start;
+            max-width: 1240px;
+            width: 100%;
+        }
+        /* 左側欄：視覺化畫布與數據回饋 */
+        .left-column {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 800px;
+        }
+        canvas {
+            background-color: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            width: 800px;
+            height: 400px;
+            display: block;
+        }
+        /* 畫布下方兩欄並排 */
+        .bottom-data-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        /* 右側欄：緊湊型控制面板 */
+        .right-column {
+            background: #fff;
+            padding: 16px;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            width: 380px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            box-sizing: border-box;
+        }
+        
+        /* 模組化卡片 */
+        .control-card {
+            border: 1px solid #f1f5f9;
+            background: #f8fafc;
+            padding: 10px 12px;
+            border-radius: 8px;
+        }
+        .card-title {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #64748b;
+            margin: 0 0 8px 0;
+            font-weight: 700;
+        }
+        .control-group { margin-bottom: 6px; }
+        .control-group:last-child { margin-bottom: 0; }
+        
+        .input-row { display: flex; align-items: center; gap: 8px; }
+        label { display: block; font-weight: 600; margin-bottom: 2px; color: #334155; font-size: 0.85rem;}
+        input[type="range"] { flex-grow: 1; accent-color: #2563eb; cursor: pointer; }
+        input[type="number"] { width: 48px; padding: 2px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.8rem; text-align: center; }
+        
+        /* 統一按鈕網格 */
+        .btn-grid-layout {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px;
+        }
+        button {
+            padding: 6px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            background-color: #fff;
+            color: #475569;
+        }
+        button:hover { background-color: #f1f5f9; }
+        
+        /* 狀態激活與解鎖樣式 */
+        button.active-blue { background-color: #2563eb; color: #fff; border-color: #2563eb; }
+        button.active-blue:hover { background-color: #1d4ed8; }
+        button.active-green { background-color: #16a34a; color: #fff; border-color: #16a34a; }
+        button.danger-btn { background-color: #ef4444; color: #fff; border-color: #ef4444; }
+
+        /* 課堂解鎖推導面板 */
+        .math-panel {
+            background: #fff;
+            padding: 8px 10px;
+            border: 1px dashed #cbd5e1;
+            border-radius: 8px;
+            min-height: 72px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
+            overflow: auto;
+        }
+        .math-panel .katex-display {
+            margin: 2px 0 !important;
+        }
+        .math-content-layout {
+            position: relative;
+            width: 100%;
+        }
+        .action-link-btn {
+            background: #2563eb; color: white; border: none; padding: 6px 12px; 
+            border-radius: 4px; font-size: 0.75rem; cursor: pointer; margin-top: 4px;
+            font-weight: bold;
+        }
+        .action-link-btn:hover { background: #1d4ed8; }
+        .inline-hide-btn {
+            position: absolute; top: -6px; right: -2px; background: #e2e8f0; 
+            border: none; padding: 2px 6px; font-size: 0.65rem; border-radius: 3px; color: #475569;
+            cursor: pointer; z-index: 10;
+        }
+        .inline-hide-btn:hover { background: #cbd5e1; }
+
+        /* 數據面板 */
+        .info-panel { 
+            background: #f0fdf4; padding: 10px; border-left: 4px solid #16a34a; 
+            border-radius: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px;
+            box-sizing: border-box; align-content: center;
+        }
+        .info-panel p { margin: 0; font-size: 0.85rem; color: #1e293b;}
+    </style>
+</head>
+<body>
+
+
+    <div class="main-layout">
+        <div class="left-column">
+            <canvas id="simCanvas"></canvas>
+            
+            <div class="bottom-data-row">
+                <div class="info-panel">
+                    <p><strong>像距 (v):</strong> <span id="vVal">--</span></p>
+                    <p><strong>放大率 (M):</strong> <span id="mVal">--</span></p>
+                    <p><strong>物高 (h):</strong> <span id="hoVal">--</span></p>
+                    <p><strong>像高 (h'):</strong> <span id="hiVal">--</span></p>
+                </div>
+                
+                <div class="math-panel" id="mathCalc"></div>
+            </div>
+        </div>
+
+        <div class="right-column">
+            <div class="control-card">
+                <p class="card-title">🛠️ 基礎參數設定</p>
+                <div class="control-group">
+                    <label>焦距 (f):</label>
+                    <div class="input-row">
+                        <input type="range" id="fSlider" min="5" max="100" value="30" step="1">
+                        <input type="number" id="fNum" min="5" max="100" value="30">
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label>物距 (u):</label>
+                    <div class="input-row">
+                        <input type="range" id="uSlider" min="5" max="100" value="60" step="1">
+                        <input type="number" id="uNum" min="5" max="100" value="60">
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label>物高 (h):</label>
+                    <div class="input-row">
+                        <input type="range" id="hSlider" min="5" max="100" value="20" step="1">
+                        <input type="number" id="hNum" min="5" max="100" value="20">
+                    </div>
+                </div>
+                <div class="control-group" style="opacity: 0.75; margin-top: 4px;">
+                    <label>🔍 畫布縮放 (Zoom):</label>
+                    <div class="input-row">
+                        <input type="range" id="zoomSlider" min="0.1" max="10.0" value="3.0" step="0.1">
+                        <input type="number" id="zoomNum" min="0.1" max="10.0" value="3.0" step="0.1">
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-card">
+                <p class="card-title">👁️ 畫面顯示控制</p>
+                <div class="btn-grid-layout">
+                    <button id="toggleLensBtn" class="active-blue">🔄 凸透鏡</button>
+                    <button id="toggleGridBtn">🌐 顯示格線</button>
+                    <button id="toggleLabelsBtn">📏 顯示標註</button>
+                    <button id="toggleImgBtn" class="active-blue">🖼️ 顯示成像</button>
+                    <button id="toggleRay1Btn" class="active-blue">🔴 平行光線</button>
+                    <button id="toggleRay2Btn" class="active-blue">🟢 穿心光線</button>
+                </div>
+            </div>
+
+            <div class="control-card">
+                <p class="card-title">🔮 進階自訂光線教學</p>
+                <div class="btn-grid-layout">
+                    <button id="addCustomRayBtn" style="grid-column: span 2;">➕ 新增自訂光線</button>
+                    <button id="toggleCustomRefractedBtn" class="active-green" style="display:none; grid-column: span 2;">▶️ 顯示自訂折射</button>
+                    <button id="clearCustomRayBtn" class="danger-btn" style="display:none; grid-column: span 2;">🗑️ 清除所有自訂光線</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const logicalWidth = 800, logicalHeight = 400;
+
+        // UI 元素
+        const toggleLensBtn = document.getElementById('toggleLensBtn');
+        const toggleGridBtn = document.getElementById('toggleGridBtn');
+        const toggleLabelsBtn = document.getElementById('toggleLabelsBtn');
+        const toggleImgBtn = document.getElementById('toggleImgBtn');
+        const toggleRay1Btn = document.getElementById('toggleRay1Btn');
+        const toggleRay2Btn = document.getElementById('toggleRay2Btn');
+        
+        const addCustomRayBtn = document.getElementById('addCustomRayBtn');
+        const clearCustomRayBtn = document.getElementById('clearCustomRayBtn');
+        const toggleCustomRefractedBtn = document.getElementById('toggleCustomRefractedBtn');
+
+        const zoomSlider = document.getElementById('zoomSlider'), zoomNum = document.getElementById('zoomNum');
+        const fSlider = document.getElementById('fSlider'), fNum = document.getElementById('fNum');
+        const uSlider = document.getElementById('uSlider'), uNum = document.getElementById('uNum');
+        const hSlider = document.getElementById('hSlider'), hNum = document.getElementById('hNum');
+        
+        const vDisplay = document.getElementById('vVal'), hiDisplay = document.getElementById('hiVal');
+        const hoDisplay = document.getElementById('hoVal'), mDisplay = document.getElementById('mVal');
+        const mathCalc = document.getElementById('mathCalc');
+
+        // 核心運作狀態
+        let isConvex = true;
+        let showGrid = false;
+        let showDistances = false;
+        let showRay1 = true;
+        let showRay2 = true;
+        let showImg = true;
+        let customRays = []; 
+        let showCustomRefracted = false;
+        let isMathUnlocked = false; 
+
+        const centerX = logicalWidth / 2, centerY = logicalHeight / 2;
+
+        // 監聽器
+        toggleLensBtn.addEventListener('click', () => {
+            isConvex = !isConvex;
+            toggleLensBtn.textContent = isConvex ? '🔄 凸透鏡' : '🔄 凹透鏡';
+            showCustomRefracted = false; updateCustomRayUI(); update();
+        });
+
+        function setupToggle(btn, stateVarTicker, activeClass = 'active-blue') {
+            btn.addEventListener('click', () => {
+                const newState = stateVarTicker();
+                if(newState) btn.classList.add(activeClass);
+                else btn.classList.remove(activeClass);
+                update();
+            });
+        }
+
+        setupToggle(toggleGridBtn, () => showGrid = !showGrid);
+        setupToggle(toggleLabelsBtn, () => showDistances = !showDistances);
+        setupToggle(toggleImgBtn, () => showImg = !showImg);
+        setupToggle(toggleRay1Btn, () => showRay1 = !showRay1);
+        setupToggle(toggleRay2Btn, () => showRay2 = !showRay2);
+
+        addCustomRayBtn.addEventListener('click', () => {
+            const newOffset = -20 + ((customRays.length * 15) % 40);
+            customRays.push({ startRatio: 1.0, lensYOffset: newOffset });
+            showCustomRefracted = false; updateCustomRayUI(); update();
+        });
+
+        clearCustomRayBtn.addEventListener('click', () => {
+            customRays = []; showCustomRefracted = false; updateCustomRayUI(); update();
+        });
+
+        toggleCustomRefractedBtn.addEventListener('click', () => {
+            showCustomRefracted = !showCustomRefracted;
+            if(showCustomRefracted) {
+                toggleCustomRefractedBtn.textContent = '👁️ 隱藏自訂折射';
+                toggleCustomRefractedBtn.classList.replace('active-green', 'danger-btn');
+            } else {
+                toggleCustomRefractedBtn.textContent = '▶️ 顯示自訂折射';
+                toggleCustomRefractedBtn.classList.replace('danger-btn', 'active-green');
+            }
+            update();
+        });
+
+        function updateCustomRayUI() {
+            if (customRays.length > 0) {
+                clearCustomRayBtn.style.display = 'block';
+                toggleCustomRefractedBtn.style.display = 'block';
+                if (!showCustomRefracted) {
+                    toggleCustomRefractedBtn.textContent = '▶️ 顯示自訂折射';
+                    toggleCustomRefractedBtn.className = 'active-green';
+                    toggleCustomRefractedBtn.style.gridColumn = 'span 2';
+                }
+            } else {
+                clearCustomRayBtn.style.display = 'none';
+                toggleCustomRefractedBtn.style.display = 'none';
+            }
+        }
+
+        function syncInputs(slider, numBox, resetRay = true) {
+            slider.addEventListener('input', () => { numBox.value = slider.value; if(resetRay) {showCustomRefracted=false; updateCustomRayUI();} update(); });
+            numBox.addEventListener('input', () => { slider.value = numBox.value; if(resetRay) {showCustomRefracted=false; updateCustomRayUI();} update(); });
+        }
+        syncInputs(fSlider, fNum); syncInputs(uSlider, uNum); syncInputs(hSlider, hNum);
+        syncInputs(zoomSlider, zoomNum, false);
+
+        // 繪圖工具
+        function drawDimension(startX, endX, y, label, color) {
+            const x1 = Math.min(startX, endX), x2 = Math.max(startX, endX);
+            ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 1.2;
+            ctx.moveTo(x1, y); ctx.lineTo(x2, y); ctx.stroke();
+            
+            ctx.beginPath(); ctx.fillStyle = color;
+            ctx.moveTo(x1, y); ctx.lineTo(x1 + 6, y - 3); ctx.lineTo(x1 + 6, y + 3); ctx.fill();
+            ctx.moveTo(x2, y); ctx.lineTo(x2 - 6, y - 3); ctx.lineTo(x2 - 6, y + 3); ctx.fill();
+
+            ctx.font = 'italic bold 13px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            const textWidth = ctx.measureText(label).width;
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            ctx.fillRect((x1+x2)/2 - textWidth/2 - 4, y - 10, textWidth + 8, 20);
+            ctx.fillStyle = color; ctx.fillText(label, (x1 + x2) / 2, y);
+
+            ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 0.8; ctx.setLineDash([3, 3]);
+            ctx.moveTo(x1, centerY); ctx.lineTo(x1, y); ctx.moveTo(x2, centerY); ctx.lineTo(x2, y);
+            ctx.stroke(); ctx.setLineDash([]);
+        }
+
+        function drawRay(x1, y1, x2, y2, color, isVirtual = false, drawArrowHead = true) {
+            ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 1.5;
+            ctx.setLineDash(isVirtual ? [4, 4] : []);
+            ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); ctx.setLineDash([]);
+
+            if (drawArrowHead && !isVirtual) {
+                let dx = x2 - x1, dy = y2 - y1;
+                let p = [-dx, dx, -dy, dy], q = [x1, logicalWidth - x1, y1, logicalHeight - y1];
+                let t0 = 0, t1 = 1, isVisible = true;
+                for(let i = 0; i < 4; i++) {
+                    if(p[i] === 0) { if(q[i] < 0) { isVisible = false; break; } } 
+                    else {
+                        let t = q[i] / p[i];
+                        if(p[i] < 0) { if(t > t1) { isVisible = false; break; } if(t > t0) t0 = t; } 
+                        else { if(t < t0) { isVisible = false; break; } if(t < t1) t1 = t; }
+                    }
+                }
+                if (isVisible && (t1 - t0) * Math.hypot(dx, dy) > 15) {
+                    const tMid = t0 + (t1 - t0) * 0.55;
+                    const midX = x1 + dx * tMid, midY = y1 + dy * tMid;
+                    const angle = Math.atan2(dy, dx);
+                    ctx.beginPath(); ctx.fillStyle = color;
+                    ctx.moveTo(midX, midY);
+                    ctx.lineTo(midX - 8 * Math.cos(angle - Math.PI / 6), midY - 8 * Math.sin(angle - Math.PI / 6));
+                    ctx.lineTo(midX - 8 * Math.cos(angle + Math.PI / 6), midY - 8 * Math.sin(angle + Math.PI / 6));
+                    ctx.fill();
+                }
+            }
+        }
+
+        function drawObjectArrow(x, y, heightVal, color, isVirtual = false) {
+            ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 3; ctx.lineCap = 'round';
+            ctx.setLineDash(isVirtual ? [4, 4] : []);
+            ctx.moveTo(x, centerY); 
+            const endY = heightVal > 0 ? y + 8 : y - 8;
+            ctx.lineTo(x, endY); ctx.stroke();
+            
+            ctx.beginPath(); ctx.fillStyle = color;
+            if (heightVal > 0) { ctx.moveTo(x, y); ctx.lineTo(x - 5, y + 10); ctx.lineTo(x + 5, y + 10); } 
+            else { ctx.moveTo(x, y); ctx.lineTo(x - 5, y - 10); ctx.lineTo(x + 5, y - 10); }
+            ctx.fill(); ctx.setLineDash([]); ctx.lineCap = 'butt';
+        }
+
+        function drawLensSymbol(isConvex) {
+            const top = 40, bottom = logicalHeight - 40;
+            ctx.beginPath(); ctx.strokeStyle = '#475569'; ctx.lineWidth = 3;
+            ctx.moveTo(centerX, top); ctx.lineTo(centerX, bottom); ctx.stroke();
+            ctx.beginPath(); ctx.fillStyle = '#475569';
+            if (isConvex) {
+                ctx.moveTo(centerX, top - 10); ctx.lineTo(centerX - 5, top + 6); ctx.lineTo(centerX + 5, top + 6); ctx.fill();
+                ctx.moveTo(centerX, bottom + 10); ctx.lineTo(centerX - 5, bottom - 6); ctx.lineTo(centerX + 5, bottom - 6); ctx.fill();
+            } else {
+                ctx.moveTo(centerX, top + 10); ctx.lineTo(centerX - 5, top - 6); ctx.lineTo(centerX + 5, top - 6); ctx.fill();
+                ctx.moveTo(centerX, bottom - 10); ctx.lineTo(centerX - 5, bottom + 6); ctx.lineTo(centerX + 5, bottom + 6); ctx.fill();
+            }
+        }
+
+        // 核心解鎖控制系統 
+        function renderMath(f_mag, u, v, isConvex) {
+            if (!isMathUnlocked) {
+                mathCalc.innerHTML = `
+                    <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; width:100%; height:100%;">
+                        <span style="font-family:sans-serif; font-size:0.8rem; color:#64748b; margin-bottom:4px;">🔒 數據與推導步驟已隱藏</span>
+                        <button class="action-link-btn" onclick="isMathUnlocked=true; update();">👁️ 解鎖答案 (課堂對答案)</button>
+                    </div>`;
+                return;
+            }
+
+            let f_val = isConvex ? f_mag : -f_mag;
+            let v_pos = Math.abs(v); 
+            let M = v_pos / u;
+            let isParallel = isConvex && Math.abs(u - f_mag) < 0.1;
+
+            mathCalc.innerHTML = "";
+            
+            const wrapper = document.createElement('div');
+            wrapper.className = "math-content-layout";
+            wrapper.style.width = "100%";
+            
+            const hideBtn = document.createElement('button');
+            hideBtn.className = "inline-hide-btn";
+            hideBtn.textContent = "🙈 隱藏";
+            hideBtn.onclick = () => { isMathUnlocked = false; update(); };
+            wrapper.appendChild(hideBtn);
+
+            const formulaArea = document.createElement('div');
+            formulaArea.style.width = "100%";
+            formulaArea.style.textAlign = "center";
+            wrapper.appendChild(formulaArea);
+            mathCalc.appendChild(wrapper);
+
+            let tex = "";
+            if (isParallel) {
+                tex = `\\begin{aligned}
+                &\\text{透鏡公式：} \\frac{1}{u} + \\frac{1}{v} = \\frac{1}{f} \\implies \\frac{1}{${u.toFixed(0)}} + \\frac{1}{v} = \\frac{1}{${f_val}} \\implies v = \\infty \\\\[2pt]
+                &\\text{放大率式：} M = \\frac{v}{u} = \\infty
+                \\end{aligned}`;
+            } else {
+                tex = `\\begin{aligned}
+                &\\text{透鏡公式：} \\frac{1}{u} + \\frac{1}{v} = \\frac{1}{f} \\implies \\frac{1}{${u.toFixed(0)}} + \\frac{1}{v} = \\frac{1}{${f_val}} \\implies v = ${v.toFixed(1)} \\\\[2pt]
+                &\\text{放大率式：} M = \\frac{v}{u} = \\frac{${v_pos.toFixed(1)}}{${u.toFixed(0)}} = ${M.toFixed(2)}
+                \\end{aligned}`;
+            }
+
+            function showHtmlFallback(target) {
+                const makeFrac = (num, den) => `<div style="display: inline-block; text-align: center; vertical-align: middle; margin: 0 3px;"><div style="border-bottom: 1px solid #475569; padding: 0 3px; line-height: 1.1;">${num}</div><div style="line-height: 1.1;">${den}</div></div>`;
+                if (isParallel) {
+                    target.innerHTML = `<div style="font-size:0.75rem; text-align:left; padding-left:10px; color:#334155; line-height:1.4;">
+                        <b>透鏡公式：</b>${makeFrac(1, 'u')} + ${makeFrac(1, 'v')} = ${makeFrac(1, 'f')} &rArr; ${makeFrac(1, u.toFixed(0))} + ${makeFrac(1, 'v')} = ${makeFrac(1, f_val)} &rArr; v = &infty;<br>
+                        <b>放大率式：</b>M = ${makeFrac('v', 'u')} = &infty;
+                    </div>`;
+                } else {
+                    target.innerHTML = `<div style="font-size:0.75rem; text-align:left; padding-left:10px; color:#334155; line-height:1.4;">
+                        <b>透鏡公式：</b>${makeFrac(1, 'u')} + ${makeFrac(1, 'v')} = ${makeFrac(1, 'f')} &rArr; ${makeFrac(1, u.toFixed(0))} + ${makeFrac(1, 'v')} = ${makeFrac(1, f_val)} &rArr; v = <b>${v.toFixed(1)}</b><br>
+                        <b>放大率式：</b>M = ${makeFrac('v', 'u')} = ${makeFrac(v_pos.toFixed(1), u.toFixed(0))} = <b>${M.toFixed(2)}</b>
+                    </div>`;
+                }
+            }
+
+            if (typeof katex !== 'undefined') {
+                try {
+                    katex.render(tex, formulaArea, { throwOnError: false, displayMode: true });
+                } catch(e) {
+                    showHtmlFallback(formulaArea);
+                }
+            } else {
+                showHtmlFallback(formulaArea);
+            }
+        }
+
+        // 主更新迴圈
+        function update() {
+            const dpr = window.devicePixelRatio || 1;
+            if (canvas.width !== logicalWidth * dpr || canvas.height !== logicalHeight * dpr) {
+                canvas.width = logicalWidth * dpr;
+                canvas.height = logicalHeight * dpr;
+            }
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.scale(dpr, dpr);
+
+            const f_mag = parseFloat(fSlider.value);
+            const u = parseFloat(uSlider.value);
+            const h_o = parseFloat(hSlider.value);
+            const scale = parseFloat(zoomSlider.value);
+
+            const f_calc = isConvex ? f_mag : -f_mag;
+            let v = (f_calc * u) / (u - f_calc);
+            let h_i = - (v / u) * h_o;
+            
+            const isParallel = isConvex && Math.abs(u - f_mag) < 0.1;
+            const isVirtual = v < 0;
+
+            ctx.clearRect(0, 0, logicalWidth, logicalHeight);
+
+            if (showGrid) {
+                const major = 50 * scale, minor = 10 * scale;
+                ctx.lineWidth = 0.5;
+                if (minor >= 4) {
+                    ctx.strokeStyle = '#f1f5f9';
+                    for (let x = centerX % minor; x <= logicalWidth; x += minor) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, logicalHeight); ctx.stroke(); }
+                    for (let y = centerY % minor; y <= logicalHeight; y += minor) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(logicalWidth, y); ctx.stroke(); }
+                }
+                ctx.strokeStyle = '#cbd5e1';
+                for (let x = centerX; x <= logicalWidth; x += major) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, logicalHeight); ctx.stroke(); }
+                for (let x = centerX; x >= 0; x -= major) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, logicalHeight); ctx.stroke(); }
+                for (let y = centerY; y <= logicalHeight; y += major) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(logicalWidth, y); ctx.stroke(); }
+                for (let y = centerY; y >= 0; y -= major) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(logicalWidth, y); ctx.stroke(); }
+            }
+
+            drawRay(0, centerY, logicalWidth, centerY, '#0f172a', false, false);
+            drawLensSymbol(isConvex);
+            
+            const f_px = f_mag * scale;
+            ctx.fillStyle = '#ef4444';
+            [{x: centerX - f_px, label: 'F'}, {x: centerX + f_px, label: 'F'}, 
+             {x: centerX - 2*f_px, label: '2F'}, {x: centerX + 2*f_px, label: '2F'}].forEach(p => {
+                if (p.x > 0 && p.x < logicalWidth) {
+                    ctx.beginPath(); arc(p.x, centerY, 3.5, 0, Math.PI * 2); ctx.fill();
+                    ctx.font = "bold 12px sans-serif"; ctx.fillText(p.label, p.x - 4, centerY + 18);
+                }
+            });
+
+            function arc(x, y, r, s, e) { ctx.arc(x, y, r, s, e); } // 簡化語法內部工具
+
+            const objX = centerX - u * scale, objY = centerY - h_o * scale;
+            const imgX = centerX + v * scale, imgY = centerY - h_i * scale;
+
+            if (showRay1) {
+                drawRay(objX, objY, centerX, objY, '#ef4444');
+                if (isParallel) {
+                    drawRay(centerX, objY, logicalWidth, objY + (logicalWidth - centerX) * (centerY - objY) / f_px, '#ef4444');
+                    if (showImg) drawRay(imgX, imgY, centerX, objY, '#ef4444', true, false);
+                } else if (isConvex) {
+                    if (isVirtual) {
+                        drawRay(centerX, objY, logicalWidth, objY + (logicalWidth - centerX) * (centerY - objY) / f_px, '#ef4444');
+                        if (showImg) drawRay(imgX, imgY, centerX, objY, '#ef4444', true, false);
+                    } else {
+                        drawRay(centerX, objY, imgX, imgY, '#ef4444');
+                        drawRay(imgX, imgY, logicalWidth, imgY + (imgY - objY)/(imgX - centerX) * (logicalWidth - imgX), '#ef4444', false, false);
+                    }
+                } else {
+                    let slope = (objY - centerY) / f_px; 
+                    drawRay(centerX, objY, logicalWidth, objY + slope * (logicalWidth - centerX), '#ef4444');
+                    if (showImg) drawRay(centerX - f_px, centerY, centerX, objY, '#ef4444', true, false); 
+                }
+            }
+
+            if (showRay2) {
+                drawRay(objX, objY, centerX, centerY, '#16a34a'); 
+                let slope = (centerY - objY) / (centerX - objX);
+                if (isParallel || isVirtual) {
+                    drawRay(centerX, centerY, logicalWidth, centerY + slope * (logicalWidth - centerX), '#16a34a'); 
+                    if (showImg && isVirtual && imgX < objX) drawRay(imgX, imgY, objX, objY, '#16a34a', true, false); 
+                } else {
+                    drawRay(centerX, centerY, imgX, imgY, '#16a34a');
+                    drawRay(imgX, imgY, logicalWidth, imgY + slope * (logicalWidth - imgX), '#16a34a', false, false);
+                }
+            }
+
+            customRays.forEach(ray => {
+                const cStartY = centerY - (h_o * ray.startRatio) * scale;
+                const cLensY = centerY + ray.lensYOffset * scale;
+                const cImgY = centerY - (- (v / u) * (h_o * ray.startRatio)) * scale;
+                drawRay(objX, cStartY, centerX, cLensY, '#ea580c', false, true); 
+                if (showCustomRefracted) { 
+                    let slope = isParallel ? (centerY - cStartY) / (centerX - objX) : (cLensY - cImgY) / (centerX - imgX);
+                    drawRay(centerX, cLensY, logicalWidth, cLensY + slope * (logicalWidth - centerX), '#ea580c', false, true);
+                    if (showImg && isVirtual) drawRay(imgX, cImgY, centerX, cLensY, '#ea580c', true, false);
+                }
+                ctx.beginPath(); ctx.fillStyle = '#ea580c'; arc(objX, cStartY, 4, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); arc(centerX, cLensY, 4, 0, Math.PI*2); ctx.fill();
+            });
+
+            drawObjectArrow(objX, objY, h_o * scale, '#334155'); 
+            ctx.fillStyle = "#334155"; ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'left';
+            ctx.fillText("物", objX - 12, h_o > 0 ? objY - 12 : objY + 22);
+            
+            if (showImg && !isParallel) {
+                drawObjectArrow(imgX, imgY, h_i * scale, isVirtual ? '#7c3aed' : '#ea580c', isVirtual);
+                ctx.fillStyle = isVirtual ? '#7c3aed' : '#ea580c'; 
+                ctx.fillText("像", imgX - 12, h_i > 0 ? imgY - 12 : imgY + 22);
+            }
+
+            if (showDistances) {
+                drawDimension(centerX - f_px, centerX, logicalHeight - 75, `f = ${f_mag.toFixed(0)}`, '#ef4444');
+                drawDimension(objX, centerX, logicalHeight - 48, `u = ${u.toFixed(0)}`, '#334155');
+                let hoText = `h = ${h_o.toFixed(0)}`;
+                let hoMidY = (centerY + objY) / 2;
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.85)'; ctx.fillRect(objX - 55, hoMidY - 9, 50, 18);
+                ctx.fillStyle = '#334155'; ctx.fillText(hoText, objX - 50, hoMidY + 2);
+
+                if (showImg && !isParallel) {
+                    drawDimension(centerX, imgX, logicalHeight - 22, `v = ${Math.abs(v).toFixed(0)}`, '#7c3aed');
+                    let hiText = `h' = ${Math.abs(h_i).toFixed(0)}`;
+                    let hiMidY = (centerY + imgY) / 2;
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)'; ctx.fillRect(imgX + 8, hiMidY - 9, 50, 18);
+                    ctx.fillStyle = isVirtual ? '#7c3aed' : '#ea580c'; ctx.fillText(hiText, imgX + 12, hiMidY + 2);
+                }
+            }
+
+            hoDisplay.textContent = h_o.toFixed(0);
+            let natureStr = "";
+            if (!showImg) {
+                vDisplay.textContent = "❓"; hiDisplay.textContent = "❓"; mDisplay.textContent = "❓";
+                natureStr = "性質已隱藏";
+            } else {
+                if (isParallel) {
+                    vDisplay.textContent = "∞"; hiDisplay.textContent = "∞"; mDisplay.textContent = "∞";
+                    natureStr = "不聚焦（不成像）";
+                } else {
+                    vDisplay.textContent = Math.abs(v).toFixed(1); 
+                    hiDisplay.textContent = Math.abs(h_i).toFixed(1);
+                    
+                    let mRatio = Math.abs(v / u);
+                    mDisplay.textContent = mRatio.toFixed(2); 
+                    
+                    // ⚙️ 核心邏輯修改：徹底改寫狀態字串，輸出學理標準的三大成像性質
+                    let orientation = (h_i > 0) ? "正立" : "倒置";
+                    
+                    let sizeStr = "放大";
+                    if (Math.abs(mRatio - 1.0) < 0.01) {
+                        sizeStr = "大小不變";
+                    } else if (mRatio < 1.0) {
+                        sizeStr = "縮小";
+                    }
+                    
+                    let realVirtual = isVirtual ? "虛像" : "實像";
+                    
+                    // 格式：[正立/倒置] [放大/縮小/大小不變] [實像/虛像]
+                    natureStr = `${orientation}、${sizeStr}、${realVirtual}`;
+                }
+            }
+
+            ctx.font = 'bold 13px sans-serif'; ctx.fillStyle = '#1e293b'; ctx.textAlign = 'right';
+            ctx.fillText(`成像性質: ${natureStr}`, logicalWidth - 15, 22);
+            renderMath(f_mag, u, v, isConvex);
+        }
+
+        // 滑鼠物理拖曳
+        let dragTarget = null;
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = (e.clientX - rect.left) * (logicalWidth / rect.width), mouseY = (e.clientY - rect.top) * (logicalHeight / rect.height);
+            const scale = parseFloat(zoomSlider.value);
+            const u = parseFloat(uSlider.value), f = parseFloat(fSlider.value), h_o = parseFloat(hSlider.value);
+            const objX = centerX - u * scale, objY = centerY - h_o * scale;
+
+            for (let i = customRays.length - 1; i >= 0; i--) {
+                const ray = customRays[i];
+                if (Math.hypot(mouseX - objX, mouseY - (centerY - (h_o * ray.startRatio) * scale)) < 12) { dragTarget = { type: 'customStart', index: i }; return; }
+                if (Math.hypot(mouseX - centerX, mouseY - (centerY + ray.lensYOffset * scale)) < 12) { dragTarget = { type: 'customLens', index: i }; return; }
+            }
+            if (Math.abs(mouseX - objX) < 12) {
+                if (Math.abs(mouseY - objY) < 12) dragTarget = { type: 'object_height' }; 
+                else if (mouseY > objY && mouseY <= centerY + 15) dragTarget = { type: 'object_distance' }; 
+            } else if (Math.abs(mouseX - (centerX - f * scale)) < 12 && Math.abs(mouseY - centerY) < 12) dragTarget = { type: 'focus' };
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = (e.clientX - rect.left) * (logicalWidth / rect.width), mouseY = (e.clientY - rect.top) * (logicalHeight / rect.height);
+            const scale = parseFloat(zoomSlider.value);
+            const h_o = parseFloat(hSlider.value), u = parseFloat(uSlider.value), f = parseFloat(fSlider.value);
+            const objX = centerX - u * scale, objY = centerY - h_o * scale;
+
+            if (dragTarget) {
+                if (dragTarget.type === 'customStart') {
+                    customRays[dragTarget.index].startRatio = Math.max(0, Math.min((centerY - mouseY) / scale / h_o, 1));
+                } else if (dragTarget.type === 'customLens') {
+                    customRays[dragTarget.index].lensYOffset = (mouseY - centerY) / scale;
+                } else if (dragTarget.type === 'object_height') {
+                    hSlider.value = hNum.value = Math.max(5, Math.min(100, (centerY - mouseY) / scale)).toFixed(0);
+                } else if (dragTarget.type === 'object_distance') {
+                    uSlider.value = uNum.value = Math.max(5, Math.min(100, (centerX - mouseX) / scale)).toFixed(0);
+                } else if (dragTarget.type === 'focus') {
+                    fSlider.value = fNum.value = Math.max(5, Math.min(100, (centerX - mouseX) / scale)).toFixed(0);
+                }
+                showCustomRefracted = false; updateCustomRayUI(); update();
+            } else {
+                let cursor = 'default';
+                for (let i = customRays.length - 1; i >= 0; i--) {
+                    const ray = customRays[i];
+                    if (Math.hypot(mouseX - objX, mouseY - (centerY - (h_o * ray.startRatio) * scale)) < 12 || 
+                        Math.hypot(mouseX - centerX, mouseY - (centerY + ray.lensYOffset * scale)) < 12) { cursor = 'pointer'; break; }
+                }
+                if (cursor === 'default') {
+                    if (Math.abs(mouseX - objX) < 12) {
+                        cursor = Math.abs(mouseY - objY) < 12 ? 'ns-resize' : 'ew-resize';
+                    } else if (Math.abs(mouseX - (centerX - f * scale)) < 12 && Math.abs(mouseY - centerY) < 12) cursor = 'pointer';
+                }
+                canvas.style.cursor = cursor;
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => dragTarget = null);
+        canvas.addEventListener('mouseleave', () => dragTarget = null);
+        
+        // 初始化
+        update();
+        window.addEventListener('resize', update);
+    </script>
+</body>
+</html>

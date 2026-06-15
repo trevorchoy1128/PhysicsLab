@@ -1,0 +1,657 @@
+﻿<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DSE 物理教學模擬器：平面鏡成像 (支援平移與自由視角)</title>
+    <style>
+        :root {
+            --object-dist: 160px;
+        }
+        body {
+            margin: 0; padding: 0; background-color: #e0e4e8; color: #333;
+            font-family: 'Helvetica Neue', Arial, sans-serif; height: 100vh; display: flex; overflow: hidden;
+        }
+        
+        /* 3D 畫布環境 (現在在左邊) */
+        #stage-container {
+            flex: 1; position: relative; overflow: hidden;
+            background: linear-gradient(135deg, #eef2f7 0%, #d5dbdb 100%);
+            cursor: grab;
+        }
+        #stage-container:active { cursor: grabbing; }
+
+        /* 控制面板 (現在在右邊) */
+        #control-panel {
+            width: 330px; background: #2c3e50; padding: 25px; 
+            box-shadow: -3px 0 15px rgba(0,0,0,0.2); /* 陰影改向左邊 */
+            z-index: 100; display: flex; flex-direction: column; gap: 18px; color: #fff; overflow-y: auto;
+        }
+        h1 { font-size: 18px; color: #00d2ff; margin: 0 0 5px 0; border-bottom: 1px solid #34495e; padding-bottom: 10px; }
+        h2 { font-size: 14px; color: #ecf0f1; margin: 0; }
+        label { font-size: 13px; display: block; margin-bottom: 8px; color: #bdc3c7; }
+        select, input[type="range"], button {
+            width: 100%; padding: 10px; background: #34495e; border: 1px solid #465c71; color: #fff; border-radius: 6px; box-sizing: border-box; font-size: 14px;
+        }
+        button { background: #16a085; cursor: pointer; font-weight: bold; transition: 0.2s; border: none; }
+        button:hover { background: #1abc9c; }
+        
+        .switch-btn { background: #c0392b; }
+        .switch-btn.active { background: #27ae60; }
+        .reset-btn { background: #f39c12; margin-top: 10px; }
+        .reset-btn:hover { background: #e67e22; }
+
+        /* 雙層場景設定 */
+        .scene {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            perspective: 1400px; display: flex; justify-content: center; align-items: center;
+            pointer-events: none;
+        }
+        
+        #scene-real { z-index: 2; }
+        #scene-virtual { z-index: 1; }
+
+        /* 3D 空間群組 */
+        .space3d {
+            width: 600px; height: 400px; position: relative; transform-style: preserve-3d;
+            transform: scale(1) translate(0px, 0px) rotateX(-15deg) rotateY(-45deg); 
+        }
+
+        /* 鏡子結構 */
+        .mirror-3d-box {
+            position: absolute; width: 500px; height: 300px; left: 50px; top: 50px; transform-style: preserve-3d;
+        }
+        .mirror-front {
+            position: absolute; width: 100%; height: 100%; background: rgba(52, 152, 219, 0.15);
+            border: 6px solid #2980b9; box-sizing: border-box; transform: translateZ(4px);
+            box-shadow: inset 0 0 30px rgba(52, 152, 219, 0.4);
+        }
+        .mirror-back {
+            position: absolute; width: 100%; height: 100%; background: #bdc3c7; border: 6px solid #95a5a6;
+            box-sizing: border-box; transform: translateZ(-4px) rotateY(180deg); backface-visibility: hidden;
+        }
+        .mirror-side { position: absolute; background: #2980b9; }
+        .m-side-top    { width: 100%; height: 8px; top: -4px; transform: rotateX(90deg); }
+        .m-side-bottom { width: 100%; height: 8px; bottom: -4px; transform: rotateX(-90deg); }
+        .m-side-left   { width: 8px; height: 100%; left: -4px; transform: rotateY(-90deg); }
+        .m-side-right  { width: 8px; height: 100%; right: -4px; transform: rotateY(90deg); }
+
+        .mirror-label {
+            position: absolute; width: 100%; text-align: center; top: 315px;
+            font-weight: bold; color: #2980b9; font-size: 14px; letter-spacing: 2px;
+            transform: translateZ(10px);
+        }
+
+        .tracker { position: absolute; width: 1px; height: 1px; }
+
+        /* 物與像的真實 3D 空間位置 */
+        .element-wrapper {
+            position: absolute; width: 160px; height: 160px; transform-style: preserve-3d;
+            left: 220px; top: 120px; 
+        }
+
+        #real-object { transform: translateZ(var(--object-dist)) rotateY(180deg); }
+        #real-object .text-front, #real-object .text-back, #real-object .text-side-wall { transition: opacity 0.3s ease; }
+        #real-object.semi-transparent .text-front, #real-object.semi-transparent .text-back, #real-object.semi-transparent .text-side-wall { opacity: 0.4; }
+
+        #image-position-mock-field { transform: translateZ(calc(var(--object-dist) * -1)) rotateY(0deg) scaleX(-1); }
+        #mirror-image-in-lens { transform: translateZ(calc(var(--object-dist) * -1)) rotateY(0deg) scaleX(-1); }
+        #mirror-image-in-lens .text-front, #mirror-image-in-lens .text-back { backface-visibility: visible !important; }
+
+        /* 物件模型通用結構 */
+        .text-solid-box { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; }
+        .text-front { 
+            position: absolute; width: 100%; height: 100%; transform: translateZ(13px); 
+            backface-visibility: hidden; display: flex; justify-content: center; align-items: center; 
+            background: #ecf0f1; border: 2px solid #bdc3c7; box-sizing: border-box;
+        }
+        .text-back  { 
+            position: absolute; width: 100%; height: 100%; transform: translateZ(-13px) rotateY(180deg); 
+            background: #2c3e50; border: 2px solid #1a252f; box-sizing: border-box; 
+            backface-visibility: hidden; display: flex; justify-content: center; align-items: center; 
+            color: #7f8c8d; font-size: 12px; font-weight: bold; 
+        }
+        .glow-text { font-size: 56px; font-weight: bold; color: #e74c3c; text-shadow: 0 0 12px rgba(231, 76, 60, 0.6); font-family: sans-serif; }
+        .text-side-wall { position: absolute; background: #2c3e50; border: 1px solid #1a252f; box-sizing: border-box; }
+        .tw-top    { width: 100%; height: 26px; top: -13px; transform: rotateX(90deg); }
+        .tw-bottom { width: 100%; height: 26px; bottom: -13px; transform: rotateX(-90deg); }
+        .tw-left   { width: 26px; height: 100%; left: -13px; transform: rotateY(-90deg); }
+        .tw-right  { width: 26px; height: 100%; right: -13px; transform: rotateY(90deg); }
+
+        /* 時鐘專屬 CSS */
+        .clock-face {
+            width: 130px; height: 130px; border-radius: 50%; background: #ecf0f1; border: 6px solid #34495e;
+            position: relative; color: #2c3e50; box-sizing: border-box; box-shadow: inset 0 0 10px rgba(0,0,0,0.1);
+        }
+        .hand { position: absolute; bottom: 50%; left: 50%; background: #2c3e50; transform-origin: bottom center; border-radius: 4px; transition: transform 0.1s cubic-bezier(0.4, 2.08, 0.55, 0.44); }
+        .hour-hand { width: 6px; height: 35px; margin-left: -3px; }
+        .minute-hand { width: 4px; height: 48px; margin-left: -2px; }
+        .second-hand { width: 2px; height: 52px; margin-left: -1px; background: #e74c3c !important; }
+        .center-dot { position: absolute; top: 50%; left: 50%; width: 12px; height: 12px; background: #e74c3c; border-radius: 50%; transform: translate(-50%, -50%); z-index: 10; }
+
+        /* 輔助虛線模式 */
+        .mock-style .text-front, .mock-style .text-back { background: rgba(243, 156, 18, 0.08); border: 2px dashed #f39c12; }
+        .mock-style .text-side-wall { background: rgba(243, 156, 18, 0.08); border: 2px dashed #f39c12; }
+        .mock-style .glow-text { color: transparent; -webkit-text-stroke: 1.5px #f39c12; text-shadow: 0 0 10px rgba(243, 156, 18, 0.4); }
+        .mock-style .text-back { color: #f39c12; }
+        .mock-style .clock-face { background: transparent; border-color: #f39c12; border-style: dashed; color: #f39c12; box-shadow: none; }
+        .mock-style .hand, .mock-style .center-dot { background: #f39c12; }
+        .mock-style .second-hand { background: #f39c12 !important; }
+
+        /* --- 真正的多重 3D 立體虛線 --- */
+        #distance-lines {
+            position: absolute; left: 300px; top: 200px; 
+            transform-style: preserve-3d; display: none;
+        }
+
+        /* 容器方向 */
+        .dist-line-container {
+            position: absolute; top: 0; left: 0;
+            transform-style: preserve-3d; transform-origin: left center;
+        }
+        .obj-dist { transform: rotateY(-90deg); color: #f1c40f; }
+        .img-dist { transform: rotateY(90deg); color: #e67e22; }
+
+        /* 單個 3D 虛線小方塊 (長12px, 寬8px, 高8px) */
+        .dash-3d {
+            position: absolute; top: -4px; width: 12px; height: 8px;
+            transform-style: preserve-3d;
+        }
+        .dash-face {
+            position: absolute; box-sizing: border-box;
+            background-color: currentColor;
+            border: 1px solid rgba(0,0,0,0.3); /* 邊框增強立體感 */
+        }
+        .df-front, .df-back, .df-top, .df-bottom { width: 12px; height: 8px; }
+        .df-left, .df-right { width: 8px; height: 8px; left: 2px; } /* 居中以利旋轉 */
+
+        .df-front  { transform: translateZ(4px); filter: brightness(1); }
+        .df-back   { transform: rotateY(180deg) translateZ(4px); filter: brightness(0.7); }
+        .df-top    { transform: rotateX(90deg) translateZ(4px); filter: brightness(1.2); }
+        .df-bottom { transform: rotateX(-90deg) translateZ(4px); filter: brightness(0.5); }
+        .df-left   { transform: rotateY(-90deg) translateZ(6px); filter: brightness(0.85); }
+        .df-right  { transform: rotateY(90deg) translateZ(6px); filter: brightness(0.95); }
+
+        .dist-label {
+            position: absolute; left: 0; top: 0; color: #fff; font-weight: bold; font-size: 16px;
+            background: rgba(0,0,0,0.6); padding: 4px 8px; border-radius: 4px;
+            white-space: nowrap; border: 1px solid currentColor; transform-style: preserve-3d;
+        }
+        #obj-dist-label { color: #f1c40f; }
+        #img-dist-label { color: #e67e22; }
+
+        #view-tip {
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.75); color: #fff; padding: 12px 24px; border-radius: 8px; font-size: 14px; pointer-events: none;
+            text-align: left; line-height: 1.8; box-shadow: 0 4px 15px rgba(0,0,0,0.4); z-index: 9999; backdrop-filter: blur(4px);
+        }
+    </style>
+</head>
+<body>
+
+
+    <!-- 將 stage-container 移到前面，讓它排在左邊 -->
+    <div id="stage-container">
+        <div id="scene-real" class="scene">
+            <div id="space3d-real" class="space3d">
+                <div class="mirror-3d-box">
+                    <div class="mirror-front">
+                        <div id="tr-tl" class="tracker" style="left: 0; top: 0;"></div>
+                        <div id="tr-tr" class="tracker" style="right: 0; top: 0;"></div>
+                        <div id="tr-br" class="tracker" style="right: 0; bottom: 0;"></div>
+                        <div id="tr-bl" class="tracker" style="left: 0; bottom: 0;"></div>
+                    </div>
+                    <div class="mirror-back"></div>
+                    <div class="mirror-side m-side-top"></div>
+                    <div class="mirror-side m-side-bottom"></div>
+                    <div class="mirror-side m-side-left"></div>
+                    <div class="mirror-side m-side-right"></div>
+                    <div class="mirror-label">平面鏡 (PLANE MIRROR)</div>
+                </div>
+
+                <!-- 距離標示線群組 -->
+                <div id="distance-lines">
+                    <div id="obj-dist-container" class="dist-line-container obj-dist"></div>
+                    <div id="img-dist-container" class="dist-line-container img-dist"></div>
+                    
+                    <div id="obj-dist-label" class="dist-label">物距 u</div>
+                    <div id="img-dist-label" class="dist-label">像距 v</div>
+                </div>
+
+                <div id="real-object" class="element-wrapper"></div>
+                <div id="image-position-mock-field" class="element-wrapper"></div>
+            </div>
+        </div>
+
+        <div id="scene-virtual" class="scene">
+            <div id="space3d-virtual" class="space3d">
+                <div id="mirror-image-in-lens" class="element-wrapper"></div>
+            </div>
+        </div>
+
+        <div id="view-tip">
+            <b>🎥 攝影機操作指南：</b><br>
+            🖱️ <b>左鍵拖曳</b> / 單指滑動：旋轉視角<br>
+            🖱️ <b>右鍵拖曳</b> / 雙指滑動：平移畫面<br>
+            🖱️ <b>滾動滾輪</b> / 雙指縮放：拉近 / 推遠
+        </div>
+    </div>
+
+    <!-- 控制面板移到後面，讓它排在右邊 -->
+    <div id="control-panel">
+        <h1>DSE 物理鏡像模擬器</h1>
+        
+        <div>
+            <label><b>1. 鏡後輔助影像控制</b></label>
+            <button id="toggle-mock-btn" class="switch-btn" onclick="toggleMockField()">顯示鏡後輔助像：已隱藏 ❌</button>
+        </div>
+
+        <div>
+            <label><b>2. 真實物件外觀</b></label>
+            <button id="toggle-opacity-btn" class="switch-btn" onclick="toggleObjectOpacity()">真實物件半透明：已關閉 ❌</button>
+        </div>
+
+        <div>
+            <label><b>3. 顯示距離</b></label>
+            <button id="toggle-dist-btn" class="switch-btn" onclick="toggleDistance()">顯示物距與像距：已隱藏 ❌</button>
+        </div>
+
+        <div>
+            <label for="obj-select"><b>4. 選擇物件</b></label>
+            <select id="obj-select" onchange="changeObject(this.value)">
+                <option value="CLOCK">即時時鐘</option>
+                <option value="PHY">立體厚度文字：PHY</option>
+                <option value="CTW">立體厚度文字：CTW</option>
+            </select>
+        </div>
+
+        <div>
+            <label><b>5. 改變物距: <span id="dist-txt">160</span>px</b></label>
+            <input type="range" id="dist-slider" min="60" max="800" value="160" oninput="updateDistance(this.value)">
+        </div>
+
+        <div>
+            <label><b>6. 鏡頭縮放: <span id="zoom-txt">1.0</span>x</b></label>
+            <input type="range" id="zoom-slider" min="0.3" max="3.0" step="0.1" value="1.0" oninput="updateZoom(this.value)">
+        </div>
+
+        <div>
+            <h2>7. 快速切換視覺</h2>
+            <button onclick="changeView(-15, -45)" style="margin-top:8px;">斜對角立體圖</button>
+            <button onclick="changeView(0, 0)" style="margin-top:5px;">正視圖</button>
+            <button onclick="changeView(0, 180)" style="margin-top:5px;">後視圖</button>
+            <button onclick="changeView(-90, 0)" style="margin-top:5px;">正俯視圖</button>
+            <button onclick="resetCamera()" class="reset-btn">🔄 重置攝影機位置</button>
+        </div>
+    </div>
+
+    <script>
+        let showMockField = false;
+        let isObjectTransparent = false;
+        let showDistance = false;
+        let currentObjectType = 'CLOCK';
+        
+        let currentRotX = -15;
+        let currentRotY = -45;
+        let currentScale = 1.0;
+        let currentTransX = 0;
+        let currentTransY = 0;
+        
+        let clockInterval = null;
+
+        const realObjDiv = document.getElementById('real-object');
+        const mirrorLensDiv = document.getElementById('mirror-image-in-lens');
+        const mockFieldDiv = document.getElementById('image-position-mock-field');
+        const distanceLinesDiv = document.getElementById('distance-lines');
+        const objDistContainer = document.getElementById('obj-dist-container');
+        const imgDistContainer = document.getElementById('img-dist-container');
+        
+        const space3dReal = document.getElementById('space3d-real');
+        const space3dVirtual = document.getElementById('space3d-virtual');
+        const sceneVirtual = document.getElementById('scene-virtual');
+        const stageContainer = document.getElementById('stage-container');
+
+        // 動態生成 3D 虛線方塊
+        function renderDashedLines(dist) {
+            const dashLength = 12; // 方塊長度
+            const gap = 10;        // 空隙長度
+            const step = dashLength + gap;
+            
+            let html = '';
+            // 根據距離計算需要多少個小方塊
+            for (let x = 0; x + dashLength <= dist; x += step) {
+                html += `
+                    <div class="dash-3d" style="transform: translateX(${x}px)">
+                        <div class="dash-face df-front"></div>
+                        <div class="dash-face df-back"></div>
+                        <div class="dash-face df-top"></div>
+                        <div class="dash-face df-bottom"></div>
+                        <div class="dash-face df-left"></div>
+                        <div class="dash-face df-right"></div>
+                    </div>
+                `;
+            }
+            objDistContainer.innerHTML = html;
+            imgDistContainer.innerHTML = html;
+        }
+
+        function getClockFaceHTML() {
+            let ticks = '';
+            for(let i = 0; i < 12; i++) {
+                let angle = i * 30;
+                let isMajor = i % 3 === 0;
+                let height = isMajor ? '14px' : '8px';
+                let width = isMajor ? '4px' : '2px';
+                ticks += `<div style="position:absolute; left:50%; top:50%; width:${width}; height:${height}; background:currentColor; transform: translate(-50%, -50%) rotate(${angle}deg) translateY(-50px);"></div>`;
+            }
+            return `
+                <div class="clock-face">
+                    ${ticks}
+                    <div class="hand hour-hand"></div>
+                    <div class="hand minute-hand"></div>
+                    <div class="hand second-hand"></div>
+                    <div class="center-dot"></div>
+                </div>
+            `;
+        }
+
+        function updateClockHands() {
+            if (currentObjectType !== 'CLOCK') return;
+            const now = new Date();
+            const hours = now.getHours();
+            const minutes = now.getMinutes();
+            const seconds = now.getSeconds();
+
+            const hourAngle = (hours % 12) * 30 + (minutes * 0.5);
+            const minuteAngle = minutes * 6 + (seconds * 0.1);
+            const secondAngle = seconds * 6;
+
+            const setTransform = (selector, angle, isSecond) => {
+                document.querySelectorAll(selector).forEach(el => {
+                    if (isSecond && seconds === 0) el.style.transition = 'none';
+                    else if (isSecond && seconds === 1) el.style.transition = 'transform 0.1s cubic-bezier(0.4, 2.08, 0.55, 0.44)';
+                    el.style.transform = `rotate(${angle}deg)`;
+                });
+            };
+
+            setTransform('.hour-hand', hourAngle, false);
+            setTransform('.minute-hand', minuteAngle, false);
+            setTransform('.second-hand', secondAngle, true);
+        }
+
+        function getInnerContent(type) {
+            if (type === 'CLOCK') return getClockFaceHTML();
+            return `<div class="glow-text">${type}</div>`;
+        }
+
+        function getObjectHTML(type) {
+            return `
+                <div class="text-solid-box">
+                    <div class="text-front">${getInnerContent(type)}</div>
+                    <div class="text-side-wall tw-top"></div>
+                    <div class="text-side-wall tw-bottom"></div>
+                    <div class="text-side-wall tw-left"></div>
+                    <div class="text-side-wall tw-right"></div>
+                    <div class="text-back">BACK</div>
+                </div>
+            `;
+        }
+
+        function getMockFieldHTML(type) {
+            let innerContent = type === 'CLOCK' ? getClockFaceHTML() : `<div class="glow-text mock-text">${type}</div>`;
+            return `
+                <div class="text-solid-box mock-style">
+                    <div class="text-front">${innerContent}</div>
+                    <div class="text-side-wall tw-top"></div>
+                    <div class="text-side-wall tw-bottom"></div>
+                    <div class="text-side-wall tw-left"></div>
+                    <div class="text-side-wall tw-right"></div>
+                    <div class="text-back">BACK</div>
+                </div>
+            `;
+        }
+
+        function updateTransform() {
+            const transformStr = `scale(${currentScale}) translate(${currentTransX}px, ${currentTransY}px) rotateX(${currentRotX}deg) rotateY(${currentRotY}deg)`;
+            space3dReal.style.transform = transformStr;
+            space3dVirtual.style.transform = transformStr;
+            
+            // 標籤永遠面向攝影機 (Billboarding 效果)
+            document.getElementById('obj-dist-label').style.transform = 
+                `translateZ(calc(var(--object-dist) / 2)) translate(-50%, -150%) rotateY(${-currentRotY}deg) rotateX(${-currentRotX}deg)`;
+            
+            document.getElementById('img-dist-label').style.transform = 
+                `translateZ(calc(var(--object-dist) / -2)) translate(-50%, -150%) rotateY(${-currentRotY}deg) rotateX(${-currentRotX}deg)`;
+
+            updateOpticalLogic();
+        }
+
+        function updateOpticalLogic() {
+            let normalizedY = ((currentRotY % 360) + 360) % 360;
+            let isFrontSide = (normalizedY < 90 || normalizedY > 270);
+
+            mockFieldDiv.style.display = showMockField ? 'block' : 'none';
+
+            if (isFrontSide) {
+                sceneVirtual.style.display = 'flex';
+                sceneVirtual.style.opacity = 1.0; 
+
+                const sceneRect = sceneVirtual.getBoundingClientRect();
+                const tl = document.getElementById('tr-tl').getBoundingClientRect();
+                const tr = document.getElementById('tr-tr').getBoundingClientRect();
+                const br = document.getElementById('tr-br').getBoundingClientRect();
+                const bl = document.getElementById('tr-bl').getBoundingClientRect();
+
+                const getCoords = (rect) => `${rect.left - sceneRect.left}px ${rect.top - sceneRect.top}px`;
+                sceneVirtual.style.clipPath = `polygon(${getCoords(tl)}, ${getCoords(tr)}, ${getCoords(br)}, ${getCoords(bl)})`;
+            } else {
+                sceneVirtual.style.display = 'none';       
+            }
+        }
+
+        function changeObject(type) {
+            currentObjectType = type;
+            realObjDiv.innerHTML = getObjectHTML(type);
+            mirrorLensDiv.innerHTML = getObjectHTML(type);
+            mockFieldDiv.innerHTML = getMockFieldHTML(type);
+            
+            if (clockInterval) clearInterval(clockInterval);
+            if (type === 'CLOCK') {
+                updateClockHands(); 
+                clockInterval = setInterval(updateClockHands, 1000);
+            }
+            updateOpticalLogic();
+        }
+
+        function toggleMockField() {
+            showMockField = !showMockField;
+            const btn = document.getElementById('toggle-mock-btn');
+            if (showMockField) {
+                btn.innerText = '顯示鏡後輔助像：已開啟 👁️';
+                btn.classList.add('active');
+            } else {
+                btn.innerText = '顯示鏡後輔助像：已隱藏 ❌';
+                btn.classList.remove('active');
+            }
+            updateOpticalLogic(); 
+        }
+
+        function toggleObjectOpacity() {
+            isObjectTransparent = !isObjectTransparent;
+            const btn = document.getElementById('toggle-opacity-btn');
+            if (isObjectTransparent) {
+                btn.innerText = '真實物件半透明：已開啟 👁️';
+                btn.classList.add('active');
+                realObjDiv.classList.add('semi-transparent');
+            } else {
+                btn.innerText = '真實物件半透明：已關閉 ❌';
+                btn.classList.remove('active');
+                realObjDiv.classList.remove('semi-transparent');
+            }
+        }
+
+        function toggleDistance() {
+            showDistance = !showDistance;
+            const btn = document.getElementById('toggle-dist-btn');
+            if (showDistance) {
+                btn.innerText = '顯示物距與像距：已開啟 📏';
+                btn.classList.add('active');
+                distanceLinesDiv.style.display = 'block';
+            } else {
+                btn.innerText = '顯示物距與像距：已隱藏 ❌';
+                btn.classList.remove('active');
+                distanceLinesDiv.style.display = 'none';
+            }
+        }
+
+        function updateDistance(val) {
+            document.documentElement.style.setProperty('--object-dist', val + 'px');
+            document.getElementById('dist-txt').innerText = val;
+            renderDashedLines(parseInt(val)); // 更新 3D 虛線方塊數量
+            updateOpticalLogic();
+        }
+
+        function updateZoom(val) {
+            currentScale = parseFloat(val);
+            document.getElementById('zoom-txt').innerText = currentScale.toFixed(1);
+            updateTransform();
+        }
+
+        function changeView(x, y) {
+            currentRotX = x; 
+            currentRotY = y;
+            currentTransX = 0; 
+            currentTransY = 0;
+            updateTransform();
+        }
+
+        function resetCamera() {
+            currentScale = 1.0;
+            document.getElementById('zoom-slider').value = 1.0;
+            document.getElementById('zoom-txt').innerText = "1.0";
+            changeView(-15, -45);
+        }
+
+        // --- 滑鼠與觸控拖曳邏輯 ---
+        let isDragging = false; 
+        let isPanning = false;  
+        let previousMousePosition = { x: 0, y: 0 };
+        let initialPinchDistance = null;
+
+        stageContainer.addEventListener('contextmenu', e => e.preventDefault());
+
+        stageContainer.addEventListener('mousedown', (e) => {
+            if (e.button === 0) isDragging = true; 
+            else if (e.button === 2) isPanning = true;  
+            previousMousePosition = { x: e.clientX, y: e.clientY };
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging && !isPanning) return;
+            let deltaX = e.clientX - previousMousePosition.x;
+            let deltaY = e.clientY - previousMousePosition.y;
+
+            if (isDragging) {
+                currentRotY += deltaX * 0.4;
+                currentRotX -= deltaY * 0.4;
+                currentRotX = Math.max(-90, Math.min(90, currentRotX));
+            } else if (isPanning) {
+                currentTransX += deltaX / currentScale;
+                currentTransY += deltaY / currentScale;
+            }
+
+            previousMousePosition = { x: e.clientX, y: e.clientY };
+            updateTransform();
+        });
+
+        window.addEventListener('mouseup', (e) => {
+            if (e.button === 0) isDragging = false;
+            if (e.button === 2) isPanning = false;
+        });
+
+        stageContainer.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const zoomSpeed = 0.05;
+            if (e.deltaY < 0) currentScale += zoomSpeed;
+            else currentScale -= zoomSpeed;
+            
+            currentScale = Math.max(0.3, Math.min(3.0, currentScale));
+            document.getElementById('zoom-slider').value = currentScale;
+            document.getElementById('zoom-txt').innerText = currentScale.toFixed(1);
+            
+            updateTransform();
+        });
+
+        stageContainer.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 1) {
+                isDragging = true;
+                previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            } else if (e.touches.length === 2) {
+                isPanning = true;
+                let cx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                let cy = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+                previousMousePosition = { x: cx, y: cy };
+                
+                initialPinchDistance = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                );
+            }
+        }, {passive: false});
+
+        window.addEventListener('touchmove', (e) => {
+            if (!isDragging && !isPanning) return;
+            e.preventDefault(); 
+
+            if (isDragging && e.touches.length === 1) {
+                let deltaX = e.touches[0].clientX - previousMousePosition.x;
+                let deltaY = e.touches[0].clientY - previousMousePosition.y;
+                currentRotY += deltaX * 0.4;
+                currentRotX -= deltaY * 0.4;
+                currentRotX = Math.max(-90, Math.min(90, currentRotX));
+                previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            } else if (isPanning && e.touches.length === 2) {
+                let cx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                let cy = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+                let deltaX = cx - previousMousePosition.x;
+                let deltaY = cy - previousMousePosition.y;
+                
+                currentTransX += deltaX / currentScale;
+                currentTransY += deltaY / currentScale;
+                previousMousePosition = { x: cx, y: cy };
+
+                if (initialPinchDistance) {
+                    let currentDist = Math.hypot(
+                        e.touches[0].clientX - e.touches[1].clientX,
+                        e.touches[0].clientY - e.touches[1].clientY
+                    );
+                    let scaleChange = (currentDist - initialPinchDistance) * 0.005;
+                    currentScale += scaleChange;
+                    currentScale = Math.max(0.3, Math.min(3.0, currentScale));
+                    document.getElementById('zoom-slider').value = currentScale;
+                    document.getElementById('zoom-txt').innerText = currentScale.toFixed(1);
+                    initialPinchDistance = currentDist;
+                }
+            }
+            updateTransform();
+        }, {passive: false});
+
+        window.addEventListener('touchend', (e) => {
+            if (e.touches.length === 0) {
+                isDragging = false;
+                isPanning = false;
+                initialPinchDistance = null;
+            } else if (e.touches.length === 1) {
+                isPanning = false;
+                isDragging = true;
+                previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            }
+        });
+
+        // 初始化
+        renderDashedLines(160); // 初始化 3D 虛線
+        changeObject('CLOCK');
+        changeView(-15, -45);
+    </script>
+</body>
+</html>

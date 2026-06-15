@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <title>HKDSE 物理 - 3D 完美對稱與精準中和點模擬器</title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc; color: #333; }
+        #ui-panel {
+            position: absolute; top: 20px; left: 20px; background: rgba(255, 255, 255, 0.95);
+            padding: 20px 25px; border-radius: 12px; border: 1px solid #cbd5e1;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.12); width: 340px; z-index: 100; backdrop-filter: blur(10px);
+            max-height: 90vh; overflow-y: auto;
+        }
+        h2 { margin: 0 0 15px 0; font-size: 19px; color: #0f172a; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; }
+        .control-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 6px; font-size: 13px; color: #475569; font-weight: bold; }
+        select {
+            width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #cbd5e1;
+            background: #fff; color: #1e293b; font-size: 13px; cursor: pointer; transition: all 0.2s;
+        }
+        select:hover { border-color: #3b82f6; }
+        .checkbox-label {
+            display: flex; align-items: center; font-size: 13px; color: #dc2626; cursor: pointer; font-weight: bold;
+        }
+        .checkbox-label input { width: auto; margin-right: 8px; cursor: pointer; }
+        button {
+            width: 100%; padding: 10px; border-radius: 6px; border: none;
+            background-color: #2563eb; color: white; font-weight: bold; font-size: 14px;
+            cursor: pointer; transition: 0.3s; margin-top: 5px; box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+        }
+        button:hover { background-color: #1d4ed8; transform: translateY(-1px); }
+        .instructions { font-size: 12px; color: #64748b; line-height: 1.6; margin-top: 15px; padding-top: 12px; border-top: 1px dashed #cbd5e1; }
+        .instructions span { color: #dc2626; font-weight: bold; }
+        .tip { background: #eff6ff; border-left: 4px solid #3b82f6; padding: 10px; margin-top: 10px; font-size: 12px; color: #1e40af; border-radius: 0 4px 4px 0;}
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+
+    <div id="ui-panel">
+        <h2>3D 教科書標準磁場模擬器</h2>
+        
+        <div class="control-group">
+            <label>磁鐵排列模式：</label>
+            <select id="modeSelect">
+                <option value="single" selected>單一磁鐵 (左S - 右N)</option>
+                <option value="repel">同極相斥 (N - N)</option>
+                <option value="attract">異極相吸 (N - S)</option>
+            </select>
+        </div>
+
+        <div class="control-group" id="neutralControl" style="display: none;">
+            <label class="checkbox-label">
+                <input type="checkbox" id="neutralToggle"> 顯示精準中和點標記
+            </label>
+        </div>
+
+        <div class="control-group">
+            <label>發射方向 (平面數量)：</label>
+            <select id="linesDirectionSelect">
+                <option value="2" selected>2 條 (完美重現教科書 2D 截面)</option>
+                <option value="4">4 條 (十字雙平面)</option>
+                <option value="8">8 條 (標準 3D 包覆)</option>
+                <option value="16">16 條</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label>磁場線密度 (每極數量)：</label>
+            <select id="densitySelect">
+                <option value="2">2 條 (極簡)</option>
+                <option value="4">4 條</option>
+                <option value="6">6 條</option>
+                <option value="8">8 條</option>
+                <option value="10" selected>10 條 (標準)</option>
+                <option value="20">20 條 (密集)</option>
+                <option value="30">30 條 (鐵粉效果)</option>
+            </select>
+        </div>
+
+        <button id="compassBtn">打開 2D 平面指南針</button>
+
+        <div class="tip">
+            💡 <b>精準標記：</b><br>中和點現在改用幾何正中心的<b>實心圓點</b>標示，確保標示位置100%符合 $\vec{B} = 0$ 的絕對座標點。
+        </div>
+
+        <div class="instructions">
+            <b>操作指南：</b><br>
+            • 滑鼠 <span>左鍵拖曳背景</span> 旋轉 3D 視角。<br>
+            • 滑鼠 <span>點擊指南針</span> 可無縫自由拖曳。<br>
+            * 橘色箭頭指示磁場由 N 極流向 S 極。
+        </div>
+    </div>
+
+    <div id="canvas-container"></div>
+
+<script>
+    let scene, camera, renderer, orbitControls;
+    let magnetsData = []; 
+    let magnetsGroup = new THREE.Group();
+    let fieldLinesGroup = new THREE.Group();
+    let neutralMarker = null; 
+    
+    // 指南針與拖曳系統
+    let compass;
+    let isCompassActive = false;
+    let isDragging = false;
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    const dragPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+    
+    // 物理比例設定
+    const MAG_LEN = 8.0; 
+    const MAG_WID = 1.4; 
+    const POLE_DIST = (MAG_LEN / 2) * 0.85; 
+
+    function init() {
+        const container = document.getElementById('canvas-container');
+        
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xf8fafc); 
+        scene.add(magnetsGroup);
+        scene.add(fieldLinesGroup);
+
+        camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 0, 48); 
+
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.85));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        dirLight.position.set(5, 15, 20);
+        scene.add(dirLight);
+
+        orbitControls = new THREE.OrbitControls(camera, renderer.domElement);
+        orbitControls.enableDamping = true;
+        orbitControls.dampingFactor = 0.05;
+
+        createCompass();
+
+        window.addEventListener('pointerdown', onPointerDown);
+        window.addEventListener('pointermove', onPointerMove);
+        window.addEventListener('pointerup', onPointerUp);
+        window.addEventListener('resize', onWindowResize);
+
+        document.getElementById('modeSelect').addEventListener('change', (e) => {
+            const mode = e.target.value;
+            document.getElementById('neutralControl').style.display = mode === 'repel' ? 'block' : 'none';
+            buildScene(mode);
+        });
+        
+        document.getElementById('neutralToggle').addEventListener('change', (e) => {
+            if (neutralMarker) neutralMarker.visible = e.target.checked;
+        });
+
+        document.getElementById('linesDirectionSelect').addEventListener('change', () => generateFieldLines());
+        document.getElementById('densitySelect').addEventListener('change', () => generateFieldLines());
+        document.getElementById('compassBtn').addEventListener('click', toggleCompass);
+
+        // 初始載入
+        buildScene(document.getElementById('modeSelect').value);
+        animate();
+    }
+
+    function onPointerDown(event) {
+        if (!isCompassActive) return;
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        raycaster.setFromCamera(mouse, camera);
+        
+        const intersects = raycaster.intersectObject(compass, true);
+        if (intersects.length > 0) {
+            isDragging = true;
+            orbitControls.enabled = false;
+        }
+    }
+
+    function onPointerMove(event) {
+        if (!isDragging) return;
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        raycaster.setFromCamera(mouse, camera);
+        
+        const targetPoint = new THREE.Vector3();
+        raycaster.ray.intersectPlane(dragPlane, targetPoint);
+        
+        if (targetPoint) {
+            compass.position.copy(targetPoint);
+        }
+    }
+
+    function onPointerUp(event) {
+        isDragging = false;
+        orbitControls.enabled = true; 
+    }
+
+    function createTextMaterial(text, bgColor) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 512; 
+        canvas.height = 180; 
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = bgColor;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = 'white';
+        ctx.font = 'bold 110px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, 256, 96); 
+        return new THREE.MeshPhongMaterial({ map: new THREE.CanvasTexture(canvas) });
+    }
+
+    function buildScene(mode) {
+        magnetsData = [];
+        while(magnetsGroup.children.length > 0){ magnetsGroup.remove(magnetsGroup.children[0]); }
+        if (neutralMarker) { scene.remove(neutralMarker); neutralMarker = null; }
+
+        const colorN = '#ef4444'; 
+        const colorS = '#3b82f6';
+
+        const matN_text = createTextMaterial('N', colorN); 
+        const matS_text = createTextMaterial('S', colorS); 
+        const matN_color = new THREE.MeshPhongMaterial({ color: colorN });
+        const matS_color = new THREE.MeshPhongMaterial({ color: colorS });
+
+        const materialsN = [matN_color, matN_color, matN_text, matN_color, matN_text, matN_color];
+        const materialsS = [matS_color, matS_color, matS_text, matS_color, matS_text, matS_color];
+
+        function addBarMagnet(centerX, centerY, centerZ, nDirectionX) {
+            const group = new THREE.Group();
+            const geo = new THREE.BoxGeometry(MAG_LEN/2, MAG_WID, MAG_WID);
+            
+            const meshN = new THREE.Mesh(geo, materialsN);
+            meshN.position.x = nDirectionX > 0 ? MAG_LEN/4 : -MAG_LEN/4;
+            const meshS = new THREE.Mesh(geo, materialsS);
+            meshS.position.x = nDirectionX > 0 ? -MAG_LEN/4 : MAG_LEN/4;
+
+            group.add(meshN);
+            group.add(meshS);
+            group.position.set(centerX, centerY, centerZ);
+            magnetsGroup.add(group);
+
+            magnetsData.push({ 
+                posCenter: new THREE.Vector3(centerX, centerY, centerZ),
+                posN: new THREE.Vector3(centerX + nDirectionX * POLE_DIST, centerY, centerZ), 
+                posS: new THREE.Vector3(centerX - nDirectionX * POLE_DIST, centerY, centerZ),
+                nDir: new THREE.Vector3(nDirectionX, 0, 0)
+            });
+        }
+
+        const offset = 6.5; 
+        if (mode === 'single') {
+            addBarMagnet(0, 0, 0, 1);
+        } else if (mode === 'repel') {
+            addBarMagnet(-offset, 0, 0, 1);   
+            addBarMagnet(offset, 0, 0, -1);   
+            
+            // ★ 全新的精準圓形中和點標記 ★
+            const canvas = document.createElement('canvas');
+            canvas.width = 256; 
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            
+            // 繪製正中央的實心紅點 (帶有白邊以增加對比)
+            ctx.beginPath();
+            ctx.arc(128, 128, 28, 0, Math.PI * 2);
+            ctx.fillStyle = '#dc2626'; // 紅色
+            ctx.fill();
+            ctx.lineWidth = 6;
+            ctx.strokeStyle = '#ffffff'; // 白色邊框
+            ctx.stroke();
+
+            // 在紅點下方繪製輔助文字
+            ctx.fillStyle = '#dc2626';
+            ctx.font = 'bold 36px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            ctx.fillText('中和點', 128, 175);
+            
+            const tex = new THREE.CanvasTexture(canvas);
+            const mat = new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true });
+            neutralMarker = new THREE.Sprite(mat);
+            
+            // 將 Sprite 設為正方形，這樣 (128,128) 剛好對應 3D 空間的 (0,0,0)
+            neutralMarker.scale.set(4, 4, 1);
+            neutralMarker.position.set(0, 0, 0); 
+            neutralMarker.visible = document.getElementById('neutralToggle').checked;
+            scene.add(neutralMarker);
+            
+        } else if (mode === 'attract') {
+            addBarMagnet(-offset, 0, 0, 1);   
+            addBarMagnet(offset, 0, 0, 1);    
+        }
+
+        generateFieldLines();
+    }
+
+    function getMagneticField(pos) {
+        let B = new THREE.Vector3(0, 0, 0);
+        for (let m of magnetsData) {
+            let rN = new THREE.Vector3().subVectors(pos, m.posN);
+            let distSqN = rN.lengthSq();
+            if (distSqN > 0.05) B.add(rN.normalize().multiplyScalar(1 / distSqN));
+            
+            let rS = new THREE.Vector3().subVectors(pos, m.posS);
+            let distSqS = rS.lengthSq();
+            if (distSqS > 0.05) B.add(rS.normalize().multiplyScalar(-1 / distSqS));
+        }
+        return B;
+    }
+
+    function traceLine(startPos, stepSign) {
+        let points = [startPos.clone()];
+        let pos = startPos.clone();
+        let h = 0.15; 
+        let closed = false;
+        let maxSteps = 2500; 
+        
+        let isRepelMode = document.getElementById('modeSelect').value === 'repel';
+        let startSideX = startPos.x > 0 ? 1 : -1;
+
+        for (let step = 0; step < maxSteps; step++) {
+            let B1 = getMagneticField(pos);
+            let bMag1 = B1.length();
+            
+            if (bMag1 < 0.02) break; 
+            if (isRepelMode && pos.length() < 1.2) break;
+
+            let k1 = B1.multiplyScalar((h * stepSign) / bMag1);
+            let p2 = pos.clone().add(k1.clone().multiplyScalar(0.5));
+            let B2 = getMagneticField(p2);
+            let bMag2 = B2.length();
+            if (bMag2 < 0.02 || (isRepelMode && p2.length() < 1.2)) break;
+            let k2 = B2.multiplyScalar((h * stepSign) / bMag2);
+
+            let p3 = pos.clone().add(k2.clone().multiplyScalar(0.5));
+            let B3 = getMagneticField(p3);
+            let bMag3 = B3.length();
+            if (bMag3 < 0.02 || (isRepelMode && p3.length() < 1.2)) break;
+            let k3 = B3.multiplyScalar((h * stepSign) / bMag3);
+
+            let p4 = pos.clone().add(k3);
+            let B4 = getMagneticField(p4);
+            let bMag4 = B4.length();
+            if (bMag4 < 0.02 || (isRepelMode && p4.length() < 1.2)) break;
+            let k4 = B4.multiplyScalar((h * stepSign) / bMag4);
+
+            let move = k1.add(k2.multiplyScalar(2)).add(k3.multiplyScalar(2)).add(k4).multiplyScalar(1/6);
+            pos.add(move);
+            points.push(pos.clone());
+
+            // 絕對防穿透結界：相斥模式下強制截斷跨越 x=0 的線條
+            if (isRepelMode) {
+                let currentSideX = pos.x > 0 ? 1 : -1;
+                if (startSideX !== currentSideX) {
+                    break;
+                }
+            }
+
+            if (pos.length() > 60) break; 
+
+            if (step > 5) {
+                let hit = false;
+                for (let m of magnetsData) {
+                    let toCenter = new THREE.Vector3().subVectors(pos, m.posCenter);
+                    let xProj = toCenter.dot(m.nDir); 
+                    let radialDist = Math.sqrt(Math.max(0, toCenter.lengthSq() - xProj * xProj)); 
+
+                    if (Math.abs(xProj) <= (MAG_LEN / 2) && radialDist <= (MAG_WID / 2) + 0.1) {
+                        hit = true;
+                        closed = true;
+                        break;
+                    }
+                }
+                if (hit) break;
+            }
+        }
+        return { points, closed };
+    }
+
+    function generateFieldLines() {
+        while(fieldLinesGroup.children.length > 0) { fieldLinesGroup.remove(fieldLinesGroup.children[0]); }
+        
+        const tubeMat = new THREE.MeshPhongMaterial({ color: 0x475569, shininess: 30 }); 
+        const arrowMat = new THREE.MeshPhongMaterial({ color: 0xf97316 }); 
+
+        const numDirections = parseInt(document.getElementById('linesDirectionSelect').value);
+        const density = parseInt(document.getElementById('densitySelect').value);
+        let isRepelMode = document.getElementById('modeSelect').value === 'repel';
+        
+        const totalLinesIndex = numDirections * density * magnetsData.length;
+        
+        let tubeRadius = 0.035;
+        if (totalLinesIndex > 60) tubeRadius = 0.025;
+        if (totalLinesIndex > 200) tubeRadius = 0.015;
+
+        // 動態箭頭間距與大小縮放
+        let arrowSpacing = 20; 
+        let arrowScale = 1.0;
+        
+        if (totalLinesIndex > 32) { arrowSpacing = 35; arrowScale = 0.85; }
+        if (totalLinesIndex > 80) { arrowSpacing = 60; arrowScale = 0.7; }
+        if (totalLinesIndex > 200) { arrowSpacing = 100; arrowScale = 0.5; }
+        if (totalLinesIndex > 400) { arrowSpacing = 160; arrowScale = 0.4; } 
+
+        let allCurves = [];
+
+        function drawCurve(pointsArray) {
+            if (pointsArray.length < 5) return;
+            const curve = new THREE.CatmullRomCurve3(pointsArray);
+            
+            const tubeGeo = new THREE.TubeGeometry(curve, 150, tubeRadius, 8, false);
+            const tube = new THREE.Mesh(tubeGeo, tubeMat);
+            fieldLinesGroup.add(tube);
+
+            allCurves.push(curve);
+        }
+
+        magnetsData.forEach(m => {
+            for (let i = 0; i < numDirections; i++) {
+                let angle = (i / numDirections) * Math.PI * 2;
+                let up = new THREE.Vector3(0, 1, 0);
+                let right = new THREE.Vector3(0, 0, 1);
+                let radialDir = up.clone().multiplyScalar(Math.cos(angle)).add(right.clone().multiplyScalar(Math.sin(angle)));
+                
+                let maxDistAlongSide = (MAG_LEN / 2) * 0.85; 
+                let endFaceDist = MAG_WID / 2;
+                let totalPath = endFaceDist + maxDistAlongSide;
+
+                for (let j = 0; j < density; j++) {
+                    let frac = j / (density - 1); 
+                    let s = Math.pow(frac, 0.9) * totalPath;
+
+                    if (isRepelMode && s < 0.2) continue; 
+
+                    let x_offset, radial_offset;
+
+                    if (s <= endFaceDist) {
+                        x_offset = MAG_LEN / 2 + 0.05;
+                        radial_offset = s;
+                    } else {
+                        x_offset = (MAG_LEN / 2) - (s - endFaceDist);
+                        radial_offset = (MAG_WID / 2) + 0.05;
+                    }
+
+                    let startN = m.posCenter.clone()
+                        .add(m.nDir.clone().multiplyScalar(x_offset))
+                        .add(radialDir.clone().multiplyScalar(radial_offset));
+                    let resN = traceLine(startN, 1);
+                    drawCurve(resN.points);
+
+                    let startS = m.posCenter.clone()
+                        .add(m.nDir.clone().multiplyScalar(-x_offset))
+                        .add(radialDir.clone().multiplyScalar(radial_offset));
+                    let resS = traceLine(startS, -1);
+                    
+                    if (!resS.closed) {
+                        resS.points.reverse(); 
+                        drawCurve(resS.points);
+                    }
+                }
+            }
+        });
+
+        // 限制箭頭總數 (最大 32 個)
+        let potentialArrows = [];
+        
+        for(let curve of allCurves) {
+            let arcLength = curve.getLength();
+            let numArrows = Math.floor(arcLength / 25); 
+            if (numArrows < 1 && arcLength > 5) numArrows = 1; 
+
+            for (let j = 1; j <= numArrows; j++) {
+                potentialArrows.push({ curve: curve, fraction: j / (numArrows + 1) });
+            }
+        }
+
+        const MAX_ARROWS = 32;
+        if (potentialArrows.length > MAX_ARROWS) {
+            let step = potentialArrows.length / MAX_ARROWS;
+            for (let i = 0; i < MAX_ARROWS; i++) {
+                let targetIndex = Math.floor(i * step);
+                let p = potentialArrows[targetIndex];
+                addArrowToCurve(p.curve, p.fraction, arrowMat, arrowScale);
+            }
+        } else {
+            for (let p of potentialArrows) {
+                addArrowToCurve(p.curve, p.fraction, arrowMat, arrowScale);
+            }
+        }
+    }
+
+    function addArrowToCurve(curve, fraction, material, scale) {
+        const point = curve.getPointAt(fraction);
+        const tangent = curve.getTangentAt(fraction);
+        
+        const radius = 0.35 * scale;
+        const height = 1.2 * scale;
+        const arrowGeo = new THREE.ConeGeometry(radius, height, 12);
+        arrowGeo.translate(0, -height / 2, 0); 
+        
+        const arrow = new THREE.Mesh(arrowGeo, material);
+        arrow.position.copy(point);
+        const axis = new THREE.Vector3(0, 1, 0);
+        arrow.quaternion.setFromUnitVectors(axis, tangent);
+        fieldLinesGroup.add(arrow);
+    }
+
+    function createCompass() {
+        compass = new THREE.Group();
+        
+        const coneN = new THREE.Mesh(new THREE.ConeGeometry(0.3, 1.8, 16), new THREE.MeshPhongMaterial({ color: 0xef4444 }));
+        coneN.rotation.z = -Math.PI / 2;
+        coneN.position.x = 0.9;
+
+        const coneS = new THREE.Mesh(new THREE.ConeGeometry(0.3, 1.8, 16), new THREE.MeshPhongMaterial({ color: 0xffffff }));
+        coneS.rotation.z = Math.PI / 2;
+        coneS.position.x = -0.9;
+
+        const base = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 1.8, 0.1, 32), new THREE.MeshPhongMaterial({ color: 0x94a3b8, transparent: true, opacity: 0.7 }));
+        base.rotation.x = Math.PI / 2; 
+
+        const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.3, 16), new THREE.MeshPhongMaterial({ color: 0x475569 }));
+        pin.rotation.x = Math.PI / 2;
+
+        compass.add(coneN);
+        compass.add(coneS);
+        compass.add(base);
+        compass.add(pin);
+
+        compass.position.set(0, 8, 0); 
+        compass.visible = false;
+        scene.add(compass);
+    }
+
+    function toggleCompass() {
+        isCompassActive = !isCompassActive;
+        compass.visible = isCompassActive;
+        const btn = document.getElementById('compassBtn');
+
+        if (isCompassActive) {
+            compass.position.set(0, 8, 0); 
+            btn.innerText = "關閉指南針";
+            btn.style.backgroundColor = "#dc2626";
+            
+            if(document.getElementById('linesDirectionSelect').value !== "2") {
+                document.getElementById('linesDirectionSelect').value = "2";
+                generateFieldLines();
+            }
+            
+            camera.position.set(0, 0, 48);
+            camera.lookAt(0, 0, 0);
+            orbitControls.target.set(0, 0, 0);
+            orbitControls.update();
+            
+        } else {
+            isDragging = false;
+            orbitControls.enabled = true; 
+            btn.innerText = "打開 2D 平面指南針";
+            btn.style.backgroundColor = "#2563eb";
+        }
+    }
+
+    function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+        orbitControls.update();
+
+        if (isCompassActive && compass && magnetsData.length > 0) {
+            compass.position.z = 0; 
+            
+            const B = getMagneticField(compass.position);
+            const bMag = B.lengthSq();
+            
+            if (bMag > 1e-4) {
+                const targetQuaternion = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1, 0, 0), B.normalize());
+                compass.quaternion.slerp(targetQuaternion, 0.25); 
+            }
+        }
+        
+        renderer.render(scene, camera);
+    }
+
+    window.onload = init;
+</script>
+</body>
+</html>

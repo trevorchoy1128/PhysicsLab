@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>右手定則 3D 互動模擬器 | HKDSE Physics</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; background: #080812; color: #e8e8f0; min-height: 100vh; display: flex; flex-direction: column; }
+        #topbar { background: linear-gradient(135deg, #0f0f2e 0%, #1a0f3a 100%); border-bottom: 1px solid #2a1f50; padding: 12px 24px; }
+        #main { display: flex; flex: 1; }
+        #left-panel { width: 300px; background: #0c0c22; padding: 15px; }
+        #canvas-wrap { flex: 1; position: relative; background: #080812; }
+        .mode-btn { padding: 10px; margin: 5px; cursor: pointer; background: #12122a; color: #fff; border: 1px solid #333; }
+        .mode-btn.active { background: #5030b8; }
+        #status-badge { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.7); padding: 10px; color: #fff; pointer-events: none; }
+    </style>
+</head>
+<body>
+<div id="topbar"><h1>🧲 右手定則 3D 互動模擬器</h1></div>
+<div id="main">
+    <div id="left-panel">
+        <button class="mode-btn active" onclick="setMode('wire')">直導線</button>
+        <button class="mode-btn" onclick="setMode('solenoid')">螺線管 (3D)</button>
+        <button class="mode-btn" onclick="setMode('solenoid2d')">螺線管 (2D 剖面)</button>
+    </div>
+    <div id="canvas-wrap">
+        <div id="status-badge">模式: 直導線</div>
+    </div>
+</div>
+<script>
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 1000);
+camera.position.set(0, 5, 20);
+var renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(document.getElementById('canvas-wrap').clientWidth, document.getElementById('canvas-wrap').clientHeight);
+document.getElementById('canvas-wrap').appendChild(renderer.domElement);
+
+var wireGroup = new THREE.Group();
+var solGroup = new THREE.Group();
+var sol2dGroup = new THREE.Group();
+
+scene.add(wireGroup);
+scene.add(solGroup);
+scene.add(sol2dGroup);
+
+// 直導線: 添加紙入/紙出標記 (• 和 ×)
+function buildWire() {
+    wireGroup.clear();
+    // 導線
+    var geometry = new THREE.CylinderGeometry(0.2, 0.2, 10, 32);
+    var material = new THREE.MeshStandardMaterial({color: 0xffaa00});
+    var wire = new THREE.Mesh(geometry, material);
+    wireGroup.add(wire);
+
+    // 標記 (平面)
+    for (let i = -4; i <= 4; i += 2) {
+        // 右側: • (指向讀者)
+        let dot = new THREE.Mesh(new THREE.CircleGeometry(0.3, 32), new THREE.MeshBasicMaterial({color: 0x00ff00}));
+        dot.position.set(2, i, 0);
+        wireGroup.add(dot);
+        // 左側: × (進入紙面)
+        let cross = new THREE.Group();
+        let line1 = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.1), new THREE.MeshBasicMaterial({color: 0xff0000}));
+        line1.rotation.z = Math.PI/4;
+        let line2 = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.1), new THREE.MeshBasicMaterial({color: 0xff0000}));
+        line2.rotation.z = -Math.PI/4;
+        cross.add(line1); cross.add(line2);
+        cross.position.set(-2, i, 0);
+        wireGroup.add(cross);
+    }
+}
+
+// 螺線管 (3D) - 內部均勻磁場
+function buildSolenoid() {
+    solGroup.clear();
+    // 簡化顯示，螺線管內部的場線用平行線表示
+    for (let i = 0; i < 5; i++) {
+        let path = new THREE.Path();
+        path.moveTo(-5, (i-2)*0.5, 0);
+        path.lineTo(5, (i-2)*0.5, 0);
+        let points = path.getPoints();
+        let geometry = new THREE.BufferGeometry().setFromPoints(points);
+        let line = new THREE.Line(geometry, new THREE.LineBasicMaterial({color: 0x00aaff}));
+        solGroup.add(line);
+    }
+}
+
+// 螺線管 (2D 剖面) - 參考提供的照片
+function buildSolenoid2d() {
+    sol2dGroup.clear();
+    // 繪製兩排點，上面是 • (點)，下面是 × (交叉)
+    for (let i = 0; i < 8; i++) {
+        // 上排 •
+        let dot = new THREE.Mesh(new THREE.CircleGeometry(0.2, 16), new THREE.MeshBasicMaterial({color: 0xffffff}));
+        dot.position.set(-4 + i*1.2, 2, 0);
+        sol2dGroup.add(dot);
+        // 下排 ×
+        let cross = new THREE.Group();
+        let l1 = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.05), new THREE.MeshBasicMaterial({color: 0xffffff}));
+        l1.rotation.z = Math.PI/4;
+        let l2 = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.05), new THREE.MeshBasicMaterial({color: 0xffffff}));
+        l2.rotation.z = -Math.PI/4;
+        cross.add(l1); cross.add(l2);
+        cross.position.set(-4 + i*1.2, -2, 0);
+        sol2dGroup.add(cross);
+    }
+    // 內部磁場線
+    let curve = new THREE.QuadraticBezierCurve(new THREE.Vector3(-5, 0, 0), new THREE.Vector3(0, 1, 0), new THREE.Vector3(5, 0, 0));
+    let geom = new THREE.BufferGeometry().setFromPoints(curve.getPoints(50));
+    sol2dGroup.add(new THREE.Line(geom, new THREE.LineBasicMaterial({color: 0x00ffff})));
+}
+
+function setMode(mode) {
+    wireGroup.visible = (mode === 'wire');
+    solGroup.visible = (mode === 'solenoid');
+    sol2dGroup.visible = (mode === 'solenoid2d');
+    document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+}
+
+// 初始化
+buildWire(); buildSolenoid(); buildSolenoid2d();
+solGroup.visible = false; sol2dGroup.visible = false;
+
+function animate() { requestAnimationFrame(animate); renderer.render(scene, camera); }
+animate();
+</script>
+</body>
+</html>

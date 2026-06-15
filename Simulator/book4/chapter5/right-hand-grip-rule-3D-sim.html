@@ -1,0 +1,1046 @@
+﻿<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>右手定則 3D 互動模擬器 | 實驗室專業版</title>
+    <script>
+        window.MathJax = {
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']] },
+            chtml: { displayAlign: 'center' },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        /* --- 實驗室灰 (Lab Gray) 全新主題 --- */
+        body {
+            font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+            background: #e2e6eb; 
+            color: #334155;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #topbar {
+            background: #1e293b; 
+            border-bottom: 1px solid #0f172a;
+            padding: 10px 20px;
+            display: flex; align-items: center; justify-content: space-between;
+            flex-shrink: 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        #topbar .title-block h1 { font-size: 1.2rem; font-weight: 700; color: #f8fafc; letter-spacing: 0.03em; }
+        #topbar .title-block p  { font-size: 0.75rem; color: #94a3b8; margin-top: 2px; }
+
+        /* 面板開關按鈕樣式 */
+        .panel-toggle-btn {
+            background: #334155; border: 1px solid #475569; border-radius: 6px;
+            color: #f8fafc; padding: 7px 12px; font-size: 0.8rem; font-weight: 600;
+            cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 6px;
+        }
+        .panel-toggle-btn:hover { background: #475569; border-color: #64748b; }
+        .panel-toggle-btn.inactive { background: #0f172a; color: #64748b; border-color: #1e293b; }
+        
+        /* 隱藏面板的輔助 Class */
+        .panel-hidden { display: none !important; }
+
+        #main { display: flex; flex: 1; min-height: 0; overflow: hidden; }
+
+        #left-panel {
+            width: 300px; flex-shrink: 0; background: #f1f5f9;
+            border-right: 1px solid #cbd5e1; display: flex;
+            flex-direction: column; overflow-y: auto; padding: 14px 12px; gap: 12px;
+        }
+
+        .card { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .card-header {
+            background: #e2e8f0;
+            padding: 8px 13px; font-size: 0.75rem; font-weight: 700;
+            color: #475569; text-transform: uppercase; letter-spacing: 0.1em;
+            display: flex; align-items: center; gap: 7px;
+        }
+        .card-body { padding: 11px 13px; }
+
+        .mode-label { font-size: 0.68rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 7px; margin-top: 4px; }
+
+        .mode-btn-group { display: flex; gap: 8px; margin-bottom: 4px;}
+        .mode-btn {
+            flex: 1; padding: 11px 6px; border-radius: 9px;
+            border: 1px solid #cbd5e1; background: #f8fafc;
+            color: #475569; font-size: 0.78rem; font-weight: 600;
+            cursor: pointer; transition: all 0.2s; text-align: center; line-height: 1.35;
+        }
+        .mode-btn:hover { border-color: #94a3b8; color: #1e293b; background: #f1f5f9; }
+        .mode-btn.active {
+            border-color: #3b82f6; background: #eff6ff;
+            color: #1d4ed8; box-shadow: 0 0 0 1px #3b82f6;
+        }
+        .mode-btn .btn-icon { font-size: 1.4rem; display: block; margin-bottom: 4px; }
+
+        .dir-btn-group { display: flex; gap: 6px; flex-wrap: wrap; }
+        .dir-btn {
+            flex: 1; min-width: 58px; padding: 8px 5px; border-radius: 8px;
+            border: 1px solid #cbd5e1; background: #f8fafc;
+            color: #475569; font-size: 0.74rem; font-weight: 600;
+            cursor: pointer; transition: all 0.2s; text-align: center;
+        }
+        .dir-btn:hover { border-color: #94a3b8; color: #1e293b; background: #f1f5f9; }
+        .dir-btn.active {
+            border-color: #0284c7; background: #f0f9ff;
+            color: #0369a1; box-shadow: 0 0 0 1px #0284c7;
+        }
+
+        .toggle-row {
+            display: flex; align-items: center; gap: 9px; padding: 7px 12px;
+            background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px;
+            cursor: pointer; transition: background 0.2s; user-select: none;
+            margin-bottom: 6px;
+        }
+        .toggle-row:last-child { margin-bottom: 0; }
+        .toggle-row:hover { background: #f8fafc; }
+        .toggle-track {
+            width: 32px; height: 18px; border-radius: 9px; background: #cbd5e1;
+            position: relative; transition: background 0.2s; flex-shrink: 0;
+        }
+        .toggle-track.on { background: #3b82f6; }
+        .toggle-thumb {
+            width: 14px; height: 14px; border-radius: 50%; background: #fff;
+            position: absolute; top: 2px; left: 2px; transition: left 0.2s;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+        .toggle-track.on .toggle-thumb { left: 16px; }
+        .toggle-row span { font-size: 0.73rem; color: #475569; font-weight: 500; }
+
+        .info-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 11px 12px; font-size: 0.78rem; line-height: 1.8; color: #475569; }
+        .rule-title { font-size: 0.85rem; font-weight: 700; color: #b45309; margin-bottom: 8px; }
+        .step { display: flex; align-items: flex-start; gap: 7px; margin-bottom: 5px; }
+        .step-num { background: #3b82f6; color: #fff; font-size: 0.68rem; font-weight: 700; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; }
+        .hl-current { color: #ea580c; font-weight: 700; }
+        .hl-field   { color: #0284c7; font-weight: 700; }
+        .hl-north   { color: #dc2626; font-weight: 700; }
+
+        #canvas-wrap { flex: 1; position: relative; min-width: 0; background: #e2e6eb; overflow: hidden; }
+        #canvas-wrap canvas { display: block; outline: none; }
+
+        #status-badge {
+            position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+            background: rgba(255,255,255,0.92); border: 1px solid #cbd5e1;
+            border-radius: 22px; padding: 7px 22px; font-size: 0.82rem;
+            font-weight: 600; color: #1e293b; backdrop-filter: blur(8px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            white-space: nowrap; pointer-events: none; z-index: 10;
+        }
+        #hint {
+            position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+            background: rgba(255,255,255,0.85); border: 1px solid #cbd5e1;
+            border-radius: 18px; padding: 6px 18px; font-size: 0.75rem;
+            color: #475569; backdrop-filter: blur(4px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            pointer-events: none; white-space: nowrap; z-index: 10;
+        }
+
+        #right-panel {
+            width: 260px; flex-shrink: 0; background: #f1f5f9;
+            border-left: 1px solid #cbd5e1; display: flex;
+            flex-direction: column; padding: 14px 12px; gap: 12px; overflow-y: auto;
+        }
+        .formula-box { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .formula-box h4 { font-size: 0.7rem; color: #475569; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 9px; }
+        
+        .formula { background: #f8fafc; border-radius: 6px; padding: 4px 10px; color: #0f172a; margin-bottom: 7px; border: 1px solid #e2e8f0; overflow-x: auto; font-size: 1.05rem; }
+        
+        .formula-desc { font-size: 0.71rem; color: #64748b; line-height: 1.8; }
+        .formula-desc span { color: #334155; font-weight: 600; }
+
+        .quiz-box { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .quiz-box h4 { font-size: 0.7rem; color: #0284c7; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 9px; }
+        .quiz-q { font-size: 0.78rem; color: #1e293b; line-height: 1.65; margin-bottom: 10px; font-weight: 500; }
+        .quiz-options { display: flex; flex-direction: column; gap: 5px; }
+        .quiz-opt { padding: 7px 10px; border-radius: 7px; border: 1px solid #cbd5e1; background: #f8fafc; color: #475569; font-size: 0.76rem; cursor: pointer; transition: all 0.2s; }
+        .quiz-opt:hover { border-color: #94a3b8; background: #f1f5f9; color: #1e293b; }
+        .quiz-opt.correct { border-color: #22c55e; background: #f0fdf4; color: #166534; }
+        .quiz-opt.wrong   { border-color: #ef4444; background: #fef2f2; color: #991b1b; }
+        #quiz-feedback { font-size: 0.73rem; margin-top: 8px; min-height: 18px; line-height: 1.55; color: #475569; }
+        #quiz-next { margin-top: 8px; padding: 6px 12px; border-radius: 6px; border: 1px solid #cbd5e1; background: #f1f5f9; color: #475569; font-size: 0.74rem; cursor: pointer; display: none; width: 100%; font-weight: 600; }
+        #quiz-next:hover { background: #e2e8f0; }
+
+        @media (max-width: 960px) { #right-panel { display: none; } }
+    </style>
+</head>
+<body>
+
+
+<div id="topbar">
+    <div style="display: flex; align-items: center; gap: 16px;">
+        <button class="panel-toggle-btn" id="btn-toggle-left" onclick="toggleLeftPanel()">
+            <span>☰</span> 控制
+        </button>
+        <div class="title-block">
+            <h1>🧲 右手定則 3D 互動模擬器</h1>
+            <p>HKDSE Physics · Book 4 · Laboratory Gray & Centered Camera Edition</p>
+        </div>
+    </div>
+    <button class="panel-toggle-btn" id="btn-toggle-right" onclick="toggleRightPanel()">
+        <span>📖</span> 資訊
+    </button>
+</div>
+
+<div id="main">
+    <div id="left-panel">
+        <div class="card">
+            <div class="card-header">⚡ 模式選擇</div>
+            <div class="card-body">
+                <div class="mode-btn-group">
+                    <button class="mode-btn active" id="btn-wire" onclick="setMode('wire')">
+                        <span class="btn-icon">🔌</span>直導線<br><small>Wire</small>
+                    </button>
+                    <button class="mode-btn" id="btn-solenoid" onclick="setMode('solenoid')">
+                        <span class="btn-icon">🌀</span>螺線管<br><small>Solenoid</small>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">👁️ 空間視角 & 標籤</div>
+            <div class="card-body">
+                <div class="dir-btn-group" style="margin-bottom:12px;">
+                    <button class="dir-btn active" id="view-3d" onclick="setView('3d')">🧊 3D 立體</button>
+                    <button class="dir-btn"        id="view-2d" onclick="setView('2d')">📐 2D 平面</button>
+                </div>
+                
+                <div class="toggle-row" id="pole-label-toggle" onclick="togglePoleLabels()" style="display:none;">
+                    <div class="toggle-track" id="pole-label-track"><div class="toggle-thumb"></div></div>
+                    <span>顯示磁極標籤 (N, S)</span>
+                </div>
+                <div class="toggle-row" id="current-label-toggle" onclick="toggleCurrentLabels()" style="display:none;">
+                    <div class="toggle-track" id="current-label-track"><div class="toggle-thumb"></div></div>
+                    <span>顯示電流標籤 (I)</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card" id="wire-controls">
+            <div class="card-header">↕ 電流方向</div>
+            <div class="card-body">
+                <div class="dir-btn-group">
+                    <button class="dir-btn active" id="wire-up"   onclick="setWireDir('up')">⬆ 向上</button>
+                    <button class="dir-btn"        id="wire-down" onclick="setWireDir('down')">⬇ 向下</button>
+                </div>
+                
+                <div id="wire-2d-view-controls" style="display:none; margin-top:12px; border-top:1px solid #e2e8f0; padding-top:10px;">
+                    <div class="mode-label">2D 平面視角選擇</div>
+                    <div class="dir-btn-group">
+                        <button class="dir-btn active" id="wire-view-front" onclick="setWire2DView('front')">🔍 正視圖 (縱切)</button>
+                        <button class="dir-btn"        id="wire-view-top"   onclick="setWire2DView('top')">🔍 俯視圖 (橫截)</button>
+                    </div>
+                </div>
+
+                <div style="margin-top:12px;">
+                    <div class="toggle-row" id="single-ring-toggle" onclick="toggleSingleRing()">
+                        <div class="toggle-track" id="single-ring-track"><div class="toggle-thumb"></div></div>
+                        <span>單圈模式（聚焦單一磁場圈）</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card" id="sol-controls" style="display:none;">
+            <div class="card-header">🧭 螺線管設定</div>
+            <div class="card-body">
+                <div class="mode-label">電流方向</div>
+                <div class="dir-btn-group">
+                    <button class="dir-btn active" id="sol-ccw" onclick="setSolDir('ccw')">↺ 逆時針</button>
+                    <button class="dir-btn"        id="sol-cw"  onclick="setSolDir('cw')">↻ 順時針</button>
+                </div>
+                
+                <div class="mode-label" style="margin-top:12px;">磁場平面數量 (切割面)</div>
+                <div class="dir-btn-group">
+                    <button class="dir-btn" id="sol-field-2" onclick="setSolFieldCount(2)">2 面</button>
+                    <button class="dir-btn active" id="sol-field-4" onclick="setSolFieldCount(4)">4 面</button>
+                    <button class="dir-btn" id="sol-field-6" onclick="setSolFieldCount(6)">6 面</button>
+                    <button class="dir-btn" id="sol-field-8" onclick="setSolFieldCount(8)">8 面</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">✨ 顯示效果</div>
+            <div class="card-body">
+                <div class="dir-btn-group">
+                    <button class="dir-btn active" id="disp-anim" onclick="setDisplay('anim')">▶ 動態流動</button>
+                    <button class="dir-btn"        id="disp-static" onclick="setDisplay('static')">⏸ 靜態向量</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">📖 法則說明</div>
+            <div class="card-body">
+                <div class="info-box" id="rule-info-wire">
+                    <div class="rule-title">✋ 直導線右手定則</div>
+                    <div class="step"><div class="step-num">1</div><div>用<span class="hl-current">右手</span>握住導線</div></div>
+                    <div class="step"><div class="step-num">2</div><div><span class="hl-current">拇指</span>指向<span class="hl-current">電流方向</span></div></div>
+                    <div class="step"><div class="step-num">3</div><div><span class="hl-field">四指彎曲方向</span>即為<span class="hl-field">磁場環繞方向</span></div></div>
+                </div>
+                <div class="info-box" id="rule-info-sol" style="display:none;">
+                    <div class="rule-title">✋ 螺線管右手定則</div>
+                    <div class="step"><div class="step-num">1</div><div>用<span class="hl-current">右手</span>握住螺線管</div></div>
+                    <div class="step"><div class="step-num">2</div><div><span class="hl-current">四指彎曲方向</span>與<span class="hl-current">電流方向</span>相同</div></div>
+                    <div class="step"><div class="step-num">3</div><div><span class="hl-north">拇指所指</span>為<span class="hl-north">N 極方向</span></div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="canvas-wrap">
+        <div id="status-badge">載入中...</div>
+        <div id="hint">🖱 左鍵旋轉 · <span style="color:#16a34a; font-weight:bold;">右鍵沿軸平移</span> · 滾輪縮放 · <span style="color:#b45309; font-weight:bold;">點擊磁力線看切線</span></div>
+    </div>
+
+    <div id="right-panel">
+        <div class="formula-box">
+            <h4>📐 2D 切面符號記憶</h4>
+            <div class="formula-desc">
+                <span>點 ($\odot$)</span>：電流/磁場<b>指出紙面</b><br><br>
+                <span>叉 ($\otimes$)</span>：電流/磁場<b>穿入紙面</b>
+            </div>
+        </div>
+        <div class="formula-box">
+            <h4>🔬 直導線磁場強度</h4>
+            <div class="formula">$$B = \frac{\mu_0 I}{2\pi r}$$</div>
+            <div class="formula-desc">
+                <span>$B$</span> = 磁場強度 (T)<br>
+                <span>$I$</span> = 電流 (A) / <span>$r$</span> = 距離 (m)<br>
+                <span>$\mu_0$</span> = 真空磁導率
+            </div>
+        </div>
+        <div class="formula-box">
+            <h4>🌀 螺線管均勻場</h4>
+            <div class="formula">$$B = \mu_0 n I$$</div>
+            <div class="formula-desc">
+                <span>$n$</span> = 每米匝數 (turns/m)<br>
+                <span>$I$</span> = 電流 (A)<br>
+                理想內部磁力線互相平行且均勻等距。
+            </div>
+        </div>
+        <div class="quiz-box">
+            <h4>🧠 即時測驗</h4>
+            <div id="quiz-q" class="quiz-q">載入中…</div>
+            <div id="quiz-opts" class="quiz-options"></div>
+            <div id="quiz-feedback"></div>
+            <button id="quiz-next" onclick="nextQuiz()">下一題 →</button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+'use strict';
+
+// ── 面板開關邏輯 ──
+window.toggleLeftPanel = function() {
+    var panel = document.getElementById('left-panel');
+    var btn = document.getElementById('btn-toggle-left');
+    panel.classList.toggle('panel-hidden');
+    btn.classList.toggle('inactive');
+    setTimeout(function() { window.dispatchEvent(new Event('resize')); }, 50);
+};
+
+window.toggleRightPanel = function() {
+    var panel = document.getElementById('right-panel');
+    var btn = document.getElementById('btn-toggle-right');
+    panel.classList.toggle('panel-hidden');
+    btn.classList.toggle('inactive');
+    setTimeout(function() { window.dispatchEvent(new Event('resize')); }, 50);
+};
+
+// ── 貼圖與圖形工廠 (針對淺灰色背景使用深色調) ──
+function getMarkTexture(type, colorStr) {
+    var cv = document.createElement('canvas'); cv.width = 128; cv.height = 128;
+    var ctx = cv.getContext('2d');
+    ctx.fillStyle = colorStr; ctx.strokeStyle = colorStr; ctx.lineWidth = 10;
+    ctx.beginPath(); ctx.arc(64, 64, 52, 0, Math.PI*2); ctx.stroke();
+    if (type === 'dot') {
+        ctx.beginPath(); ctx.arc(64, 64, 18, 0, Math.PI*2); ctx.fill();
+    } else {
+        ctx.beginPath(); ctx.moveTo(30, 30); ctx.lineTo(98, 98); ctx.moveTo(98, 30); ctx.lineTo(30, 98); ctx.stroke();
+    }
+    var tex = new THREE.CanvasTexture(cv); tex.anisotropy = 4;
+    return tex;
+}
+
+var texDotWire = getMarkTexture('dot', '#0284c7');
+var texCrossWire = getMarkTexture('cross', '#0284c7');
+var texDotSol = getMarkTexture('dot', '#dc2626');
+var texCrossSol = getMarkTexture('cross', '#dc2626');
+
+function createFieldPath(x_ext, y_in, y_out) {
+    var path = new THREE.CurvePath();
+    var line1 = new THREE.LineCurve3(new THREE.Vector3(-x_ext, y_in, 0), new THREE.Vector3(x_ext, y_in, 0)); path.add(line1);
+    var dx = (y_out - y_in) * 0.6;
+    var rCurve = new THREE.CubicBezierCurve3(
+        new THREE.Vector3(x_ext, y_in, 0), new THREE.Vector3(x_ext + dx, y_in, 0),
+        new THREE.Vector3(x_ext + dx, y_out, 0), new THREE.Vector3(x_ext, y_out, 0)
+    ); path.add(rCurve);
+    var line2 = new THREE.LineCurve3(new THREE.Vector3(x_ext, y_out, 0), new THREE.Vector3(-x_ext, y_out, 0)); path.add(line2);
+    var lCurve = new THREE.CubicBezierCurve3(
+        new THREE.Vector3(-x_ext, y_out, 0), new THREE.Vector3(-x_ext - dx, y_out, 0),
+        new THREE.Vector3(-x_ext - dx, y_in, 0), new THREE.Vector3(-x_ext, y_in, 0)
+    ); path.add(lCurve);
+    return path;
+}
+
+function createFatArrow(color, scale) {
+    scale = scale || 1; var group = new THREE.Group();
+    var mat = new THREE.MeshStandardMaterial({ color: color, emissive: color, emissiveIntensity: 0.15, roughness: 0.2 });
+    var cyl = new THREE.Mesh(new THREE.CylinderGeometry(0.12*scale, 0.12*scale, 0.6*scale, 16), mat);
+    cyl.rotation.x = Math.PI / 2; cyl.position.z = 0.3*scale;
+    var cone = new THREE.Mesh(new THREE.ConeGeometry(0.28*scale, 0.45*scale, 16), mat);
+    cone.rotation.x = Math.PI / 2; cone.position.z = (0.6 + 0.225)*scale;
+    group.add(cyl); group.add(cone); return group; 
+}
+
+function makeStyledLabel(text, bgColor, borderColor, textColor, scale) {
+    var cv = document.createElement('canvas'); cv.width = 256; cv.height = 128;
+    var ctx = cv.getContext('2d');
+    
+    ctx.fillStyle = bgColor;
+    ctx.beginPath();
+    var x = 16, y = 16, w = 224, h = 96, r = 32;
+    ctx.moveTo(x+r, y); ctx.lineTo(x+w-r, y); ctx.quadraticCurveTo(x+w, y, x+w, y+r);
+    ctx.lineTo(x+w, y+h-r); ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
+    ctx.lineTo(x+r, y+h); ctx.quadraticCurveTo(x, y+h, x, y+h-r);
+    ctx.lineTo(x, y+r); ctx.quadraticCurveTo(x, y, x+r, y);
+    ctx.fill();
+
+    ctx.lineWidth = 6; ctx.strokeStyle = borderColor; ctx.stroke();
+
+    ctx.fillStyle = textColor; ctx.font = 'bold 68px Arial';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(text, 128, 64 + 6);
+    
+    var sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), transparent: true, depthTest: false }));
+    sp.scale.set(1.4 * scale, 0.7 * scale, 1);
+    sp.renderOrder = 999;
+    return sp;
+}
+
+function createFieldArrowMesh(color, scaleMod) {
+    var geo = new THREE.ConeGeometry(0.08 * scaleMod, 0.28 * scaleMod, 8);
+    geo.rotateX(Math.PI / 2); 
+    var mat = new THREE.MeshBasicMaterial({ color: color });
+    return new THREE.Mesh(geo, mat);
+}
+
+// ── 應用狀態系統 ──
+var currentMode       = 'wire';
+var wireDir           = 'up';         
+var wire2DView        = 'front';      
+var solDir            = 'ccw';
+var displayMode       = 'anim';
+var is2DMode          = false;
+var showPoleLabels    = false;   
+var showCurrentLabels = false;   
+var singleRing        = false;
+var solFieldCount     = 4;       
+
+var wrap = document.getElementById('canvas-wrap');
+var scene = new THREE.Scene(); scene.background = new THREE.Color(0xe2e6eb);
+
+var W = wrap.clientWidth; var H = wrap.clientHeight;
+var camera = new THREE.PerspectiveCamera(40, W / H, 0.1, 200);
+camera.position.set(0, 5, 18);
+
+var renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(W, H); wrap.appendChild(renderer.domElement);
+
+var controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 0, 0);
+controls.enableDamping = true; 
+controls.dampingFactor = 0.07;
+controls.enablePan = true; 
+
+window.addEventListener('resize', function() {
+    var w = wrap.clientWidth, h = wrap.clientHeight; if (!w || !h) return;
+    camera.aspect = w / h; camera.updateProjectionMatrix(); renderer.setSize(w, h);
+});
+
+scene.add(new THREE.AmbientLight(0xffffff, 1.0));
+var key = new THREE.DirectionalLight(0xffffff, 0.6); key.position.set(6, 12, 8); scene.add(key);
+
+// ── 幾何群組宣告 ──
+var wireGroup          = new THREE.Group(); scene.add(wireGroup);
+var ringGroup          = new THREE.Group(); scene.add(ringGroup);
+var mark2DGroup        = new THREE.Group(); scene.add(mark2DGroup);
+var solGroup           = new THREE.Group(); scene.add(solGroup);
+var solCoil3DGroup     = new THREE.Group(); solGroup.add(solCoil3DGroup);
+var solCoil2DGroup     = new THREE.Group(); solGroup.add(solCoil2DGroup);
+var solFieldGroup      = new THREE.Group(); solGroup.add(solFieldGroup);
+var poleLabelGroup     = new THREE.Group(); scene.add(poleLabelGroup);    
+var currentLabelGroup  = new THREE.Group(); scene.add(currentLabelGroup); 
+var tangentGroup       = new THREE.Group(); scene.add(tangentGroup); 
+
+var ringParticles = [];
+var solFieldParticles = [];
+var interactables = []; 
+var wireCenterSprite = null;
+
+function clearGroup(g) {
+    while (g.children.length) {
+        var c = g.children[0]; if (c.geometry) c.geometry.dispose();
+        if (c.material && c.material.dispose) c.material.dispose();
+        g.remove(c);
+    }
+}
+
+// ── 直導線建構 (垂直) ──
+function buildWire() {
+    clearGroup(wireGroup); clearGroup(ringGroup); clearGroup(mark2DGroup); 
+    clearGroup(poleLabelGroup); clearGroup(currentLabelGroup); clearGroup(tangentGroup);
+    ringParticles = []; interactables = [];
+
+    var dir = wireDir; var len = 12;
+    var wireMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, len, 24), new THREE.MeshStandardMaterial({ color: 0xc86020, roughness: 0.3, metalness: 0.8 }));
+    wireGroup.add(wireMesh);
+
+    var aP = dir === 'up' ? [[0,-3,0],[0,-1,0],[0,1,0],[0,3,0]] : [[0,3,0],[0,1,0],[0,-1,0],[0,-3,0]];
+    aP.forEach(function(p) {
+        var arr = createFatArrow(0xdc2626, 1.1); 
+        arr.position.set(p[0], p[1] - (dir === 'up' ? 0.5 : -0.5), p[2]);
+        arr.lookAt(new THREE.Vector3(p[0], p[1] + (dir === 'up' ? 1 : -1), p[2]));
+        wireGroup.add(arr);
+    });
+
+    // --- 修改：導線頂端與底端的電流方向標示 (點與叉) ---
+    // 改用實體圓形平面，確保只有當視角移動到「正上方」或「正下方」時才能看到該平面
+    var topTex = (dir === 'up') ? texDotSol : texCrossSol;
+    var bottomTex = (dir === 'up') ? texCrossSol : texDotSol;
+
+    // 頂端標示 (朝上)
+    var topMark = new THREE.Mesh(
+        new THREE.CircleGeometry(0.35, 32),
+        new THREE.MeshBasicMaterial({ map: topTex, transparent: true, side: THREE.FrontSide })
+    );
+    topMark.rotation.x = -Math.PI / 2; // 旋轉平放，面朝正上方
+    topMark.position.set(0, 6.01, 0);  // 貼齊導線頂部
+    wireGroup.add(topMark);
+
+    // 底端標示 (朝下)
+    var bottomMark = new THREE.Mesh(
+        new THREE.CircleGeometry(0.35, 32),
+        new THREE.MeshBasicMaterial({ map: bottomTex, transparent: true, side: THREE.FrontSide })
+    );
+    bottomMark.rotation.x = Math.PI / 2; // 旋轉平放，面朝正下方
+    bottomMark.position.set(0, -6.01, 0); // 貼齊導線底部
+    wireGroup.add(bottomMark);
+    // ----------------------------------------------------
+
+    var yPositions = singleRing ? [0] : [-3.5, -1.8, 0, 1.8, 3.5];
+    var radii = singleRing ? [1.0, 1.8, 2.8, 4.2, 6.0] : [0.7, 1.2, 1.8, 2.5, 3.4, 4.5, 5.8];
+    var arrowCounts = singleRing ? [6, 8, 10, 12, 14] : [4, 6, 8, 10, 12, 14, 16];
+    
+    var hitMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false });
+
+    yPositions.forEach(function(yp) {
+        radii.forEach(function(r, i) {
+            var frac = i / (radii.length - 1);
+            var ringCol = new THREE.Color(0x0284c7).lerp(new THREE.Color(0x1e3a8a), frac * 0.7);
+            var rMat = new THREE.MeshBasicMaterial({ color: ringCol, transparent: true, opacity: singleRing ? Math.max(0.3, 0.8 - i*0.1) : Math.max(0.15, 0.5 - i*0.06), side: THREE.DoubleSide });
+
+            var ring = new THREE.Mesh(new THREE.TorusGeometry(r, 0.02 + i*0.003, 10, 64), rMat);
+            ring.position.set(0, yp, 0); ring.rotation.x = Math.PI / 2; ringGroup.add(ring);
+
+            var hitRing = new THREE.Mesh(new THREE.TorusGeometry(r, 0.3, 8, 32), hitMat);
+            hitRing.position.set(0, yp, 0); hitRing.rotation.x = Math.PI / 2;
+            hitRing.userData = { isFieldLine: true, type: 'wire', center: new THREE.Vector3(0, yp, 0) };
+            ringGroup.add(hitRing);
+            interactables.push(hitRing);
+
+            var cCount = arrowCounts[i];
+            for (var ca = 0; ca < cCount; ca++) {
+                var ang = (ca / cCount) * Math.PI * 2;
+                var arrow = createFieldArrowMesh(ringCol, 1.0 + i*0.1); 
+                ringGroup.add(arrow);
+                ringParticles.push({ mesh: arrow, r: r, yPos: yp, angle: ang, speed: 0.6 - i*0.05 });
+            }
+        });
+    });
+
+    var isUp = (dir === 'up');
+    var leftMat = isUp ? new THREE.SpriteMaterial({map: texDotWire}) : new THREE.SpriteMaterial({map: texCrossWire});
+    var rightMat = isUp ? new THREE.SpriteMaterial({map: texCrossWire}) : new THREE.SpriteMaterial({map: texDotWire});
+
+    for (var mx = 1.6; mx <= 5.5; mx += 1.6) {
+        for (var my of [-4.5, -2.5, -0.5, 1.5, 3.5]) {
+            var spL = new THREE.Sprite(leftMat); spL.position.set(-mx, my, 0); spL.scale.set(0.85, 0.85, 1); mark2DGroup.add(spL);
+            var spR = new THREE.Sprite(rightMat); spR.position.set(mx, my, 0); spR.scale.set(0.85, 0.85, 1); mark2DGroup.add(spR);
+        }
+    }
+}
+
+function updateWireCenterSprite() {
+    if (wireCenterSprite) { scene.remove(wireCenterSprite); wireCenterSprite.material.dispose(); wireCenterSprite = null; }
+    if (currentMode === 'wire' && is2DMode && wire2DView === 'top') {
+        var isUp = (wireDir === 'up');
+        wireCenterSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: isUp ? texDotWire : texCrossWire, color: 0xdc2626 }));
+        wireCenterSprite.scale.set(1.4, 1.4, 1);
+        wireCenterSprite.position.set(0, 10, 0); 
+        scene.add(wireCenterSprite);
+    }
+}
+
+// ── 螺線管建構 ──
+function buildSolenoid() {
+    clearGroup(solCoil3DGroup); clearGroup(solCoil2DGroup); clearGroup(solFieldGroup); 
+    clearGroup(poleLabelGroup); clearGroup(currentLabelGroup); clearGroup(tangentGroup);
+    solFieldParticles = []; interactables = [];
+
+    var cw = (solDir === 'cw'); var turns = 10; var radius = 1.6; var length = 7.0; var halfL = length / 2;
+
+    var ptCount = turns * 72; var coilPts = [];
+    for (var i = 0; i <= ptCount; i++) {
+        var t = i / ptCount, ang = t * turns * Math.PI * 2; 
+        coilPts.push(new THREE.Vector3(-halfL + t * length, -radius * Math.cos(ang), radius * Math.sin(ang) * (cw ? -1 : 1)));
+    }
+    var coilCurve = new THREE.CatmullRomCurve3(coilPts);
+    var coilMesh = new THREE.Mesh(new THREE.TubeGeometry(coilCurve, ptCount, 0.085, 10, false), new THREE.MeshStandardMaterial({ color: 0xc86020, roughness: 0.3, metalness: 0.85 }));
+    solCoil3DGroup.add(coilMesh);
+
+    var numCoilArrows = 14; 
+    for (var k = 1; k <= numCoilArrows; k++) {
+        var tCoil = k / (numCoilArrows + 1);
+        var posCoil = coilCurve.getPointAt(tCoil);
+        var tangCoil = coilCurve.getTangentAt(tCoil).normalize();
+        if (cw) tangCoil.negate(); 
+        var coilArr = createFatArrow(0xdc2626, 0.65);
+        coilArr.position.copy(posCoil);
+        coilArr.lookAt(posCoil.clone().add(tangCoil));
+        solCoil3DGroup.add(coilArr);
+    }
+
+    var leadMat = new THREE.MeshStandardMaterial({ color: 0xc86020, roughness: 0.4, metalness: 0.8 });
+    var leftLead = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 4.0, 16), leadMat); leftLead.position.set(-halfL, -radius - 2.0, 0); solCoil3DGroup.add(leftLead);
+    var rightLead = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 4.0, 16), leadMat); rightLead.position.set(halfL, -radius - 2.0, 0); solCoil3DGroup.add(rightLead);
+
+    var arrL = createFatArrow(0xdc2626, 1.0); arrL.position.set(-halfL, -radius - 2.0, 0); arrL.lookAt(new THREE.Vector3(-halfL, cw ? -radius - 4.0 : 0, 0)); solCoil3DGroup.add(arrL);
+    var arrR = createFatArrow(0xdc2626, 1.0); arrR.position.set(halfL, -radius - 2.0, 0); arrR.lookAt(new THREE.Vector3(halfL, cw ? 0 : -radius - 4.0, 0)); solCoil3DGroup.add(arrR);
+    
+    var lblI_L = makeStyledLabel(cw?'I ⬇':'I ⬆', '#ffffff', '#dc2626', '#b91c1c', 0.9);
+    lblI_L.position.set(-halfL - 1.2, -radius - 2.0, 0); currentLabelGroup.add(lblI_L);
+    var lblI_R = makeStyledLabel(cw?'I ⬆':'I ⬇', '#ffffff', '#dc2626', '#b91c1c', 0.9);
+    lblI_R.position.set(halfL + 1.2, -radius - 2.0, 0); currentLabelGroup.add(lblI_R);
+
+    var nX = cw ? -halfL - 1.5 : halfL + 1.5; var sX = cw ? halfL + 1.5 : -halfL - 1.5;
+    var lblN = makeStyledLabel('N 極', '#ffffff', '#dc2626', '#b91c1c', 1.0);
+    lblN.position.set(nX, 0, 0); poleLabelGroup.add(lblN);
+    var lblS = makeStyledLabel('S 極', '#ffffff', '#0284c7', '#1d4ed8', 1.0);
+    lblS.position.set(sX, 0, 0); poleLabelGroup.add(lblS);
+
+    var topIsDot = !cw;
+    var tMat = topIsDot ? new THREE.SpriteMaterial({map: texDotSol}) : new THREE.SpriteMaterial({map: texCrossSol});
+    var bMat = topIsDot ? new THREE.SpriteMaterial({map: texCrossSol}) : new THREE.SpriteMaterial({map: texDotSol});
+
+    for (var i = 0; i <= turns; i++) {
+        var cx = -halfL + (i / turns) * length;
+        var spT = new THREE.Sprite(tMat); spT.position.set(cx, radius, 0); spT.scale.set(0.65, 0.65, 1); solCoil2DGroup.add(spT);
+        var spB = new THREE.Sprite(bMat); spB.position.set(cx, -radius, 0); spB.scale.set(0.65, 0.65, 1); solCoil2DGroup.add(spB);
+    }
+
+    var angles = [];
+    for(var j=0; j<solFieldCount; j++) { angles.push((j / solFieldCount) * Math.PI * 2); }
+    var hitMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false });
+
+    angles.forEach(function(ang) {
+        var ringGrp = new THREE.Group();
+        ringGrp.rotation.x = ang;
+        ringGrp.userData = { isRingGroup: true, isXYPlane: (ang === 0 || Math.abs(ang - Math.PI) < 0.01) };
+        solFieldGroup.add(ringGrp);
+
+        var linesConfig = [
+            { y_in: 1.1, y_out: 2.2, x_ext: halfL + 0.4 },
+            { y_in: 0.7, y_out: 3.0, x_ext: halfL + 1.0 },
+            { y_in: 0.3, y_out: 3.8, x_ext: halfL + 1.6 }
+        ];
+
+        linesConfig.forEach(function(cfg) {
+            var path = createFieldPath(cfg.x_ext, cfg.y_in, cfg.y_out);
+            var tube = new THREE.Mesh(new THREE.TubeGeometry(path, 120, 0.04, 6, true), new THREE.MeshBasicMaterial({ color: 0x0284c7, transparent: true, opacity: 0.35 }));
+            ringGrp.add(tube);
+            
+            var hitTube = new THREE.Mesh(new THREE.TubeGeometry(path, 60, 0.35, 4, true), hitMat);
+            hitTube.userData = { isFieldLine: true, type: 'solenoid', curve: path };
+            ringGrp.add(hitTube);
+            interactables.push(hitTube);
+
+            var numArrows = 6;
+            for(var i=0; i<numArrows; i++) {
+                var arrow = createFieldArrowMesh(0x0284c7, 1.4);
+                ringGrp.add(arrow);
+                solFieldParticles.push({ mesh: arrow, curve: path, t: i/numArrows });
+            }
+        });
+    });
+
+    var centerCurve = new THREE.LineCurve3(new THREE.Vector3(-halfL - 4.5, 0, 0), new THREE.Vector3(halfL + 4.5, 0, 0));
+    var centerTube = new THREE.Mesh(new THREE.TubeGeometry(centerCurve, 2, 0.045, 6, false), new THREE.MeshBasicMaterial({ color: 0x0284c7, transparent: true, opacity: 0.4 }));
+    solFieldGroup.add(centerTube);
+    
+    var hitCenter = new THREE.Mesh(new THREE.TubeGeometry(centerCurve, 2, 0.35, 4, false), hitMat);
+    hitCenter.userData = { isFieldLine: true, type: 'solenoid', curve: centerCurve };
+    solFieldGroup.add(hitCenter);
+    interactables.push(hitCenter);
+
+    for(var i=0; i<4; i++) {
+        var aMesh = createFieldArrowMesh(0x0284c7, 1.5);
+        solFieldGroup.add(aMesh);
+        solFieldParticles.push({ mesh: aMesh, curve: centerCurve, t: (i+0.5)/5 });
+    }
+}
+
+// ── 點擊互動：射線與切線繪製系統 ──
+var raycaster = new THREE.Raycaster();
+var mouse = new THREE.Vector2();
+var isDragging = false;
+var downPos = new THREE.Vector2();
+
+renderer.domElement.addEventListener('pointerdown', function(e) {
+    if(e.button !== 0) return;
+    downPos.set(e.clientX, e.clientY);
+    isDragging = false;
+});
+
+renderer.domElement.addEventListener('pointermove', function(e) {
+    if (downPos.distanceTo(new THREE.Vector2(e.clientX, e.clientY)) > 5) {
+        isDragging = true;
+    }
+});
+
+renderer.domElement.addEventListener('pointerup', function(e) {
+    if(e.button !== 0 || isDragging) return;
+    
+    var rect = renderer.domElement.getBoundingClientRect();
+    mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+    mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, camera);
+    var intersects = raycaster.intersectObjects(interactables, false);
+
+    if (intersects.length > 0) {
+        showTangent(intersects[0].point, intersects[0].object);
+    } else {
+        clearGroup(tangentGroup); 
+    }
+});
+
+function showTangent(worldP, hitObj) {
+    clearGroup(tangentGroup);
+    var tangentDir = new THREE.Vector3();
+
+    if(hitObj.userData.type === 'wire') {
+        var dirMult = wireDir === 'up' ? 1 : -1;
+        var center = hitObj.userData.center.clone();
+        var radVec = worldP.clone().sub(center);
+        radVec.y = 0; radVec.normalize();
+        var yAxis = new THREE.Vector3(0, dirMult, 0);
+        tangentDir.crossVectors(radVec, yAxis).normalize();
+    } 
+    else if(hitObj.userData.type === 'solenoid') {
+        var curve = hitObj.userData.curve;
+        var parentGrp = hitObj.parent; 
+        var localP = parentGrp.worldToLocal(worldP.clone());
+
+        var bestT = 0, minD = Infinity;
+        for(var i=0; i<=200; i++) {
+            var t = i/200;
+            var pt = curve.getPointAt(t);
+            var d = pt.distanceToSquared(localP);
+            if(d < minD) { minD = d; bestT = t; }
+        }
+
+        var localTan = curve.getTangentAt(bestT).normalize();
+        var solFd = solDir === 'ccw' ? 1 : -1;
+        if(solFd < 0) localTan.negate();
+        tangentDir.copy(localTan).transformDirection(parentGrp.matrixWorld).normalize();
+    }
+
+    var tangentArrow = createFatArrow(0x16a34a, 1.4); 
+    tangentArrow.position.copy(worldP);
+    tangentArrow.lookAt(worldP.clone().add(tangentDir));
+    tangentGroup.add(tangentArrow);
+
+    var dot = new THREE.Mesh(new THREE.SphereGeometry(0.18, 16, 16), new THREE.MeshBasicMaterial({color: 0x16a34a}));
+    dot.position.copy(worldP);
+    tangentGroup.add(dot);
+
+    var lbl = makeStyledLabel('B (切線)', '#ffffff', '#16a34a', '#15803d', 0.8);
+    lbl.position.copy(worldP.clone().add(tangentDir.clone().multiplyScalar(1.8)));
+    tangentGroup.add(lbl);
+}
+
+function refreshSceneVisibility() {
+    var isWire = currentMode === 'wire';
+    wireGroup.visible = isWire;
+    
+    poleLabelGroup.visible = showPoleLabels;
+    currentLabelGroup.visible = showCurrentLabels;
+
+    if (isWire) {
+        if (is2DMode) {
+            if (wire2DView === 'front') {
+                ringGroup.visible = false;       
+                mark2DGroup.visible = true;
+            } else { 
+                ringGroup.visible = true;        
+                mark2DGroup.visible = false;
+            }
+        } else { 
+            ringGroup.visible = true;            
+            mark2DGroup.visible = false;
+        }
+    } else {
+        ringGroup.visible = false; mark2DGroup.visible = false;
+    }
+
+    solGroup.visible = !isWire;
+    if (!isWire) {
+        solCoil3DGroup.visible = !is2DMode;
+        solCoil2DGroup.visible = is2DMode;
+
+        solFieldGroup.children.forEach(function(child) {
+            if (child.userData && child.userData.isRingGroup) {
+                child.visible = is2DMode ? child.userData.isXYPlane : true;
+            } else {
+                child.visible = true; 
+            }
+        });
+    }
+    updateWireCenterSprite();
+}
+
+function updateBadge() {
+    var statusLabels = {
+        wire_up:   '⬆ 電流向上 · 磁場在<span style="color:#0284c7">左側穿出紙面(⊙)、右側穿入紙面(⊗)</span>',
+        wire_down: '⬇ 電流向下 · 磁場在<span style="color:#0284c7">左側穿入紙面(⊗)、右側穿出紙面(⊙)</span>',
+        sol_ccw:   '↺ 電流逆時針 · <span style="color:#dc2626">N 極</span>在右 · <span style="color:#0284c7">S 極</span>在左',
+        sol_cw:    '↻ 電流順時針 · <span style="color:#dc2626">N 極</span>在左 · <span style="color:#0284c7">S 極</span>在右'
+    };
+    var key = currentMode === 'wire' ? 'wire_' + wireDir : 'sol_' + solDir;
+    document.getElementById('status-badge').innerHTML = statusLabels[key] || '';
+}
+
+// ── 介面觸發控制器 ──
+window.setMode = function(mode) {
+    currentMode = mode;
+    document.getElementById('btn-wire').classList.toggle('active', mode === 'wire');
+    document.getElementById('btn-solenoid').classList.toggle('active', mode === 'solenoid');
+    document.getElementById('wire-controls').style.display  = mode === 'wire' ? '' : 'none';
+    document.getElementById('sol-controls').style.display   = mode === 'solenoid' ? '' : 'none';
+    document.getElementById('rule-info-wire').style.display = mode === 'wire' ? '' : 'none';
+    document.getElementById('rule-info-sol').style.display  = mode === 'solenoid' ? '' : 'none';
+    document.getElementById('wire-2d-view-controls').style.display = (is2DMode && mode === 'wire') ? '' : 'none';
+    
+    document.getElementById('pole-label-toggle').style.display = mode === 'wire' ? 'none' : 'flex';
+    document.getElementById('current-label-toggle').style.display = mode === 'wire' ? 'none' : 'flex';
+    
+    clearGroup(tangentGroup); 
+    controls.target.set(0, 0, 0); 
+
+    if (mode === 'wire') buildWire(); else buildSolenoid();
+    updateBadge(); refreshSceneVisibility();
+};
+
+window.setWireDir = function(dir) {
+    wireDir = dir;
+    ['up','down'].forEach(d => document.getElementById('wire-' + d).classList.toggle('active', d === dir));
+    clearGroup(tangentGroup);
+    buildWire(); updateBadge(); refreshSceneVisibility();
+};
+
+window.setWire2DView = function(view) {
+    wire2DView = view;
+    document.getElementById('wire-view-front').classList.toggle('active', view === 'front');
+    document.getElementById('wire-view-top').classList.toggle('active', view === 'top');
+    clearGroup(tangentGroup);
+    refreshSceneVisibility();
+};
+
+window.setSolDir = function(dir) {
+    solDir = dir;
+    ['ccw','cw'].forEach(d => document.getElementById('sol-' + d).classList.toggle('active', d === dir));
+    clearGroup(tangentGroup);
+    buildSolenoid(); updateBadge(); refreshSceneVisibility();
+};
+
+window.setSolFieldCount = function(count) {
+    solFieldCount = count;
+    [2,4,6,8].forEach(c => document.getElementById('sol-field-' + c).classList.toggle('active', c === count));
+    if(currentMode === 'solenoid') {
+        clearGroup(tangentGroup);
+        buildSolenoid();
+    }
+    refreshSceneVisibility();
+};
+
+window.setDisplay = function(mode) {
+    displayMode = mode;
+    document.getElementById('disp-anim').classList.toggle('active', mode === 'anim');
+    document.getElementById('disp-static').classList.toggle('active', mode === 'static');
+    refreshSceneVisibility();
+};
+
+window.setView = function(mode) {
+    is2DMode = (mode === '2d');
+    document.getElementById('view-3d').classList.toggle('active', !is2DMode);
+    document.getElementById('view-2d').classList.toggle('active', is2DMode);
+    controls.enableRotate = !is2DMode;
+    document.getElementById('wire-2d-view-controls').style.display = (is2DMode && currentMode === 'wire') ? '' : 'none';
+    clearGroup(tangentGroup);
+    
+    if (!is2DMode) controls.target.set(0, 0, 0);
+
+    refreshSceneVisibility();
+};
+
+window.toggleSingleRing = function() {
+    singleRing = !singleRing;
+    document.getElementById('single-ring-track').classList.toggle('on', singleRing);
+    clearGroup(tangentGroup);
+    buildWire(); refreshSceneVisibility();
+};
+
+window.togglePoleLabels = function() {
+    showPoleLabels = !showPoleLabels;
+    document.getElementById('pole-label-track').classList.toggle('on', showPoleLabels);
+    refreshSceneVisibility();
+};
+
+window.toggleCurrentLabels = function() {
+    showCurrentLabels = !showCurrentLabels;
+    document.getElementById('current-label-track').classList.toggle('on', showCurrentLabels);
+    refreshSceneVisibility();
+};
+
+// ── 測驗題庫 ──
+var quizData = [
+    { q:'直導線垂直放置，電流向上。在導線右側的 2D 空間磁場方向是？', opts:['穿入紙面 (叉 ⊗)','指出紙面 (點 ⊙)','向右平行','向左平行'], ans:0, exp:'拇指朝上（電流），右手四指在導線右側會彎曲遠離自己，故為穿入紙面 (⊗)。' },
+    { q:'切換到導線俯視圖（由上往下看）時，若看見中心電流為叉 (⊗)，代表電流？', opts:['正朝向您的眼睛流過來','正背離您向下流過去','電流為零','電流方向正在旋轉'], ans:1, exp:'叉 (⊗) 符號代表箭尾，表示電流正背離觀察者的視線流入畫面。' },
+    { q:'開啟標籤顯示前，螺線管切換到「8 面」切割，內部均勻磁場有何特徵？', opts:['隨機交錯纏繞','互相平行且等距，構成圓柱狀均勻束','朝各個方向發散','全部匯聚到軸心'], ans:1, exp:'無論切面數量多少，理想螺線管中心的磁場力線永遠互相平行且等距。' },
+    { q:'直導線電流向下，在導線左側的 2D 空間磁場方向是？', opts:['穿入紙面 (叉 ⊗)','指出紙面 (點 ⊙)','向右','向下'], ans:0, exp:'拇指朝下（電流），右手四指在導線左側會向內彎曲，故為穿入紙面 (⊗)。' }
+];
+
+var qIdx = 0, answered = false;
+function loadQuiz() {
+    answered = false; var q = quizData[qIdx % quizData.length];
+    document.getElementById('quiz-q').textContent = q.q;
+    var optsEl = document.getElementById('quiz-opts'); optsEl.innerHTML = '';
+    q.opts.forEach(function(opt, i) {
+        var btn = document.createElement('div'); btn.className = 'quiz-opt';
+        btn.textContent = ['A','B','C','D'][i] + '. ' + opt;
+        btn.onclick = function(){
+            if (answered) return; answered = true;
+            var opts = document.querySelectorAll('.quiz-opt');
+            opts[i].classList.add(i === q.ans ? 'correct' : 'wrong'); opts[q.ans].classList.add('correct');
+            document.getElementById('quiz-feedback').innerHTML = i === q.ans
+                ? '<span style="color:#16a34a">✓ 回答正確！</span> ' + q.exp
+                : '<span style="color:#dc2626">✗ 回答錯誤。</span> ' + q.exp;
+            document.getElementById('quiz-next').style.display = 'block';
+        };
+        optsEl.appendChild(btn);
+    });
+    document.getElementById('quiz-feedback').innerHTML = ''; document.getElementById('quiz-next').style.display = 'none';
+}
+window.nextQuiz = function() { qIdx++; loadQuiz(); };
+
+document.getElementById('pole-label-toggle').style.display = 'none'; 
+document.getElementById('current-label-toggle').style.display = 'none'; 
+
+// ── 初始化啟動與動畫迴圈 ──
+buildWire(); buildSolenoid(); updateBadge(); refreshSceneVisibility(); loadQuiz();
+
+var clock = new THREE.Clock();
+var axisZ = new THREE.Vector3(0, 0, 1); 
+
+function animate() {
+    requestAnimationFrame(animate);
+    var dt = clock.getDelta(); 
+    controls.update(); 
+
+    if (!is2DMode) {
+        if (currentMode === 'wire') {
+            controls.target.x = 0; 
+            controls.target.z = 0; 
+        } else if (currentMode === 'solenoid') {
+            controls.target.y = 0; 
+            controls.target.z = 0; 
+        }
+    }
+
+    if (is2DMode) {
+        var targetPos, targetUp;
+        if (currentMode === 'wire' && wire2DView === 'top') {
+            targetPos = new THREE.Vector3(0, 18.5, 0.01); 
+            targetUp = new THREE.Vector3(0, 0, -1);       
+        } else {
+            targetPos = new THREE.Vector3(0, 0, 18.5);
+            targetUp = new THREE.Vector3(0, 1, 0);
+        }
+        camera.position.lerp(targetPos, 0.08);
+        camera.up.lerp(targetUp, 0.08);
+        controls.target.lerp(new THREE.Vector3(0, 0, 0), 0.08);
+    } else {
+        camera.up.lerp(new THREE.Vector3(0, 1, 0), 0.08);
+    }
+    
+    var spd = displayMode === 'anim' ? 1.0 : 0.0;
+    
+    if (currentMode === 'wire') {
+        var rotSign = wireDir === 'up' ? 1 : -1;
+        ringParticles.forEach(function(p) {
+            if(spd > 0) p.angle += dt * spd * p.speed * rotSign;
+            p.mesh.position.set(Math.cos(p.angle) * p.r, p.yPos, Math.sin(p.angle) * p.r);
+
+            var tang = new THREE.Vector3(-Math.sin(p.angle) * rotSign, 0, Math.cos(p.angle) * rotSign).normalize();
+            if (tang.lengthSq() > 0.001) {
+                p.mesh.quaternion.setFromUnitVectors(axisZ, tang);
+            }
+        });
+    }
+    
+    if (currentMode === 'solenoid') {
+        var solFd = (solDir === 'ccw') ? 1 : -1; 
+        solFieldParticles.forEach(function(p) {
+            if(spd > 0) p.t += dt * spd * 0.12 * solFd;
+            if (p.t > 1) p.t -= 1; if (p.t < 0) p.t += 1;
+            
+            var pos = p.curve.getPointAt(p.t); 
+            p.mesh.position.copy(pos);
+            
+            var tangT = p.t; 
+            if (tangT === 0) tangT = 0.0001;
+            if (tangT === 1) tangT = 0.9999;
+            
+            var tang = p.curve.getTangentAt(tangT).normalize(); 
+            if (solFd < 0) tang.negate();
+            
+            if (tang.lengthSq() > 0.001) {
+                p.mesh.quaternion.setFromUnitVectors(axisZ, tang);
+            }
+        });
+    }
+    
+    renderer.render(scene, camera);
+}
+animate();
+
+})();
+</script>
+</body>
+</html>

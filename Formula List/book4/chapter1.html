@@ -1,0 +1,823 @@
+﻿<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>物理公式全指南 — 靜電學 (Electrostatics)</title>
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            options: { skipHtmlTags: ['script','noscript','style','textarea','pre'] }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+    <style>
+        /* ── Reset ── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        /* ── Base ── */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                         "Helvetica Neue", Arial, "Microsoft JhengHei", sans-serif;
+            background: linear-gradient(135deg, #e8f0fe 0%, #f0f4ff 50%, #faf5ff 100%);
+            color: #1e293b;
+            line-height: 1.7;
+            min-height: 100vh;
+        }
+
+        /* ── Layout ── */
+        .page-wrapper {
+            display: flex;
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            gap: 28px;
+            align-items: flex-start;
+        }
+
+        /* ── Sticky TOC Sidebar ── */
+        .toc {
+            width: 220px;
+            flex-shrink: 0;
+            position: sticky;
+            top: 24px;
+            background: #ffffff;
+            border-radius: 14px;
+            box-shadow: 0 4px 20px rgba(30, 58, 138, 0.08);
+            padding: 20px 16px;
+            border: 1px solid #dbeafe;
+        }
+        .toc h3 {
+            font-size: 11pt;
+            font-weight: 700;
+            color: #1e3a8a;
+            text-transform: uppercase;
+            letter-spacing: .05em;
+            margin-bottom: 14px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #dbeafe;
+        }
+        .toc ul { list-style: none; }
+        .toc li { margin-bottom: 6px; }
+        .toc a {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            font-size: 9.5pt;
+            color: #475569;
+            text-decoration: none;
+            padding: 5px 8px;
+            border-radius: 7px;
+            transition: all .2s;
+        }
+        .toc a:hover { background: #eff6ff; color: #1d4ed8; }
+        .toc-num {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px; height: 20px;
+            background: #dbeafe;
+            color: #1e40af;
+            border-radius: 50%;
+            font-size: 8pt;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        /* ── Progress Bar ── */
+        .progress-bar-wrap {
+            background: #e2e8f0;
+            border-radius: 99px;
+            height: 6px;
+            margin-top: 16px;
+            overflow: hidden;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6, #6366f1);
+            border-radius: 99px;
+            transition: width .5s ease;
+            width: 0%;
+        }
+        .progress-label {
+            font-size: 8.5pt;
+            color: #64748b;
+            margin-top: 6px;
+            text-align: center;
+        }
+
+        /* ── Main Content ── */
+        .container {
+            flex: 1;
+            min-width: 0;
+        }
+
+        /* ── Header Banner ── */
+        .header-banner {
+            background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 60%, #7c3aed 100%);
+            color: #ffffff;
+            padding: 36px 32px;
+            border-radius: 16px;
+            margin-bottom: 36px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(37, 99, 235, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        .header-banner::before {
+            content: '';
+            position: absolute;
+            top: -40px; right: -40px;
+            width: 200px; height: 200px;
+            background: rgba(255,255,255,.06);
+            border-radius: 50%;
+        }
+        .header-banner::after {
+            content: '';
+            position: absolute;
+            bottom: -60px; left: -30px;
+            width: 250px; height: 250px;
+            background: rgba(255,255,255,.04);
+            border-radius: 50%;
+        }
+        .header-banner h1 {
+            font-size: 26pt;
+            font-weight: 800;
+            letter-spacing: 1px;
+            position: relative;
+            z-index: 1;
+        }
+        .header-banner p {
+            margin: 10px 0 0;
+            font-size: 11pt;
+            opacity: .85;
+            position: relative;
+            z-index: 1;
+        }
+        .score-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 16px;
+            background: rgba(255,255,255,.2);
+            backdrop-filter: blur(4px);
+            color: #fff;
+            padding: 6px 16px;
+            border-radius: 99px;
+            font-size: 10pt;
+            font-weight: 600;
+            border: 1px solid rgba(255,255,255,.3);
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ── Section Heading ── */
+        .section-heading {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 44px 0 20px;
+        }
+        .section-num {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px; height: 36px;
+            background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+            color: #fff;
+            border-radius: 10px;
+            font-size: 14pt;
+            font-weight: 800;
+            flex-shrink: 0;
+            box-shadow: 0 4px 12px rgba(37,99,235,.3);
+        }
+        .section-heading h2 {
+            color: #1e3a8a;
+            font-size: 15pt;
+            font-weight: 700;
+        }
+
+        /* ── Formula Box ── */
+        .formula-box {
+            background: linear-gradient(135deg, #eff6ff 0%, #f5f3ff 100%);
+            border: 1px solid #bfdbfe;
+            border-left: 5px solid #3b82f6;
+            border-radius: 12px;
+            padding: 24px 28px;
+            margin: 4px 0 16px;
+            box-shadow: 0 2px 12px rgba(59,130,246,.08);
+            transition: box-shadow .25s;
+        }
+        .formula-box:hover {
+            box-shadow: 0 6px 24px rgba(59,130,246,.15);
+        }
+        .formula-main {
+            font-size: 17pt;
+            font-weight: bold;
+            color: #1d4ed8;
+            text-align: center;
+            margin-bottom: 12px;
+        }
+        .formula-derived {
+            font-size: 10.5pt;
+            color: #475569;
+            text-align: center;
+            border-top: 1px dashed #c7d2fe;
+            padding-top: 10px;
+            margin-top: 10px;
+        }
+
+        /* ── Symbol List ── */
+        .symbol-list {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 14px 18px;
+            margin: 0 0 16px;
+        }
+        .symbol-list-title {
+            font-size: 9.5pt;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: .07em;
+            margin-bottom: 10px;
+        }
+        .symbol-list ul { list-style: none; }
+        .symbol-list li {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            padding: 5px 0;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 10pt;
+        }
+        .symbol-list li:last-child { border-bottom: none; }
+        .sym { font-family: 'Times New Roman', Times, serif; font-style: italic; font-weight: 700; color: #2563eb; min-width: 52px; }
+        .bold-text { font-weight: 600; color: #0f172a; }
+
+        /* ── Cards ── */
+        .card {
+            border-radius: 12px;
+            padding: 22px 24px;
+            margin: 14px 0;
+            transition: transform .2s, box-shadow .2s;
+        }
+        .card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.08); }
+
+        .card-example {
+            background: linear-gradient(135deg, #f0fdf4 0%, #f7fffe 100%);
+            border: 1px solid #bbf7d0;
+            border-left: 4px solid #10b981;
+        }
+        .card-practice {
+            background: linear-gradient(135deg, #faf5ff 0%, #f5f3ff 100%);
+            border: 1px solid #ddd6fe;
+            border-left: 4px solid #8b5cf6;
+        }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 12px;
+            font-size: 9pt;
+            font-weight: 700;
+            border-radius: 99px;
+            color: #ffffff;
+            margin-bottom: 12px;
+        }
+        .badge-example { background: linear-gradient(90deg, #059669, #10b981); }
+        .badge-practice { background: linear-gradient(90deg, #7c3aed, #8b5cf6); }
+
+        .problem-text {
+            font-weight: 500;
+            margin-bottom: 12px;
+            color: #1e293b;
+            font-size: 10.5pt;
+            line-height: 1.8;
+        }
+        .solution-text {
+            font-size: 10pt;
+            color: #334155;
+            padding: 14px 16px;
+            border-left: 3px solid #cbd5e1;
+            background: rgba(255,255,255,.6);
+            border-radius: 0 8px 8px 0;
+            line-height: 1.9;
+        }
+
+        /* ── Toggle Answer Button ── */
+        .toggle-answer-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            margin-top: 10px;
+            padding: 8px 18px;
+            background: linear-gradient(90deg, #7c3aed, #8b5cf6);
+            color: #fff;
+            border: none;
+            border-radius: 99px;
+            font-size: 9.5pt;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all .2s;
+            box-shadow: 0 2px 8px rgba(124,58,237,.25);
+        }
+        .toggle-answer-btn:hover {
+            background: linear-gradient(90deg, #6d28d9, #7c3aed);
+            box-shadow: 0 4px 14px rgba(124,58,237,.35);
+            transform: translateY(-1px);
+        }
+        .toggle-answer-btn .btn-icon { transition: transform .3s; }
+        .toggle-answer-btn.open .btn-icon { transform: rotate(180deg); }
+
+        .answer-panel {
+            display: none;
+            margin-top: 12px;
+            animation: slideDown .25s ease;
+        }
+        .answer-panel.visible { display: block; }
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-6px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ── Quiz ── */
+        .quiz-box {
+            background: linear-gradient(135deg, #fff7ed 0%, #fffbf0 100%);
+            border: 1px solid #fed7aa;
+            border-left: 5px solid #f97316;
+            border-radius: 12px;
+            padding: 22px 24px;
+            margin: 18px 0;
+            box-shadow: 0 2px 10px rgba(249,115,22,.07);
+        }
+        .quiz-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 9pt;
+            font-weight: 700;
+            color: #ea580c;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            margin-bottom: 10px;
+        }
+        .quiz-question {
+            font-size: 10.5pt;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 14px;
+            line-height: 1.7;
+        }
+        .quiz-options { display: flex; flex-direction: column; gap: 8px; }
+        .quiz-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            background: #fff;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 9px;
+            cursor: pointer;
+            font-size: 10pt;
+            transition: all .2s;
+            user-select: none;
+        }
+        .quiz-option:hover:not(.disabled) { border-color: #f97316; background: #fff7ed; }
+        .quiz-option.correct { border-color: #10b981; background: #f0fdf4; color: #065f46; font-weight: 600; }
+        .quiz-option.wrong   { border-color: #ef4444; background: #fef2f2; color: #991b1b; }
+        .quiz-option.disabled { cursor: default; }
+        .option-radio {
+            width: 18px; height: 18px;
+            border: 2px solid #cbd5e1;
+            border-radius: 50%;
+            flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            transition: all .2s;
+        }
+        .quiz-option.correct .option-radio { background: #10b981; border-color: #10b981; }
+        .quiz-option.wrong   .option-radio { background: #ef4444; border-color: #ef4444; }
+        .quiz-feedback {
+            margin-top: 12px;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 10pt;
+            font-weight: 500;
+            display: none;
+        }
+        .quiz-feedback.correct { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+        .quiz-feedback.wrong   { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+        .quiz-feedback.visible { display: block; animation: slideDown .25s ease; }
+
+        /* ── Divider ── */
+        .section-divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #cbd5e1, transparent);
+            margin: 36px 0 0;
+        }
+
+        /* ── Footer ── */
+        .footer {
+            text-align: center;
+            margin-top: 48px;
+            padding: 24px;
+            border-top: 1px solid #e2e8f0;
+            font-size: 9pt;
+            color: #94a3b8;
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 768px) {
+            .page-wrapper { flex-direction: column; padding: 16px; }
+            .toc { width: 100%; position: static; }
+        }
+    </style>
+</head>
+<body>
+
+
+<div class="page-wrapper">
+
+    <!-- Sticky TOC -->
+    <aside class="toc">
+        <h3>📋 目錄</h3>
+        <ul>
+            <li><a href="#sec1"><span class="toc-num">1</span>庫倫定律</a></li>
+            <li><a href="#sec2"><span class="toc-num">2</span>電場強度定義</a></li>
+            <li><a href="#sec3"><span class="toc-num">3</span>點電荷電場</a></li>
+            <li><a href="#sec4"><span class="toc-num">4</span>平行板均勻電場</a></li>
+        </ul>
+        <div class="progress-bar-wrap">
+            <div class="progress-bar-fill" id="progressFill"></div>
+        </div>
+        <p class="progress-label" id="progressLabel">答對 0 / 4 題</p>
+    </aside>
+
+    <!-- Main -->
+    <div class="container">
+        <div class="header-banner">
+            <h1>⚡ 物理公式全指南</h1>
+            <p>單元：靜電學 (Electrostatics)｜專為高中物理複習與應試設計</p>
+            <div class="score-badge" id="scoreBadge">🎯 學習進度：0 / 4 題已答對</div>
+        </div>
+
+        <!-- ══════════════════ Section 1 ══════════════════ -->
+        <div class="section-heading" id="sec1">
+            <span class="section-num">1</span>
+            <h2>庫倫定律 (Coulomb's Law)</h2>
+        </div>
+
+        <div class="formula-box">
+            <div class="formula-main">$$F = \frac{Q_1 Q_2}{4 \pi \epsilon_0 r^2}$$</div>
+            <div class="formula-derived">
+                <strong>常用變形公式：</strong>$F = k \dfrac{Q_1 Q_2}{r^2}$
+                &nbsp;（其中&nbsp;$k = \dfrac{1}{4 \pi \epsilon_0}$）
+            </div>
+        </div>
+
+        <div class="symbol-list">
+            <div class="symbol-list-title">📐 代數與單位釋義</div>
+            <ul>
+                <li><span class="sym">F</span><span>：<span class="bold-text">靜電力 (Electrostatic force)</span>，單位：<strong>牛頓 (N)</strong></span></li>
+                <li><span class="sym">Q₁, Q₂</span><span>：<span class="bold-text">兩點電荷的電荷量</span>，單位：<strong>庫倫 (C)</strong></span></li>
+                <li><span class="sym">r</span><span>：<span class="bold-text">兩電荷中心的距離</span>，單位：<strong>米 (m)</strong></span></li>
+                <li><span class="sym">ε₀</span><span>：<span class="bold-text">真空電容率</span>，$8.85 \times 10^{-12}$ C² N⁻¹ m⁻²</span></li>
+                <li><span class="sym">k</span><span>：<span class="bold-text">庫倫常數</span>，$\approx 8.99 \times 10^{9}$ N m² C⁻²</span></li>
+            </ul>
+        </div>
+
+        <div class="card card-example">
+            <span class="badge badge-example">✏️ 應用範例</span>
+            <div class="problem-text">
+                <strong>題目：</strong>兩個點電荷 X 和 Y 分別帶有 $+2 \times 10^{-8}\ \text{C}$ 和 $+1 \times 10^{-8}\ \text{C}$ 的正電荷，在真空中相距 $2\ \text{m}$。請計算 X 施加於 Y 的靜電力大小與方向。（取 $\epsilon_0 = 8.85 \times 10^{-12}\ \text{C}^2\text{N}^{-1}\text{m}^{-2}$）
+            </div>
+            <div class="solution-text">
+                <strong>詳解：</strong><br>
+                1. 套用公式：$$F = \frac{Q_1 Q_2}{4 \pi \epsilon_0 r^2}$$
+                2. 代入數值：$$F = \frac{(2 \times 10^{-8})(1 \times 10^{-8})}{4\pi \times 8.85 \times 10^{-12} \times 4} \approx 4.50 \times 10^{-7}\ \text{N}$$
+                3. <strong>方向：</strong>同號相斥，作用力沿連線向外（排斥力）。
+            </div>
+        </div>
+
+        <div class="card card-practice">
+            <span class="badge badge-practice">📝 隨堂練習</span>
+            <div class="problem-text">
+                <strong>題目：</strong>保持距離 $2\ \text{m}$ 不變，將 Y 替換為帶 $-1 \times 10^{-8}\ \text{C}$ 的電荷 Z。求 X 對 Z 的靜電力大小與方向。
+            </div>
+            <button class="toggle-answer-btn" onclick="toggleAnswer(this)">
+                <span>顯示答案</span><span class="btn-icon">▼</span>
+            </button>
+            <div class="answer-panel">
+                <div class="solution-text">
+                    <strong>逐步解題：</strong><br>
+                    1. 電荷量大小不變：$Q_1 = 2 \times 10^{-8}\ \text{C}$，$|Q_2| = 1 \times 10^{-8}\ \text{C}$，$r = 2\ \text{m}$<br>
+                    2. 套用庫倫定律：
+                    $$F = \frac{|Q_1||Q_2|}{4\pi\epsilon_0 r^2} = \frac{(2\times10^{-8})(1\times10^{-8})}{4\pi \times 8.85\times10^{-12} \times 4}$$
+                    3. 計算結果：
+                    $$F \approx 4.50 \times 10^{-7}\ \text{N}$$
+                    4. <strong>大小</strong>與原題相同，因電荷量的乘積絕對值不變。<br>
+                    5. <strong>方向：</strong>異性相吸，作用力沿連線<strong>向內（吸引力）</strong>。
+                </div>
+            </div>
+        </div>
+
+        <!-- Quiz 1 -->
+        <div class="quiz-box">
+            <div class="quiz-label">🧠 概念測驗</div>
+            <div class="quiz-question">若兩電荷的距離縮短為原本的 $\dfrac{1}{3}$，電荷量不變，靜電力變為原來的幾倍？</div>
+            <div class="quiz-options">
+                <div class="quiz-option" onclick="checkAnswer(this, false, 1)"><div class="option-radio"></div>3 倍</div>
+                <div class="quiz-option" onclick="checkAnswer(this, false, 1)"><div class="option-radio"></div>6 倍</div>
+                <div class="quiz-option" onclick="checkAnswer(this, true,  1)"><div class="option-radio"></div>9 倍</div>
+                <div class="quiz-option" onclick="checkAnswer(this, false, 1)"><div class="option-radio"></div>$\dfrac{1}{9}$ 倍</div>
+            </div>
+            <div class="quiz-feedback" id="feedback-1">
+                ✅ 正確！依平方反比定律：$r' = \dfrac{r}{3}$，故 $F' \propto \dfrac{1}{(r/3)^2} = \dfrac{9}{r^2}$，即為原來的 <strong>9 倍</strong>。
+            </div>
+        </div>
+        <div class="section-divider"></div>
+
+        <!-- ══════════════════ Section 2 ══════════════════ -->
+        <div class="section-heading" id="sec2">
+            <span class="section-num">2</span>
+            <h2>電場強度的定義 (Electric Field Strength)</h2>
+        </div>
+
+        <div class="formula-box">
+            <div class="formula-main">$$E = \frac{F}{q}$$</div>
+            <div class="formula-derived">
+                <strong>常用變形公式：</strong>$$F = Eq$$（已知電場強度求電荷受力）
+            </div>
+        </div>
+
+        <div class="symbol-list">
+            <div class="symbol-list-title">📐 代數與單位釋義</div>
+            <ul>
+                <li><span class="sym">E</span><span>：<span class="bold-text">電場強度</span>，單位：<strong>N C⁻¹</strong> 或 <strong>V m⁻¹</strong></span></li>
+                <li><span class="sym">F</span><span>：<span class="bold-text">電場對檢驗電荷的電力</span>，單位：<strong>牛頓 (N)</strong></span></li>
+                <li><span class="sym">q</span><span>：<span class="bold-text">檢驗電荷量 (Test charge)</span>，單位：<strong>庫倫 (C)</strong></span></li>
+            </ul>
+        </div>
+
+        <div class="card card-example">
+            <span class="badge badge-example">✏️ 應用範例</span>
+            <div class="problem-text">
+                <strong>題目：</strong>將 $+2 \times 10^{-8}\ \text{C}$ 的正檢驗電荷置於電場中某點，量得靜電力為 $2.4 \times 10^{-3}\ \text{N}$（水平向右）。求該點電場強度大小與方向。
+            </div>
+            <div class="solution-text">
+                <strong>詳解：</strong><br>
+                $$E = \frac{F}{q} = \frac{2.4 \times 10^{-3}}{2 \times 10^{-8}} = 1.2 \times 10^5\ \text{N C}^{-1}$$
+                <strong>方向：</strong>正電荷受力向右，故電場強度方向為<strong>水平向右</strong>。
+            </div>
+        </div>
+
+        <div class="card card-practice">
+            <span class="badge badge-practice">📝 隨堂練習</span>
+            <div class="problem-text">
+                <strong>題目：</strong>承上題，將 $-4 \times 10^{-8}\ \text{C}$ 的負電荷置於同一點，求其所受靜電力大小與方向。
+            </div>
+            <button class="toggle-answer-btn" onclick="toggleAnswer(this)">
+                <span>顯示答案</span><span class="btn-icon">▼</span>
+            </button>
+            <div class="answer-panel">
+                <div class="solution-text">
+                    <strong>逐步解題：</strong><br>
+                    1. 該點電場強度已知：$E = 1.2 \times 10^5\ \text{N C}^{-1}$（向右）<br>
+                    2. 代入受力公式：
+                    $$F = Eq = (1.2 \times 10^5) \times (4 \times 10^{-8})$$
+                    3. 計算大小：
+                    $$F = 4.8 \times 10^{-3}\ \text{N}$$
+                    4. <strong>方向：</strong>負電荷所受電力與電場方向<strong>相反</strong>，故方向為<strong>水平向左</strong>。
+                </div>
+            </div>
+        </div>
+
+        <!-- Quiz 2 -->
+        <div class="quiz-box">
+            <div class="quiz-label">🧠 概念測驗</div>
+            <div class="quiz-question">電場強度 $E$ 的物理意義是？</div>
+            <div class="quiz-options">
+                <div class="quiz-option" onclick="checkAnswer(this, false, 2)"><div class="option-radio"></div>單位質量所受的電力</div>
+                <div class="quiz-option" onclick="checkAnswer(this, true,  2)"><div class="option-radio"></div>單位正電荷在該點所受的電力</div>
+                <div class="quiz-option" onclick="checkAnswer(this, false, 2)"><div class="option-radio"></div>電荷在電場中移動的速度</div>
+                <div class="quiz-option" onclick="checkAnswer(this, false, 2)"><div class="option-radio"></div>兩電荷之間的靜電力</div>
+            </div>
+            <div class="quiz-feedback" id="feedback-2">
+                ✅ 正確！由定義 $E = F/q$ 可知，$E$ 代表放置<strong>單位正電荷（$q = 1\ \text{C}$）</strong>時所受電力的大小，方向即為正電荷受力方向。
+            </div>
+        </div>
+        <div class="section-divider"></div>
+
+        <!-- ══════════════════ Section 3 ══════════════════ -->
+        <div class="section-heading" id="sec3">
+            <span class="section-num">3</span>
+            <h2>點電荷周圍的電場強度 (Point Charge)</h2>
+        </div>
+
+        <div class="formula-box">
+            <div class="formula-main">$$E = \frac{Q}{4 \pi \epsilon_0 r^2}$$</div>
+            <div class="formula-derived">
+                <strong>常用變形公式：</strong>$$E = k\frac{Q}{r^2}$$
+            </div>
+        </div>
+
+        <div class="symbol-list">
+            <div class="symbol-list-title">📐 代數與單位釋義</div>
+            <ul>
+                <li><span class="sym">E</span><span>：<span class="bold-text">距點電荷 r 處的電場強度</span>，單位：<strong>N C⁻¹</strong></span></li>
+                <li><span class="sym">Q</span><span>：<span class="bold-text">源電荷量 (Source charge)</span>，單位：<strong>庫倫 (C)</strong></span></li>
+                <li><span class="sym">r</span><span>：<span class="bold-text">到源電荷的距離</span>，單位：<strong>米 (m)</strong></span></li>
+                <li><span class="sym">ε₀</span><span>：<span class="bold-text">真空電容率</span>，常數值同前</span></li>
+            </ul>
+        </div>
+
+        <div class="card card-example">
+            <span class="badge badge-example">✏️ 應用範例</span>
+            <div class="problem-text">
+                <strong>題目：</strong>真空中孤立點電荷 $Q = +10\ \text{nC}$，求其正左方 $10\ \text{cm}$ 處 P 點的電場強度。（取 $k = 8.99 \times 10^9\ \text{N m}^2\text{C}^{-2}$）
+            </div>
+            <div class="solution-text">
+                <strong>詳解：</strong><br>
+                $$E = k\frac{Q}{r^2} = (8.99 \times 10^9) \times \frac{10 \times 10^{-9}}{0.1^2} = 8990\ \text{N C}^{-1}$$
+                <strong>方向：</strong>正電荷電場線向外輻射，P 點在左方，故方向為<strong>水平向左</strong>。
+            </div>
+        </div>
+
+        <div class="card card-practice">
+            <span class="badge badge-practice">📝 隨堂練習</span>
+            <div class="problem-text">
+                <strong>題目：</strong>源電荷改為 $Q = -5\ \text{nC}$，同距 $10\ \text{cm}$ 的 P 點電場強度大小與方向為何？
+            </div>
+            <button class="toggle-answer-btn" onclick="toggleAnswer(this)">
+                <span>顯示答案</span><span class="btn-icon">▼</span>
+            </button>
+            <div class="answer-panel">
+                <div class="solution-text">
+                    <strong>逐步解題：</strong><br>
+                    1. 已知：$|Q| = 5\ \text{nC} = 5 \times 10^{-9}\ \text{C}$，$r = 10\ \text{cm} = 0.1\ \text{m}$<br>
+                    2. 計算電場大小（取絕對值）：
+                    $$E = k\frac{|Q|}{r^2} = (8.99 \times 10^9) \times \frac{5 \times 10^{-9}}{(0.1)^2}$$
+                    3. 化簡分母：$r^2 = 0.01\ \text{m}^2$
+                    $$E = (8.99 \times 10^9) \times \frac{5 \times 10^{-9}}{0.01} = (8.99 \times 10^9) \times (5 \times 10^{-7})$$
+                    $$E = 4495\ \text{N C}^{-1}$$
+                    4. <strong>方向：</strong>負電荷電場線向內匯聚，P 點在左方，電場指向電荷，故方向為<strong>水平向右</strong>。
+                </div>
+            </div>
+        </div>
+
+        <!-- Quiz 3 -->
+        <div class="quiz-box">
+            <div class="quiz-label">🧠 概念測驗</div>
+            <div class="quiz-question">孤立正點電荷周圍的電場線形狀為何？</div>
+            <div class="quiz-options">
+                <div class="quiz-option" onclick="checkAnswer(this, false, 3)"><div class="option-radio"></div>由外向內匯聚</div>
+                <div class="quiz-option" onclick="checkAnswer(this, true,  3)"><div class="option-radio"></div>由中心向外輻射</div>
+                <div class="quiz-option" onclick="checkAnswer(this, false, 3)"><div class="option-radio"></div>平行直線</div>
+                <div class="quiz-option" onclick="checkAnswer(this, false, 3)"><div class="option-radio"></div>圓形閉合曲線</div>
+            </div>
+            <div class="quiz-feedback" id="feedback-3">
+                ✅ 正確！正電荷電場方向為<strong>遠離電荷</strong>（排斥正檢驗電荷），因此電場線從電荷中心向四周輻射而出。負電荷則相反，電場線由外向內匯聚。
+            </div>
+        </div>
+        <div class="section-divider"></div>
+
+        <!-- ══════════════════ Section 4 ══════════════════ -->
+        <div class="section-heading" id="sec4">
+            <span class="section-num">4</span>
+            <h2>平行帶電金屬板間的均勻電場</h2>
+        </div>
+
+        <div class="formula-box">
+            <div class="formula-main">$$E = \frac{V}{d}$$</div>
+            <div class="formula-derived">
+                <strong>常用變形：</strong>$V = Ed$&nbsp;｜&nbsp;結合受力：$F = \dfrac{Vq}{d}$
+            </div>
+        </div>
+
+        <div class="symbol-list">
+            <div class="symbol-list-title">📐 代數與單位釋義</div>
+            <ul>
+                <li><span class="sym">E</span><span>：<span class="bold-text">均勻電場強度</span>，單位：<strong>V m⁻¹</strong> 或 <strong>N C⁻¹</strong></span></li>
+                <li><span class="sym">V</span><span>：<span class="bold-text">兩板間電壓 / 電勢差</span>，單位：<strong>伏特 (V)</strong></span></li>
+                <li><span class="sym">d</span><span>：<span class="bold-text">兩板間垂直距離</span>，單位：<strong>米 (m)</strong></span></li>
+            </ul>
+        </div>
+
+        <div class="card card-example">
+            <span class="badge badge-example">✏️ 應用範例</span>
+            <div class="problem-text">
+                <strong>題目：</strong>兩平行板相距 $2\ \text{cm}$，連接 $2000\ \text{V}$ 直流電源，求兩板間均勻電場強度。
+            </div>
+            <div class="solution-text">
+                <strong>詳解：</strong><br>
+                $$E = \frac{V}{d} = \frac{2000}{0.02} = 1 \times 10^5\ \text{V m}^{-1}$$
+            </div>
+        </div>
+
+        <div class="card card-practice">
+            <span class="badge badge-practice">📝 隨堂練習</span>
+            <div class="problem-text">
+                <strong>題目：</strong>承上題，將 $+3\ \text{nC}$ 的微粒放入兩板間，求其所受靜電力大小。
+            </div>
+            <button class="toggle-answer-btn" onclick="toggleAnswer(this)">
+                <span>顯示答案</span><span class="btn-icon">▼</span>
+            </button>
+            <div class="answer-panel">
+                <div class="solution-text">
+                    <strong>逐步解題：</strong><br>
+                    1. 均勻電場強度：$E = 1 \times 10^5\ \text{V m}^{-1}$（由應用範例已算出）<br>
+                    2. 電荷量：$q = +3\ \text{nC} = 3 \times 10^{-9}\ \text{C}$<br>
+                    3. 套用受力公式：
+                    $$F = Eq = (1 \times 10^5) \times (3 \times 10^{-9})$$
+                    4. 計算結果：
+                    $$F = 3 \times 10^{-4}\ \text{N}$$
+                    5. <strong>方向：</strong>正電荷受力方向與電場方向相同（由正極板指向負極板）。
+                </div>
+            </div>
+        </div>
+
+        <!-- Quiz 4 -->
+        <div class="quiz-box">
+            <div class="quiz-label">🧠 概念測驗</div>
+            <div class="quiz-question">保持兩板距離 $d$ 不變，將電壓加倍為 $2V$，兩板間電場強度將變為？</div>
+            <div class="quiz-options">
+                <div class="quiz-option" onclick="checkAnswer(this, false, 4)"><div class="option-radio"></div>不變</div>
+                <div class="quiz-option" onclick="checkAnswer(this, true,  4)"><div class="option-radio"></div>加倍（2 倍）</div>
+                <div class="quiz-option" onclick="checkAnswer(this, false, 4)"><div class="option-radio"></div>變為 4 倍</div>
+                <div class="quiz-option" onclick="checkAnswer(this, false, 4)"><div class="option-radio"></div>減半</div>
+            </div>
+            <div class="quiz-feedback" id="feedback-4">
+                ✅ 正確！由公式 $E = V/d$，$d$ 不變而 $V$ 加倍，故 $E' = 2V/d = 2E$，即電場強度變為原來的 <strong>2 倍</strong>。電場強度與電壓成正比，與板距成反比。
+            </div>
+        </div>
+
+        <div class="footer">
+            © 2026 專業物理教學網 ｜ 靜電學複習全指南 ｜ 祝各位同學考試順利！
+        </div>
+    </div><!-- end .container -->
+
+</div><!-- end .page-wrapper -->
+
+<script>
+    // ── Score tracking ──
+    const totalQuizzes = 4;
+    const answered = {}; // quizId -> bool (correct)
+    
+    function getScore() {
+        return Object.values(answered).filter(Boolean).length;
+    }
+    
+    function updateProgress() {
+        const score = getScore();
+        const pct = (score / totalQuizzes) * 100;
+        document.getElementById('progressFill').style.width = pct + '%';
+        document.getElementById('progressLabel').textContent = `答對 ${score} / ${totalQuizzes} 題`;
+        document.getElementById('scoreBadge').textContent = `🎯 學習進度：${score} / ${totalQuizzes} 題已答對`;
+    }
+
+    // ── Toggle answer ──
+    function toggleAnswer(btn) {
+        const panel = btn.nextElementSibling;
+        const isOpen = panel.classList.contains('visible');
+        panel.classList.toggle('visible', !isOpen);
+        btn.classList.toggle('open', !isOpen);
+        btn.querySelector('span:first-child').textContent = isOpen ? '顯示答案' : '隱藏答案';
+    }
+
+    // ── Quiz checking ──
+    function checkAnswer(el, isCorrect, quizId) {
+        // Already answered this quiz
+        const feedback = document.getElementById('feedback-' + quizId);
+        if (feedback.classList.contains('visible')) return;
+
+        const options = el.closest('.quiz-options').querySelectorAll('.quiz-option');
+        options.forEach(opt => opt.classList.add('disabled'));
+        
+        if (isCorrect) {
+            el.classList.add('correct');
+            el.querySelector('.option-radio').innerHTML = '✓';
+            feedback.className = 'quiz-feedback correct visible';
+            answered[quizId] = true;
+        } else {
+            el.classList.add('wrong');
+            el.querySelector('.option-radio').innerHTML = '✗';
+            // Highlight correct
+            options.forEach(opt => {
+                if (opt.getAttribute('onclick') && opt.getAttribute('onclick').includes('true')) {
+                    opt.classList.add('correct');
+                    opt.querySelector('.option-radio').innerHTML = '✓';
+                }
+            });
+            feedback.className = 'quiz-feedback wrong visible';
+            answered[quizId] = false;
+        }
+        updateProgress();
+    }
+</script>
+
+</body>
+</html>
