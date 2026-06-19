@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>物理公式全指南 — 磁場產生的力 / Physics Formula Guide — Force due to Magnetic Field</title>
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            options: { skipHtmlTags: ['script','noscript','style','textarea','pre'] }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+    <style>
+        /* ── Language Toggle Logic ── */
+        span.lang-zh { display: inline; }
+        div.lang-zh { display: block; }
+        span.lang-en { display: none; }
+        div.lang-en { display: none; }
+
+        body.en-mode span.lang-zh, body.en-mode div.lang-zh { display: none !important; }
+        body.en-mode span.lang-en { display: inline !important; }
+        body.en-mode div.lang-en { display: block !important; }
+
+        /* ── Toggle Button Style ── */
+        .lang-toggle-btn {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 1000;
+            background: linear-gradient(135deg, #1e3a8a, #2563eb);
+            color: #fff;
+            border: 2px solid #ffffff;
+            padding: 10px 20px;
+            border-radius: 99px;
+            font-size: 10.5pt;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(30, 58, 138, 0.3);
+            transition: all .2s;
+        }
+        .lang-toggle-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(30, 58, 138, 0.4);
+        }
+
+        /* ── Reset ── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        /* ── Base ── */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Microsoft JhengHei", sans-serif;
+            background: linear-gradient(135deg, #e8f0fe 0%, #f0f4ff 50%, #faf5ff 100%);
+            color: #1e293b;
+            line-height: 1.7;
+            min-height: 100vh;
+        }
+
+        /* ── Layout ── */
+        .page-wrapper { display: flex; max-width: 1100px; margin: 0 auto; padding: 40px 20px; gap: 28px; align-items: flex-start; }
+
+        /* ── Sticky TOC Sidebar ── */
+        .toc {
+            width: 250px; flex-shrink: 0; position: sticky; top: 24px; background: #ffffff;
+            border-radius: 14px; box-shadow: 0 4px 20px rgba(30, 58, 138, 0.08); padding: 20px 16px; border: 1px solid #dbeafe;
+        }
+        .toc h3 { font-size: 11pt; font-weight: 700; color: #1e3a8a; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 2px solid #dbeafe; }
+        .toc ul { list-style: none; }
+        .toc li { margin-bottom: 6px; }
+        .toc a { display: flex; align-items: center; gap: 7px; font-size: 9.5pt; color: #475569; text-decoration: none; padding: 5px 8px; border-radius: 7px; transition: all .2s; }
+        .toc a:hover { background: #eff6ff; color: #1d4ed8; }
+        .toc-num { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; background: #dbeafe; color: #1e40af; border-radius: 50%; font-size: 8pt; font-weight: 700; flex-shrink: 0; }
+
+        /* ── Progress Bar ── */
+        .progress-bar-wrap { background: #e2e8f0; border-radius: 99px; height: 6px; margin-top: 16px; overflow: hidden; }
+        .progress-bar-fill { height: 100%; background: linear-gradient(90deg, #3b82f6, #6366f1); border-radius: 99px; transition: width .5s ease; width: 0%; }
+        .progress-label { font-size: 8.5pt; color: #64748b; margin-top: 6px; text-align: center; }
+
+        /* ── Main Content ── */
+        .container { flex: 1; min-width: 0; }
+
+        /* ── Header Banner ── */
+        .header-banner { background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 60%, #7c3aed 100%); color: #ffffff; padding: 36px 32px; border-radius: 16px; margin-bottom: 36px; text-align: center; box-shadow: 0 8px 32px rgba(37, 99, 235, 0.3); position: relative; overflow: hidden; }
+        .header-banner::before { content: ''; position: absolute; top: -40px; right: -40px; width: 200px; height: 200px; background: rgba(255,255,255,.06); border-radius: 50%; }
+        .header-banner::after { content: ''; position: absolute; bottom: -60px; left: -30px; width: 250px; height: 250px; background: rgba(255,255,255,.04); border-radius: 50%; }
+        .header-banner h1 { font-size: 24pt; font-weight: 800; letter-spacing: 1px; position: relative; z-index: 1; }
+        .header-banner p { margin: 10px 0 0; font-size: 11pt; opacity: .85; position: relative; z-index: 1; }
+        .score-badge { display: inline-flex; align-items: center; gap: 6px; margin-top: 16px; background: rgba(255,255,255,.2); backdrop-filter: blur(4px); color: #fff; padding: 6px 16px; border-radius: 99px; font-size: 10pt; font-weight: 600; border: 1px solid rgba(255,255,255,.3); position: relative; z-index: 1; }
+
+        /* ── Section Heading ── */
+        .section-heading { display: flex; align-items: center; gap: 12px; margin: 44px 0 20px; }
+        .section-num { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: linear-gradient(135deg, #1e3a8a, #3b82f6); color: #fff; border-radius: 10px; font-size: 14pt; font-weight: 800; flex-shrink: 0; box-shadow: 0 4px 12px rgba(37,99,235,.3); }
+        .section-heading h2 { color: #1e3a8a; font-size: 15pt; font-weight: 700; }
+
+        /* ── Formula Box ── */
+        .formula-box { background: linear-gradient(135deg, #eff6ff 0%, #f5f3ff 100%); border: 1px solid #bfdbfe; border-left: 5px solid #3b82f6; border-radius: 12px; padding: 24px 28px; margin: 4px 0 16px; box-shadow: 0 2px 12px rgba(59,130,246,.08); transition: box-shadow .25s; }
+        .formula-box:hover { box-shadow: 0 6px 24px rgba(59,130,246,.15); }
+        .formula-main { font-size: 17pt; font-weight: bold; color: #1d4ed8; text-align: center; margin-bottom: 12px; }
+        .formula-derived { font-size: 10.5pt; color: #475569; text-align: center; border-top: 1px dashed #c7d2fe; padding-top: 10px; margin-top: 10px; }
+
+        /* ── Symbol List ── */
+        .symbol-list { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 18px; margin: 0 0 16px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); }
+        .symbol-list-title { font-size: 9.5pt; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .07em; margin-bottom: 10px; border-bottom: 2px solid #e2e8f0; padding-bottom: 6px; }
+        .symbol-list ul { list-style: none; }
+        .symbol-list li { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-size: 10pt; }
+        .symbol-list li:last-child { border-bottom: none; }
+        .sym-math { min-width: 50px; display: inline-flex; justify-content: center; font-size: 11pt; }
+        .sym-desc { flex: 1; }
+
+        /* ── Cards ── */
+        .card { border-radius: 12px; padding: 22px 24px; margin: 14px 0; transition: transform .2s, box-shadow .2s; }
+        .card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.08); }
+        .card-example { background: linear-gradient(135deg, #f0fdf4 0%, #f7fffe 100%); border: 1px solid #bbf7d0; border-left: 4px solid #10b981; }
+        .card-practice { background: linear-gradient(135deg, #faf5ff 0%, #f5f3ff 100%); border: 1px solid #ddd6fe; border-left: 4px solid #8b5cf6; }
+        
+        .badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 12px; font-size: 9pt; font-weight: 700; border-radius: 99px; color: #ffffff; margin-bottom: 12px; }
+        .badge-example { background: linear-gradient(90deg, #059669, #10b981); }
+        .badge-practice { background: linear-gradient(90deg, #7c3aed, #8b5cf6); }
+
+        .problem-text { font-weight: 500; margin-bottom: 12px; color: #1e293b; font-size: 10.5pt; line-height: 1.8; }
+        .solution-text { font-size: 10pt; color: #334155; padding: 14px 16px; border-left: 3px solid #cbd5e1; background: rgba(255,255,255,.6); border-radius: 0 8px 8px 0; line-height: 1.9; }
+
+        /* ── Toggle Answer Button ── */
+        .toggle-answer-btn { display: inline-flex; align-items: center; gap: 7px; margin-top: 10px; padding: 8px 18px; background: linear-gradient(90deg, #7c3aed, #8b5cf6); color: #fff; border: none; border-radius: 99px; font-size: 9.5pt; font-weight: 600; cursor: pointer; transition: all .2s; box-shadow: 0 2px 8px rgba(124,58,237,.25); }
+        .toggle-answer-btn:hover { background: linear-gradient(90deg, #6d28d9, #7c3aed); box-shadow: 0 4px 14px rgba(124,58,237,.35); transform: translateY(-1px); }
+        .toggle-answer-btn .btn-icon { transition: transform .3s; }
+        .toggle-answer-btn.open .btn-icon { transform: rotate(180deg); }
+        .answer-panel { display: none; margin-top: 12px; animation: slideDown .25s ease; }
+        .answer-panel.visible { display: block; }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* ── Quiz ── */
+        .quiz-box { background: linear-gradient(135deg, #fff7ed 0%, #fffbf0 100%); border: 1px solid #fed7aa; border-left: 5px solid #f97316; border-radius: 12px; padding: 22px 24px; margin: 18px 0; box-shadow: 0 2px 10px rgba(249,115,22,.07); }
+        .quiz-label { display: inline-flex; align-items: center; gap: 6px; font-size: 9pt; font-weight: 700; color: #ea580c; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 10px; }
+        .quiz-question { font-size: 10.5pt; font-weight: 600; color: #1e293b; margin-bottom: 14px; line-height: 1.7; }
+        .quiz-options { display: flex; flex-direction: column; gap: 8px; }
+        .quiz-option { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #fff; border: 1.5px solid #e2e8f0; border-radius: 9px; cursor: pointer; font-size: 10pt; transition: all .2s; user-select: none; }
+        .quiz-option:hover:not(.disabled) { border-color: #f97316; background: #fff7ed; }
+        .quiz-option.correct { border-color: #10b981; background: #f0fdf4; color: #065f46; font-weight: 600; }
+        .quiz-option.wrong { border-color: #ef4444; background: #fef2f2; color: #991b1b; }
+        .quiz-option.disabled { cursor: default; }
+        .option-radio { width: 18px; height: 18px; border: 2px solid #cbd5e1; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all .2s; }
+        .quiz-option.correct .option-radio { background: #10b981; border-color: #10b981; }
+        .quiz-option.wrong .option-radio { background: #ef4444; border-color: #ef4444; }
+        .quiz-feedback { margin-top: 12px; padding: 10px 14px; border-radius: 8px; font-size: 10pt; font-weight: 500; display: none; }
+        .quiz-feedback.correct { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+        .quiz-feedback.wrong { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+        .quiz-feedback.visible { display: block; animation: slideDown .25s ease; }
+
+        /* ── Divider & Footer ── */
+        .section-divider { height: 1px; background: linear-gradient(90deg, transparent, #cbd5e1, transparent); margin: 36px 0 0; }
+        .footer { text-align: center; margin-top: 48px; padding: 24px; border-top: 1px solid #e2e8f0; font-size: 9pt; color: #94a3b8; }
+
+        @media (max-width: 768px) { .page-wrapper { flex-direction: column; padding: 16px; } .toc { width: 100%; position: static; } }
+    </style>
+</head>
+<body>
+
+<button class="lang-toggle-btn" onclick="toggleLanguage()">
+    <span class="lang-zh">中 / <strong>EN</strong></span>
+    <span class="lang-en"><strong>中</strong> / EN</span>
+</button>
+
+<div class="page-wrapper">
+
+    <aside class="toc">
+        <h3>
+            <span class="lang-zh">📋 目錄</span>
+            <span class="lang-en">📋 Contents</span>
+        </h3>
+        <ul>
+            <li><a href="#sec1"><span class="toc-num">1</span>
+                <span class="lang-zh">作用於載電流導體的磁力</span>
+                <span class="lang-en">Magnetic force on current-carrying conductor</span>
+            </a></li>
+            <li><a href="#sec2"><span class="toc-num">2</span>
+                <span class="lang-zh">線圈的轉動效應</span>
+                <span class="lang-en">Turning effect on a coil</span>
+            </a></li>
+            <li><a href="#sec3"><span class="toc-num">3</span>
+                <span class="lang-zh">兩條平行長直導線之間的磁力</span>
+                <span class="lang-en">Magnetic forces between two parallel wires</span>
+            </a></li>
+            <li><a href="#sec4"><span class="toc-num">4</span>
+                <span class="lang-zh">磁場中的移動電荷</span>
+                <span class="lang-en">Moving charges in a magnetic field</span>
+            </a></li>
+        </ul>
+        <div class="progress-bar-wrap">
+            <div class="progress-bar-fill" id="progressFill"></div>
+        </div>
+        <p class="progress-label" id="progressLabel">
+            <span class="lang-zh">答對 0 / 4 題</span>
+            <span class="lang-en">0 / 4 correct</span>
+        </p>
+    </aside>
+
+    <div class="container">
+        <div class="header-banner">
+            <h1>
+                <span class="lang-zh">⚡ 物理公式全指南</span>
+                <span class="lang-en">⚡ Physics Formula Guide</span>
+            </h1>
+            <p>
+                <span class="lang-zh">磁場產生的力｜專為物理複習與應試設計</span>
+                <span class="lang-en">Force due to Magnetic Field | Designed for physics revision</span>
+            </p>
+            <div class="score-badge">
+                <span class="lang-zh" id="scoreBadgeZh">🎯 學習進度：0 / 4 題已答對</span>
+                <span class="lang-en" id="scoreBadgeEn">🎯 Progress: 0 / 4 correct</span>
+            </div>
+        </div>
+
+        <div class="section-heading" id="sec1">
+            <span class="section-num">1</span>
+            <h2>
+                <span class="lang-zh">作用於載電流導體的磁力</span>
+                <span class="lang-en">Magnetic force on current-carrying conductor</span>
+            </h2>
+        </div>
+
+        <div class="formula-box">
+            <div class="formula-main">$$F = BIl \sin \theta$$</div>
+            <div class="formula-derived">
+                <div class="lang-zh"><strong>變形公式：</strong> 若導體與磁場垂直（$\theta = 90^\circ$），則 $F = BIl$。</div>
+                <div class="lang-en"><strong>Derived formula:</strong> If the conductor is perpendicular to the magnetic field ($\theta = 90^\circ$), then $F = BIl$.</div>
+                <div class="lang-zh" style="margin-top: 8px;"><strong>定義：</strong> 載電流導體在磁場內會受磁力作用。</div>
+                <div class="lang-en" style="margin-top: 8px;"><strong>Definition:</strong> A current-carrying conductor experiences a magnetic force in a magnetic field.</div>
+            </div>
+        </div>
+
+        <div class="symbol-list">
+            <div class="symbol-list-title">
+                <span class="lang-zh">📐 變數與單位解釋 (含變形公式)</span>
+                <span class="lang-en">📐 Variables and Units (Including derived equations)</span>
+            </div>
+            <ul>
+                <li>
+                    <div class="sym-math">$F$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>磁力</strong>，單位：<strong>牛頓 ($\text{N}$)</strong></span>
+                        <span class="lang-en">: <strong>magnetic force</strong>, unit: <strong>newton ($\text{N}$)</strong></span>
+                    </div>
+                </li>
+                <li>
+                    <div class="sym-math">$B$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>磁場</strong>，單位：<strong>忒斯拉 ($\text{T}$)</strong></span>
+                        <span class="lang-en">: <strong>magnetic field</strong>, unit: <strong>tesla ($\text{T}$)</strong></span>
+                    </div>
+                </li>
+                <li>
+                    <div class="sym-math">$I$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>電流</strong>，單位：<strong>安培 ($\text{A}$)</strong></span>
+                        <span class="lang-en">: <strong>current</strong>, unit: <strong>ampere ($\text{A}$)</strong></span>
+                    </div>
+                </li>
+                <li>
+                    <div class="sym-math">$l$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>磁場內的導體長度</strong>，單位：<strong>米 ($\text{m}$)</strong></span>
+                        <span class="lang-en">: <strong>length of conductor in B-field</strong>, unit: <strong>meter ($\text{m}$)</strong></span>
+                    </div>
+                </li>
+                <li>
+                    <div class="sym-math">$\theta$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>$B$ 和 $I$ 之間的夾角</strong>，單位：<strong>度 ($^\circ$)</strong></span>
+                        <span class="lang-en">: <strong>angle between $B$ and $I$</strong>, unit: <strong>degree ($^\circ$)</strong></span>
+                    </div>
+                </li>
+            </ul>
+        </div>
+
+        <div class="card card-example">
+            <span class="badge badge-example">
+                <span class="lang-zh">✏️ 應用範例</span>
+                <span class="lang-en">✏️ Example</span>
+            </span>
+            <div class="problem-text">
+                <span class="lang-zh"><strong>題目：</strong>一支長 $0.15\ \text{m}$ 的金屬棒置於 $0.001\ \text{T}$ 的勻強磁場中。已知有 $0.2\ \text{A}$ 的電流通過金屬棒。求金屬棒與磁場形成 $30^\circ$ 夾角時，作用於金屬棒的磁力 $F$ 的量值。</span>
+                <span class="lang-en"><strong>Question:</strong> A conducting rod of length $0.15\ \text{m}$ is placed in a uniform magnetic field of $0.001\ \text{T}$. Given that a current of $0.2\ \text{A}$ passes through the rod, find the magnitude $F$ of the magnetic force acting on the rod when it makes an angle of $30^\circ$ with the magnetic field.</span>
+            </div>
+            <div class="solution-text">
+                <div class="lang-zh"><strong>題解：</strong></div>
+                <div class="lang-en"><strong>Solution:</strong></div>
+                $$F = BIl \sin \theta = 0.001 \times 0.2 \times 0.15 \times \sin 30^\circ = 1.5 \times 10^{-5}\ \text{N}$$
+            </div>
+        </div>
+
+        <div class="card card-practice">
+            <span class="badge badge-practice">
+                <span class="lang-zh">📝 隨堂練習</span>
+                <span class="lang-en">📝 Practice</span>
+            </span>
+            <div class="problem-text">
+                <span class="lang-zh"><strong>題目：</strong>找出作用於導體的磁力的量值。導體在磁場中的長度是 $0.2\ \text{m}$。磁場 $B$ 為 $1.2\ \text{mT}$，電流 $I$ 為 $4\ \text{A}$，兩者互相垂直。</span>
+                <span class="lang-en"><strong>Question:</strong> Find the magnitude of the magnetic force acting on the conductor. The length of the conductor within the magnetic field is $0.2\ \text{m}$. The magnetic field $B$ is $1.2\ \text{mT}$ and current $I$ is $4\ \text{A}$, which are perpendicular to each other.</span>
+            </div>
+            <button class="toggle-answer-btn" onclick="toggleAnswer(this)">
+                <span class="text-label">
+                    <span class="lang-zh">顯示答案</span>
+                    <span class="lang-en">Show Answer</span>
+                </span><span class="btn-icon">▼</span>
+            </button>
+            <div class="answer-panel">
+                <div class="solution-text">
+                    <div class="lang-zh"><strong>題解：</strong></div>
+                    <div class="lang-en"><strong>Solution:</strong></div>
+                    $$F = BIl \sin \theta = 1.2 \times 10^{-3} \times 4 \times 0.2 \times \sin 90^\circ = 9.6 \times 10^{-4}\ \text{N}$$
+                </div>
+            </div>
+        </div>
+
+        <div class="quiz-box">
+            <div class="quiz-label">
+                <span class="lang-zh">🧠 概念測驗</span>
+                <span class="lang-en">🧠 Concept Quiz</span>
+            </div>
+            <div class="quiz-question">
+                <span class="lang-zh">當磁場 $B$ 和電流 $I$ 互相平行時（$\theta = 0^\circ$），作用於直導線的磁力 $F$ 是多少？</span>
+                <span class="lang-en">When the magnetic field $B$ and the current $I$ are parallel to each other ($\theta = 0^\circ$), what is the magnetic force $F$ acting on the straight wire?</span>
+            </div>
+            <div class="quiz-options">
+                <div class="quiz-option" onclick="checkAnswer(this, false, 1)">
+                    <div class="option-radio"></div>
+                    <span class="lang-zh">最大值</span>
+                    <span class="lang-en">Maximum</span>
+                </div>
+                <div class="quiz-option" onclick="checkAnswer(this, true,  1)">
+                    <div class="option-radio"></div>
+                    <span class="lang-zh">零</span>
+                    <span class="lang-en">Zero</span>
+                </div>
+                <div class="quiz-option" onclick="checkAnswer(this, false, 1)">
+                    <div class="option-radio"></div>
+                    <span class="lang-zh">無法確定</span>
+                    <span class="lang-en">Cannot be determined</span>
+                </div>
+                <div class="quiz-option" onclick="checkAnswer(this, false, 1)">
+                    <div class="option-radio"></div>
+                    <span class="lang-zh">取決於導線的長度 $l$</span>
+                    <span class="lang-en">Depends on the length $l$</span>
+                </div>
+            </div>
+            <div class="quiz-feedback" id="feedback-1">
+                <span class="lang-zh">✅ 正確！當 $B$ 和 $I$ 互相平行（$\theta = 0^\circ$）時，$\sin \theta = 0$，$F$ 便等於零。</span>
+                <span class="lang-en">✅ Correct! When $B$ and $I$ are parallel ($\theta = 0^\circ$), $\sin \theta = 0$ and $F$ is equal to zero.</span>
+            </div>
+        </div>
+        <div class="section-divider"></div>
+
+        <div class="section-heading" id="sec2">
+            <span class="section-num">2</span>
+            <h2>
+                <span class="lang-zh">線圈的轉動效應</span>
+                <span class="lang-en">Turning effect on a coil</span>
+            </h2>
+        </div>
+
+        <div class="formula-box">
+            <div class="formula-main">$$\tau = BIAN \sin \phi$$</div>
+            <div class="formula-derived">
+                <div class="lang-zh"><strong>變形公式：</strong> 若線圈處於水平位置（$\phi = 90^\circ$），最大力矩 $\tau = BIAN$。</div>
+                <div class="lang-en"><strong>Derived formula:</strong> When the coil is horizontal ($\phi = 90^\circ$), the maximum moment $\tau = BIAN$.</div>
+                <div class="lang-zh" style="margin-top: 8px;"><strong>定義：</strong> 磁場內，作用於載電流線圈兩邊的磁力對線圈產生轉動效應。</div>
+                <div class="lang-en" style="margin-top: 8px;"><strong>Definition:</strong> A current-carrying coil in a magnetic field experiences a turning effect due to the magnetic forces acting on its two sides.</div>
+            </div>
+        </div>
+
+        <div class="symbol-list">
+            <div class="symbol-list-title">
+                <span class="lang-zh">📐 變數與單位解釋 (含變形公式)</span>
+                <span class="lang-en">📐 Variables and Units (Including derived equations)</span>
+            </div>
+            <ul>
+                <li>
+                    <div class="sym-math">$\tau$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>力矩</strong>，單位：<strong>牛頓·米 ($\text{N m}$)</strong></span>
+                        <span class="lang-en">: <strong>moment</strong>, unit: <strong>newton-meter ($\text{N m}$)</strong></span>
+                    </div>
+                </li>
+                <li>
+                    <div class="sym-math">$B$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>磁通量密度</strong>，單位：<strong>忒斯拉 ($\text{T}$)</strong></span>
+                        <span class="lang-en">: <strong>magnetic flux density</strong>, unit: <strong>tesla ($\text{T}$)</strong></span>
+                    </div>
+                </li>
+                <li>
+                    <div class="sym-math">$I$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>電流</strong>，單位：<strong>安培 ($\text{A}$)</strong></span>
+                        <span class="lang-en">: <strong>current</strong>, unit: <strong>ampere ($\text{A}$)</strong></span>
+                    </div>
+                </li>
+                <li>
+                    <div class="sym-math">$A$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>線圈的面積</strong>，單位：<strong>平方米 ($\text{m}^2$)</strong></span>
+                        <span class="lang-en">: <strong>area of the coil</strong>, unit: <strong>square meter ($\text{m}^2$)</strong></span>
+                    </div>
+                </li>
+                <li>
+                    <div class="sym-math">$N$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>線圈的匝數</strong></span>
+                        <span class="lang-en">: <strong>number of turns of the coil</strong></span>
+                    </div>
+                </li>
+                <li>
+                    <div class="sym-math">$\phi$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>線圈的法線與 $B$ 之間的夾角</strong>，單位：<strong>度 ($^\circ$)</strong></span>
+                        <span class="lang-en">: <strong>angle between the normal of the coil and $B$</strong>, unit: <strong>degree ($^\circ$)</strong></span>
+                    </div>
+                </li>
+            </ul>
+        </div>
+
+        <div class="card card-example">
+            <span class="badge badge-example">
+                <span class="lang-zh">✏️ 應用範例</span>
+                <span class="lang-en">✏️ Example</span>
+            </span>
+            <div class="problem-text">
+                <span class="lang-zh"><strong>題目：</strong>矩形線圈有 $20$ 匝，面積是 $30\ \text{cm}^2$，置於 $2\ \text{mT}$ 的勻強磁場 $B$ 內。通過線圈的電流是 $5\ \text{A}$。找出 $\theta = 30^\circ$ 時作用於線圈的力矩。</span>
+                <span class="lang-en"><strong>Question:</strong> A rectangular coil of $20$ turns and an area of $30\ \text{cm}^2$ is placed in a uniform magnetic field $B$ of $2\ \text{mT}$. The current flowing through the coil is $5\ \text{A}$. Find the moment acting on the coil when $\theta = 30^\circ$.</span>
+            </div>
+            <div class="solution-text">
+                <div class="lang-zh"><strong>題解：</strong></div>
+                <div class="lang-en"><strong>Solution:</strong></div>
+                $$\tau = BIAN \sin \phi = (2 \times 10^{-3}) \times 5 \times (30 \times 10^{-4}) \times 20 \times \sin 30^\circ = 3 \times 10^{-4}\ \text{N m}$$
+            </div>
+        </div>
+
+        <div class="card card-practice">
+            <span class="badge badge-practice">
+                <span class="lang-zh">📝 隨堂練習</span>
+                <span class="lang-en">📝 Practice</span>
+            </span>
+            <div class="problem-text">
+                <span class="lang-zh"><strong>題目：</strong>一個 $15$ 匝的線圈長 $16\ \text{cm}$，闊 $12\ \text{cm}$。電流 $I = 3\ \text{A}$，磁場 $B = 1\ \text{mT}$。線圈平面與磁場平行時，找出磁力沿轉軸作用於線圈的力矩。</span>
+                <span class="lang-en"><strong>Question:</strong> A $15$-turn coil of a size $16\ \text{cm}$ by $12\ \text{cm}$ carries current $I = 3\ \text{A}$ in a magnetic field $B = 1\ \text{mT}$. Find the moment acting on the coil about the axis of rotation when the plane of the coil is parallel to the magnetic field.</span>
+            </div>
+            <button class="toggle-answer-btn" onclick="toggleAnswer(this)">
+                <span class="text-label">
+                    <span class="lang-zh">顯示答案</span>
+                    <span class="lang-en">Show Answer</span>
+                </span><span class="btn-icon">▼</span>
+            </button>
+            <div class="answer-panel">
+                <div class="solution-text">
+                    <div class="lang-zh"><strong>題解：</strong></div>
+                    <div class="lang-en"><strong>Solution:</strong></div>
+                    $$A = 0.16 \times 0.12 = 0.0192\ \text{m}^2$$
+                    $$\tau = BIAN \sin 90^\circ = (1 \times 10^{-3}) \times 3 \times 0.0192 \times 15 = 8.64 \times 10^{-4}\ \text{N m}$$
+                </div>
+            </div>
+        </div>
+
+        <div class="quiz-box">
+            <div class="quiz-label">
+                <span class="lang-zh">🧠 概念測驗</span>
+                <span class="lang-en">🧠 Concept Quiz</span>
+            </div>
+            <div class="quiz-question">
+                <span class="lang-zh">下列哪項能增加直流電動機的轉動效應？</span>
+                <span class="lang-en">Which of the following can increase the turning effect of a d.c. motor?</span>
+            </div>
+            <div class="quiz-options">
+                <div class="quiz-option" onclick="checkAnswer(this, false, 2)">
+                    <div class="option-radio"></div>
+                    <span class="lang-zh">減少電流</span>
+                    <span class="lang-en">Decreasing the current</span>
+                </div>
+                <div class="quiz-option" onclick="checkAnswer(this, false, 2)">
+                    <div class="option-radio"></div>
+                    <span class="lang-zh">減少線圈的面積</span>
+                    <span class="lang-en">Decreasing the area of the coil</span>
+                </div>
+                <div class="quiz-option" onclick="checkAnswer(this, true,  2)">
+                    <div class="option-radio"></div>
+                    <span class="lang-zh">增加線圈的匝數</span>
+                    <span class="lang-en">Increasing the number of turns of the coil</span>
+                </div>
+                <div class="quiz-option" onclick="checkAnswer(this, false, 2)">
+                    <div class="option-radio"></div>
+                    <span class="lang-zh">使用較弱的磁鐵</span>
+                    <span class="lang-en">Using a weaker magnet</span>
+                </div>
+            </div>
+            <div class="quiz-feedback" id="feedback-2">
+                <span class="lang-zh">✅ 正確！根據 $\tau = BIAN \sin \phi$，當 $B$、$I$、$A$ 或 $N$ 增加，電動機的轉動效應便會增加。</span>
+                <span class="lang-en">✅ Correct! By $\tau = BIAN \sin \phi$, the turning effect of a motor increases when $B$, $I$, $A$ or $N$ increases.</span>
+            </div>
+        </div>
+        <div class="section-divider"></div>
+
+        <div class="section-heading" id="sec3">
+            <span class="section-num">3</span>
+            <h2>
+                <span class="lang-zh">兩條平行長直導線之間的磁力</span>
+                <span class="lang-en">Magnetic forces between two parallel wires</span>
+            </h2>
+        </div>
+
+        <div class="formula-box">
+            <div class="formula-main">
+                <div class="lang-zh">$$F_l = \frac{\mu_0 I_P I_Q}{2\pi r}$$</div>
+                <div class="lang-en">$$F_l = \frac{\mu_0 I_P I_Q}{2\pi r}$$</div>
+            </div>
+            <div class="formula-derived">
+                <div class="lang-zh"><strong>特性：</strong> 如果兩條導線載有的電流方向相反，它們會相互排斥；如果它們載有的電流方向相同，則會相互吸引。</div>
+                <div class="lang-en"><strong>Characteristics:</strong> Two wires repel each other if they carry currents in opposite directions. They attract each other if they carry currents in the same direction.</div>
+                <div class="lang-zh" style="margin-top: 8px;"><strong>定義：</strong> 每單位長度導線所受的磁力。</div>
+                <div class="lang-en" style="margin-top: 8px;"><strong>Definition:</strong> The magnetic force per unit length acting on the wire.</div>
+            </div>
+        </div>
+
+        <div class="symbol-list">
+            <div class="symbol-list-title">
+                <span class="lang-zh">📐 變數與單位解釋 (含變形公式)</span>
+                <span class="lang-en">📐 Variables and Units (Including derived equations)</span>
+            </div>
+            <ul>
+                <li>
+                    <div class="sym-math">$F_l$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>每單位長度的磁力</strong>，單位：<strong>牛頓每米 ($\text{N m}^{-1}$)</strong></span>
+                        <span class="lang-en">: <strong>force per unit length</strong>, unit: <strong>newton per meter ($\text{N m}^{-1}$)</strong></span>
+                    </div>
+                </li>
+                <li>
+                    <div class="sym-math">$\mu_0$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>真空磁導率</strong> ($4\pi \times 10^{-7}\ \text{T m A}^{-1}$)</span>
+                        <span class="lang-en">: <strong>permeability of free space</strong> ($4\pi \times 10^{-7}\ \text{T m A}^{-1}$)</span>
+                    </div>
+                </li>
+                <li>
+                    <div class="sym-math">$I_P, I_Q$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>導線的電流</strong>，單位：<strong>安培 ($\text{A}$)</strong></span>
+                        <span class="lang-en">: <strong>current in the wires</strong>, unit: <strong>ampere ($\text{A}$)</strong></span>
+                    </div>
+                </li>
+                <li>
+                    <div class="sym-math">$r$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>導線之間的距離</strong>，單位：<strong>米 ($\text{m}$)</strong></span>
+                        <span class="lang-en">: <strong>distance between wires</strong>, unit: <strong>meter ($\text{m}$)</strong></span>
+                    </div>
+                </li>
+            </ul>
+        </div>
+
+        <div class="card card-example">
+            <span class="badge badge-example">
+                <span class="lang-zh">✏️ 應用範例</span>
+                <span class="lang-en">✏️ Example</span>
+            </span>
+            <div class="problem-text">
+                <span class="lang-zh"><strong>題目：</strong>兩條平行長直導線 X 和 Y 相距 $0.1\ \text{m}$，分別載有 $3\ \text{A}$ 和 $2\ \text{A}$ 的電流。取 $\mu_0 = 4\pi \times 10^{-7}\ \text{T m A}^{-1}$。求 Y 作用於 X 每單位長度的磁力。</span>
+                <span class="lang-en"><strong>Question:</strong> Two long straight parallel wires X and Y are $0.1\ \text{m}$ apart. The currents in X and Y are $3\ \text{A}$ and $2\ \text{A}$ respectively. Take $\mu_0 = 4\pi \times 10^{-7}\ \text{T m A}^{-1}$. Find the magnetic force per unit length acting on X by Y.</span>
+            </div>
+            <div class="solution-text">
+                <div class="lang-zh"><strong>題解：</strong></div>
+                <div class="lang-en"><strong>Solution:</strong></div>
+                $$F_l = \frac{\mu_0 I_X I_Y}{2\pi r} = \frac{(4\pi \times 10^{-7}) \times 3 \times 2}{2\pi \times 0.1} = 1.2 \times 10^{-5}\ \text{N m}^{-1}$$
+            </div>
+        </div>
+
+        <div class="card card-practice">
+            <span class="badge badge-practice">
+                <span class="lang-zh">📝 隨堂練習</span>
+                <span class="lang-en">📝 Practice</span>
+            </span>
+            <div class="problem-text">
+                <span class="lang-zh"><strong>題目：</strong>兩條長直平行導線 X 和 Y 相距 $r = 0.02\ \text{m}$。已知導線 X 的電流 $I_X = 3\ \text{A}$，它們之間的每單位長度磁力 $F$ 為 $6 \times 10^{-6}\ \text{N m}^{-1}$，求導線 Y 的電流 $I_Y$。</span>
+                <span class="lang-en"><strong>Question:</strong> Two long straight parallel wires X and Y are separated by $r = 0.02\ \text{m}$. Given that the current in X is $I_X = 3\ \text{A}$ and the magnitude of the magnetic force per unit length $F$ is $6 \times 10^{-6}\ \text{N m}^{-1}$, find the current $I_Y in wire Y.</span>
+            </div>
+            <button class="toggle-answer-btn" onclick="toggleAnswer(this)">
+                <span class="text-label">
+                    <span class="lang-zh">顯示答案</span>
+                    <span class="lang-en">Show Answer</span>
+                </span><span class="btn-icon">▼</span>
+            </button>
+            <div class="answer-panel">
+                <div class="solution-text">
+                    <div class="lang-zh"><strong>題解：</strong></div>
+                    <div class="lang-en"><strong>Solution:</strong></div>
+                    $$I_Y = \frac{F_l \times 2\pi r}{\mu_0 I_X} = \frac{(6 \times 10^{-6}) \times 2\pi \times 0.02}{(4\pi \times 10^{-7}) \times 3} = 0.2\ \text{A}$$
+                </div>
+            </div>
+        </div>
+
+        <div class="quiz-box">
+            <div class="quiz-label">
+                <span class="lang-zh">🧠 概念測驗</span>
+                <span class="lang-en">🧠 Concept Quiz</span>
+            </div>
+            <div class="quiz-question">
+                <span class="lang-zh">關於兩條平行長直導線之間的磁力，下列哪項敘述正確？</span>
+                <span class="lang-en">Which of the following statements about the magnetic force between two long straight parallel wires is correct?</span>
+            </div>
+            <div class="quiz-options">
+                <div class="quiz-option" onclick="checkAnswer(this, false, 3)">
+                    <div class="option-radio"></div>
+                    <span class="lang-zh">載有相同方向的電流時，互相排斥</span>
+                    <span class="lang-en">Repel each other if carrying currents in the same direction</span>
+                </div>
+                <div class="quiz-option" onclick="checkAnswer(this, true,  3)">
+                    <div class="option-radio"></div>
+                    <span class="lang-zh">載有相同方向的電流時，互相吸引</span>
+                    <span class="lang-en">Attract each other if carrying currents in the same direction</span>
+                </div>
+                <div class="quiz-option" onclick="checkAnswer(this, false, 3)">
+                    <div class="option-radio"></div>
+                    <span class="lang-zh">無論電流方向為何，總是互相排斥</span>
+                    <span class="lang-en">Always repel each other regardless of current directions</span>
+                </div>
+                <div class="quiz-option" onclick="checkAnswer(this, false, 3)">
+                    <div class="option-radio"></div>
+                    <span class="lang-zh">無論電流方向為何，總是互相吸引</span>
+                    <span class="lang-en">Always attract each other regardless of current directions</span>
+                </div>
+            </div>
+            <div class="quiz-feedback" id="feedback-3">
+                <span class="lang-zh">✅ 正確！如果兩條導線載有相反方向的電流，會相互排斥；如果載有相同方向的電流，則會相互吸引。</span>
+                <span class="lang-en">✅ Correct! Two wires repel each other if they carry currents in opposite directions. They attract each other if they carry currents in the same direction.</span>
+            </div>
+        </div>
+        <div class="section-divider"></div>
+
+        <div class="section-heading" id="sec4">
+            <span class="section-num">4</span>
+            <h2>
+                <span class="lang-zh">磁場中的移動電荷</span>
+                <span class="lang-en">Moving charges in a magnetic field</span>
+            </h2>
+        </div>
+
+        <div class="formula-box">
+            <div class="formula-main">$$F = BQv \sin \theta$$</div>
+            <div class="formula-derived">
+                <div class="lang-zh"><strong>圓周運動半徑：</strong> 當 $\theta = 90^\circ$ 時，磁力提供向心力，因此 $BQv = \frac{mv^2}{r}$，推導出 $r = \frac{mv}{BQ}$。</div>
+                <div class="lang-en"><strong>Radius of circular motion:</strong> When $\theta = 90^\circ$, magnetic force provides centripetal force, $BQv = \frac{mv^2}{r}$, derived to $r = \frac{mv}{BQ}$.</div>
+                <div class="lang-zh" style="margin-top: 8px;"><strong>定義：</strong> 磁場內的載電流導體會受到磁力作用。其實，這磁力是導體中每個移動電荷所受磁力的總和。</div>
+                <div class="lang-en" style="margin-top: 8px;"><strong>Definition:</strong> A magnetic force acts on a current-carrying conductor in a magnetic field. In fact, this magnetic force is the sum of the force acting on each moving charge in the conductor.</div>
+            </div>
+        </div>
+
+        <div class="symbol-list">
+            <div class="symbol-list-title">
+                <span class="lang-zh">📐 變數與單位解釋 (含變形公式)</span>
+                <span class="lang-en">📐 Variables and Units (Including derived equations)</span>
+            </div>
+            <ul>
+                <li>
+                    <div class="sym-math">$F$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>磁力</strong>，單位：<strong>牛頓 ($\text{N}$)</strong></span>
+                        <span class="lang-en">: <strong>magnetic force</strong>, unit: <strong>newton ($\text{N}$)</strong></span>
+                    </div>
+                </li>
+                <li>
+                    <div class="sym-math">$B$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>磁場</strong>，單位：<strong>忒斯拉 ($\text{T}$)</strong></span>
+                        <span class="lang-en">: <strong>magnetic field</strong>, unit: <strong>tesla ($\text{T}$)</strong></span>
+                    </div>
+                </li>
+                <li>
+                    <div class="sym-math">$Q$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>電荷</strong>，單位：<strong>庫倫 ($\text{C}$)</strong></span>
+                        <span class="lang-en">: <strong>charge</strong>, unit: <strong>coulomb ($\text{C}$)</strong></span>
+                    </div>
+                </li>
+                <li>
+                    <div class="sym-math">$v$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>電荷的速率</strong>，單位：<strong>米每秒 ($\text{m s}^{-1}$)</strong></span>
+                        <span class="lang-en">: <strong>speed of charge</strong>, unit: <strong>meter per second ($\text{m s}^{-1}$)</strong></span>
+                    </div>
+                </li>
+                <li>
+                    <div class="sym-math">$m$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>電荷的質量</strong>，單位：<strong>千克 ($\text{kg}$)</strong></span>
+                        <span class="lang-en">: <strong>mass of charge</strong>, unit: <strong>kilogram ($\text{kg}$)</strong></span>
+                    </div>
+                </li>
+                <li>
+                    <div class="sym-math">$r$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>圓形路徑的半徑</strong>，單位：<strong>米 ($\text{m}$)</strong></span>
+                        <span class="lang-en">: <strong>radius of circular path</strong>, unit: <strong>meter ($\text{m}$)</strong></span>
+                    </div>
+                </li>
+            </ul>
+        </div>
+
+        <div class="card card-example">
+            <span class="badge badge-example">
+                <span class="lang-zh">✏️ 應用範例</span>
+                <span class="lang-en">✏️ Example</span>
+            </span>
+            <div class="problem-text">
+                <span class="lang-zh"><strong>題目：</strong>電荷 $Q = -10\ \mu\text{C}$ 的粒子以 $v = 200\ \text{m s}^{-1}$ 的速率，在 $B = 50\ \text{mT}$ 的勻強磁場中移動。如果移動方向與磁場互相垂直，找出作用於移動電荷的磁力 $F$ 的量值。</span>
+                <span class="lang-en"><strong>Question:</strong> A charge $Q = -10\ \mu\text{C}$ moves in a uniform magnetic field $B = 50\ \text{mT}$ at a speed of $v = 200\ \text{m s}^{-1}$. If it moves perpendicular to the magnetic field, find the magnitude of the magnetic force $F$ acting on the moving charge.</span>
+            </div>
+            <div class="solution-text">
+                <div class="lang-zh"><strong>題解：</strong></div>
+                <div class="lang-en"><strong>Solution:</strong></div>
+                $$F = BQv = (50 \times 10^{-3}) \times (10 \times 10^{-6}) \times 200 = 10^{-4}\ \text{N}$$
+            </div>
+        </div>
+
+        <div class="card card-practice">
+            <span class="badge badge-practice">
+                <span class="lang-zh">📝 隨堂練習</span>
+                <span class="lang-en">📝 Practice</span>
+            </span>
+            <div class="problem-text">
+                <span class="lang-zh"><strong>題目：</strong>電子以 $1.75 \times 10^6\ \text{m s}^{-1}$ 的速率垂直進入 $0.2\ \text{mT}$ 的勻強磁場。已知電子的質量是 $9.11 \times 10^{-31}\ \text{kg}$，所帶電荷是 $-1.60 \times 10^{-19}\ \text{C}$。電子會在磁場內以圓弧路徑運動。求圓弧的半徑。</span>
+                <span class="lang-en"><strong>Question:</strong> An electron enters a $0.2\ \text{mT}$ uniform magnetic field perpendicularly at a speed of $1.75 \times 10^6\ \text{m s}^{-1}$. The mass and charge of an electron are $9.11 \times 10^{-31}\ \text{kg}$ and $-1.60 \times 10^{-19}\ \text{C}$ respectively. The electron travels in a circular arc in the magnetic field. Find the radius of the arc.</span>
+            </div>
+            <button class="toggle-answer-btn" onclick="toggleAnswer(this)">
+                <span class="text-label">
+                    <span class="lang-zh">顯示答案</span>
+                    <span class="lang-en">Show Answer</span>
+                </span><span class="btn-icon">▼</span>
+            </button>
+            <div class="answer-panel">
+                <div class="solution-text">
+                    <div class="lang-zh"><strong>題解：</strong></div>
+                    <div class="lang-en"><strong>Solution:</strong></div>
+                    $$r = \frac{mv}{BQ} = \frac{(9.11 \times 10^{-31}) \times (1.75 \times 10^6)}{(0.2 \times 10^{-3}) \times (1.60 \times 10^{-19})} = 0.0498\ \text{m}$$
+                </div>
+            </div>
+        </div>
+
+        <div class="quiz-box">
+            <div class="quiz-label">
+                <span class="lang-zh">🧠 概念測驗</span>
+                <span class="lang-en">🧠 Concept Quiz</span>
+            </div>
+            <div class="quiz-question">
+                <span class="lang-zh">帶電粒子 $Q$ 在勻強磁場中移動，若其移動方向垂直於磁場，粒子的路徑是：</span>
+                <span class="lang-en">A charged particle $Q$ moves in a uniform magnetic field. If its moving direction is perpendicular to the magnetic field, what is the path of the particle?</span>
+            </div>
+            <div class="quiz-options">
+                <div class="quiz-option" onclick="checkAnswer(this, false, 4)">
+                    <div class="option-radio"></div>
+                    <span class="lang-zh">直線</span>
+                    <span class="lang-en">A straight line</span>
+                </div>
+                <div class="quiz-option" onclick="checkAnswer(this, false, 4)">
+                    <div class="option-radio"></div>
+                    <span class="lang-zh">拋物線</span>
+                    <span class="lang-en">A parabola</span>
+                </div>
+                <div class="quiz-option" onclick="checkAnswer(this, true,  4)">
+                    <div class="option-radio"></div>
+                    <span class="lang-zh">圓形路徑</span>
+                    <span class="lang-en">A circular path</span>
+                </div>
+                <div class="quiz-option" onclick="checkAnswer(this, false, 4)">
+                    <div class="option-radio"></div>
+                    <span class="lang-zh">靜止不動</span>
+                    <span class="lang-en">Remains at rest</span>
+                </div>
+            </div>
+            <div class="quiz-feedback" id="feedback-4">
+                <span class="lang-zh">✅ 正確！磁力提供向心力（$BQv = \frac{mv^2}{r}$），且不對粒子作功，因此電荷會作勻速圓周運動。</span>
+                <span class="lang-en">✅ Correct! The magnetic force provides the centripetal force ($BQv = \frac{mv^2}{r}$) and does no work, so the charge performs uniform circular motion.</span>
+            </div>
+        </div>
+        <div class="section-divider"></div>
+
+        <div class="footer">
+            <span class="lang-zh">© 2026 專業物理教學網 ｜ 磁場產生的力複習全指南 ｜ 祝考試順利！</span>
+            <span class="lang-en">© 2026 Physics Formula Guide ｜ Force due to Magnetic Field ｜ Good luck with your exams!</span>
+        </div>
+    </div>
+</div>
+<script>
+    // ── Language Toggle Logic ──
+    function toggleLanguage() {
+        document.body.classList.toggle('en-mode');
+        // Update dynamically set text for buttons that are open
+        document.querySelectorAll('.toggle-answer-btn').forEach(btn => {
+            const isOpen = btn.nextElementSibling.classList.contains('visible');
+            if(isOpen) {
+                btn.querySelector('.text-label').innerHTML = `<span class="lang-zh">隱藏答案</span><span class="lang-en">Hide Answer</span>`;
+            } else {
+                btn.querySelector('.text-label').innerHTML = `<span class="lang-zh">顯示答案</span><span class="lang-en">Show Answer</span>`;
+            }
+        });
+    }
+
+    // ── Score tracking ──
+    const totalQuizzes = 4;
+    const answered = {}; 
+    
+    function getScore() {
+        return Object.values(answered).filter(Boolean).length;
+    }
+    
+    function updateProgress() {
+        const score = getScore();
+        const pct = (score / totalQuizzes) * 100;
+        document.getElementById('progressFill').style.width = pct + '%';
+        
+        document.getElementById('progressLabel').innerHTML = `
+            <span class="lang-zh">答對 ${score} / ${totalQuizzes} 題</span>
+            <span class="lang-en">${score} / ${totalQuizzes} correct</span>
+        `;
+        
+        document.getElementById('scoreBadgeZh').textContent = `🎯 學習進度：${score} / ${totalQuizzes} 題已答對`;
+        document.getElementById('scoreBadgeEn').textContent = `🎯 Progress: ${score} / ${totalQuizzes} correct`;
+    }
+
+    // ── Toggle answer ──
+    function toggleAnswer(btn) {
+        const panel = btn.nextElementSibling;
+        const isOpen = panel.classList.contains('visible');
+        panel.classList.toggle('visible', !isOpen);
+        btn.classList.toggle('open', !isOpen);
+        
+        if(!isOpen) {
+            btn.querySelector('.text-label').innerHTML = `<span class="lang-zh">隱藏答案</span><span class="lang-en">Hide Answer</span>`;
+        } else {
+            btn.querySelector('.text-label').innerHTML = `<span class="lang-zh">顯示答案</span><span class="lang-en">Show Answer</span>`;
+        }
+    }
+
+    // ── Quiz checking ──
+    function checkAnswer(el, isCorrect, quizId) {
+        const feedback = document.getElementById('feedback-' + quizId);
+        if (feedback.classList.contains('visible')) return;
+
+        const options = el.closest('.quiz-options').querySelectorAll('.quiz-option');
+        options.forEach(opt => opt.classList.add('disabled'));
+        
+        if (isCorrect) {
+            el.classList.add('correct');
+            el.querySelector('.option-radio').innerHTML = '✓';
+            feedback.className = 'quiz-feedback correct visible';
+            answered[quizId] = true;
+        } else {
+            el.classList.add('wrong');
+            el.querySelector('.option-radio').innerHTML = '✗';
+            options.forEach(opt => {
+                if (opt.getAttribute('onclick') && opt.getAttribute('onclick').includes('true')) {
+                    opt.classList.add('correct');
+                    opt.querySelector('.option-radio').innerHTML = '✓';
+                }
+            });
+            feedback.className = 'quiz-feedback wrong visible';
+            answered[quizId] = false;
+        }
+        updateProgress();
+    }
+</script>
+</body>
+</html>

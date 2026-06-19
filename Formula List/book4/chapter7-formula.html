@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>物理公式全指南 — 電磁感應 / Physics Formula Guide — Electromagnetic Induction</title>
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            options: { skipHtmlTags: ['script','noscript','style','textarea','pre'] }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+    <style>
+        /* ── Language Toggle Logic ── */
+        span.lang-zh { display: inline; }
+        div.lang-zh { display: block; }
+        span.lang-en { display: none; }
+        div.lang-en { display: none; }
+
+        body.en-mode span.lang-zh, body.en-mode div.lang-zh { display: none !important; }
+        body.en-mode span.lang-en { display: inline !important; }
+        body.en-mode div.lang-en { display: block !important; }
+
+        /* ── Toggle Button Style ── */
+        .lang-toggle-btn {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 1000;
+            background: linear-gradient(135deg, #1e3a8a, #2563eb);
+            color: #fff;
+            border: 2px solid #ffffff;
+            padding: 10px 20px;
+            border-radius: 99px;
+            font-size: 10.5pt;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(30, 58, 138, 0.3);
+            transition: all .2s;
+        }
+        .lang-toggle-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(30, 58, 138, 0.4);
+        }
+
+        /* ── Reset ── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        /* ── Base ── */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Microsoft JhengHei", sans-serif;
+            background: linear-gradient(135deg, #e8f0fe 0%, #f0f4ff 50%, #faf5ff 100%);
+            color: #1e293b;
+            line-height: 1.7;
+            min-height: 100vh;
+        }
+
+        /* ── Layout ── */
+        .page-wrapper { display: flex; max-width: 1100px; margin: 0 auto; padding: 40px 20px; gap: 28px; align-items: flex-start; }
+
+        /* ── Sticky TOC Sidebar ── */
+        .toc {
+            width: 250px; flex-shrink: 0; position: sticky; top: 24px; background: #ffffff;
+            border-radius: 14px; box-shadow: 0 4px 20px rgba(30, 58, 138, 0.08); padding: 20px 16px; border: 1px solid #dbeafe;
+        }
+        .toc h3 { font-size: 11pt; font-weight: 700; color: #1e3a8a; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 2px solid #dbeafe; }
+        .toc ul { list-style: none; }
+        .toc li { margin-bottom: 6px; }
+        .toc a { display: flex; align-items: center; gap: 7px; font-size: 9.5pt; color: #475569; text-decoration: none; padding: 5px 8px; border-radius: 7px; transition: all .2s; }
+        .toc a:hover { background: #eff6ff; color: #1d4ed8; }
+        .toc-num { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; background: #dbeafe; color: #1e40af; border-radius: 50%; font-size: 8pt; font-weight: 700; flex-shrink: 0; }
+
+        /* ── Progress Bar ── */
+        .progress-bar-wrap { background: #e2e8f0; border-radius: 99px; height: 6px; margin-top: 16px; overflow: hidden; }
+        .progress-bar-fill { height: 100%; background: linear-gradient(90deg, #3b82f6, #6366f1); border-radius: 99px; transition: width .5s ease; width: 0%; }
+        .progress-label { font-size: 8.5pt; color: #64748b; margin-top: 6px; text-align: center; }
+
+        /* ── Main Content ── */
+        .container { flex: 1; min-width: 0; }
+
+        /* ── Header Banner ── */
+        .header-banner { background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 60%, #7c3aed 100%); color: #ffffff; padding: 36px 32px; border-radius: 16px; margin-bottom: 36px; text-align: center; box-shadow: 0 8px 32px rgba(37, 99, 235, 0.3); position: relative; overflow: hidden; }
+        .header-banner::before { content: ''; position: absolute; top: -40px; right: -40px; width: 200px; height: 200px; background: rgba(255,255,255,.06); border-radius: 50%; }
+        .header-banner::after { content: ''; position: absolute; bottom: -60px; left: -30px; width: 250px; height: 250px; background: rgba(255,255,255,.04); border-radius: 50%; }
+        .header-banner h1 { font-size: 24pt; font-weight: 800; letter-spacing: 1px; position: relative; z-index: 1; }
+        .header-banner p { margin: 10px 0 0; font-size: 11pt; opacity: .85; position: relative; z-index: 1; }
+        .score-badge { display: inline-flex; align-items: center; gap: 6px; margin-top: 16px; background: rgba(255,255,255,.2); backdrop-filter: blur(4px); color: #fff; padding: 6px 16px; border-radius: 99px; font-size: 10pt; font-weight: 600; border: 1px solid rgba(255,255,255,.3); position: relative; z-index: 1; }
+
+        /* ── Section Heading ── */
+        .section-heading { display: flex; align-items: center; gap: 12px; margin: 44px 0 20px; }
+        .section-num { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: linear-gradient(135deg, #1e3a8a, #3b82f6); color: #fff; border-radius: 10px; font-size: 14pt; font-weight: 800; flex-shrink: 0; box-shadow: 0 4px 12px rgba(37,99,235,.3); }
+        .section-heading h2 { color: #1e3a8a; font-size: 15pt; font-weight: 700; }
+
+        /* ── Formula Box ── */
+        .formula-box { background: linear-gradient(135deg, #eff6ff 0%, #f5f3ff 100%); border: 1px solid #bfdbfe; border-left: 5px solid #3b82f6; border-radius: 12px; padding: 24px 28px; margin: 4px 0 16px; box-shadow: 0 2px 12px rgba(59,130,246,.08); transition: box-shadow .25s; }
+        .formula-box:hover { box-shadow: 0 6px 24px rgba(59,130,246,.15); }
+        .formula-main { font-size: 17pt; font-weight: bold; color: #1d4ed8; text-align: center; margin-bottom: 12px; }
+        .formula-derived { font-size: 10.5pt; color: #475569; text-align: center; border-top: 1px dashed #c7d2fe; padding-top: 10px; margin-top: 10px; }
+
+        /* ── Symbol List ── */
+        .symbol-list { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 18px; margin: 0 0 16px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); }
+        .symbol-list-title { font-size: 9.5pt; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .07em; margin-bottom: 10px; border-bottom: 2px solid #e2e8f0; padding-bottom: 6px; }
+        .symbol-list ul { list-style: none; }
+        .symbol-list li { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-size: 10pt; }
+        .symbol-list li:last-child { border-bottom: none; }
+        .sym-math { min-width: 50px; display: inline-flex; justify-content: center; font-size: 11pt; }
+        .sym-desc { flex: 1; }
+
+        /* ── Cards ── */
+        .card { border-radius: 12px; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,0.04); border: 1px solid #e2e8f0; background: #fff; margin-bottom: 20px; transition: transform .2s, box-shadow .2s; }
+        .card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.08); transform: translateY(-2px); }
+        .card-header { font-weight: 700; font-size: 10.5pt; padding: 12px 18px; color: #fff; display: flex; align-items: center; gap: 8px; }
+        .card-body { padding: 20px; font-size: 10pt; }
+        .bg-example { background: linear-gradient(135deg, #10b981, #059669); }
+        .bg-practice { background: linear-gradient(135deg, #f59e0b, #d97706); }
+        .bg-quiz { background: linear-gradient(135deg, #ec4899, #c026d3); }
+        .solution { margin-top: 14px; padding: 14px; background: #f8fafc; border-radius: 8px; border-left: 4px solid #10b981; }
+
+        /* ── Practice Area ── */
+        .btn-toggle-answer { display: inline-flex; align-items: center; gap: 6px; background: #fff; border: 1px solid #cbd5e1; padding: 6px 14px; border-radius: 6px; font-size: 9.5pt; font-weight: 600; color: #475569; cursor: pointer; transition: all .2s; margin-top: 12px; }
+        .btn-toggle-answer:hover { background: #f1f5f9; color: #0f172a; border-color: #94a3b8; }
+        .practice-answer { display: none; margin-top: 14px; padding: 14px; background: #fffbeb; border-radius: 8px; border-left: 4px solid #f59e0b; border-right: 1px solid #fef3c7; border-top: 1px solid #fef3c7; border-bottom: 1px solid #fef3c7; }
+        .practice-answer.visible { display: block; animation: slideDown .3s ease-out; }
+
+        /* ── Quiz Area ── */
+        .quiz-options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+        .quiz-option { display: flex; align-items: center; gap: 10px; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; cursor: pointer; transition: all .2s; background: #fff; }
+        .quiz-option:hover:not(.disabled) { border-color: #ec4899; background: #fdf2f8; }
+        .quiz-option.disabled { pointer-events: none; opacity: 0.7; }
+        .quiz-option.correct { background: #ecfdf5; border-color: #10b981; color: #065f46; font-weight: 600; box-shadow: 0 2px 8px rgba(16,185,129,0.15); }
+        .quiz-option.wrong { background: #fef2f2; border-color: #ef4444; color: #991b1b; }
+        .option-radio { width: 18px; height: 18px; border-radius: 50%; border: 2px solid #cbd5e1; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; color: #fff; flex-shrink: 0; }
+        .quiz-option.correct .option-radio { background: #10b981; border-color: #10b981; }
+        .quiz-option.wrong .option-radio { background: #ef4444; border-color: #ef4444; }
+        .quiz-feedback { display: none; margin-top: 16px; padding: 14px; border-radius: 8px; font-size: 9.5pt; }
+        .quiz-feedback.visible { display: block; animation: fadeIn .3s ease-out; }
+        .quiz-feedback.correct { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+        .quiz-feedback.wrong { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        @media (max-width: 800px) {
+            .page-wrapper { flex-direction: column; }
+            .toc { width: 100%; position: static; margin-bottom: 20px; }
+            .quiz-options { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <button class="lang-toggle-btn" onclick="toggleLanguage()">
+        <span class="lang-zh">ENG</span><span class="lang-en">中文</span>
+    </button>
+
+    <div class="page-wrapper">
+        <nav class="toc">
+            <h3><span class="lang-zh">章節導覽</span><span class="lang-en">Table of Contents</span></h3>
+            <ul>
+                <li><a href="#sec-1"><span class="toc-num">1</span> <span class="lang-zh">磁通量</span><span class="lang-en">Magnetic Flux</span></a></li>
+                <li><a href="#sec-2"><span class="toc-num">2</span> <span class="lang-zh">法拉第定律</span><span class="lang-en">Faraday's Law</span></a></li>
+                <li><a href="#sec-3"><span class="toc-num">3</span> <span class="lang-zh">導體切割磁場</span><span class="lang-en">Cutting B-Field</span></a></li>
+            </ul>
+            <div class="progress-bar-wrap">
+                <div class="progress-bar-fill" id="progress-bar"></div>
+            </div>
+            <div class="progress-label" id="progress-text">
+                <span class="lang-zh">學習進度： 0 / 3</span><span class="lang-en">Progress: 0 / 3</span>
+            </div>
+        </nav>
+
+        <main class="container">
+            <div class="header-banner">
+                <h1>
+                    <span class="lang-zh">電磁感應</span>
+                    <span class="lang-en">Electromagnetic Induction</span>
+                </h1>
+                <p>
+                    <span class="lang-zh">磁場產生的電流與法拉第電磁感應定律</span>
+                    <span class="lang-en">Generation of current with a magnetic field & Faraday's law of electromagnetic induction</span>
+                </p>
+                <div class="score-badge">
+                    🏆 <span class="lang-zh">測驗得分：</span><span class="lang-en">Quiz Score: </span> <span id="score-text">0 / 3</span>
+                </div>
+            </div>
+
+            <div id="sec-1">
+                <div class="section-heading">
+                    <div class="section-num">1</div>
+                    <h2>
+                        <span class="lang-zh">磁通量與磁通匝鏈數</span>
+                        <span class="lang-en">Magnetic Flux and Flux Linkage</span>
+                    </h2>
+                </div>
+
+                <div class="formula-box">
+                    <div class="formula-main">
+                        $$ \Phi = BA \cos \theta $$
+                    </div>
+                    <div class="formula-derived">
+                        <span class="lang-zh">磁通匝鏈數</span><span class="lang-en">Magnetic flux linkage</span> $$ = N\Phi = NBA \cos \theta $$
+                    </div>
+                </div>
+
+                <div class="symbol-list">
+                    <div class="symbol-list-title"><span class="lang-zh">變數與單位</span><span class="lang-en">Symbols & Units</span></div>
+                    <ul>
+                        <li><span class="sym-math">$\Phi$</span><span class="sym-desc"><span class="lang-zh">磁通量（單位：韋伯 $\text{Wb}$）</span><span class="lang-en">Magnetic flux (Unit: weber $\text{Wb}$)</span></span></li>
+                        <li><span class="sym-math">$B$</span><span class="sym-desc"><span class="lang-zh">磁場強度或磁通量密度（單位：$\text{T}$ 或 $\text{Wb m}^{-2}$）</span><span class="lang-en">Magnetic field strength or magnetic flux density (Unit: $\text{T}$ or $\text{Wb m}^{-2}$)</span></span></li>
+                        <li><span class="sym-math">$A$</span><span class="sym-desc"><span class="lang-zh">面積（單位：$\text{m}^2$）</span><span class="lang-en">Area (Unit: $\text{m}^2$)</span></span></li>
+                        <li><span class="sym-math">$\theta$</span><span class="sym-desc"><span class="lang-zh">磁場 $B$ 與線圈法線的夾角（單位：$^\circ$）</span><span class="lang-en">Angle between magnetic field $B$ and the normal of the coil (Unit: $^\circ$)</span></span></li>
+                        <li><span class="sym-math">$N$</span><span class="sym-desc"><span class="lang-zh">線圈的匝數</span><span class="lang-en">Number of turns of the coil</span></span></li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <div class="card-header bg-example">
+                        <span class="lang-zh">📝 應用範例</span>
+                        <span class="lang-en">📝 Example</span>
+                    </div>
+                    <div class="card-body">
+                        <p>
+                            <span class="lang-zh">面積為 $4 \text{ cm}^2$ 的 $10$ 匝線圈處於磁通量密度為 $2 \times 10^{-3} \text{ T}$ 的勻強磁場中。求線圈的法線與磁場互相平行時通過線圈的磁通匝鏈數。</span>
+                            <span class="lang-en">A $10$-turn coil of area $4 \text{ cm}^2$ is placed in a uniform magnetic field of flux density $2 \times 10^{-3} \text{ T}$. Find the flux linkage through the coil if the normal of the coil is parallel to the field.</span>
+                        </p>
+                        <div class="solution">
+                            <strong><span class="lang-zh">【詳解】</span><span class="lang-en">[Solution]</span></strong><br>
+                            <span class="lang-zh">磁通匝鏈數</span><span class="lang-en">Flux linkage</span>
+                            $$ = N\Phi = N(BA) = (10)(2 \times 10^{-3})(4 \times 10^{-4}) = 8 \times 10^{-6} \text{ Wb} $$
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header bg-practice">
+                        <span class="lang-zh">💪 隨堂練習</span>
+                        <span class="lang-en">💪 Practice</span>
+                    </div>
+                    <div class="card-body">
+                        <p>
+                            <span class="lang-zh">面積為 $10 \text{ cm}^2$ 的單匝圓形線圈置於磁通量密度為 $0.02 \text{ Wb m}^{-2}$ 的勻強磁場中，磁場垂直通過線圈。通過線圈的磁通量是多少？</span>
+                            <span class="lang-en">A single-turn circular coil of area $10 \text{ cm}^2$ is put inside a uniform magnetic field of magnetic flux density $0.02 \text{ Wb m}^{-2}$. The magnetic field passes through the coil perpendicularly. What is the magnetic flux through the coil?</span>
+                        </p>
+                        <button class="btn-toggle-answer" onclick="toggleAnswer(this, 'ans-1')">
+                            <span class="icon">👁️</span>
+                            <span class="text-label">
+                                <span class="lang-zh">顯示答案</span><span class="lang-en">Show Answer</span>
+                            </span>
+                        </button>
+                        <div id="ans-1" class="practice-answer">
+                            <strong><span class="lang-zh">【答案】</span><span class="lang-en">[Answer]</span></strong><br>
+                            $$ \Phi = BA \cos \theta = (0.02)(10 \times 10^{-4}) \cos 0^\circ = 2 \times 10^{-5} \text{ Wb} $$
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header bg-quiz">
+                        <span class="lang-zh">🎯 概念測驗</span>
+                        <span class="lang-en">🎯 Quiz</span>
+                    </div>
+                    <div class="card-body">
+                        <p>
+                            <span class="lang-zh">一個面積為 $A$ 的導電環在勻強磁場中轉動 $90^\circ$，變成與磁場平行。整個過程歷時 $0.2 \text{ s}$，導電環內感生出的平均電動勢為 $\varepsilon$。估算在轉動之前，通過環的磁通量。</span>
+                            <span class="lang-en">A conducting ring of area $A$ rotates $90^\circ$ in a uniform magnetic field so that the ring becomes parallel to the field. The process takes $0.2 \text{ s}$ and an average e.m.f. of $\varepsilon$ is induced in the ring. Estimate the magnetic flux through the ring before the rotation.</span>
+                        </p>
+                        <div class="quiz-options">
+                            <div class="quiz-option" onclick="checkAnswer(this, false, 'q1')">
+                                <div class="option-radio"></div>
+                                <div class="option-content">$$ 5\varepsilon A $$</div>
+                            </div>
+                            <div class="quiz-option" onclick="checkAnswer(this, false, 'q1')">
+                                <div class="option-radio"></div>
+                                <div class="option-content">$$ \frac{\varepsilon}{5A} $$</div>
+                            </div>
+                            <div class="quiz-option" onclick="checkAnswer(this, true, 'q1')">
+                                <div class="option-radio"></div>
+                                <div class="option-content">$$ \frac{\varepsilon}{5} $$</div>
+                            </div>
+                            <div class="quiz-option" onclick="checkAnswer(this, false, 'q1')">
+                                <div class="option-radio"></div>
+                                <div class="option-content">$$ 5\varepsilon $$</div>
+                            </div>
+                        </div>
+                        <div id="feedback-q1" class="quiz-feedback">
+                            <span class="lang-zh">【解析】初始磁通量為 $\Phi$，轉動後磁場與環平行，磁通量變為 $0$。根據 $\varepsilon = \frac{\Delta\Phi}{\Delta t}$，可得 $\Delta\Phi = \varepsilon \times 0.2 = \frac{\varepsilon}{5}$。因此轉動前的磁通量 $\Phi = \frac{\varepsilon}{5}$。</span>
+                            <span class="lang-en">[Explanation] The initial flux is $\Phi$, and becomes $0$ after rotation when the ring is parallel to the field. According to $\varepsilon = \frac{\Delta\Phi}{\Delta t}$, we have $\Delta\Phi = \varepsilon \times 0.2 = \frac{\varepsilon}{5}$. Therefore, the magnetic flux before rotation is $\Phi = \frac{\varepsilon}{5}$.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="sec-2">
+                <div class="section-heading">
+                    <div class="section-num">2</div>
+                    <h2>
+                        <span class="lang-zh">法拉第電磁感應定律</span>
+                        <span class="lang-en">Faraday's Law of Electromagnetic Induction</span>
+                    </h2>
+                </div>
+
+                <div class="formula-box">
+                    <div class="formula-main">
+                        $$ \varepsilon = \frac{\Delta \Phi}{\Delta t} $$
+                    </div>
+                    <div class="formula-derived">
+                        <span class="lang-zh">對於 $N$ 匝的線圈</span><span class="lang-en">For a coil of $N$ turns</span> $$ \varepsilon = N \frac{\Delta \Phi}{\Delta t} = \frac{\Delta (N\Phi)}{\Delta t} $$
+                    </div>
+                </div>
+
+                <div class="symbol-list">
+                    <div class="symbol-list-title"><span class="lang-zh">變數與單位</span><span class="lang-en">Symbols & Units</span></div>
+                    <ul>
+                        <li><span class="sym-math">$\varepsilon$</span><span class="sym-desc"><span class="lang-zh">感生電動勢（單位：$\text{V}$）</span><span class="lang-en">Induced e.m.f. (Unit: $\text{V}$)</span></span></li>
+                        <li><span class="sym-math">$\Delta \Phi$</span><span class="sym-desc"><span class="lang-zh">磁通量的變化（單位：$\text{Wb}$）</span><span class="lang-en">Change in magnetic flux (Unit: $\text{Wb}$)</span></span></li>
+                        <li><span class="sym-math">$\Delta t$</span><span class="sym-desc"><span class="lang-zh">時間的變化（單位：$\text{s}$）</span><span class="lang-en">Change in time (Unit: $\text{s}$)</span></span></li>
+                        <li><span class="sym-math">$N$</span><span class="sym-desc"><span class="lang-zh">線圈的匝數</span><span class="lang-en">Number of turns of the coil</span></span></li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <div class="card-header bg-example">
+                        <span class="lang-zh">📝 應用範例</span>
+                        <span class="lang-en">📝 Example</span>
+                    </div>
+                    <div class="card-body">
+                        <p>
+                            <span class="lang-zh">面積為 $0.01 \text{ m}^2$ 的 $10$ 匝方形線圈置於 $4 \text{ mT}$ 的勻強磁場內，磁場指入頁面。求磁場在 $0.2 \text{ s}$ 內降至零時，線圈中感生電動勢的平均值。</span>
+                            <span class="lang-en">A $10$-turn square coil of area $0.01 \text{ m}^2$ is inside a uniform magnetic field of $4 \text{ mT}$ pointing into the page. Find the average value of the induced e.m.f. in the coil if the magnetic field decreases to zero in $0.2 \text{ s}$.</span>
+                        </p>
+                        <div class="solution">
+                            <strong><span class="lang-zh">【詳解】</span><span class="lang-en">[Solution]</span></strong><br>
+                            $$ \varepsilon = \frac{\Delta(N\Phi)}{\Delta t} = NA \frac{\Delta B}{\Delta t} = (10)(0.01)\left(\frac{4 \times 10^{-3} - 0}{0.2}\right) = 2 \times 10^{-3} \text{ V} $$
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header bg-practice">
+                        <span class="lang-zh">💪 隨堂練習</span>
+                        <span class="lang-en">💪 Practice</span>
+                    </div>
+                    <div class="card-body">
+                        <p>
+                            <span class="lang-zh">面積為 $20 \text{ cm}^2$ 的單匝線圈置於磁場 $B$ 內，磁場與線圈的法線互相平行。在 $0.1 \text{ s}$ 內，磁場的變化 $\Delta B$ 是 $10 \text{ mT}$。求感生電動勢的量值 $\varepsilon$。</span>
+                            <span class="lang-en">A single-turn coil of area $20 \text{ cm}^2$ is placed in a magnetic field $B$ parallel to its normal. The change in magnetic field $\Delta B$ in $0.1 \text{ s}$ is $10 \text{ mT}$. Find the magnitude of the induced e.m.f. $\varepsilon$.</span>
+                        </p>
+                        <button class="btn-toggle-answer" onclick="toggleAnswer(this, 'ans-2')">
+                            <span class="icon">👁️</span>
+                            <span class="text-label">
+                                <span class="lang-zh">顯示答案</span><span class="lang-en">Show Answer</span>
+                            </span>
+                        </button>
+                        <div id="ans-2" class="practice-answer">
+                            <strong><span class="lang-zh">【答案】</span><span class="lang-en">[Answer]</span></strong><br>
+                            $$ \varepsilon = NA \frac{\Delta B}{\Delta t} = (1)(20 \times 10^{-4})\left(\frac{10 \times 10^{-3}}{0.1}\right) = 2 \times 10^{-4} \text{ V} = 0.2 \text{ mV} $$
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header bg-quiz">
+                        <span class="lang-zh">🎯 概念測驗</span>
+                        <span class="lang-en">🎯 Quiz</span>
+                    </div>
+                    <div class="card-body">
+                        <p>
+                            <span class="lang-zh">一個矩形金屬框的面積是 $A$，置於勻強磁場 $B$ 之中。金屬框的平面與磁場之間的夾角是 $60^\circ$。時間 $t$ 內，磁場的磁通量密度穩定地從 $B$ 減至零。求該時段內金屬框中所產生的感生電動勢。</span>
+                            <span class="lang-en">A rectangular metal frame of area $A$ is placed in a uniform magnetic field $B$. The angle between the field and the plane of the frame is $60^\circ$. The flux density of the field decreases at a constant rate from $B$ to zero in time $t$. Find the e.m.f. induced in the frame in this period of time.</span>
+                        </p>
+                        <div class="quiz-options">
+                            <div class="quiz-option" onclick="checkAnswer(this, false, 'q2')">
+                                <div class="option-radio"></div>
+                                <div class="option-content">$$ \frac{BA}{2t} $$</div>
+                            </div>
+                            <div class="quiz-option" onclick="checkAnswer(this, true, 'q2')">
+                                <div class="option-radio"></div>
+                                <div class="option-content">$$ \frac{\sqrt{3}BA}{2t} $$</div>
+                            </div>
+                            <div class="quiz-option" onclick="checkAnswer(this, false, 'q2')">
+                                <div class="option-radio"></div>
+                                <div class="option-content">$$ \frac{BA}{\sqrt{3}t} $$</div>
+                            </div>
+                            <div class="quiz-option" onclick="checkAnswer(this, false, 'q2')">
+                                <div class="option-radio"></div>
+                                <div class="option-content">$$ \frac{2BA}{\sqrt{3}t} $$</div>
+                            </div>
+                        </div>
+                        <div id="feedback-q2" class="quiz-feedback">
+                            <span class="lang-zh">【解析】金屬框平面與磁場夾角為 $60^\circ$，因此法線與磁場夾角為 $30^\circ$。初始磁通量 $\Phi = BA \cos 30^\circ = \frac{\sqrt{3}BA}{2}$。感生電動勢 $\varepsilon = \frac{\Delta\Phi}{\Delta t} = \frac{\frac{\sqrt{3}BA}{2} - 0}{t} = \frac{\sqrt{3}BA}{2t}$。</span>
+                            <span class="lang-en">[Explanation] The angle between the plane and the field is $60^\circ$, so the angle between the normal and the field is $30^\circ$. Initial flux $\Phi = BA \cos 30^\circ = \frac{\sqrt{3}BA}{2}$. Induced e.m.f. $\varepsilon = \frac{\Delta\Phi}{\Delta t} = \frac{\frac{\sqrt{3}BA}{2} - 0}{t} = \frac{\sqrt{3}BA}{2t}$.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="sec-3">
+                <div class="section-heading">
+                    <div class="section-num">3</div>
+                    <h2>
+                        <span class="lang-zh">導體切割磁力線</span>
+                        <span class="lang-en">Conductor Cutting Magnetic Field Lines</span>
+                    </h2>
+                </div>
+
+                <div class="formula-box">
+                    <div class="formula-main">
+                        $$ \varepsilon = BLv $$
+                    </div>
+                </div>
+
+                <div class="symbol-list">
+                    <div class="symbol-list-title"><span class="lang-zh">變數與單位</span><span class="lang-en">Symbols & Units</span></div>
+                    <ul>
+                        <li><span class="sym-math">$\varepsilon$</span><span class="sym-desc"><span class="lang-zh">感生電動勢（單位：$\text{V}$）</span><span class="lang-en">Induced e.m.f. (Unit: $\text{V}$)</span></span></li>
+                        <li><span class="sym-math">$B$</span><span class="sym-desc"><span class="lang-zh">磁場強度（單位：$\text{T}$）</span><span class="lang-en">Magnetic field strength (Unit: $\text{T}$)</span></span></li>
+                        <li><span class="sym-math">$L$</span><span class="sym-desc"><span class="lang-zh">磁場中導體的長度（單位：$\text{m}$）</span><span class="lang-en">Length of the conductor in the magnetic field (Unit: $\text{m}$)</span></span></li>
+                        <li><span class="sym-math">$v$</span><span class="sym-desc"><span class="lang-zh">導體垂直切割磁力線的速率（單位：$\text{m s}^{-1}$）</span><span class="lang-en">Speed of the conductor cutting through the magnetic field lines perpendicularly (Unit: $\text{m s}^{-1}$)</span></span></li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <div class="card-header bg-example">
+                        <span class="lang-zh">📝 應用範例</span>
+                        <span class="lang-en">📝 Example</span>
+                    </div>
+                    <div class="card-body">
+                        <p>
+                            <span class="lang-zh">勻強磁場內，金屬棒以恆速率 $5 \text{ cm s}^{-1}$ 沿兩條光滑的平行金屬導軌向右移動。磁場指入頁面，磁通量密度為 $1.5 \text{ mT}$。金屬棒長 $16 \text{ cm}$，兩條導軌相距 $12 \text{ cm}$。求兩條導軌之間的金屬棒兩端的感生電動勢。</span>
+                            <span class="lang-en">A metal rod moves to the right along two smooth parallel metal rails at a constant speed of $5 \text{ cm s}^{-1}$ in a uniform magnetic field. The field is pointing into the page and of flux density $1.5 \text{ mT}$. The rod is $16 \text{ cm}$ long and the two rails are $12 \text{ cm}$ apart. Find the induced e.m.f. across the part of the rod between the rails.</span>
+                        </p>
+                        <div class="solution">
+                            <strong><span class="lang-zh">【詳解】</span><span class="lang-en">[Solution]</span></strong><br>
+                            $$ \varepsilon = BLv = (1.5 \times 10^{-3})(0.12)(0.05) = 9 \times 10^{-6} \text{ V} $$
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header bg-practice">
+                        <span class="lang-zh">💪 隨堂練習</span>
+                        <span class="lang-en">💪 Practice</span>
+                    </div>
+                    <div class="card-body">
+                        <p>
+                            <span class="lang-zh">在 $5 \text{ mT}$ 的勻強磁場中，一根長 $10 \text{ cm}$ 的導電棒在 $0.5 \text{ s}$ 內向右移動 $8 \text{ cm}$。導電棒與磁場互相垂直。導電棒兩端的感生電動勢的量值是多少？</span>
+                            <span class="lang-en">A conducting rod $10 \text{ cm}$ long moves $8 \text{ cm}$ to the right in $0.5 \text{ s}$ in a uniform magnetic field of $5 \text{ mT}$. The rod is perpendicular to the field. What is the magnitude of the induced e.m.f. across the rod?</span>
+                        </p>
+                        <button class="btn-toggle-answer" onclick="toggleAnswer(this, 'ans-3')">
+                            <span class="icon">👁️</span>
+                            <span class="text-label">
+                                <span class="lang-zh">顯示答案</span><span class="lang-en">Show Answer</span>
+                            </span>
+                        </button>
+                        <div id="ans-3" class="practice-answer">
+                            <strong><span class="lang-zh">【答案】</span><span class="lang-en">[Answer]</span></strong><br>
+                            $$ v = \frac{0.08}{0.5} = 0.16 \text{ m s}^{-1} $$
+                            $$ \varepsilon = BLv = (5 \times 10^{-3})(0.10)(0.16) = 8 \times 10^{-5} \text{ V} $$
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header bg-quiz">
+                        <span class="lang-zh">🎯 概念測驗</span>
+                        <span class="lang-en">🎯 Quiz</span>
+                    </div>
+                    <div class="card-body">
+                        <p>
+                            <span class="lang-zh">長度為 $L$ 的金屬棒 $XY$ 以恆速度 $v$ 在勻強磁場 $B$ 中移動，磁場指入頁面，金屬棒向右移動。金屬棒與磁場垂直，但與 $v$成 $30^\circ$ 角。求 $XY$ 之間的電勢差。</span>
+                            <span class="lang-en">A metal rod $XY$ of length $L$ is moving in a uniform magnetic field $B$ at a constant velocity $v$. The magnetic field points into the page and the rod moves to the right. The rod is perpendicular to the magnetic field and makes an angle of $30^\circ$ to $v$. Find the potential difference across $XY$.</span>
+                        </p>
+                        <div class="quiz-options">
+                            <div class="quiz-option" onclick="checkAnswer(this, false, 'q3')">
+                                <div class="option-radio"></div>
+                                <div class="option-content">$$ 0 $$</div>
+                            </div>
+                            <div class="quiz-option" onclick="checkAnswer(this, true, 'q3')">
+                                <div class="option-radio"></div>
+                                <div class="option-content">$$ BLv \sin 30^\circ $$</div>
+                            </div>
+                            <div class="quiz-option" onclick="checkAnswer(this, false, 'q3')">
+                                <div class="option-radio"></div>
+                                <div class="option-content">$$ BLv \cos 30^\circ $$</div>
+                            </div>
+                            <div class="quiz-option" onclick="checkAnswer(this, false, 'q3')">
+                                <div class="option-radio"></div>
+                                <div class="option-content">$$ BLv $$</div>
+                            </div>
+                        </div>
+                        <div id="feedback-q3" class="quiz-feedback">
+                            <span class="lang-zh">【解析】金屬棒垂直切割磁力線的有效速率分量為 $v \sin 30^\circ$。根據 $\varepsilon = BLv_{\text{perpendicular}}$，電勢差為 $BLv \sin 30^\circ$。</span>
+                            <span class="lang-en">[Explanation] The effective velocity component perpendicular to the rod is $v \sin 30^\circ$. According to $\varepsilon = BLv_{\text{perpendicular}}$, the potential difference is $BLv \sin 30^\circ$.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+        let answered = {};
+        const totalQuizzes = 3;
+
+        function toggleLanguage() {
+            document.body.classList.toggle('en-mode');
+        }
+
+        function toggleAnswer(btn, answerId) {
+            const ansDiv = document.getElementById(answerId);
+            ansDiv.classList.toggle('visible');
+            if (ansDiv.classList.contains('visible')) {
+                btn.querySelector('.text-label').innerHTML = `<span class="lang-zh">隱藏答案</span><span class="lang-en">Hide Answer</span>`;
+            } else {
+                btn.querySelector('.text-label').innerHTML = `<span class="lang-zh">顯示答案</span><span class="lang-en">Show Answer</span>`;
+            }
+        }
+
+        function checkAnswer(el, isCorrect, quizId) {
+            const feedback = document.getElementById('feedback-' + quizId);
+            if (feedback.classList.contains('visible')) return;
+
+            const options = el.closest('.quiz-options').querySelectorAll('.quiz-option');
+            options.forEach(opt => opt.classList.add('disabled'));
+
+            if (isCorrect) {
+                el.classList.add('correct');
+                el.querySelector('.option-radio').innerHTML = '✓';
+                feedback.className = 'quiz-feedback correct visible';
+                answered[quizId] = true;
+            } else {
+                el.classList.add('wrong');
+                el.querySelector('.option-radio').innerHTML = '✗';
+                options.forEach(opt => {
+                    if (opt.getAttribute('onclick') && opt.getAttribute('onclick').includes('true')) {
+                        opt.classList.add('correct');
+                        opt.querySelector('.option-radio').innerHTML = '✓';
+                    }
+                });
+                feedback.className = 'quiz-feedback wrong visible';
+                answered[quizId] = false;
+            }
+            updateProgress();
+        }
+
+        function updateProgress() {
+            const correctCount = Object.values(answered).filter(v => v).length;
+            const pct = (correctCount / totalQuizzes) * 100;
+            document.getElementById('progress-bar').style.width = pct + '%';
+            
+            const textZh = `學習進度： ${correctCount} / ${totalQuizzes}`;
+            const textEn = `Progress: ${correctCount} / ${totalQuizzes}`;
+            document.getElementById('progress-text').innerHTML = `<span class="lang-zh">${textZh}</span><span class="lang-en">${textEn}</span>`;
+            document.getElementById('score-text').innerText = `${correctCount} / ${totalQuizzes}`;
+        }
+    </script>
+</body>
+</html>

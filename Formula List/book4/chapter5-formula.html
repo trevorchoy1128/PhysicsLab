@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>物理公式全指南 — 磁場 / Physics Formula Guide — Magnetic Fields</title>
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            options: { skipHtmlTags: ['script','noscript','style','textarea','pre'] }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+    <style>
+        /* ── Language Toggle Logic ── */
+        span.lang-zh { display: inline; }
+        div.lang-zh { display: block; }
+        span.lang-en { display: none; }
+        div.lang-en { display: none; }
+
+        body.en-mode span.lang-zh, body.en-mode div.lang-zh { display: none !important; }
+        body.en-mode span.lang-en { display: inline !important; }
+        body.en-mode div.lang-en { display: block !important; }
+
+        /* ── Toggle Button Style ── */
+        .lang-toggle-btn {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 1000;
+            background: linear-gradient(135deg, #1e3a8a, #2563eb);
+            color: #fff;
+            border: 2px solid #ffffff;
+            padding: 10px 20px;
+            border-radius: 99px;
+            font-size: 10.5pt;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(30, 58, 138, 0.3);
+            transition: all .2s;
+        }
+        .lang-toggle-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(30, 58, 138, 0.4);
+        }
+
+        /* ── Reset ── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        /* ── Base ── */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Microsoft JhengHei", sans-serif;
+            background: linear-gradient(135deg, #e8f0fe 0%, #f0f4ff 50%, #faf5ff 100%);
+            color: #1e293b;
+            line-height: 1.7;
+            min-height: 100vh;
+        }
+
+        /* ── Layout ── */
+        .page-wrapper { display: flex; max-width: 1100px; margin: 0 auto; padding: 40px 20px; gap: 28px; align-items: flex-start; }
+
+        /* ── Sticky TOC Sidebar ── */
+        .toc {
+            width: 250px; flex-shrink: 0; position: sticky; top: 24px; background: #ffffff;
+            border-radius: 14px; box-shadow: 0 4px 20px rgba(30, 58, 138, 0.08); padding: 20px 16px; border: 1px solid #dbeafe;
+        }
+        .toc h3 { font-size: 11pt; font-weight: 700; color: #1e3a8a; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 2px solid #dbeafe; }
+        .toc ul { list-style: none; }
+        .toc li { margin-bottom: 6px; }
+        .toc a { display: flex; align-items: center; gap: 7px; font-size: 9.5pt; color: #475569; text-decoration: none; padding: 5px 8px; border-radius: 7px; transition: all .2s; }
+        .toc a:hover { background: #eff6ff; color: #1d4ed8; }
+        .toc-num { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; background: #dbeafe; color: #1e40af; border-radius: 50%; font-size: 8pt; font-weight: 700; flex-shrink: 0; }
+
+        /* ── Progress Bar ── */
+        .progress-bar-wrap { background: #e2e8f0; border-radius: 99px; height: 6px; margin-top: 16px; overflow: hidden; }
+        .progress-bar-fill { height: 100%; background: linear-gradient(90deg, #3b82f6, #6366f1); border-radius: 99px; transition: width .5s ease; width: 0%; }
+        .progress-label { font-size: 8.5pt; color: #64748b; margin-top: 6px; text-align: center; }
+
+        /* ── Main Content ── */
+        .container { flex: 1; min-width: 0; }
+
+        /* ── Header Banner ── */
+        .header-banner { background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 60%, #7c3aed 100%); color: #ffffff; padding: 36px 32px; border-radius: 16px; margin-bottom: 36px; text-align: center; box-shadow: 0 8px 32px rgba(37, 99, 235, 0.3); position: relative; overflow: hidden; }
+        .header-banner::before { content: ''; position: absolute; top: -40px; right: -40px; width: 200px; height: 200px; background: rgba(255,255,255,.06); border-radius: 50%; }
+        .header-banner::after { content: ''; position: absolute; bottom: -60px; left: -30px; width: 250px; height: 250px; background: rgba(255,255,255,.04); border-radius: 50%; }
+        .header-banner h1 { font-size: 24pt; font-weight: 800; letter-spacing: 1px; position: relative; z-index: 1; }
+        .header-banner p { margin: 10px 0 0; font-size: 11pt; opacity: .85; position: relative; z-index: 1; }
+        .score-badge { display: inline-flex; align-items: center; gap: 6px; margin-top: 16px; background: rgba(255,255,255,.2); backdrop-filter: blur(4px); color: #fff; padding: 6px 16px; border-radius: 99px; font-size: 10pt; font-weight: 600; border: 1px solid rgba(255,255,255,.3); position: relative; z-index: 1; }
+
+        /* ── Section Heading ── */
+        .section-heading { display: flex; align-items: center; gap: 12px; margin: 44px 0 20px; }
+        .section-num { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: linear-gradient(135deg, #1e3a8a, #3b82f6); color: #fff; border-radius: 10px; font-size: 14pt; font-weight: 800; flex-shrink: 0; box-shadow: 0 4px 12px rgba(37,99,235,.3); }
+        .section-heading h2 { color: #1e3a8a; font-size: 15pt; font-weight: 700; }
+
+        /* ── Formula Box ── */
+        .formula-box { background: linear-gradient(135deg, #eff6ff 0%, #f5f3ff 100%); border: 1px solid #bfdbfe; border-left: 5px solid #3b82f6; border-radius: 12px; padding: 24px 28px; margin: 4px 0 16px; box-shadow: 0 2px 12px rgba(59,130,246,.08); transition: box-shadow .25s; }
+        .formula-box:hover { box-shadow: 0 6px 24px rgba(59,130,246,.15); }
+        .formula-main { font-size: 17pt; font-weight: bold; color: #1d4ed8; text-align: center; margin-bottom: 12px; }
+        .formula-derived { font-size: 10.5pt; color: #475569; text-align: center; border-top: 1px dashed #c7d2fe; padding-top: 10px; margin-top: 10px; }
+
+        /* ── Symbol List ── */
+        .symbol-list { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 18px; margin: 0 0 16px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); }
+        .symbol-list-title { font-size: 9.5pt; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .07em; margin-bottom: 10px; border-bottom: 2px solid #e2e8f0; padding-bottom: 6px; }
+        .symbol-list ul { list-style: none; }
+        .symbol-list li { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-size: 10pt; }
+        .symbol-list li:last-child { border-bottom: none; }
+        .sym-math { min-width: 50px; display: inline-flex; justify-content: center; font-size: 11pt; }
+        .sym-desc { flex: 1; }
+
+        /* ── Cards ── */
+        .card { border-radius: 12px; padding: 22px 24px; margin: 14px 0; transition: transform .2s, box-shadow .2s; }
+        .card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.08); }
+        .card-example { background: linear-gradient(135deg, #f0fdf4 0%, #f7fffe 100%); border: 1px solid #bbf7d0; border-left: 4px solid #10b981; }
+        .card-practice { background: linear-gradient(135deg, #faf5ff 0%, #f5f3ff 100%); border: 1px solid #ddd6fe; border-left: 4px solid #8b5cf6; }
+        .card-quiz { background: linear-gradient(135deg, #fffbeb 0%, #fffdf4 100%); border: 1px solid #fde68a; border-left: 4px solid #f59e0b; }
+        
+        .badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 12px; font-size: 9pt; font-weight: 700; border-radius: 99px; margin-bottom: 12px; }
+        .badge-example { background: #d1fae5; color: #047857; }
+        .badge-practice { background: #ede9fe; color: #5b21b6; }
+        .badge-quiz { background: #fef3c7; color: #b45309; }
+
+        .solution-box { background: #ffffff; border-radius: 8px; padding: 16px; margin-top: 14px; border: 1px solid #e2e8f0; }
+        .solution-title { font-size: 9.5pt; font-weight: 700; color: #64748b; margin-bottom: 8px; }
+        
+        /* ── Practice Toggle ── */
+        .toggle-btn { background: #ffffff; border: 1px solid #cbd5e1; color: #475569; padding: 8px 16px; border-radius: 8px; font-size: 9.5pt; font-weight: 600; cursor: pointer; transition: all .2s; margin-top: 12px; display: inline-flex; align-items: center; gap: 6px; }
+        .toggle-btn:hover { background: #f8fafc; border-color: #94a3b8; color: #0f172a; }
+        .practice-answer { display: none; margin-top: 14px; animation: fadeIn .3s ease; }
+        .practice-answer.open { display: block; }
+        
+        /* ── Quiz Options ── */
+        .quiz-options { display: grid; gap: 10px; margin-top: 16px; }
+        .quiz-option { background: #ffffff; border: 2px solid #fef3c7; padding: 12px 16px; border-radius: 10px; cursor: pointer; font-size: 10pt; transition: all .2s; display: flex; align-items: center; gap: 10px; }
+        .quiz-option:hover { border-color: #fcd34d; background: #fffbeb; }
+        .quiz-option.disabled { pointer-events: none; opacity: 0.7; }
+        .quiz-option.correct { border-color: #10b981; background: #ecfdf5; color: #047857; }
+        .quiz-option.wrong { border-color: #ef4444; background: #fef2f2; color: #b91c1c; }
+        
+        .option-radio { width: 20px; height: 20px; border-radius: 50%; border: 2px solid #fcd34d; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 12px; font-weight: bold; }
+        .quiz-option.correct .option-radio { border-color: #10b981; background: #10b981; color: white; }
+        .quiz-option.wrong .option-radio { border-color: #ef4444; background: #ef4444; color: white; }
+        
+        .quiz-feedback { display: none; padding: 14px; border-radius: 8px; margin-top: 14px; font-size: 9.5pt; }
+        .quiz-feedback.visible { display: block; animation: fadeIn .3s ease; }
+        .quiz-feedback.correct { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+        .quiz-feedback.wrong { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+    <button class="lang-toggle-btn" onclick="toggleLanguage()">
+        <span class="lang-zh">🌐 English</span>
+        <span class="lang-en">🌐 中文</span>
+    </button>
+
+    <div class="page-wrapper">
+        <aside class="toc">
+            <h3><span class="lang-zh">🗂️ 章節導覽</span><span class="lang-en">🗂️ Table of Contents</span></h3>
+            <ul>
+                <li>
+                    <a href="#concept-1">
+                        <span class="toc-num">1</span>
+                        <span class="lang-zh">🧵 長直導線</span><span class="lang-en">🧵 Long straight wires</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#concept-2">
+                        <span class="toc-num">2</span>
+                        <span class="lang-zh">🌀 長螺線管內</span><span class="lang-en">🌀 Inside a long solenoid</span>
+                    </a>
+                </li>
+            </ul>
+            <div class="progress-bar-wrap">
+                <div class="progress-bar-fill" id="pb-fill"></div>
+            </div>
+            <div class="progress-label" id="pb-label">
+                <span class="lang-zh">⏳ 已完成 0 / 2 題</span><span class="lang-en">⏳ 0 / 2 completed</span>
+            </div>
+        </aside>
+
+        <main class="container">
+            <div class="header-banner">
+                <h1>
+                    <span class="lang-zh">🧲 磁場</span>
+                    <span class="lang-en">🧲 Magnetic Fields</span>
+                </h1>
+                <p>
+                    <span class="lang-zh">⚡ 電流產生的磁場</span>
+                    <span class="lang-en">⚡ Magnetic field patterns due to electric currents</span>
+                </p>
+                <div class="score-badge">
+                    🏆 <span class="lang-zh">分數</span><span class="lang-en">Score</span>: <span id="score-text">0</span> / 2
+                </div>
+            </div>
+
+            <section id="concept-1">
+                <div class="section-heading">
+                    <span class="section-num">1</span>
+                    <h2>
+                        <span class="lang-zh">🧵 長直導線</span>
+                        <span class="lang-en">🧵 Long straight wires</span>
+                    </h2>
+                </div>
+
+                <div class="formula-box">
+                    <div class="formula-main">$$B = \frac{\mu_0 I}{2\pi r}$$</div>
+                    <div class="formula-derived">
+                        $$I = \frac{2\pi r B}{\mu_0} \quad \text{,} \quad r = \frac{\mu_0 I}{2\pi B}$$
+                    </div>
+                </div>
+
+                <div class="symbol-list">
+                    <div class="symbol-list-title">
+                        <span class="lang-zh">📊 變數與單位解釋</span>
+                        <span class="lang-en">📊 Symbol List</span>
+                    </div>
+                    <ul>
+                        <li><span class="sym-math">$B$</span><span class="sym-desc"><span class="lang-zh">磁場 ($\text{T}$)</span><span class="lang-en">Magnetic field ($\text{T}$)</span></span></li>
+                        <li><span class="sym-math">$\mu_0$</span><span class="sym-desc"><span class="lang-zh">真空磁導率 ($4\pi \times 10^{-7} \text{ T m A}^{-1}$)</span><span class="lang-en">Permeability of free space ($4\pi \times 10^{-7} \text{ T m A}^{-1}$)</span></span></li>
+                        <li><span class="sym-math">$I$</span><span class="sym-desc"><span class="lang-zh">電流 ($\text{A}$)</span><span class="lang-en">Current ($\text{A}$)</span></span></li>
+                        <li><span class="sym-math">$r$</span><span class="sym-desc"><span class="lang-zh">與導線的距離 ($\text{m}$)</span><span class="lang-en">Distance from wire ($\text{m}$)</span></span></li>
+                    </ul>
+                </div>
+
+                <div class="card card-example">
+                    <div class="badge badge-example">
+                        <span class="lang-zh">💡 範例</span><span class="lang-en">💡 Example</span>
+                    </div>
+                    <p>
+                        <span class="lang-zh">$0.5 \text{ A}$ 的電流通過一條長直導線。$P$ 點與導線的距離是 $d$，在 $P$ 點磁場的強度是 $4 \mu\text{T}$。求 $d$。取 $\mu_0 = 4\pi \times 10^{-7} \text{ T m A}^{-1}$。</span>
+                        <span class="lang-en">A current of $0.5 \text{ A}$ passes through a long straight wire. Point $P$ is at a distance $d$ from the wire and the magnetic field there has a strength of $4 \mu\text{T}$. Find $d$. Take $\mu_0 = 4\pi \times 10^{-7} \text{ T m A}^{-1}$.</span>
+                    </p>
+                    <div class="solution-box">
+                        <div class="solution-title"><span class="lang-zh">🔑 題解</span><span class="lang-en">🔑 Solution</span></div>
+                        <div class="lang-zh">
+                            根據 $$B = \frac{\mu_0 I}{2\pi r}$$<br><br>
+                            $$4 \times 10^{-6} = \frac{(4\pi \times 10^{-7}) \times (0.5)}{2\pi(d)}$$<br><br>
+                            $$d = 0.025 \text{ m}$$
+                        </div>
+                        <div class="lang-en">
+                            By $$B = \frac{\mu_0 I}{2\pi r}$$<br><br>
+                            $$4 \times 10^{-6} = \frac{(4\pi \times 10^{-7}) \times (0.5)}{2\pi(d)}$$<br><br>
+                            $$d = 0.025 \text{ m}$$
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card card-practice">
+                    <div class="badge badge-practice">
+                        <span class="lang-zh">📝 隨堂練習</span><span class="lang-en">📝 Practice</span>
+                    </div>
+                    <p>
+                        <span class="lang-zh">兩條平行長直導線 $X$ 和 $Y$ 分別載有 $2 \text{ A}$ 和 $3 \text{ A}$ 電流，方向指入頁面。兩者相距 $6 \text{ cm}$。$Q$ 點是導線 $X$ 和 $Y$ 之間的一個中和點。求 $Q$ 點與導線 $Y$ 的距離 $d$。</span>
+                        <span class="lang-en">Two parallel long wires $X$ and $Y$ carry currents of $2 \text{ A}$ and $3 \text{ A}$ respectively into the page. They are $6 \text{ cm}$ apart. $Q$ is a neutral point between wires $X$ and $Y$. Find the distance $d$ of $Q$ from wire $Y$.</span>
+                    </p>
+                    <button class="toggle-btn" onclick="toggleAnswer(this)">
+                        <span class="text-label"><span class="lang-zh">👁️ 顯示答案</span><span class="lang-en">👁️ Show Answer</span></span>
+                    </button>
+                    <div class="practice-answer">
+                        <div class="solution-box">
+                            <div class="solution-title"><span class="lang-zh">🔑 題解</span><span class="lang-en">🔑 Solution</span></div>
+                            <div class="lang-zh">
+                                在 $Q$ 點，導線 $X$ 產生的磁場 ($B_X$) 指向下，而導線 $Y$ 產生的磁場 ($B_Y$) 指向上。它們互相抵消。<br><br>
+                                因此，根據 $$B = \frac{\mu_0 I}{2\pi r}$$，<br><br>
+                                $$B_X = B_Y$$<br><br>
+                                $$\frac{\mu_0(2)}{2\pi(0.06 - d)} = \frac{\mu_0(3)}{2\pi(d)}$$<br><br>
+                                $$2d = 3(0.06 - d)$$<br><br>
+                                $$d = 0.036 \text{ m}$$
+                            </div>
+                            <div class="lang-en">
+                                At $Q$, the magnetic field due to $X$ ($B_X$) points downwards and the magnetic field due to $Y$ ($B_Y$) points upwards. They cancel each other out.<br><br>
+                                Therefore, by $$B = \frac{\mu_0 I}{2\pi r}$$,<br><br>
+                                $$B_X = B_Y$$<br><br>
+                                $$\frac{\mu_0(2)}{2\pi(0.06 - d)} = \frac{\mu_0(3)}{2\pi(d)}$$<br><br>
+                                $$2d = 3(0.06 - d)$$,<br><br>
+                                $$d = 0.036 \text{ m}$$
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card card-quiz">
+                    <div class="badge badge-quiz">
+                        <span class="lang-zh">🎯 概念測驗</span><span class="lang-en">🎯 Quiz</span>
+                    </div>
+                    <p>
+                        <span class="lang-zh">兩條平行的長直導線 $X$ 和 $Y$，兩者相距 $30 \text{ cm}$，分別載有 $5 \text{ A}$ 和 $2 \text{ A}$ 且方向相反的電流。$P$ 是導線 $X$ 和 $Y$ 所產生磁場的中和點。$P$ 點與導線 $Y$ 之間的距離是多少？</span>
+                        <span class="lang-en">Two long straight parallel wires $X$ and $Y$ carrying currents of $5 \text{ A}$ and $2 \text{ A}$ respectively in opposite directions. The two wires are $30 \text{ cm}$ apart. $P$ is a neutral point in the magnetic field due to wires $X$ and $Y$. What is the distance of $P$ from wire $Y$?</span>
+                    </p>
+                    <div class="quiz-options">
+                        <div class="quiz-option" onclick="checkAnswer(this, false, 'q1')">
+                            <div class="option-radio"></div>
+                            <span>$14 \text{ cm}$</span>
+                        </div>
+                        <div class="quiz-option" onclick="checkAnswer(this, true, 'q1')">
+                            <div class="option-radio"></div>
+                            <span>$20 \text{ cm}$</span>
+                        </div>
+                        <div class="quiz-option" onclick="checkAnswer(this, false, 'q1')">
+                            <div class="option-radio"></div>
+                            <span>$42 \text{ cm}$</span>
+                        </div>
+                        <div class="quiz-option" onclick="checkAnswer(this, false, 'q1')">
+                            <div class="option-radio"></div>
+                            <span>$50 \text{ cm}$</span>
+                        </div>
+                    </div>
+                    <div id="feedback-q1" class="quiz-feedback">
+                        <span class="lang-zh">因為電流方向相反，中和點必定在兩導線外側，且較接近電流較小的 $Y$ 導線。設與 $Y$ 的距離為 $d$，根據 $$\frac{\mu_0 (5)}{2\pi (0.3 + d)} = \frac{\mu_0 (2)}{2\pi d}$$，解得 $$d = 0.2 \text{ m} = 20 \text{ cm}$$。</span>
+                        <span class="lang-en">Since the currents are in opposite directions, the neutral point must be outside the two wires and closer to the wire with the smaller current ($Y$). Let $d$ be the distance from $Y$. By $$\frac{\mu_0 (5)}{2\pi (0.3 + d)} = \frac{\mu_0 (2)}{2\pi d}$$, we get $$d = 0.2 \text{ m} = 20 \text{ cm}$$.</span>
+                    </div>
+                </div>
+            </section>
+
+            <section id="concept-2">
+                <div class="section-heading">
+                    <span class="section-num">2</span>
+                    <h2>
+                        <span class="lang-zh">🌀 長螺線管內</span>
+                        <span class="lang-en">🌀 Inside a long solenoid</span>
+                    </h2>
+                </div>
+
+                <div class="formula-box">
+                    <div class="formula-main">$$B = \frac{\mu_0 N I}{l} = \mu_0 n I$$</div>
+                    <div class="formula-derived">
+                        $$n = \frac{N}{l} \quad \text{,} \quad I = \frac{B l}{\mu_0 N}$$
+                    </div>
+                </div>
+
+                <div class="symbol-list">
+                    <div class="symbol-list-title">
+                        <span class="lang-zh">📊 變數與單位解釋</span>
+                        <span class="lang-en">📊 Symbol List</span>
+                    </div>
+                    <ul>
+                        <li><span class="sym-math">$B$</span><span class="sym-desc"><span class="lang-zh">磁場 ($\text{T}$)</span><span class="lang-en">Magnetic field ($\text{T}$)</span></span></li>
+                        <li><span class="sym-math">$\mu_0$</span><span class="sym-desc"><span class="lang-zh">真空磁導率 ($4\pi \times 10^{-7} \text{ T m A}^{-1}$)</span><span class="lang-en">Permeability of free space ($4\pi \times 10^{-7} \text{ T m A}^{-1}$)</span></span></li>
+                        <li><span class="sym-math">$N$</span><span class="sym-desc"><span class="lang-zh">匝數 (沒有單位)</span><span class="lang-en">Number of turns (no unit)</span></span></li>
+                        <li><span class="sym-math">$l$</span><span class="sym-desc"><span class="lang-zh">長度 ($\text{m}$)</span><span class="lang-en">Length ($\text{m}$)</span></span></li>
+                        <li><span class="sym-math">$I$</span><span class="sym-desc"><span class="lang-zh">電流 ($\text{A}$)</span><span class="lang-en">Current ($\text{A}$)</span></span></li>
+                        <li><span class="sym-math">$n$</span><span class="sym-desc"><span class="lang-zh">每單位長度的匝數 ($\text{m}^{-1}$)</span><span class="lang-en">Number of turns per unit length ($\text{m}^{-1}$)</span></span></li>
+                    </ul>
+                </div>
+
+                <div class="card card-example">
+                    <div class="badge badge-example">
+                        <span class="lang-zh">💡 範例</span><span class="lang-en">💡 Example</span>
+                    </div>
+                    <p>
+                        <span class="lang-zh">某個長螺線管有 $200$ 匝，長 $25 \text{ cm}$，有 $2 \text{ A}$ 的電流通過。取 $\mu_0 = 4\pi \times 10^{-7} \text{ T m A}^{-1}$。在螺線管內接近中心點處，磁場的強度是多少？</span>
+                        <span class="lang-en">A current of $2 \text{ A}$ is flowing through a long solenoid having a length of $25 \text{ cm}$ and $200$ turns. Take $\mu_0 = 4\pi \times 10^{-7} \text{ T m A}^{-1}$. Find the strength of the magnetic field near the centre inside the solenoid.</span>
+                    </p>
+                    <div class="solution-box">
+                        <div class="solution-title"><span class="lang-zh">🔑 題解</span><span class="lang-en">🔑 Solution</span></div>
+                        <div class="lang-zh">
+                            $$B = \frac{\mu_0 N I}{l}$$<br><br>
+                            $$B = \frac{(4\pi \times 10^{-7}) \times 200 \times 2}{0.25}$$<br><br>
+                            $$B = 2.01 \times 10^{-3} \text{ T}$$
+                        </div>
+                        <div class="lang-en">
+                            $$B = \frac{\mu_0 N I}{l}$$<br><br>
+                            $$B = \frac{(4\pi \times 10^{-7}) \times 200 \times 2}{0.25}$$<br><br>
+                            $$B = 2.01 \times 10^{-3} \text{ T}$$
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card card-practice">
+                    <div class="badge badge-practice">
+                        <span class="lang-zh">📝 隨堂練習</span><span class="lang-en">📝 Practice</span>
+                    </div>
+                    <p>
+                        <span class="lang-zh">某螺線管有 $N$ 匝，長度是 $L$。電流 $I$ 通過它時，它內部的磁場是 $B_0$。如果螺線管被拉長到 $2L$，而通過它的電流變成 $2I$，那麼螺線管內的磁場是多少？</span>
+                        <span class="lang-en">A solenoid has $N$ turns and its length is $L$. When a current $I$ passes through it, the magnetic field inside it is $B_0$. What is the magnetic field inside it if it is stretched to a length $2L$ and the current passing through it becomes $2I$?</span>
+                    </p>
+                    <button class="toggle-btn" onclick="toggleAnswer(this)">
+                        <span class="text-label"><span class="lang-zh">👁️ 顯示答案</span><span class="lang-en">👁️ Show Answer</span></span>
+                    </button>
+                    <div class="practice-answer">
+                        <div class="solution-box">
+                            <div class="solution-title"><span class="lang-zh">🔑 題解</span><span class="lang-en">🔑 Solution</span></div>
+                            <div class="lang-zh">
+                                原先的磁場 $$B_0 = \frac{\mu_0 N I}{L}$$。<br><br>
+                                新的磁場 $$B' = \frac{\mu_0 N (2I)}{2L} = \frac{\mu_0 N I}{L} = B_0$$。<br><br>
+                                因此，磁場保持不變。
+                            </div>
+                            <div class="lang-en">
+                                The original magnetic field is $$B_0 = \frac{\mu_0 N I}{L}$$.<br><br>
+                                The new magnetic field is $$B' = \frac{\mu_0 N (2I)}{2L} = \frac{\mu_0 N I}{L} = B_0$$.<br><br>
+                                Therefore, the magnetic field remains unchanged.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card card-quiz">
+                    <div class="badge badge-quiz">
+                        <span class="lang-zh">🎯 概念測驗</span><span class="lang-en">🎯 Quiz</span>
+                    </div>
+                    <p>
+                        <span class="lang-zh">在以下哪些情況中，螺線管中心的磁場會增加至原來的兩倍？</span>
+                        <span class="lang-en">In which of the following situations will the magnetic field at the centre of a solenoid be doubled?</span>
+                    </p>
+                    <div class="quiz-options">
+                        <div class="quiz-option" onclick="checkAnswer(this, true, 'q2')">
+                            <div class="option-radio"></div>
+                            <span>
+                                <span class="lang-zh">電流增加至原來的兩倍。</span>
+                                <span class="lang-en">The current is doubled.</span>
+                            </span>
+                        </div>
+                        <div class="quiz-option" onclick="checkAnswer(this, false, 'q2')">
+                            <div class="option-radio"></div>
+                            <span>
+                                <span class="lang-zh">把兩個相同的螺線管串聯，使螺線管的長度增加至原來的兩倍。</span>
+                                <span class="lang-en">The length of the solenoid is doubled by connecting an identical solenoid in series.</span>
+                            </span>
+                        </div>
+                        <div class="quiz-option" onclick="checkAnswer(this, false, 'q2')">
+                            <div class="option-radio"></div>
+                            <span>
+                                <span class="lang-zh">線圈的間距增加至原來的兩倍。</span>
+                                <span class="lang-en">The separation of the turns is doubled.</span>
+                            </span>
+                        </div>
+                        <div class="quiz-option" onclick="checkAnswer(this, false, 'q2')">
+                            <div class="option-radio"></div>
+                            <span>
+                                <span class="lang-zh">螺線管的直徑增加至原來的兩倍。</span>
+                                <span class="lang-en">The diameter of the solenoid is doubled.</span>
+                            </span>
+                        </div>
+                    </div>
+                    <div id="feedback-q2" class="quiz-feedback">
+                        <span class="lang-zh">根據公式 $$B = \frac{\mu_0 N I}{l} = \mu_0 n I$$，磁場與電流 $I$ 及每單位長度的匝數 $n$成正比。因此電流加倍時，磁場也會加倍。其他選項中，串聯會保持 $n$ 不變；直徑不影響內部磁場；增加間距會減小 $n$。</span>
+                        <span class="lang-en">According to $$B = \frac{\mu_0 N I}{l} = \mu_0 n I$$, the magnetic field is directly proportional to current $I$ and number of turns per unit length $n$. So doubling the current doubles the field. Connecting in series keeps $n$ constant; diameter doesn't affect it; doubling separation halves $n$.</span>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <script>
+        let score = 0;
+        const totalQuizzes = 2;
+        let answered = {};
+
+        function toggleLanguage() {
+            document.body.classList.toggle('en-mode');
+        }
+
+        function toggleAnswer(btn) {
+            const answerDiv = btn.nextElementSibling;
+            answerDiv.classList.toggle('open');
+            if (answerDiv.classList.contains('open')) {
+                btn.querySelector('.text-label').innerHTML = `<span class="lang-zh">🙈 隱藏答案</span><span class="lang-en">🙈 Hide Answer</span>`;
+            } else {
+                btn.querySelector('.text-label').innerHTML = `<span class="lang-zh">👁️ 顯示答案</span><span class="lang-en">👁️ Show Answer</span>`;
+            }
+        }
+
+        function checkAnswer(el, isCorrect, quizId) {
+            const feedback = document.getElementById('feedback-' + quizId);
+            if (feedback.classList.contains('visible')) return;
+
+            const options = el.closest('.quiz-options').querySelectorAll('.quiz-option');
+            options.forEach(opt => opt.classList.add('disabled'));
+            
+            if (isCorrect) {
+                el.classList.add('correct');
+                el.querySelector('.option-radio').innerHTML = '✓';
+                feedback.className = 'quiz-feedback correct visible';
+                answered[quizId] = true;
+            } else {
+                el.classList.add('wrong');
+                el.querySelector('.option-radio').innerHTML = '✗';
+                options.forEach(opt => {
+                    if (opt.getAttribute('onclick') && opt.getAttribute('onclick').includes('true')) {
+                        opt.classList.add('correct');
+                        opt.querySelector('.option-radio').innerHTML = '✓';
+                    }
+                });
+                feedback.className = 'quiz-feedback wrong visible';
+                answered[quizId] = false;
+            }
+            updateProgress();
+        }
+
+        function updateProgress() {
+            const correctCount = Object.values(answered).filter(v => v).length;
+            const totalAnswered = Object.keys(answered).length;
+            document.getElementById('score-text').innerText = correctCount;
+            
+            const percentage = (totalAnswered / totalQuizzes) * 100;
+            document.getElementById('pb-fill').style.width = percentage + '%';
+            document.getElementById('pb-label').innerHTML = `<span class="lang-zh">⏳ 已完成 ${totalAnswered} / ${totalQuizzes} 題</span><span class="lang-en">⏳ ${totalAnswered} / ${totalQuizzes} completed</span>`;
+        }
+    </script>
+</body>
+</html>

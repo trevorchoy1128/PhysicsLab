@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>物理公式全指南 — 電流、電壓與電阻 / Physics Formula Guide — Current, Voltage and Resistance</title>
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            options: { skipHtmlTags: ['script','noscript','style','textarea','pre'] }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+    <style>
+        /* ── Language Toggle Logic ── */
+        span.lang-zh { display: inline; }
+        div.lang-zh { display: block; }
+        span.lang-en { display: none; }
+        div.lang-en { display: none; }
+
+        body.en-mode span.lang-zh, body.en-mode div.lang-zh { display: none !important; }
+        body.en-mode span.lang-en { display: inline !important; }
+        body.en-mode div.lang-en { display: block !important; }
+
+        /* ── Toggle Button Style ── */
+        .lang-toggle-btn {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 1000;
+            background: linear-gradient(135deg, #1e3a8a, #2563eb);
+            color: #fff;
+            border: 2px solid #ffffff;
+            padding: 10px 20px;
+            border-radius: 99px;
+            font-size: 10.5pt;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(30, 58, 138, 0.3);
+            transition: all .2s;
+        }
+        .lang-toggle-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(30, 58, 138, 0.4);
+        }
+
+        /* ── Reset ── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        /* ── Base ── */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Microsoft JhengHei", sans-serif;
+            background: linear-gradient(135deg, #e8f0fe 0%, #f0f4ff 50%, #faf5ff 100%);
+            color: #1e293b;
+            line-height: 1.7;
+            min-height: 100vh;
+        }
+
+        /* ── Layout ── */
+        .page-wrapper { display: flex; max-width: 1100px; margin: 0 auto; padding: 40px 20px; gap: 28px; align-items: flex-start; }
+
+        /* ── Sticky TOC Sidebar ── */
+        .toc {
+            width: 250px; flex-shrink: 0; position: sticky; top: 24px; background: #ffffff;
+            border-radius: 14px; box-shadow: 0 4px 20px rgba(30, 58, 138, 0.08); padding: 20px 16px; border: 1px solid #dbeafe;
+        }
+        .toc h3 { font-size: 11pt; font-weight: 700; color: #1e3a8a; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 2px solid #dbeafe; }
+        .toc ul { list-style: none; }
+        .toc li { margin-bottom: 6px; }
+        .toc a { display: flex; align-items: center; gap: 7px; font-size: 9.5pt; color: #475569; text-decoration: none; padding: 5px 8px; border-radius: 7px; transition: all .2s; }
+        .toc a:hover { background: #eff6ff; color: #1d4ed8; }
+        .toc-num { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; background: #dbeafe; color: #1e40af; border-radius: 50%; font-size: 8pt; font-weight: 700; flex-shrink: 0; }
+
+        /* ── Progress Bar ── */
+        .progress-bar-wrap { background: #e2e8f0; border-radius: 99px; height: 6px; margin-top: 16px; overflow: hidden; }
+        .progress-bar-fill { height: 100%; background: linear-gradient(90deg, #3b82f6, #6366f1); border-radius: 99px; transition: width .5s ease; width: 0%; }
+        .progress-label { font-size: 8.5pt; color: #64748b; margin-top: 6px; text-align: center; }
+
+        /* ── Main Content ── */
+        .container { flex: 1; min-width: 0; }
+
+        /* ── Header Banner ── */
+        .header-banner { background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 60%, #7c3aed 100%); color: #ffffff; padding: 36px 32px; border-radius: 16px; margin-bottom: 36px; text-align: center; box-shadow: 0 8px 32px rgba(37, 99, 235, 0.3); position: relative; overflow: hidden; }
+        .header-banner::before { content: ''; position: absolute; top: -40px; right: -40px; width: 200px; height: 200px; background: rgba(255,255,255,.06); border-radius: 50%; }
+        .header-banner::after { content: ''; position: absolute; bottom: -60px; left: -30px; width: 250px; height: 250px; background: rgba(255,255,255,.04); border-radius: 50%; }
+        .header-banner h1 { font-size: 24pt; font-weight: 800; letter-spacing: 1px; position: relative; z-index: 1; }
+        .header-banner p { margin: 10px 0 0; font-size: 11pt; opacity: .85; position: relative; z-index: 1; }
+        .score-badge { display: inline-flex; align-items: center; gap: 6px; margin-top: 16px; background: rgba(255,255,255,.2); backdrop-filter: blur(4px); color: #fff; padding: 6px 16px; border-radius: 99px; font-size: 10pt; font-weight: 600; border: 1px solid rgba(255,255,255,.3); position: relative; z-index: 1; }
+
+        /* ── Section Heading ── */
+        .section-heading { display: flex; align-items: center; gap: 12px; margin: 44px 0 20px; }
+        .section-num { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: linear-gradient(135deg, #1e3a8a, #3b82f6); color: #fff; border-radius: 10px; font-size: 14pt; font-weight: 800; flex-shrink: 0; box-shadow: 0 4px 12px rgba(37,99,235,.3); }
+        .section-heading h2 { color: #1e3a8a; font-size: 15pt; font-weight: 700; }
+
+        /* ── Formula Box ── */
+        .formula-box { background: linear-gradient(135deg, #eff6ff 0%, #f5f3ff 100%); border: 1px solid #bfdbfe; border-left: 5px solid #3b82f6; border-radius: 12px; padding: 24px 28px; margin: 4px 0 16px; box-shadow: 0 2px 12px rgba(59,130,246,.08); transition: box-shadow .25s; }
+        .formula-box:hover { box-shadow: 0 6px 24px rgba(59,130,246,.15); }
+        .formula-main { font-size: 17pt; font-weight: bold; color: #1d4ed8; text-align: center; margin-bottom: 12px; }
+        .formula-derived { font-size: 10.5pt; color: #475569; text-align: center; border-top: 1px dashed #c7d2fe; padding-top: 10px; margin-top: 10px; }
+
+        /* ── Symbol List ── */
+        .symbol-list { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 18px; margin: 0 0 16px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); }
+        .symbol-list-title { font-size: 9.5pt; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .07em; margin-bottom: 10px; border-bottom: 2px solid #e2e8f0; padding-bottom: 6px; }
+        .symbol-list ul { list-style: none; }
+        .symbol-list li { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-size: 10pt; }
+        .symbol-list li:last-child { border-bottom: none; }
+        .sym-math { min-width: 50px; display: inline-flex; justify-content: center; font-size: 11pt; }
+        .sym-desc { flex: 1; }
+
+        /* ── Cards ── */
+        .card { border-radius: 12px; padding: 22px 24px; margin: 14px 0; transition: transform .2s, box-shadow .2s; }
+        .card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.08); }
+        .card-example { background: linear-gradient(135deg, #f0fdf4 0%, #f7fffe 100%); border: 1px solid #bbf7d0; border-left: 4px solid #10b981; }
+        .card-practice { background: linear-gradient(135deg, #faf5ff 0%, #f5f3ff 100%); border: 1px solid #ddd6fe; border-left: 4px solid #8b5cf6; }
+        
+        .badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 12px; font-size: 9pt; font-weight: 700; border-radius: 99px; color: #ffffff; margin-bottom: 12px; }
+        .badge-example { background: linear-gradient(90deg, #059669, #10b981); }
+        .badge-practice { background: linear-gradient(90deg, #7c3aed, #8b5cf6); }
+
+        .problem-text { font-weight: 500; margin-bottom: 12px; color: #1e293b; font-size: 10.5pt; line-height: 1.8; }
+        .solution-text { font-size: 10pt; color: #334155; padding: 14px 16px; border-left: 3px solid #cbd5e1; background: rgba(255,255,255,.6); border-radius: 0 8px 8px 0; line-height: 1.9; }
+
+        /* ── Toggle Answer Button ── */
+        .toggle-answer-btn { display: inline-flex; align-items: center; gap: 7px; margin-top: 10px; padding: 8px 18px; background: linear-gradient(90deg, #7c3aed, #8b5cf6); color: #fff; border: none; border-radius: 99px; font-size: 9.5pt; font-weight: 600; cursor: pointer; transition: all .2s; box-shadow: 0 2px 8px rgba(124,58,237,.25); }
+        .toggle-answer-btn:hover { background: linear-gradient(90deg, #6d28d9, #7c3aed); box-shadow: 0 4px 14px rgba(124,58,237,.35); transform: translateY(-1px); }
+        .toggle-answer-btn .btn-icon { transition: transform .3s; }
+        .toggle-answer-btn.open .btn-icon { transform: rotate(180deg); }
+        .answer-panel { display: none; margin-top: 12px; animation: slideDown .25s ease; }
+        .answer-panel.visible { display: block; }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* ── Quiz ── */
+        .quiz-box { background: linear-gradient(135deg, #fff7ed 0%, #fffbf0 100%); border: 1px solid #fed7aa; border-left: 5px solid #f97316; border-radius: 12px; padding: 22px 24px; margin: 18px 0; box-shadow: 0 2px 10px rgba(249,115,22,.07); }
+        .quiz-label { display: inline-flex; align-items: center; gap: 6px; font-size: 9pt; font-weight: 700; color: #ea580c; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 10px; }
+        .quiz-question { font-size: 10.5pt; font-weight: 600; color: #1e293b; margin-bottom: 14px; line-height: 1.7; }
+        .quiz-options { display: flex; flex-direction: column; gap: 8px; }
+        .quiz-option { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #fff; border: 1.5px solid #e2e8f0; border-radius: 9px; cursor: pointer; font-size: 10pt; transition: all .2s; user-select: none; }
+        .quiz-option:hover:not(.disabled) { border-color: #f97316; background: #fff7ed; }
+        .quiz-option.correct { border-color: #10b981; background: #f0fdf4; color: #065f46; font-weight: 600; }
+        .quiz-option.wrong { border-color: #ef4444; background: #fef2f2; color: #991b1b; }
+        .quiz-option.disabled { cursor: default; }
+        .option-radio { width: 18px; height: 18px; border: 2px solid #cbd5e1; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all .2s; }
+        .quiz-option.correct .option-radio { background: #10b981; border-color: #10b981; }
+        .quiz-option.wrong .option-radio { background: #ef4444; border-color: #ef4444; }
+        .quiz-feedback { margin-top: 12px; padding: 10px 14px; border-radius: 8px; font-size: 10pt; font-weight: 500; display: none; }
+        .quiz-feedback.correct { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+        .quiz-feedback.wrong { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+        .quiz-feedback.visible { display: block; animation: slideDown .25s ease; }
+
+        /* ── Divider & Footer ── */
+        .section-divider { height: 1px; background: linear-gradient(90deg, transparent, #cbd5e1, transparent); margin: 36px 0 0; }
+        .footer { text-align: center; margin-top: 48px; padding: 24px; border-top: 1px solid #e2e8f0; font-size: 9pt; color: #94a3b8; }
+
+        @media (max-width: 768px) { .page-wrapper { flex-direction: column; padding: 16px; } .toc { width: 100%; position: static; } }
+    </style>
+</head>
+<body>
+
+<button class="lang-toggle-btn" onclick="toggleLanguage()">
+    <span class="lang-zh">中 / <strong>EN</strong></span>
+    <span class="lang-en"><strong>中</strong> / EN</span>
+</button>
+
+<div class="page-wrapper">
+
+    <aside class="toc">
+        <h3>
+            <span class="lang-zh">📋 目錄</span>
+            <span class="lang-en">📋 Contents</span>
+        </h3>
+        <ul>
+            <li><a href="#sec1"><span class="toc-num">1</span>
+                <span class="lang-zh">電流的定義</span>
+                <span class="lang-en">Electric current</span>
+            </a></li>
+            <li><a href="#sec2"><span class="toc-num">2</span>
+                <span class="lang-zh">電動勢、電勢差與電壓</span>
+                <span class="lang-en">E.m.f., p.d. and voltage</span>
+            </a></li>
+            <li><a href="#sec3"><span class="toc-num">3</span>
+                <span class="lang-zh">電阻與電阻率</span>
+                <span class="lang-en">Resistance and resistivity</span>
+            </a></li>
+            <li><a href="#sec4"><span class="toc-num">4</span>
+                <span class="lang-zh">電阻器網絡</span>
+                <span class="lang-en">Resistor networks</span>
+            </a></li>
+            <li><a href="#sec5"><span class="toc-num">5</span>
+                <span class="lang-zh">電功率</span>
+                <span class="lang-en">Electrical power</span>
+            </a></li>
+        </ul>
+        <div class="progress-bar-wrap">
+            <div class="progress-bar-fill" id="progressFill"></div>
+        </div>
+        <p class="progress-label" id="progressLabel">
+            <span class="lang-zh">答對 0 / 5 題</span>
+            <span class="lang-en">0 / 5 correct</span>
+        </p>
+    </aside>
+
+    <div class="container">
+        <div class="header-banner">
+            <h1>
+                <span class="lang-zh">⚡ 物理公式全指南</span>
+                <span class="lang-en">⚡ Physics Formula Guide</span>
+            </h1>
+            <p>
+                <span class="lang-zh">電流、電壓與電阻｜專為物理複習與應試設計</span>
+                <span class="lang-en">Current, Voltage and Resistance | Designed for physics revision</span>
+            </p>
+            <div class="score-badge">
+                <span class="lang-zh" id="scoreBadgeZh">🎯 學習進度：0 / 5 題已答對</span>
+                <span class="lang-en" id="scoreBadgeEn">🎯 Progress: 0 / 5 correct</span>
+            </div>
+        </div>
+
+        <div class="section-heading" id="sec1">
+            <span class="section-num">1</span>
+            <h2>
+                <span class="lang-zh">電流的定義</span>
+                <span class="lang-en">Definition of electric current</span>
+            </h2>
+        </div>
+
+        <div class="formula-box">
+            <div class="formula-main">$$I = \frac{Q}{t}$$</div>
+            <div class="formula-derived">
+                <div class="lang-zh"><strong>變形公式：</strong> $Q = I t$</div>
+                <div class="lang-en"><strong>Derived formula:</strong> $Q = I t$</div>
+                <div class="lang-zh" style="margin-top: 8px;"><strong>定義：</strong> 電流是電荷的流動率。</div>
+                <div class="lang-en" style="margin-top: 8px;"><strong>Definition:</strong> An electric current is the rate of flow of electric charges.</div>
+            </div>
+        </div>
+
+        <div class="symbol-list">
+            <div class="symbol-list-title">
+                <span class="lang-zh">📐 變數與單位解釋 (含變形公式)</span>
+                <span class="lang-en">📐 Variables and Units (Including derived equations)</span>
+            </div>
+            <ul>
+                <li>
+                    <div class="sym-math">$I$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>電流</strong>，單位：<strong>安培 ($\text{A}$)</strong></span>
+                        <span class="lang-en">: <strong>electric current</strong>, unit: <strong>ampere ($\text{A}$)</strong></span>
+                    </div>
+                </li>
+                <li>
+                    <div class="sym-math">$Q$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>總電荷量</strong>，單位：<strong>庫倫 ($\text{C}$)</strong></span>
+                        <span class="lang-en">: <strong>total charge</strong>, unit: <strong>coulomb ($\text{C}$)</strong></span>
+                    </div>
+                </li>
+                <li>
+                    <div class="sym-math">$t$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>時間</strong>，單位：<strong>秒 ($\text{s}$)</strong></span>
+                        <span class="lang-en">: <strong>time</strong>, unit: <strong>second ($\text{s}$)</strong></span>
+                    </div>
+                </li>
+            </ul>
+        </div>
+
+        <div class="card card-example">
+            <span class="badge badge-example">
+                <span class="lang-zh">✏️ 應用範例</span>
+                <span class="lang-en">✏️ Example</span>
+            </span>
+            <div class="problem-text">
+                <span class="lang-zh"><strong>題目：</strong>電動車以 $80\ \text{A}$ 的電流 $I$ 充電。$2\ \text{minutes}$ 內，共有多少電荷 $Q$ 經過汽車？</span>
+                <span class="lang-en"><strong>Question:</strong> An electric car is charged by a current $I$ of $80\ \text{A}$. Find the amount of charge $Q$ flowing through the car in $2\ \text{minutes}$.</span>
+            </div>
+            <div class="solution-text">
+                <div class="lang-zh"><strong>題解：</strong></div>
+                <div class="lang-en"><strong>Solution:</strong></div>
+                $$Q = It = 80 \times (2 \times 60) = 9600\ \text{C}$$
+            </div>
+        </div>
+
+        <div class="card card-practice">
+            <span class="badge badge-practice">
+                <span class="lang-zh">📝 隨堂練習</span>
+                <span class="lang-en">📝 Practice</span>
+            </span>
+            <div class="problem-text">
+                <span class="lang-zh"><strong>題目：</strong>電路中，$20\ \text{mA}$ 的電流 $I$ 流過一個電阻器，求 $1\ \text{C}$ 的電荷 $Q$ 流過這電阻器所需的時間 $t$。</span>
+                <span class="lang-en"><strong>Question:</strong> A current $I$ of $20\ \text{mA}$ passes through a resistor. Find the time $t$ needed for $1\ \text{C}$ of charge $Q$ to flow through the resistor.</span>
+            </div>
+            <button class="toggle-answer-btn" onclick="toggleAnswer(this)">
+                <span class="text-label">
+                    <span class="lang-zh">顯示答案</span>
+                    <span class="lang-en">Show Answer</span>
+                </span><span class="btn-icon">▼</span>
+            </button>
+            <div class="answer-panel">
+                <div class="solution-text">
+                    <div class="lang-zh"><strong>題解：</strong></div>
+                    <div class="lang-en"><strong>Solution:</strong></div>
+                    $$t = \frac{Q}{I} = \frac{1}{20 \times 10^{-3}} = 50\ \text{s}$$
+                </div>
+            </div>
+        </div>
+
+        <div class="quiz-box">
+            <div class="quiz-label">
+                <span class="lang-zh">🧠 概念測驗</span>
+                <span class="lang-en">🧠 Concept Quiz</span>
+            </div>
+            <div class="quiz-question">
+                <span class="lang-zh">$1\ \text{A}$ 的電流 $I$ 代表什麼？</span>
+                <span class="lang-en">What does a current $I$ of $1\ \text{A}$ mean?</span>
+            </div>
+            <div class="quiz-options">
+                <div class="quiz-option" onclick="checkAnswer(this, false, 1)">
+                    <div class="option-radio"></div>
+                    <span class="lang-zh">每秒有 $1\ \text{J}$ 的能量轉換</span>
+                    <span class="lang-en">$1\ \text{J}$ of energy is converted every second</span>
+                </div>
+                <div class="quiz-option" onclick="checkAnswer(this, true,  1)">
+                    <div class="option-radio"></div>
+                    <span class="lang-zh">截面每秒有 $1\ \text{C}$ 的電荷經過</span>
+                    <span class="lang-en">$1\ \text{C}$ of charge passes through the cross-section every second</span>
+                </div>
+                <div class="quiz-option" onclick="checkAnswer(this, false, 1)">
+                    <div class="option-radio"></div>
+                    <span class="lang-zh">每秒有 $1$ 個電子經過截面</span>
+                    <span class="lang-en">$1$ electron passes through the cross-section every second</span>
+                </div>
+                <div class="quiz-option" onclick="checkAnswer(this, false, 1)">
+                    <div class="option-radio"></div>
+                    <span class="lang-zh">提供 $1\ \text{V}$ 的電勢差</span>
+                    <span class="lang-en">Provides a p.d. of $1\ \text{V}$</span>
+                </div>
+            </div>
+            <div class="quiz-feedback" id="feedback-1">
+                <span class="lang-zh">✅ 正確！$1\ \text{A}$ 電流代表截面每秒有 $1\ \text{C}$ 的電荷經過。注意公式中 $Q$ 總是取正值。</span>
+                <span class="lang-en">✅ Correct! A current of $1\ \text{A}$ means that $1\ \text{C}$ of charge passes through the cross-section every second. Note that $Q$ is always taken as positive.</span>
+            </div>
+        </div>
+        <div class="section-divider"></div>
+
+        <div class="section-heading" id="sec2">
+            <span class="section-num">2</span>
+            <h2>
+                <span class="lang-zh">電動勢、電勢差與電壓</span>
+                <span class="lang-en">E.m.f., p.d. and voltage</span>
+            </h2>
+        </div>
+
+        <div class="formula-box">
+            <div class="formula-main">
+                <div class="lang-zh">$$V = \frac{E}{Q} \quad \text{或} \quad \varepsilon = \frac{E}{Q}$$</div>
+                <div class="lang-en">$$V = \frac{E}{Q} \quad \text{or} \quad \varepsilon = \frac{E}{Q}$$</div>
+            </div>
+            <div class="formula-derived">
+                <div class="lang-zh"><strong>變形公式：</strong> $E = VQ \quad \text{與} \quad E = \varepsilon Q$</div>
+                <div class="lang-en"><strong>Derived formulas:</strong> $E = VQ \quad \text{and} \quad E = \varepsilon Q$</div>
+                <div class="lang-zh" style="margin-top: 8px;"><strong>定義：</strong> 電壓 $V$ 是電路中每單位電荷的任何電勢能變化。</div>
+                <div class="lang-en" style="margin-top: 8px;"><strong>Definition:</strong> Voltage $V$ is any change in electric PE per unit charge in a circuit.</div>
+            </div>
+        </div>
+
+        <div class="symbol-list">
+            <div class="symbol-list-title">
+                <span class="lang-zh">📐 變數與單位解釋 (含變形公式)</span>
+                <span class="lang-en">📐 Variables and Units (Including derived equations)</span>
+            </div>
+            <ul>
+                <li>
+                    <div class="sym-math">$V$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>電勢差或電壓</strong>，單位：<strong>伏特 ($\text{V}$) 或 $\text{J C}^{-1}$</strong></span>
+                        <span class="lang-en">: <strong>potential difference or voltage</strong>, unit: <strong>volt ($\text{V}$) or $\text{J C}^{-1}$</strong></span>
+                    </div>
+                </li>
+                <li>
+                    <div class="sym-math">$\varepsilon$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>電動勢</strong>，單位：<strong>伏特 ($\text{V}$) 或 $\text{J C}^{-1}$</strong></span>
+                        <span class="lang-en">: <strong>electromotive force (e.m.f.)</strong>, unit: <strong>volt ($\text{V}$) or $\text{J C}^{-1}$</strong></span>
+                    </div>
+                </li>
+                <li>
+                    <div class="sym-math">$E$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>轉換的能量</strong>，單位：<strong>焦耳 ($\text{J}$)</strong></span>
+                        <span class="lang-en">: <strong>energy converted</strong>, unit: <strong>joule ($\text{J}$)</strong></span>
+                    </div>
+                </li>
+                <li>
+                    <div class="sym-math">$Q$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>電荷</strong>，單位：<strong>庫倫 ($\text{C}$)</strong></span>
+                        <span class="lang-en">: <strong>charge</strong>, unit: <strong>coulomb ($\text{C}$)</strong></span>
+                    </div>
+                </li>
+            </ul>
+        </div>
+
+        <div class="card card-example">
+            <span class="badge badge-example">
+                <span class="lang-zh">✏️ 應用範例</span>
+                <span class="lang-en">✏️ Example</span>
+            </span>
+            <div class="problem-text">
+                <span class="lang-zh"><strong>題目：</strong>一顆 $1.2\ \text{V}$ 充電池的容量為 $2950\ \text{mA h}$。充滿電的電池儲存了多少能量 $E$？</span>
+                <span class="lang-en"><strong>Question:</strong> A $1.2\text{-V}$ rechargeable battery has a capacity of $2950\ \text{mA h}$. How much energy $E$ is stored in the fully-charged battery?</span>
+            </div>
+            <div class="solution-text">
+                <div class="lang-zh">
+                    <strong>題解：</strong><br>
+                    1. 先求總電荷量 $Q$：<br>
+                    $$Q = It = (2950 \times 10^{-3}\ \text{A}) \times (3600\ \text{s}) = 1.06 \times 10^4\ \text{C}$$
+                    2. 儲存的能量 $E$：<br>
+                    $$E = VQ = (1.2\ \text{V}) \times (1.06 \times 10^4\ \text{C}) = 1.27 \times 10^4\ \text{J}$$
+                </div>
+                <div class="lang-en">
+                    <strong>Solution:</strong><br>
+                    1. Total charge $Q$:<br>
+                    $$Q = It = (2950 \times 10^{-3}\ \text{A}) \times (3600\ \text{s}) = 1.06 \times 10^4\ \text{C}$$
+                    2. Stored energy $E$:<br>
+                    $$E = VQ = (1.2\ \text{V}) \times (1.06 \times 10^4\ \text{C}) = 1.27 \times 10^4\ \text{J}$$
+                </div>
+            </div>
+        </div>
+
+        <div class="card card-practice">
+            <span class="badge badge-practice">
+                <span class="lang-zh">📝 隨堂練習</span>
+                <span class="lang-en">📝 Practice</span>
+            </span>
+            <div class="problem-text">
+                <span class="lang-zh"><strong>題目：</strong>當 $3\ \text{C}$ 的電荷 $Q$ 通過兩端電勢差 $V$ 為 $4\ \text{V}$ 的燈泡時，負荷所轉換的電勢能 $E$ 是多少？</span>
+                <span class="lang-en"><strong>Question:</strong> When $3\ \text{C}$ of charge $Q$ flows through a light bulb with a p.d. $V$ of $4\ \text{V}$ across it, what is the electric PE converted by the load, $E$?</span>
+            </div>
+            <button class="toggle-answer-btn" onclick="toggleAnswer(this)">
+                <span class="text-label">
+                    <span class="lang-zh">顯示答案</span>
+                    <span class="lang-en">Show Answer</span>
+                </span><span class="btn-icon">▼</span>
+            </button>
+            <div class="answer-panel">
+                <div class="solution-text">
+                    <div class="lang-zh"><strong>題解：</strong></div>
+                    <div class="lang-en"><strong>Solution:</strong></div>
+                    $$E = VQ = 4 \times 3 = 12\ \text{J}$$
+                </div>
+            </div>
+        </div>
+
+        <div class="quiz-box">
+            <div class="quiz-label">
+                <span class="lang-zh">🧠 概念測驗</span>
+                <span class="lang-en">🧠 Concept Quiz</span>
+            </div>
+            <div class="quiz-question">
+                <span class="lang-zh">下列哪一個可以是電動勢 $\varepsilon$ 的單位？</span>
+                <span class="lang-en">Which of the following can be the unit of e.m.f. $\varepsilon$?</span>
+            </div>
+            <div class="quiz-options">
+                <div class="quiz-option" onclick="checkAnswer(this, false, 2)">
+                    <div class="option-radio"></div> $\text{J}$
+                </div>
+                <div class="quiz-option" onclick="checkAnswer(this, true,  2)">
+                    <div class="option-radio"></div> $\text{J C}^{-1}$
+                </div>
+                <div class="quiz-option" onclick="checkAnswer(this, false, 2)">
+                    <div class="option-radio"></div> $\text{J C}$
+                </div>
+                <div class="quiz-option" onclick="checkAnswer(this, false, 2)">
+                    <div class="option-radio"></div> $\text{A s}$
+                </div>
+            </div>
+            <div class="quiz-feedback" id="feedback-2">
+                <span class="lang-zh">✅ 正確！電動勢的單位是伏特 ($\text{V}$)，相等於 $\text{J C}^{-1}$。</span>
+                <span class="lang-en">✅ Correct! The unit of e.m.f. is the volt ($\text{V}$), which is equal to $\text{J C}^{-1}$.</span>
+            </div>
+        </div>
+        <div class="section-divider"></div>
+
+        <div class="section-heading" id="sec3">
+            <span class="section-num">3</span>
+            <h2>
+                <span class="lang-zh">電阻與電阻率</span>
+                <span class="lang-en">Resistance and resistivity</span>
+            </h2>
+        </div>
+
+        <div class="formula-box">
+            <div class="formula-main">
+                <div class="lang-zh">$$R = \frac{V}{I} \quad \text{與} \quad R = \rho \frac{l}{A}$$</div>
+                <div class="lang-en">$$R = \frac{V}{I} \quad \text{and} \quad R = \rho \frac{l}{A}$$</div>
+            </div>
+            <div class="formula-derived">
+                <div class="lang-zh"><strong>變形公式：</strong> $V = I R \quad \text{與} \quad \rho = \frac{R A}{l}$</div>
+                <div class="lang-en"><strong>Derived formulas:</strong> $V = I R \quad \text{and} \quad \rho = \frac{R A}{l}$</div>
+            </div>
+        </div>
+
+        <div class="symbol-list">
+            <div class="symbol-list-title">
+                <span class="lang-zh">📐 變數與單位解釋 (含變形公式)</span>
+                <span class="lang-en">📐 Variables and Units (Including derived equations)</span>
+            </div>
+            <ul>
+                <li>
+                    <div class="sym-math">$R$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>電阻</strong>，單位：<strong>歐姆 ($\Omega$)</strong></span>
+                        <span class="lang-en">: <strong>resistance</strong>, unit: <strong>ohm ($\Omega$)</strong></span>
+                    </div>
+                </li>
+                <li>
+                    <div class="sym-math">$V$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>電壓</strong>，單位：<strong>伏特 ($\text{V}$)</strong></span>
+                        <span class="lang-en">: <strong>voltage</strong>, unit: <strong>volt ($\text{V}$)</strong></span>
+                    </div>
+                </li>
+                <li>
+                    <div class="sym-math">$I$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>電流</strong>，單位：<strong>安培 ($\text{A}$)</strong></span>
+                        <span class="lang-en">: <strong>current</strong>, unit: <strong>ampere ($\text{A}$)</strong></span>
+                    </div>
+                </li>
+                <li>
+                    <div class="sym-math">$\rho$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>電阻率</strong>，單位：<strong>歐姆·米 ($\Omega\text{ m}$)</strong></span>
+                        <span class="lang-en">: <strong>resistivity</strong>, unit: <strong>ohm-meter ($\Omega\text{ m}$)</strong></span>
+                    </div>
+                </li>
+                <li>
+                    <div class="sym-math">$l$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>導線長度</strong>，單位：<strong>米 ($\text{m}$)</strong></span>
+                        <span class="lang-en">: <strong>length</strong>, unit: <strong>meter ($\text{m}$)</strong></span>
+                    </div>
+                </li>
+                <li>
+                    <div class="sym-math">$A$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>截面積</strong>，單位：<strong>平方米 ($\text{m}^2$)</strong></span>
+                        <span class="lang-en">: <strong>cross-sectional area</strong>, unit: <strong>square meter ($\text{m}^2$)</strong></span>
+                    </div>
+                </li>
+            </ul>
+        </div>
+
+        <div class="card card-example">
+            <span class="badge badge-example">
+                <span class="lang-zh">✏️ 應用範例</span>
+                <span class="lang-en">✏️ Example</span>
+            </span>
+            <div class="problem-text">
+                <span class="lang-zh"><strong>題目：</strong>燈泡連接到 $3\ \text{V}$ 電池組。流過燈泡的電流 $I$ 是 $0.3\ \text{A}$。求燈泡的電阻 $R$。</span>
+                <span class="lang-en"><strong>Question:</strong> A light bulb is connected to a $3\text{-V}$ battery. The current $I$ through the bulb is $0.3\ \text{A}$. Find the resistance $R$ of the bulb.</span>
+            </div>
+            <div class="solution-text">
+                <div class="lang-zh"><strong>題解：</strong></div>
+                <div class="lang-en"><strong>Solution:</strong></div>
+                $$R = \frac{V}{I} = \frac{3}{0.3} = 10\ \Omega$$
+            </div>
+        </div>
+
+        <div class="card card-practice">
+            <span class="badge badge-practice">
+                <span class="lang-zh">📝 隨堂練習</span>
+                <span class="lang-en">📝 Practice</span>
+            </span>
+            <div class="problem-text">
+                <span class="lang-zh"><strong>題目：</strong>銅線長度 $l = 10\ \text{m}$，截面積 $A = 1.3 \times 10^{-7}\ \text{m}^2$，電阻 $R = 1.34\ \Omega$。求銅線的電阻率 $\rho$。</span>
+                <span class="lang-en"><strong>Question:</strong> A copper wire is $10\ \text{m}$ long ($l$). Its cross-sectional area $A$ is $1.3 \times 10^{-7}\ \text{m}^2$. Its resistance $R$ is $1.34\ \Omega$. Find the resistivity $\rho$ of the copper wire.</span>
+            </div>
+            <button class="toggle-answer-btn" onclick="toggleAnswer(this)">
+                <span class="text-label">
+                    <span class="lang-zh">顯示答案</span>
+                    <span class="lang-en">Show Answer</span>
+                </span><span class="btn-icon">▼</span>
+            </button>
+            <div class="answer-panel">
+                <div class="solution-text">
+                    <div class="lang-zh"><strong>題解：</strong></div>
+                    <div class="lang-en"><strong>Solution:</strong></div>
+                    $$\rho = \frac{R A}{l} = \frac{1.34 \times (1.3 \times 10^{-7})}{10} = 1.74 \times 10^{-8}\ \Omega\text{ m}$$
+                </div>
+            </div>
+        </div>
+
+        <div class="quiz-box">
+            <div class="quiz-label">
+                <span class="lang-zh">🧠 概念測驗</span>
+                <span class="lang-en">🧠 Concept Quiz</span>
+            </div>
+            <div class="quiz-question">
+                <span class="lang-zh">對於相同物料的導線，以下哪種情況會有較低的電阻 $R$？</span>
+                <span class="lang-en">For wires of the same material, which of the following gives a lower resistance $R$?</span>
+            </div>
+            <div class="quiz-options">
+                <div class="quiz-option" onclick="checkAnswer(this, false, 3)">
+                    <div class="option-radio"></div>
+                    <span class="lang-zh">電阻線長度 $l$ 愈長</span>
+                    <span class="lang-en">A longer length $l$ wire</span>
+                </div>
+                <div class="quiz-option" onclick="checkAnswer(this, true,  3)">
+                    <div class="option-radio"></div>
+                    <span class="lang-zh">電阻線愈粗（截面積 $A$ 較大）</span>
+                    <span class="lang-en">A thicker wire (larger cross-sectional area $A$)</span>
+                </div>
+                <div class="quiz-option" onclick="checkAnswer(this, false, 3)">
+                    <div class="option-radio"></div>
+                    <span class="lang-zh">電阻線愈幼（截面積 $A$ 較小）</span>
+                    <span class="lang-en">A thinner wire (smaller cross-sectional area $A$)</span>
+                </div>
+                <div class="quiz-option" onclick="checkAnswer(this, false, 3)">
+                    <div class="option-radio"></div>
+                    <span class="lang-zh">長度 $l$ 與截面積 $A$ 不影響電阻</span>
+                    <span class="lang-en">Length $l$ and area $A$ do not affect resistance</span>
+                </div>
+            </div>
+            <div class="quiz-feedback" id="feedback-3">
+                <span class="lang-zh">✅ 正確！電阻 $R$ 與截面積 $A$ 成反比，電阻線愈粗（截面積 $A$ 愈大），電阻 $R$ 愈低。</span>
+                <span class="lang-en">✅ Correct! Resistance $R$ is inversely proportional to the cross-sectional area $A$, so a thicker wire has a lower resistance.</span>
+            </div>
+        </div>
+        <div class="section-divider"></div>
+
+        <div class="section-heading" id="sec4">
+            <span class="section-num">4</span>
+            <h2>
+                <span class="lang-zh">電阻器網絡</span>
+                <span class="lang-en">Resistor networks</span>
+            </h2>
+        </div>
+
+        <div class="formula-box">
+            <div class="formula-main">
+                <div class="lang-zh">
+                    $$\text{串聯：} R_{eq} = R_1 + R_2 + ... + R_n$$
+                    $$\text{並聯：} \frac{1}{R_{eq}} = \frac{1}{R_1} + \frac{1}{R_2} + ... + \frac{1}{R_n}$$
+                </div>
+                <div class="lang-en">
+                    $$\text{In series: } R_{eq} = R_1 + R_2 + ... + R_n$$
+                    $$\text{In parallel: } \frac{1}{R_{eq}} = \frac{1}{R_1} + \frac{1}{R_2} + ... + \frac{1}{R_n}$$
+                </div>
+            </div>
+            <div class="formula-derived">
+                <div class="lang-zh">
+                    <strong>電路特性與變形公式：</strong><br>
+                    串聯電路中，總電壓 $V = V_1 + V_2$，通過每一點的電流相同 $I = I_1 = I_2$。<br>
+                    並聯電路中，橫跨每個支路的電勢差相同 $V = V_1 = V_2$，總電流 $I = I_1 + I_2$。
+                </div>
+                <div class="lang-en">
+                    <strong>Circuit characteristics and derived formulas:</strong><br>
+                    In a series circuit, total voltage $V = V_1 + V_2$, current is the same at all points $I = I_1 = I_2$.<br>
+                    In a parallel circuit, p.d. across each branch is the same $V = V_1 = V_2$, total current $I = I_1 + I_2$.
+                </div>
+            </div>
+        </div>
+
+        <div class="symbol-list">
+            <div class="symbol-list-title">
+                <span class="lang-zh">📐 變數與單位解釋 (含變形公式)</span>
+                <span class="lang-en">📐 Variables and Units (Including derived equations)</span>
+            </div>
+            <ul>
+                <li>
+                    <div class="sym-math">$R_{eq}$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>等效電阻</strong>，單位：<strong>歐姆 ($\Omega$)</strong></span>
+                        <span class="lang-en">: <strong>equivalent resistance</strong>, unit: <strong>ohm ($\Omega$)</strong></span>
+                    </div>
+                </li>
+                <li>
+                    <div class="sym-math">$R_1, R_2, R_n$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>個別電阻器的電阻</strong>，單位：<strong>歐姆 ($\Omega$)</strong></span>
+                        <span class="lang-en">: <strong>resistance of individual resistors</strong>, unit: <strong>ohm ($\Omega$)</strong></span>
+                    </div>
+                </li>
+                <li>
+                    <div class="sym-math">$V$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>總電壓</strong>，單位：<strong>伏特 ($\text{V}$)</strong></span>
+                        <span class="lang-en">: <strong>total voltage</strong>, unit: <strong>volt ($\text{V}$)</strong></span>
+                    </div>
+                </li>
+                <li>
+                    <div class="sym-math">$V_1, V_2$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>個別電阻器兩端的電勢差</strong>，單位：<strong>伏特 ($\text{V}$)</strong></span>
+                        <span class="lang-en">: <strong>p.d. across individual resistors</strong>, unit: <strong>volt ($\text{V}$)</strong></span>
+                    </div>
+                </li>
+                <li>
+                    <div class="sym-math">$I$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>總電流</strong>，單位：<strong>安培 ($\text{A}$)</strong></span>
+                        <span class="lang-en">: <strong>total current</strong>, unit: <strong>ampere ($\text{A}$)</strong></span>
+                    </div>
+                </li>
+                <li>
+                    <div class="sym-math">$I_1, I_2$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>通過個別電阻器的電流</strong>，單位：<strong>安培 ($\text{A}$)</strong></span>
+                        <span class="lang-en">: <strong>current through individual resistors</strong>, unit: <strong>ampere ($\text{A}$)</strong></span>
+                    </div>
+                </li>
+            </ul>
+        </div>
+
+        <div class="card card-example">
+            <span class="badge badge-example">
+                <span class="lang-zh">✏️ 應用範例</span>
+                <span class="lang-en">✏️ Example</span>
+            </span>
+            <div class="problem-text">
+                <span class="lang-zh"><strong>題目：</strong>兩個電阻器（$R_1 = 2\ \Omega$ 與 $R_2 = 4\ \Omega$）串聯連接到 $12\ \text{V}$ 電池組。求等效電阻 $R_{eq}$。</span>
+                <span class="lang-en"><strong>Question:</strong> Two resistors ($R_1 = 2\ \Omega$ and $R_2 = 4\ \Omega$) are connected in series to a $12\text{-V}$ battery. What is the equivalent resistance $R_{eq}$?</span>
+            </div>
+            <div class="solution-text">
+                <div class="lang-zh"><strong>題解：</strong></div>
+                <div class="lang-en"><strong>Solution:</strong></div>
+                $$R_{eq} = R_1 + R_2 = 2 + 4 = 6\ \Omega$$
+            </div>
+        </div>
+
+        <div class="card card-practice">
+            <span class="badge badge-practice">
+                <span class="lang-zh">📝 隨堂練習</span>
+                <span class="lang-en">📝 Practice</span>
+            </span>
+            <div class="problem-text">
+                <span class="lang-zh"><strong>題目：</strong>兩個電阻器並聯連接到電池組。電池組輸出的總電流 $I$ 是 $0.5\ \text{A}$，電池組電動勢 $\varepsilon$ 為 $6\ \text{V}$。求等效電阻 $R_{eq}$。</span>
+                <span class="lang-en"><strong>Question:</strong> Two resistors are connected in parallel to a battery. The total current $I$ drawn from the battery is $0.5\ \text{A}$, and the e.m.f. $\varepsilon$ is $6\ \text{V}$. What is the equivalent resistance $R_{eq}$?</span>
+            </div>
+            <button class="toggle-answer-btn" onclick="toggleAnswer(this)">
+                <span class="text-label">
+                    <span class="lang-zh">顯示答案</span>
+                    <span class="lang-en">Show Answer</span>
+                </span><span class="btn-icon">▼</span>
+            </button>
+            <div class="answer-panel">
+                <div class="solution-text">
+                    <div class="lang-zh"><strong>題解：</strong></div>
+                    <div class="lang-en"><strong>Solution:</strong></div>
+                    $$R_{eq} = \frac{V}{I} = \frac{6}{0.5} = 12\ \Omega$$
+                </div>
+            </div>
+        </div>
+
+        <div class="quiz-box">
+            <div class="quiz-label">
+                <span class="lang-zh">🧠 概念測驗</span>
+                <span class="lang-en">🧠 Concept Quiz</span>
+            </div>
+            <div class="quiz-question">
+                <span class="lang-zh">關於並聯的電阻器，下列哪項敘述必定正確？</span>
+                <span class="lang-en">Which of the following statements about resistors connected in parallel must be correct?</span>
+            </div>
+            <div class="quiz-options">
+                <div class="quiz-option" onclick="checkAnswer(this, false, 4)">
+                    <div class="option-radio"></div>
+                    <span class="lang-zh">等效電阻 $R_{eq}$ 高於個別電阻器 $R_n$ 的電阻</span>
+                    <span class="lang-en">The equivalent resistance $R_{eq}$ is larger than any single resistor $R_n$</span>
+                </div>
+                <div class="quiz-option" onclick="checkAnswer(this, true,  4)">
+                    <div class="option-radio"></div>
+                    <span class="lang-zh">橫跨每個電阻器的電勢差 $V_n$ 都相同</span>
+                    <span class="lang-en">The p.d. $V_n$ across each resistor is the same</span>
+                </div>
+                <div class="quiz-option" onclick="checkAnswer(this, false, 4)">
+                    <div class="option-radio"></div>
+                    <span class="lang-zh">通過每個電阻器的電流 $I_n$ 都相同</span>
+                    <span class="lang-en">The current $I_n$ through each resistor is the same</span>
+                </div>
+                <div class="quiz-option" onclick="checkAnswer(this, false, 4)">
+                    <div class="option-radio"></div>
+                    <span class="lang-zh">等效電阻 $R_{eq}$ 等於各電阻之和</span>
+                    <span class="lang-en">The equivalent resistance $R_{eq}$ is the sum of the resistors</span>
+                </div>
+            </div>
+            <div class="quiz-feedback" id="feedback-4">
+                <span class="lang-zh">✅ 正確！在並聯電路中，橫跨每個電阻器的電勢差都相同 ($V = V_1 = V_2$)。</span>
+                <span class="lang-en">✅ Correct! In a parallel circuit, the p.d. across each resistor is the same ($V = V_1 = V_2$).</span>
+            </div>
+        </div>
+        <div class="section-divider"></div>
+
+        <div class="section-heading" id="sec5">
+            <span class="section-num">5</span>
+            <h2>
+                <span class="lang-zh">電功率</span>
+                <span class="lang-en">Electrical power</span>
+            </h2>
+        </div>
+
+        <div class="formula-box">
+            <div class="formula-main">$$P = VI$$</div>
+            <div class="formula-derived">
+                <div class="lang-zh"><strong>結合歐姆定律的變形公式：</strong></div>
+                <div class="lang-en"><strong>Derived formulas based on Ohm's law:</strong></div>
+                $$P = I^2 R = \frac{V^2}{R}$$
+            </div>
+        </div>
+
+        <div class="symbol-list">
+            <div class="symbol-list-title">
+                <span class="lang-zh">📐 變數與單位解釋 (含變形公式)</span>
+                <span class="lang-en">📐 Variables and Units (Including derived equations)</span>
+            </div>
+            <ul>
+                <li>
+                    <div class="sym-math">$P$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>電功率</strong>，單位：<strong>瓦特 ($\text{W}$)</strong></span>
+                        <span class="lang-en">: <strong>electrical power</strong>, unit: <strong>watt ($\text{W}$)</strong></span>
+                    </div>
+                </li>
+                <li>
+                    <div class="sym-math">$V$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>電壓</strong>，單位：<strong>伏特 ($\text{V}$)</strong></span>
+                        <span class="lang-en">: <strong>voltage</strong>, unit: <strong>volt ($\text{V}$)</strong></span>
+                    </div>
+                </li>
+                <li>
+                    <div class="sym-math">$I$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>電流</strong>，單位：<strong>安培 ($\text{A}$)</strong></span>
+                        <span class="lang-en">: <strong>current</strong>, unit: <strong>ampere ($\text{A}$)</strong></span>
+                    </div>
+                </li>
+                <li>
+                    <div class="sym-math">$R$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>電阻</strong>，單位：<strong>歐姆 ($\Omega$)</strong></span>
+                        <span class="lang-en">: <strong>resistance</strong>, unit: <strong>ohm ($\Omega$)</strong></span>
+                    </div>
+                </li>
+            </ul>
+        </div>
+
+        <div class="card card-example">
+            <span class="badge badge-example">
+                <span class="lang-zh">✏️ 應用範例</span>
+                <span class="lang-en">✏️ Example</span>
+            </span>
+            <div class="problem-text">
+                <span class="lang-zh"><strong>題目：</strong>燈泡 A 和 B 的電阻分別為 $R_A = 1\ \Omega$ 和 $R_B = 2\ \Omega$。如果把它們並聯連接到 $3\ \text{V}$ 電池組，求燈泡 A 消耗的功率 $P_A$。</span>
+                <span class="lang-en"><strong>Question:</strong> Light bulbs A and B have resistances of $R_A = 1\ \Omega$ and $R_B = 2\ \Omega$ respectively. If they are connected in parallel to a $3\text{-V}$ battery, find the power $P_A$ consumed by bulb A.</span>
+            </div>
+            <div class="solution-text">
+                <div class="lang-zh"><strong>題解：</strong></div>
+                <div class="lang-en"><strong>Solution:</strong></div>
+                $$P_A = \frac{V^2}{R_A} = \frac{3^2}{1} = 9\ \text{W}$$
+            </div>
+        </div>
+
+        <div class="card card-practice">
+            <span class="badge badge-practice">
+                <span class="lang-zh">📝 隨堂練習</span>
+                <span class="lang-en">📝 Practice</span>
+            </span>
+            <div class="problem-text">
+                <span class="lang-zh"><strong>題目：</strong>燈泡連接到 $V = 1.5\ \text{V}$ 電池組時，消耗的功率 $P$ 為 $0.45\ \text{W}$。求燈泡的電阻 $R$。</span>
+                <span class="lang-en"><strong>Question:</strong> A light bulb consumes a power $P$ of $0.45\ \text{W}$ when connected to a $V = 1.5\text{-V}$ battery. Find its resistance $R$.</span>
+            </div>
+            <button class="toggle-answer-btn" onclick="toggleAnswer(this)">
+                <span class="text-label">
+                    <span class="lang-zh">顯示答案</span>
+                    <span class="lang-en">Show Answer</span>
+                </span><span class="btn-icon">▼</span>
+            </button>
+            <div class="answer-panel">
+                <div class="solution-text">
+                    <div class="lang-zh"><strong>題解：</strong>根據 $P = \frac{V^2}{R}$ 變形，</div>
+                    <div class="lang-en"><strong>Solution:</strong> From $P = \frac{V^2}{R}$,</div>
+                    $$R = \frac{V^2}{P} = \frac{1.5^2}{0.45} = 5\ \Omega$$
+                </div>
+            </div>
+        </div>
+
+        <div class="quiz-box">
+            <div class="quiz-label">
+                <span class="lang-zh">🧠 概念測驗</span>
+                <span class="lang-en">🧠 Concept Quiz</span>
+            </div>
+            <div class="quiz-question">
+                <span class="lang-zh">一個 $2\ \Omega$ 電阻器和一個 $6\ \Omega$ 電阻器串聯連接到電池組。哪一個消耗的功率 $P$ 較高？</span>
+                <span class="lang-en">A $2\text{-}\Omega$ resistor and a $6\text{-}\Omega$ resistor are connected in series to a battery. Which one dissipates a higher power $P$?</span>
+            </div>
+            <div class="quiz-options">
+                <div class="quiz-option" onclick="checkAnswer(this, false, 5)">
+                    <div class="option-radio"></div>
+                    <span class="lang-zh">$2\ \Omega$ 電阻器</span><span class="lang-en">$2\ \Omega$ resistor</span>
+                </div>
+                <div class="quiz-option" onclick="checkAnswer(this, true, 5)">
+                    <div class="option-radio"></div>
+                    <span class="lang-zh">$6\ \Omega$ 電阻器</span><span class="lang-en">$6\ \Omega$ resistor</span>
+                </div>
+                <div class="quiz-option" onclick="checkAnswer(this, false, 5)">
+                    <div class="option-radio"></div>
+                    <span class="lang-zh">兩者消耗的功率 $P$ 相同</span><span class="lang-en">Both dissipate the same power $P$</span>
+                </div>
+                <div class="quiz-option" onclick="checkAnswer(this, false, 5)">
+                    <div class="option-radio"></div>
+                    <span class="lang-zh">無法確定</span><span class="lang-en">Cannot be determined</span>
+                </div>
+            </div>
+            <div class="quiz-feedback" id="feedback-5">
+                <span class="lang-zh">✅ 正確！串聯時電流 $I$ 相同，根據 $P = I^2 R$，電阻 $R$ 較高的一個會消耗較高的功率 $P$。</span>
+                <span class="lang-en">✅ Correct! In series, the current $I$ is the same. By $P = I^2 R$, the one with a higher resistance $R$ dissipates a higher power $P$.</span>
+            </div>
+        </div>
+        <div class="section-divider"></div>
+
+        <div class="footer">
+            <span class="lang-zh">© 2026 專業物理教學網 ｜ 電流、電壓與電阻複習全指南 ｜ 祝考試順利！</span>
+            <span class="lang-en">© 2026 Physics Formula Guide ｜ Current, Voltage and Resistance ｜ Good luck with your exams!</span>
+        </div>
+    </div></div><script>
+    // ── Language Toggle Logic ──
+    function toggleLanguage() {
+        document.body.classList.toggle('en-mode');
+        // Update dynamically set text for buttons that are open
+        document.querySelectorAll('.toggle-answer-btn').forEach(btn => {
+            const isOpen = btn.nextElementSibling.classList.contains('visible');
+            if(isOpen) {
+                btn.querySelector('.text-label').innerHTML = `<span class="lang-zh">隱藏答案</span><span class="lang-en">Hide Answer</span>`;
+            } else {
+                btn.querySelector('.text-label').innerHTML = `<span class="lang-zh">顯示答案</span><span class="lang-en">Show Answer</span>`;
+            }
+        });
+    }
+
+    // ── Score tracking ──
+    const totalQuizzes = 5;
+    const answered = {}; 
+    
+    function getScore() {
+        return Object.values(answered).filter(Boolean).length;
+    }
+    
+    function updateProgress() {
+        const score = getScore();
+        const pct = (score / totalQuizzes) * 100;
+        document.getElementById('progressFill').style.width = pct + '%';
+        
+        document.getElementById('progressLabel').innerHTML = `
+            <span class="lang-zh">答對 ${score} / ${totalQuizzes} 題</span>
+            <span class="lang-en">${score} / ${totalQuizzes} correct</span>
+        `;
+        
+        document.getElementById('scoreBadgeZh').textContent = `🎯 學習進度：${score} / ${totalQuizzes} 題已答對`;
+        document.getElementById('scoreBadgeEn').textContent = `🎯 Progress: ${score} / ${totalQuizzes} correct`;
+    }
+
+    // ── Toggle answer ──
+    function toggleAnswer(btn) {
+        const panel = btn.nextElementSibling;
+        const isOpen = panel.classList.contains('visible');
+        panel.classList.toggle('visible', !isOpen);
+        btn.classList.toggle('open', !isOpen);
+        
+        if(!isOpen) {
+            btn.querySelector('.text-label').innerHTML = `<span class="lang-zh">隱藏答案</span><span class="lang-en">Hide Answer</span>`;
+        } else {
+            btn.querySelector('.text-label').innerHTML = `<span class="lang-zh">顯示答案</span><span class="lang-en">Show Answer</span>`;
+        }
+    }
+
+    // ── Quiz checking ──
+    function checkAnswer(el, isCorrect, quizId) {
+        const feedback = document.getElementById('feedback-' + quizId);
+        if (feedback.classList.contains('visible')) return;
+
+        const options = el.closest('.quiz-options').querySelectorAll('.quiz-option');
+        options.forEach(opt => opt.classList.add('disabled'));
+        
+        if (isCorrect) {
+            el.classList.add('correct');
+            el.querySelector('.option-radio').innerHTML = '✓';
+            feedback.className = 'quiz-feedback correct visible';
+            answered[quizId] = true;
+        } else {
+            el.classList.add('wrong');
+            el.querySelector('.option-radio').innerHTML = '✗';
+            options.forEach(opt => {
+                if (opt.getAttribute('onclick') && opt.getAttribute('onclick').includes('true')) {
+                    opt.classList.add('correct');
+                    opt.querySelector('.option-radio').innerHTML = '✓';
+                }
+            });
+            feedback.className = 'quiz-feedback wrong visible';
+            answered[quizId] = false;
+        }
+        updateProgress();
+    }
+</script>
+
+</body>
+</html>

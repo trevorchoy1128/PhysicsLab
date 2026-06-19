@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>物理公式全指南 — 實際電路 / Physics Formula Guide — Circuits in Practice</title>
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            options: { skipHtmlTags: ['script','noscript','style','textarea','pre'] }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+    <style>
+        /* ── Language Toggle Logic ── */
+        span.lang-zh { display: inline; }
+        div.lang-zh { display: block; }
+        span.lang-en { display: none; }
+        div.lang-en { display: none; }
+
+        body.en-mode span.lang-zh, body.en-mode div.lang-zh { display: none !important; }
+        body.en-mode span.lang-en { display: inline !important; }
+        body.en-mode div.lang-en { display: block !important; }
+
+        /* ── Toggle Button Style ── */
+        .lang-toggle-btn {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 1000;
+            background: linear-gradient(135deg, #1e3a8a, #2563eb);
+            color: #fff;
+            border: 2px solid #ffffff;
+            padding: 10px 20px;
+            border-radius: 99px;
+            font-size: 10.5pt;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(30, 58, 138, 0.3);
+            transition: all .2s;
+        }
+        .lang-toggle-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(30, 58, 138, 0.4);
+        }
+
+        /* ── Reset ── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        /* ── Base ── */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Microsoft JhengHei", sans-serif;
+            background: linear-gradient(135deg, #e8f0fe 0%, #f0f4ff 50%, #faf5ff 100%);
+            color: #1e293b;
+            line-height: 1.7;
+            min-height: 100vh;
+        }
+
+        /* ── Layout ── */
+        .page-wrapper { display: flex; max-width: 1100px; margin: 0 auto; padding: 40px 20px; gap: 28px; align-items: flex-start; }
+
+        /* ── Sticky TOC Sidebar ── */
+        .toc {
+            width: 250px; flex-shrink: 0; position: sticky; top: 24px; background: #ffffff;
+            border-radius: 14px; box-shadow: 0 4px 20px rgba(30, 58, 138, 0.08); padding: 20px 16px; border: 1px solid #dbeafe;
+        }
+        .toc h3 { font-size: 11pt; font-weight: 700; color: #1e3a8a; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 2px solid #dbeafe; }
+        .toc ul { list-style: none; }
+        .toc li { margin-bottom: 6px; }
+        .toc a { display: flex; align-items: center; gap: 7px; font-size: 9.5pt; color: #475569; text-decoration: none; padding: 5px 8px; border-radius: 7px; transition: all .2s; }
+        .toc a:hover { background: #eff6ff; color: #1d4ed8; }
+        .toc-num { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; background: #dbeafe; color: #1e40af; border-radius: 50%; font-size: 8pt; font-weight: 700; flex-shrink: 0; }
+
+        /* ── Progress Bar ── */
+        .progress-bar-wrap { background: #e2e8f0; border-radius: 99px; height: 6px; margin-top: 16px; overflow: hidden; }
+        .progress-bar-fill { height: 100%; background: linear-gradient(90deg, #3b82f6, #6366f1); border-radius: 99px; transition: width .5s ease; width: 0%; }
+        .progress-label { font-size: 8.5pt; color: #64748b; margin-top: 6px; text-align: center; }
+
+        /* ── Main Content ── */
+        .container { flex: 1; min-width: 0; }
+
+        /* ── Header Banner ── */
+        .header-banner { background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 60%, #7c3aed 100%); color: #ffffff; padding: 36px 32px; border-radius: 16px; margin-bottom: 36px; text-align: center; box-shadow: 0 8px 32px rgba(37, 99, 235, 0.3); position: relative; overflow: hidden; }
+        .header-banner::before { content: ''; position: absolute; top: -40px; right: -40px; width: 200px; height: 200px; background: rgba(255,255,255,.06); border-radius: 50%; }
+        .header-banner::after { content: ''; position: absolute; bottom: -60px; left: -30px; width: 250px; height: 250px; background: rgba(255,255,255,.04); border-radius: 50%; }
+        .header-banner h1 { font-size: 24pt; font-weight: 800; letter-spacing: 1px; position: relative; z-index: 1; }
+        .header-banner p { margin: 10px 0 0; font-size: 11pt; opacity: .85; position: relative; z-index: 1; }
+        .score-badge { display: inline-flex; align-items: center; gap: 6px; margin-top: 16px; background: rgba(255,255,255,.2); backdrop-filter: blur(4px); color: #fff; padding: 6px 16px; border-radius: 99px; font-size: 10pt; font-weight: 600; border: 1px solid rgba(255,255,255,.3); position: relative; z-index: 1; }
+
+        /* ── Section Heading ── */
+        .section-heading { display: flex; align-items: center; gap: 12px; margin: 44px 0 20px; }
+        .section-num { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: linear-gradient(135deg, #1e3a8a, #3b82f6); color: #fff; border-radius: 10px; font-size: 14pt; font-weight: 800; flex-shrink: 0; box-shadow: 0 4px 12px rgba(37,99,235,.3); }
+        .section-heading h2 { color: #1e3a8a; font-size: 15pt; font-weight: 700; }
+
+        /* ── Formula Box ── */
+        .formula-box { background: linear-gradient(135deg, #eff6ff 0%, #f5f3ff 100%); border: 1px solid #bfdbfe; border-left: 5px solid #3b82f6; border-radius: 12px; padding: 24px 28px; margin: 4px 0 16px; box-shadow: 0 2px 12px rgba(59,130,246,.08); transition: box-shadow .25s; }
+        .formula-box:hover { box-shadow: 0 6px 24px rgba(59,130,246,.15); }
+        .formula-main { font-size: 17pt; font-weight: bold; color: #1d4ed8; text-align: center; margin-bottom: 12px; }
+        .formula-derived { font-size: 10.5pt; color: #475569; text-align: center; border-top: 1px dashed #c7d2fe; padding-top: 10px; margin-top: 10px; }
+
+        /* ── Symbol List ── */
+        .symbol-list { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 18px; margin: 0 0 16px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); }
+        .symbol-list-title { font-size: 9.5pt; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .07em; margin-bottom: 10px; border-bottom: 2px solid #e2e8f0; padding-bottom: 6px; }
+        .symbol-list ul { list-style: none; }
+        .symbol-list li { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-size: 10pt; }
+        .symbol-list li:last-child { border-bottom: none; }
+        .sym-math { min-width: 50px; display: inline-flex; justify-content: center; font-size: 11pt; }
+        .sym-desc { flex: 1; }
+
+        /* ── Cards ── */
+        .card { border-radius: 12px; padding: 22px 24px; margin: 14px 0; transition: transform .2s, box-shadow .2s; }
+        .card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.08); }
+        .card-example { background: linear-gradient(135deg, #f0fdf4 0%, #f7fffe 100%); border: 1px solid #bbf7d0; border-left: 4px solid #10b981; }
+        .card-practice { background: linear-gradient(135deg, #faf5ff 0%, #f5f3ff 100%); border: 1px solid #ddd6fe; border-left: 4px solid #8b5cf6; }
+        
+        .badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 12px; font-size: 9pt; font-weight: 700; border-radius: 99px; color: #ffffff; margin-bottom: 12px; }
+        .badge-example { background: linear-gradient(90deg, #059669, #10b981); }
+        .badge-practice { background: linear-gradient(90deg, #7c3aed, #8b5cf6); }
+
+        .problem-text { font-weight: 500; margin-bottom: 12px; color: #1e293b; font-size: 10.5pt; line-height: 1.8; }
+        .solution-text { font-size: 10pt; color: #334155; padding: 14px 16px; border-left: 3px solid #cbd5e1; background: rgba(255,255,255,.6); border-radius: 0 8px 8px 0; line-height: 1.9; }
+
+        /* ── Toggle Answer Button ── */
+        .toggle-answer-btn { display: inline-flex; align-items: center; gap: 7px; margin-top: 10px; padding: 8px 18px; background: linear-gradient(90deg, #7c3aed, #8b5cf6); color: #fff; border: none; border-radius: 99px; font-size: 9.5pt; font-weight: 600; cursor: pointer; transition: all .2s; box-shadow: 0 2px 8px rgba(124,58,237,.25); }
+        .toggle-answer-btn:hover { background: linear-gradient(90deg, #6d28d9, #7c3aed); box-shadow: 0 4px 14px rgba(124,58,237,.35); transform: translateY(-1px); }
+        .toggle-answer-btn .btn-icon { transition: transform .3s; }
+        .toggle-answer-btn.open .btn-icon { transform: rotate(180deg); }
+        .answer-panel { display: none; margin-top: 12px; animation: slideDown .25s ease; }
+        .answer-panel.visible { display: block; }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* ── Quiz ── */
+        .quiz-box { background: linear-gradient(135deg, #fff7ed 0%, #fffbf0 100%); border: 1px solid #fed7aa; border-left: 5px solid #f97316; border-radius: 12px; padding: 22px 24px; margin: 18px 0; box-shadow: 0 2px 10px rgba(249,115,22,.07); }
+        .quiz-label { display: inline-flex; align-items: center; gap: 6px; font-size: 9pt; font-weight: 700; color: #ea580c; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 10px; }
+        .quiz-question { font-size: 10.5pt; font-weight: 600; color: #1e293b; margin-bottom: 14px; line-height: 1.7; }
+        .quiz-options { display: flex; flex-direction: column; gap: 8px; }
+        .quiz-option { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #fff; border: 1.5px solid #e2e8f0; border-radius: 9px; cursor: pointer; font-size: 10pt; transition: all .2s; user-select: none; }
+        .quiz-option:hover:not(.disabled) { border-color: #f97316; background: #fff7ed; }
+        .quiz-option.correct { border-color: #10b981; background: #f0fdf4; color: #065f46; font-weight: 600; }
+        .quiz-option.wrong { border-color: #ef4444; background: #fef2f2; color: #991b1b; }
+        .quiz-option.disabled { cursor: default; }
+        .option-radio { width: 18px; height: 18px; border: 2px solid #cbd5e1; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all .2s; }
+        .quiz-option.correct .option-radio { background: #10b981; border-color: #10b981; }
+        .quiz-option.wrong .option-radio { background: #ef4444; border-color: #ef4444; }
+        .quiz-feedback { margin-top: 12px; padding: 10px 14px; border-radius: 8px; font-size: 10pt; font-weight: 500; display: none; }
+        .quiz-feedback.correct { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+        .quiz-feedback.wrong { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+        .quiz-feedback.visible { display: block; animation: slideDown .25s ease; }
+
+        /* ── Divider & Footer ── */
+        .section-divider { height: 1px; background: linear-gradient(90deg, transparent, #cbd5e1, transparent); margin: 36px 0 0; }
+        .footer { text-align: center; margin-top: 48px; padding: 24px; border-top: 1px solid #e2e8f0; font-size: 9pt; color: #94a3b8; }
+
+        @media (max-width: 768px) { .page-wrapper { flex-direction: column; padding: 16px; } .toc { width: 100%; position: static; } }
+    </style>
+</head>
+<body>
+
+<button class="lang-toggle-btn" onclick="toggleLanguage()">
+    <span class="lang-zh">中 / <strong>EN</strong></span>
+    <span class="lang-en"><strong>中</strong> / EN</span>
+</button>
+
+<div class="page-wrapper">
+
+    <aside class="toc">
+        <h3>
+            <span class="lang-zh">📋 目錄</span>
+            <span class="lang-en">📋 Contents</span>
+        </h3>
+        <ul>
+            <li><a href="#sec1"><span class="toc-num">1</span>
+                <span class="lang-zh">分壓器</span>
+                <span class="lang-en">Potential divider</span>
+            </a></li>
+            <li><a href="#sec2"><span class="toc-num">2</span>
+                <span class="lang-zh">電阻器網絡</span>
+                <span class="lang-en">Resistor network</span>
+            </a></li>
+            <li><a href="#sec3"><span class="toc-num">3</span>
+                <span class="lang-zh">電源的內電阻</span>
+                <span class="lang-en">Internal resistance of power sources</span>
+            </a></li>
+        </ul>
+        <div class="progress-bar-wrap">
+            <div class="progress-bar-fill" id="progressFill"></div>
+        </div>
+        <p class="progress-label" id="progressLabel">
+            <span class="lang-zh">答對 0 / 3 題</span>
+            <span class="lang-en">0 / 3 correct</span>
+        </p>
+    </aside>
+
+    <div class="container">
+        <div class="header-banner">
+            <h1>
+                <span class="lang-zh">⚡ 物理公式全指南</span>
+                <span class="lang-en">⚡ Physics Formula Guide</span>
+            </h1>
+            <p>
+                <span class="lang-zh">實際電路｜專為物理複習與應試設計</span>
+                <span class="lang-en">Circuits in Practice | Designed for physics revision</span>
+            </p>
+            <div class="score-badge">
+                <span class="lang-zh" id="scoreBadgeZh">🎯 學習進度：0 / 3 題已答對</span>
+                <span class="lang-en" id="scoreBadgeEn">🎯 Progress: 0 / 3 correct</span>
+            </div>
+        </div>
+
+        <div class="section-heading" id="sec1">
+            <span class="section-num">1</span>
+            <h2>
+                <span class="lang-zh">分壓器</span>
+                <span class="lang-en">Potential divider</span>
+            </h2>
+        </div>
+
+        <div class="formula-box">
+            <div class="formula-main">
+                <div class="lang-zh">$$V_{out} = \left(\frac{R_1}{R_1 + R_2}\right) \varepsilon$$</div>
+                <div class="lang-en">$$V_{out} = \left(\frac{R_1}{R_1 + R_2}\right) \varepsilon$$</div>
+            </div>
+            <div class="formula-derived">
+                <div class="lang-zh"><strong>均勻電阻線變形公式：</strong> $$V_{out} = \left(\frac{l_1}{l_1 + l_2}\right) \varepsilon$$</div>
+                <div class="lang-en"><strong>Derived formula for uniform wire:</strong> $$V_{out} = \left(\frac{l_1}{l_1 + l_2}\right) \varepsilon$$</div>
+                <div class="lang-zh" style="margin-top: 8px;"><strong>定義：</strong> 兩個電阻器根據電阻比來「分配」電動勢。這種接駁方式稱為分壓器。</div>
+                <div class="lang-en" style="margin-top: 8px;"><strong>Definition:</strong> Two resistors 'divide' the e.m.f. according to the ratio of their resistance. This connection is called a potential divider.</div>
+            </div>
+        </div>
+
+        <div class="symbol-list">
+            <div class="symbol-list-title">
+                <span class="lang-zh">📐 變數與單位解釋 (含變形公式)</span>
+                <span class="lang-en">📐 Variables and Units (Including derived equations)</span>
+            </div>
+            <ul>
+                <li>
+                    <div class="sym-math">$V_{out}$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>輸出電壓</strong>，單位：<strong>伏特 ($\text{V}$)</strong></span>
+                        <span class="lang-en">: <strong>output voltage</strong>, unit: <strong>volt ($\text{V}$)</strong></span>
+                    </div>
+                </li>
+                <li>
+                    <div class="sym-math">$\varepsilon$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>電源的電動勢</strong>，單位：<strong>伏特 ($\text{V}$)</strong></span>
+                        <span class="lang-en">: <strong>e.m.f. of source</strong>, unit: <strong>volt ($\text{V}$)</strong></span>
+                    </div>
+                </li>
+                <li>
+                    <div class="sym-math">$R_1, R_2$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>電阻</strong>，單位：<strong>歐姆 ($\Omega$)</strong></span>
+                        <span class="lang-en">: <strong>resistance</strong>, unit: <strong>ohm ($\Omega$)</strong></span>
+                    </div>
+                </li>
+                <li>
+                    <div class="sym-math">$l_1, l_2$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>導線長度</strong>，單位：<strong>米 ($\text{m}$) 或 厘米 ($\text{cm}$)</strong></span>
+                        <span class="lang-en">: <strong>length of wire</strong>, unit: <strong>meter ($\text{m}$) or centimeter ($\text{cm}$)</strong></span>
+                    </div>
+                </li>
+            </ul>
+        </div>
+
+        <div class="card card-example">
+            <span class="badge badge-example">
+                <span class="lang-zh">✏️ 應用範例</span>
+                <span class="lang-en">✏️ Example</span>
+            </span>
+            <div class="problem-text">
+                <span class="lang-zh"><strong>題目：</strong>一條均勻電阻線 PQ 連接到 $1.5\ \text{V}$ 電池組。PQ 長 $30\ \text{cm}$。滑動觸頭 S 可沿 PQ 移動。開始時，PS 長 $20\ \text{cm}$。求 X 和 Y 之間的電壓 $V$。</span>
+                <span class="lang-en"><strong>Question:</strong> A uniform resistance wire PQ is connected to a $1.5\ \text{V}$ battery. It is $30\ \text{cm}$ long. S is a sliding contact which can move along PQ. Initially PS is $20\ \text{cm}$ long. Find the voltage $V$ across X and Y.</span>
+            </div>
+            <div class="solution-text">
+                <div class="lang-zh"><strong>題解：</strong></div>
+                <div class="lang-en"><strong>Solution:</strong></div>
+                $$V = \frac{SQ}{PQ} \times \varepsilon = \frac{30 - 20}{30} \times 1.5 = 0.5\ \text{V}$$
+            </div>
+        </div>
+
+        <div class="card card-practice">
+            <span class="badge badge-practice">
+                <span class="lang-zh">📝 隨堂練習</span>
+                <span class="lang-en">📝 Practice</span>
+            </span>
+            <div class="problem-text">
+                <span class="lang-zh"><strong>題目：</strong>均勻的電阻線 PQ 連接到 $6\ \text{V}$ 電池組。滑動觸頭 S 可沿 PQ 移動。如果 $PQ = 100\ \text{cm}$，而 $V_{out} = 3\ \text{V}$，求 $PS$ 的長度。</span>
+                <span class="lang-en"><strong>Question:</strong> A uniform resistance wire PQ is connected to a $6\ \text{V}$ battery. S is a sliding contact which can move along PQ. If $PQ = 100\ \text{cm}$ and $V_{out} = 3\ \text{V}$, find the length of $PS$.</span>
+            </div>
+            <button class="toggle-answer-btn" onclick="toggleAnswer(this)">
+                <span class="text-label">
+                    <span class="lang-zh">顯示答案</span>
+                    <span class="lang-en">Show Answer</span>
+                </span><span class="btn-icon">▼</span>
+            </button>
+            <div class="answer-panel">
+                <div class="solution-text">
+                    <div class="lang-zh"><strong>題解：</strong></div>
+                    <div class="lang-en"><strong>Solution:</strong></div>
+                    $$3 = \left(\frac{PS}{100}\right) \times 6 \implies PS = 50\ \text{cm}$$
+                </div>
+            </div>
+        </div>
+
+        <div class="quiz-box">
+            <div class="quiz-label">
+                <span class="lang-zh">🧠 概念測驗</span>
+                <span class="lang-en">🧠 Concept Quiz</span>
+            </div>
+            <div class="quiz-question">
+                <span class="lang-zh">燈泡和電阻線 PQ 連接到電池組。滑動觸頭 R 沿電阻線移動。當 R 移向 P 端，燈泡的亮度會怎樣改變？</span>
+                <span class="lang-en">A light bulb and a resistance wire PQ are connected to a battery. A sliding contact R is moved along the resistance wire. When R is moved towards end P, how does the brightness of the bulb change?</span>
+            </div>
+            <div class="quiz-options">
+                <div class="quiz-option" onclick="checkAnswer(this, false, 1)">
+                    <div class="option-radio"></div>
+                    <span class="lang-zh">變得較暗</span>
+                    <span class="lang-en">becomes dimmer</span>
+                </div>
+                <div class="quiz-option" onclick="checkAnswer(this, false, 1)">
+                    <div class="option-radio"></div>
+                    <span class="lang-zh">變得較光亮</span>
+                    <span class="lang-en">becomes brighter</span>
+                </div>
+                <div class="quiz-option" onclick="checkAnswer(this, false, 1)">
+                    <div class="option-radio"></div>
+                    <span class="lang-zh">當 R 到達 P 便會熄滅</span>
+                    <span class="lang-en">goes out when R reaches P</span>
+                </div>
+                <div class="quiz-option" onclick="checkAnswer(this, true,  1)">
+                    <div class="option-radio"></div>
+                    <span class="lang-zh">保持不變</span>
+                    <span class="lang-en">remains unchanged</span>
+                </div>
+            </div>
+            <div class="quiz-feedback" id="feedback-1">
+                <span class="lang-zh">✅ 正確！燈泡和 PR 並聯連接至電池組，燈泡的電勢差 = PR 的電勢差 = 電池的電動勢 = 常數。</span>
+                <span class="lang-en">✅ Correct! Since the bulb and PR are connected in parallel to the battery, p.d. across bulb = p.d. across PR = e.m.f. of battery = constant.</span>
+            </div>
+        </div>
+        <div class="section-divider"></div>
+
+        <div class="section-heading" id="sec2">
+            <span class="section-num">2</span>
+            <h2>
+                <span class="lang-zh">電阻器網絡</span>
+                <span class="lang-en">Resistor network</span>
+            </h2>
+        </div>
+
+        <div class="formula-box">
+            <div class="formula-main">
+                <div class="lang-zh">
+                    $$\text{串聯：} R_{eq} = R_1 + R_2 + ... + R_n$$
+                    $$\text{並聯：} \frac{1}{R_{eq}} = \frac{1}{R_1} + \frac{1}{R_2} + ... + \frac{1}{R_n}$$
+                </div>
+                <div class="lang-en">
+                    $$\text{In series: } R_{eq} = R_1 + R_2 + ... + R_n$$
+                    $$\text{In parallel: } \frac{1}{R_{eq}} = \frac{1}{R_1} + \frac{1}{R_2} + ... + \frac{1}{R_n}$$
+                </div>
+            </div>
+            <div class="formula-derived">
+                <div class="lang-zh">
+                    <strong>重畫複雜電路技巧：</strong><br>
+                    1. 導線可加長或縮短，如果兩個連結點以一條導線連接，則可合併為一個連結點。<br>
+                    2. 重新整理導線，把電阻器水平或垂直放置。連接點可沿導線移動至另一位置。
+                </div>
+                <div class="lang-en">
+                    <strong>Skill for redrawing complicated networks:</strong><br>
+                    1. Wires can be lengthened or shortened. Two junctions connected by a wire can be joined as one.<br>
+                    2. Rearrange the wires to place the resistors either horizontally or vertically. You can move a junction along a wire.
+                </div>
+            </div>
+        </div>
+
+        <div class="symbol-list">
+            <div class="symbol-list-title">
+                <span class="lang-zh">📐 變數與單位解釋 (含變形公式)</span>
+                <span class="lang-en">📐 Variables and Units (Including derived equations)</span>
+            </div>
+            <ul>
+                <li>
+                    <div class="sym-math">$R_{eq}$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>等效電阻</strong>，單位：<strong>歐姆 ($\Omega$)</strong></span>
+                        <span class="lang-en">: <strong>equivalent resistance</strong>, unit: <strong>ohm ($\Omega$)</strong></span>
+                    </div>
+                </li>
+                <li>
+                    <div class="sym-math">$R$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>個別電阻</strong>，單位：<strong>歐姆 ($\Omega$)</strong></span>
+                        <span class="lang-en">: <strong>individual resistance</strong>, unit: <strong>ohm ($\Omega$)</strong></span>
+                    </div>
+                </li>
+            </ul>
+        </div>
+
+        <div class="card card-example">
+            <span class="badge badge-example">
+                <span class="lang-zh">✏️ 應用範例</span>
+                <span class="lang-en">✏️ Example</span>
+            </span>
+            <div class="problem-text">
+                <span class="lang-zh"><strong>題目：</strong>可變電阻 $r$ 與四個相同的電阻器連接（等效為 $R_{eq}$）。當 $r = 24\ \Omega$，總等效電阻 $R_{XY}$ 是 $15\ \Omega$。當 $R_{XY}$ 是 $8\ \Omega$，$r$ 是多少？</span>
+                <span class="lang-en"><strong>Question:</strong> Variable resistor $r$ is connected with four identical resistors (equivalent to $R_{eq}$). When $r = 24\ \Omega$, the total equivalent resistance $R_{XY}$ is $15\ \Omega$. Find $r$ when $R_{XY}$ is $8\ \Omega$.</span>
+            </div>
+            <div class="solution-text">
+                <div class="lang-zh">
+                    <strong>題解：</strong><br>
+                    電阻器可用一個電阻為 $R_{eq}$ 的電阻器取代。<br>
+                    當 $r = 24\ \Omega$，
+                    $$\frac{1}{24} + \frac{1}{R_{eq}} = \frac{1}{15} \implies R_{eq} = 40\ \Omega$$
+                    當 $R_{XY} = 8\ \Omega$，
+                    $$\frac{1}{r} + \frac{1}{40} = \frac{1}{8} \implies r = 10\ \Omega$$
+                </div>
+                <div class="lang-en">
+                    <strong>Solution:</strong><br>
+                    Resistors can be replaced by a resistor of resistance $R_{eq}$.<br>
+                    When $r = 24\ \Omega$,
+                    $$\frac{1}{24} + \frac{1}{R_{eq}} = \frac{1}{15} \implies R_{eq} = 40\ \Omega$$
+                    When $R_{XY} = 8\ \Omega$,
+                    $$\frac{1}{r} + \frac{1}{40} = \frac{1}{8} \implies r = 10\ \Omega$$
+                </div>
+            </div>
+        </div>
+
+        <div class="card card-practice">
+            <span class="badge badge-practice">
+                <span class="lang-zh">📝 隨堂練習</span>
+                <span class="lang-en">📝 Practice</span>
+            </span>
+            <div class="problem-text">
+                <span class="lang-zh"><strong>題目：</strong>求 X 和 Y 兩端的等效電阻 $R_{eq}$。三個電阻器並聯，每個電阻器的電阻是 $3\ \Omega$。</span>
+                <span class="lang-en"><strong>Question:</strong> Find the equivalent resistance $R_{eq}$ across X and Y. Three resistors are connected in parallel, each has a resistance of $3\ \Omega$.</span>
+            </div>
+            <button class="toggle-answer-btn" onclick="toggleAnswer(this)">
+                <span class="text-label">
+                    <span class="lang-zh">顯示答案</span>
+                    <span class="lang-en">Show Answer</span>
+                </span><span class="btn-icon">▼</span>
+            </button>
+            <div class="answer-panel">
+                <div class="solution-text">
+                    <div class="lang-zh"><strong>題解：</strong></div>
+                    <div class="lang-en"><strong>Solution:</strong></div>
+                    $$\frac{1}{R_{eq}} = \frac{1}{3} + \frac{1}{3} + \frac{1}{3} = 1 \implies R_{eq} = 1\ \Omega$$
+                </div>
+            </div>
+        </div>
+
+        <div class="quiz-box">
+            <div class="quiz-label">
+                <span class="lang-zh">🧠 概念測驗</span>
+                <span class="lang-en">🧠 Concept Quiz</span>
+            </div>
+            <div class="quiz-question">
+                <span class="lang-zh">關於重畫複雜電阻器網絡的技巧，下列哪項是正確的？</span>
+                <span class="lang-en">Which of the following is correct about the skill of redrawing complicated resistor networks?</span>
+            </div>
+            <div class="quiz-options">
+                <div class="quiz-option" onclick="checkAnswer(this, false, 2)">
+                    <div class="option-radio"></div>
+                    <span class="lang-zh">導線不可以加長或縮短</span>
+                    <span class="lang-en">Wires cannot be lengthened or shortened</span>
+                </div>
+                <div class="quiz-option" onclick="checkAnswer(this, true,  2)">
+                    <div class="option-radio"></div>
+                    <span class="lang-zh">兩個連結點以一條導線連接，可合併為一個連結點</span>
+                    <span class="lang-en">Two junctions connected by a wire can be joined as one</span>
+                </div>
+                <div class="quiz-option" onclick="checkAnswer(this, false, 2)">
+                    <div class="option-radio"></div>
+                    <span class="lang-zh">連接點不能沿導線移動</span>
+                    <span class="lang-en">Junctions cannot be moved along a wire</span>
+                </div>
+                <div class="quiz-option" onclick="checkAnswer(this, false, 2)">
+                    <div class="option-radio"></div>
+                    <span class="lang-zh">重畫電路會改變等效電阻</span>
+                    <span class="lang-en">Redrawing the circuit changes the equivalent resistance</span>
+                </div>
+            </div>
+            <div class="quiz-feedback" id="feedback-2">
+                <span class="lang-zh">✅ 正確！導線可加長或縮短，兩個連結點以一條導線連接可合併為一個。</span>
+                <span class="lang-en">✅ Correct! Wires can be lengthened or shortened, and two junctions connected by a wire can be joined as one.</span>
+            </div>
+        </div>
+        <div class="section-divider"></div>
+
+        <div class="section-heading" id="sec3">
+            <span class="section-num">3</span>
+            <h2>
+                <span class="lang-zh">電源的內電阻</span>
+                <span class="lang-en">Internal resistance of power sources</span>
+            </h2>
+        </div>
+
+        <div class="formula-box">
+            <div class="formula-main">
+                <div class="lang-zh">$$\varepsilon = V + I r$$</div>
+                <div class="lang-en">$$\varepsilon = V + I r$$</div>
+            </div>
+            <div class="formula-derived">
+                <div class="lang-zh">
+                    <strong>變形公式：</strong><br>
+                    端電壓：$$V = \varepsilon - I r$$
+                </div>
+                <div class="lang-en">
+                    <strong>Derived formula:</strong><br>
+                    Terminal voltage: $$V = \varepsilon - I r$$
+                </div>
+            </div>
+        </div>
+
+        <div class="symbol-list">
+            <div class="symbol-list-title">
+                <span class="lang-zh">📐 變數與單位解釋 (含變形公式)</span>
+                <span class="lang-en">📐 Variables and Units (Including derived equations)</span>
+            </div>
+            <ul>
+                <li>
+                    <div class="sym-math">$\varepsilon$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>電池的電動勢</strong>，單位：<strong>伏特 ($\text{V}$)</strong></span>
+                        <span class="lang-en">: <strong>e.m.f. of battery</strong>, unit: <strong>volt ($\text{V}$)</strong></span>
+                    </div>
+                </li>
+                <li>
+                    <div class="sym-math">$V$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>端電壓（或伏特計讀數）</strong>，單位：<strong>伏特 ($\text{V}$)</strong></span>
+                        <span class="lang-en">: <strong>terminal voltage (or voltmeter reading)</strong>, unit: <strong>volt ($\text{V}$)</strong></span>
+                    </div>
+                </li>
+                <li>
+                    <div class="sym-math">$I$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>流過電池組的電流</strong>，單位：<strong>安培 ($\text{A}$)</strong></span>
+                        <span class="lang-en">: <strong>current through battery</strong>, unit: <strong>ampere ($\text{A}$)</strong></span>
+                    </div>
+                </li>
+                <li>
+                    <div class="sym-math">$r$</div>
+                    <div class="sym-desc">
+                        <span class="lang-zh">：<strong>電源的內電阻</strong>，單位：<strong>歐姆 ($\Omega$)</strong></span>
+                        <span class="lang-en">: <strong>internal resistance of source</strong>, unit: <strong>ohm ($\Omega$)</strong></span>
+                    </div>
+                </li>
+            </ul>
+        </div>
+
+        <div class="card card-example">
+            <span class="badge badge-example">
+                <span class="lang-zh">✏️ 應用範例</span>
+                <span class="lang-en">✏️ Example</span>
+            </span>
+            <div class="problem-text">
+                <span class="lang-zh"><strong>題目：</strong>奕希利用電路找出電動勢為 $\varepsilon$ 的電池組的內電阻 $r$。當 $I = 2\ \text{A}$ 時，$V = 2\ \text{V}$；當 $I = 0\ \text{A}$ 時，$V = 3\ \text{V}$。求 $\varepsilon$ 和 $r$。</span>
+                <span class="lang-en"><strong>Question:</strong> Willy uses a circuit to find the internal resistance $r$ of a battery of e.m.f. $\varepsilon$. When $I = 2\ \text{A}$, $V = 2\ \text{V}$; when $I = 0\ \text{A}$, $V = 3\ \text{V}$. Find $\varepsilon$ and $r$.</span>
+            </div>
+            <div class="solution-text">
+                <div class="lang-zh">
+                    <strong>題解：</strong><br>
+                    $$\varepsilon = V + I r \implies V = (-r)I + \varepsilon$$
+                    當 $I = 0\ \text{A}$ 時，$V = \varepsilon \implies \varepsilon = 3\ \text{V}$<br>
+                    代入 $V=2, I=2$：<br>
+                    $$2 = 3 - 2r \implies r = 0.5\ \Omega$$
+                </div>
+                <div class="lang-en">
+                    <strong>Solution:</strong><br>
+                    $$\varepsilon = V + I r \implies V = (-r)I + \varepsilon$$
+                    When $I = 0\ \text{A}$, $V = \varepsilon \implies \varepsilon = 3\ \text{V}$<br>
+                    Substitute $V=2, I=2$:<br>
+                    $$2 = 3 - 2r \implies r = 0.5\ \Omega$$
+                </div>
+            </div>
+        </div>
+
+        <div class="card card-practice">
+            <span class="badge badge-practice">
+                <span class="lang-zh">📝 隨堂練習</span>
+                <span class="lang-en">📝 Practice</span>
+            </span>
+            <div class="problem-text">
+                <span class="lang-zh"><strong>題目：</strong>電池組的電動勢 $\varepsilon$ 是 $3\ \text{V}$，內電阻 $r$ 是 $0.5\ \Omega$。它連接到一個 $4.5\ \Omega$ 的電阻器 $R$。求端電壓 $V$。</span>
+                <span class="lang-en"><strong>Question:</strong> A battery has an e.m.f. $\varepsilon$ of $3\ \text{V}$ and internal resistance $r$ of $0.5\ \Omega$. It is connected to a $4.5\ \Omega$ resistor $R$. Find the terminal voltage $V$.</span>
+            </div>
+            <button class="toggle-answer-btn" onclick="toggleAnswer(this)">
+                <span class="text-label">
+                    <span class="lang-zh">顯示答案</span>
+                    <span class="lang-en">Show Answer</span>
+                </span><span class="btn-icon">▼</span>
+            </button>
+            <div class="answer-panel">
+                <div class="solution-text">
+                    <div class="lang-zh"><strong>題解：</strong></div>
+                    <div class="lang-en"><strong>Solution:</strong></div>
+                    $$I = \frac{\varepsilon}{R + r} = \frac{3}{4.5 + 0.5} = 0.6\ \text{A}$$
+                    $$V = I R = 0.6 \times 4.5 = 2.7\ \text{V}$$
+                </div>
+            </div>
+        </div>
+
+        <div class="quiz-box">
+            <div class="quiz-label">
+                <span class="lang-zh">🧠 概念測驗</span>
+                <span class="lang-en">🧠 Concept Quiz</span>
+            </div>
+            <div class="quiz-question">
+                <span class="lang-zh">關於實際的安培計和伏特計，下列哪項敘述是正確的？</span>
+                <span class="lang-en">Which of the following statements about practical ammeters and voltmeters is correct?</span>
+            </div>
+            <div class="quiz-options">
+                <div class="quiz-option" onclick="checkAnswer(this, false, 3)">
+                    <div class="option-radio"></div>
+                    <span class="lang-zh">良好安培計的內電阻非常高</span>
+                    <span class="lang-en">A good ammeter has a very high internal resistance</span>
+                </div>
+                <div class="quiz-option" onclick="checkAnswer(this, false, 3)">
+                    <div class="option-radio"></div>
+                    <span class="lang-zh">良好伏特計的內電阻非常低</span>
+                    <span class="lang-en">A good voltmeter has a very low internal resistance</span>
+                </div>
+                <div class="quiz-option" onclick="checkAnswer(this, false, 3)">
+                    <div class="option-radio"></div>
+                    <span class="lang-zh">理想的伏特計電阻為零</span>
+                    <span class="lang-en">An ideal voltmeter has zero resistance</span>
+                </div>
+                <div class="quiz-option" onclick="checkAnswer(this, true,  3)">
+                    <div class="option-radio"></div>
+                    <span class="lang-zh">良好安培計的內電阻非常低，而良好伏特計的內電阻非常高</span>
+                    <span class="lang-en">A good ammeter has a very low internal resistance, and a good voltmeter has a very high internal resistance</span>
+                </div>
+            </div>
+            <div class="quiz-feedback" id="feedback-3">
+                <span class="lang-zh">✅ 正確！安培計串聯在電路中，內電阻要低；伏特計並聯在元件上，內電阻要高。</span>
+                <span class="lang-en">✅ Correct! An ammeter is connected in series, so its resistance must be low; a voltmeter is connected in parallel, so its resistance must be high.</span>
+            </div>
+        </div>
+        <div class="section-divider"></div>
+
+        <div class="footer">
+            <span class="lang-zh">© 2026 專業物理教學網 ｜ 實際電路複習全指南 ｜ 祝考試順利！</span>
+            <span class="lang-en">© 2026 Physics Formula Guide ｜ Circuits in Practice ｜ Good luck with your exams!</span>
+        </div>
+    </div></div><script>
+    // ── Language Toggle Logic ──
+    function toggleLanguage() {
+        document.body.classList.toggle('en-mode');
+        // Update dynamically set text for buttons that are open
+        document.querySelectorAll('.toggle-answer-btn').forEach(btn => {
+            const isOpen = btn.nextElementSibling.classList.contains('visible');
+            if(isOpen) {
+                btn.querySelector('.text-label').innerHTML = `<span class="lang-zh">隱藏答案</span><span class="lang-en">Hide Answer</span>`;
+            } else {
+                btn.querySelector('.text-label').innerHTML = `<span class="lang-zh">顯示答案</span><span class="lang-en">Show Answer</span>`;
+            }
+        });
+    }
+
+    // ── Score tracking ──
+    const totalQuizzes = 3;
+    const answered = {}; 
+    
+    function getScore() {
+        return Object.values(answered).filter(Boolean).length;
+    }
+    
+    function updateProgress() {
+        const score = getScore();
+        const pct = (score / totalQuizzes) * 100;
+        document.getElementById('progressFill').style.width = pct + '%';
+        
+        document.getElementById('progressLabel').innerHTML = `
+            <span class="lang-zh">答對 ${score} / ${totalQuizzes} 題</span>
+            <span class="lang-en">${score} / ${totalQuizzes} correct</span>
+        `;
+        
+        document.getElementById('scoreBadgeZh').textContent = `🎯 學習進度：${score} / ${totalQuizzes} 題已答對`;
+        document.getElementById('scoreBadgeEn').textContent = `🎯 Progress: ${score} / ${totalQuizzes} correct`;
+    }
+
+    // ── Toggle answer ──
+    function toggleAnswer(btn) {
+        const panel = btn.nextElementSibling;
+        const isOpen = panel.classList.contains('visible');
+        panel.classList.toggle('visible', !isOpen);
+        btn.classList.toggle('open', !isOpen);
+        
+        if(!isOpen) {
+            btn.querySelector('.text-label').innerHTML = `<span class="lang-zh">隱藏答案</span><span class="lang-en">Hide Answer</span>`;
+        } else {
+            btn.querySelector('.text-label').innerHTML = `<span class="lang-zh">顯示答案</span><span class="lang-en">Show Answer</span>`;
+        }
+    }
+
+    // ── Quiz checking ──
+    function checkAnswer(el, isCorrect, quizId) {
+        const feedback = document.getElementById('feedback-' + quizId);
+        if (feedback.classList.contains('visible')) return;
+
+        const options = el.closest('.quiz-options').querySelectorAll('.quiz-option');
+        options.forEach(opt => opt.classList.add('disabled'));
+        
+        if (isCorrect) {
+            el.classList.add('correct');
+            el.querySelector('.option-radio').innerHTML = '✓';
+            feedback.className = 'quiz-feedback correct visible';
+            answered[quizId] = true;
+        } else {
+            el.classList.add('wrong');
+            el.querySelector('.option-radio').innerHTML = '✗';
+            options.forEach(opt => {
+                if (opt.getAttribute('onclick') && opt.getAttribute('onclick').includes('true')) {
+                    opt.classList.add('correct');
+                    opt.querySelector('.option-radio').innerHTML = '✓';
+                }
+            });
+            feedback.className = 'quiz-feedback wrong visible';
+            answered[quizId] = false;
+        }
+        updateProgress();
+    }
+</script>
+
+</body>
+</html>

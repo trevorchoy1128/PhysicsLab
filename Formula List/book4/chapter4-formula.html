@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>物理公式全指南 — 家居電學 / Physics Formula Guide — Domestic Electricity</title>
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            options: { skipHtmlTags: ['script','noscript','style','textarea','pre'] }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+    <style>
+        /* ── Language Toggle Logic ── */
+        span.lang-zh { display: inline; }
+        div.lang-zh { display: block; }
+        span.lang-en { display: none; }
+        div.lang-en { display: none; }
+
+        body.en-mode span.lang-zh, body.en-mode div.lang-zh { display: none !important; }
+        body.en-mode span.lang-en { display: inline !important; }
+        body.en-mode div.lang-en { display: block !important; }
+
+        /* ── Toggle Button Style ── */
+        .lang-toggle-btn {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 1000;
+            background: linear-gradient(135deg, #1e3a8a, #2563eb);
+            color: #fff;
+            border: 2px solid #ffffff;
+            padding: 10px 20px;
+            border-radius: 99px;
+            font-size: 10.5pt;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(30, 58, 138, 0.3);
+            transition: all .2s;
+        }
+        .lang-toggle-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(30, 58, 138, 0.4);
+        }
+
+        /* ── Reset ── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        /* ── Base ── */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Microsoft JhengHei", sans-serif;
+            background: linear-gradient(135deg, #e8f0fe 0%, #f0f4ff 50%, #faf5ff 100%);
+            color: #1e293b;
+            line-height: 1.7;
+            min-height: 100vh;
+        }
+
+        /* ── Layout ── */
+        .page-wrapper { display: flex; max-width: 1100px; margin: 0 auto; padding: 40px 20px; gap: 28px; align-items: flex-start; }
+
+        /* ── Sticky TOC Sidebar ── */
+        .toc {
+            width: 250px; flex-shrink: 0; position: sticky; top: 24px; background: #ffffff;
+            border-radius: 14px; box-shadow: 0 4px 20px rgba(30, 58, 138, 0.08); padding: 20px 16px; border: 1px solid #dbeafe;
+        }
+        .toc h3 { font-size: 11pt; font-weight: 700; color: #1e3a8a; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 2px solid #dbeafe; }
+        .toc ul { list-style: none; }
+        .toc li { margin-bottom: 6px; }
+        .toc a { display: flex; align-items: center; gap: 7px; font-size: 9.5pt; color: #475569; text-decoration: none; padding: 5px 8px; border-radius: 7px; transition: all .2s; }
+        .toc a:hover { background: #eff6ff; color: #1d4ed8; }
+        .toc-num { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; background: #dbeafe; color: #1e40af; border-radius: 50%; font-size: 8pt; font-weight: 700; flex-shrink: 0; }
+
+        /* ── Progress Bar ── */
+        .progress-bar-wrap { background: #e2e8f0; border-radius: 99px; height: 6px; margin-top: 16px; overflow: hidden; }
+        .progress-bar-fill { height: 100%; background: linear-gradient(90deg, #3b82f6, #6366f1); border-radius: 99px; transition: width .5s ease; width: 0%; }
+        .progress-label { font-size: 8.5pt; color: #64748b; margin-top: 6px; text-align: center; }
+
+        /* ── Main Content ── */
+        .container { flex: 1; min-width: 0; }
+
+        /* ── Header Banner ── */
+        .header-banner { background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 60%, #7c3aed 100%); color: #ffffff; padding: 36px 32px; border-radius: 16px; margin-bottom: 36px; text-align: center; box-shadow: 0 8px 32px rgba(37, 99, 235, 0.3); position: relative; overflow: hidden; }
+        .header-banner::before { content: ''; position: absolute; top: -40px; right: -40px; width: 200px; height: 200px; background: rgba(255,255,255,.06); border-radius: 50%; }
+        .header-banner::after { content: ''; position: absolute; bottom: -60px; left: -30px; width: 250px; height: 250px; background: rgba(255,255,255,.04); border-radius: 50%; }
+        .header-banner h1 { font-size: 24pt; font-weight: 800; letter-spacing: 1px; position: relative; z-index: 1; }
+        .header-banner p { margin: 10px 0 0; font-size: 11pt; opacity: .85; position: relative; z-index: 1; }
+        .score-badge { display: inline-flex; align-items: center; gap: 6px; margin-top: 16px; background: rgba(255,255,255,.2); backdrop-filter: blur(4px); color: #fff; padding: 6px 16px; border-radius: 99px; font-size: 10pt; font-weight: 600; border: 1px solid rgba(255,255,255,.3); position: relative; z-index: 1; }
+
+        /* ── Section Heading ── */
+        .section-heading { display: flex; align-items: center; gap: 12px; margin: 44px 0 20px; }
+        .section-num { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: linear-gradient(135deg, #1e3a8a, #3b82f6); color: #fff; border-radius: 10px; font-size: 14pt; font-weight: 800; flex-shrink: 0; box-shadow: 0 4px 12px rgba(37,99,235,.3); }
+        .section-heading h2 { color: #1e3a8a; font-size: 15pt; font-weight: 700; }
+
+        /* ── Formula Box ── */
+        .formula-box { background: linear-gradient(135deg, #eff6ff 0%, #f5f3ff 100%); border: 1px solid #bfdbfe; border-left: 5px solid #3b82f6; border-radius: 12px; padding: 24px 28px; margin: 4px 0 16px; box-shadow: 0 2px 12px rgba(59,130,246,.08); transition: box-shadow .25s; }
+        .formula-box:hover { box-shadow: 0 6px 24px rgba(59,130,246,.15); }
+        .formula-main { font-size: 17pt; font-weight: bold; color: #1d4ed8; text-align: center; margin-bottom: 12px; }
+        .formula-derived { font-size: 10.5pt; color: #475569; text-align: center; border-top: 1px dashed #c7d2fe; padding-top: 10px; margin-top: 10px; }
+
+        /* ── Symbol List ── */
+        .symbol-list { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 18px; margin: 0 0 16px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); }
+        .symbol-list-title { font-size: 9.5pt; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .07em; margin-bottom: 10px; border-bottom: 2px solid #e2e8f0; padding-bottom: 6px; }
+        .symbol-list ul { list-style: none; }
+        .symbol-list li { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-size: 10pt; }
+        .symbol-list li:last-child { border-bottom: none; }
+        .sym-math { min-width: 50px; display: inline-flex; justify-content: center; font-size: 11pt; }
+        .sym-desc { flex: 1; }
+
+        /* ── Cards ── */
+        .card { border-radius: 12px; padding: 22px 24px; margin: 14px 0; transition: transform .2s, box-shadow .2s; }
+        .card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.08); }
+        .card-example { background: linear-gradient(135deg, #f0fdf4 0%, #f7fffe 100%); border: 1px solid #bbf7d0; border-left: 4px solid #10b981; }
+        .card-practice { background: linear-gradient(135deg, #faf5ff 0%, #f5f3ff 100%); border: 1px solid #ddd6fe; border-left: 4px solid #8b5cf6; }
+        
+        .badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 12px; font-size: 9pt; font-weight: 700; border-radius: 99px; color: #ffffff; margin-bottom: 12px; }
+        .badge-example { background: linear-gradient(90deg, #059669, #10b981); }
+        .badge-practice { background: linear-gradient(90deg, #7c3aed, #8b5cf6); }
+
+        .problem-text { font-weight: 500; margin-bottom: 12px; color: #1e293b; font-size: 10.5pt; line-height: 1.8; }
+        .solution-text { font-size: 10pt; color: #334155; padding: 14px 16px; border-left: 3px solid #cbd5e1; background: rgba(255,255,255,.6); border-radius: 0 8px 8px 0; line-height: 1.9; }
+
+        /* ── Toggle Answer Button ── */
+        .toggle-answer-btn { display: inline-flex; align-items: center; gap: 7px; margin-top: 10px; padding: 8px 18px; background: linear-gradient(90deg, #7c3aed, #8b5cf6); color: #fff; border: none; border-radius: 99px; font-size: 9.5pt; font-weight: 600; cursor: pointer; transition: all .2s; box-shadow: 0 2px 8px rgba(124,58,237,.25); }
+        .toggle-answer-btn:hover { background: linear-gradient(90deg, #6d28d9, #7c3aed); box-shadow: 0 4px 14px rgba(124,58,237,.35); transform: translateY(-1px); }
+        .toggle-answer-btn .btn-icon { transition: transform .3s; }
+        .toggle-answer-btn.open .btn-icon { transform: rotate(180deg); }
+        .answer-panel { display: none; margin-top: 12px; animation: slideDown .25s ease; }
+        .answer-panel.visible { display: block; }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* ── Quiz ── */
+        .quiz-box { background: linear-gradient(135deg, #fff7ed 0%, #fffbf0 100%); border: 1px solid #fed7aa; border-left: 5px solid #f97316; border-radius: 12px; padding: 22px 24px; margin: 18px 0; box-shadow: 0 2px 10px rgba(249,115,22,.07); }
+        .quiz-label { display: inline-flex; align-items: center; gap: 6px; font-size: 9.5pt; font-weight: 700; color: #c2410c; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 12px; }
+        .quiz-question { font-size: 11pt; font-weight: 600; color: #431407; margin-bottom: 16px; }
+        .quiz-options { display: grid; grid-template-columns: 1fr; gap: 10px; }
+        .quiz-option { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #ffffff; border: 1px solid #fdba74; border-radius: 8px; cursor: pointer; font-size: 10pt; transition: all .2s; }
+        .quiz-option:hover:not(.disabled) { background: #ffedd5; border-color: #f97316; }
+        .quiz-option.correct { background: #dcfce7; border-color: #22c55e; color: #14532d; font-weight: 600; }
+        .quiz-option.wrong { background: #fee2e2; border-color: #ef4444; color: #7f1d1d; }
+        .quiz-option.disabled { cursor: default; pointer-events: none; opacity: 0.8; }
+        .option-radio { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border: 2px solid #fdba74; border-radius: 50%; font-size: 9pt; font-weight: bold; background: #fff; transition: all .2s; }
+        .quiz-option.correct .option-radio { background: #22c55e; border-color: #22c55e; color: #fff; }
+        .quiz-option.wrong .option-radio { background: #ef4444; border-color: #ef4444; color: #fff; }
+        .quiz-feedback { margin-top: 14px; padding: 12px 16px; border-radius: 8px; font-size: 9.5pt; font-weight: 500; display: none; animation: slideDown .25s ease; }
+        .quiz-feedback.visible { display: block; }
+        .quiz-feedback.correct { background: #dcfce7; color: #14532d; border-left: 4px solid #22c55e; }
+        .quiz-feedback.wrong { background: #fee2e2; color: #7f1d1d; border-left: 4px solid #ef4444; }
+    </style>
+</head>
+<body>
+
+    <button class="lang-toggle-btn" onclick="toggleLanguage()">
+        <span class="lang-zh">ENG</span>
+        <span class="lang-en">中文</span>
+    </button>
+
+    <div class="page-wrapper">
+        <aside class="toc">
+            <h3><span class="lang-zh">章節導覽</span><span class="lang-en">Contents</span></h3>
+            <ul>
+                <li><a href="#section-1"><span class="toc-num">1</span> <span class="lang-zh">功率與市電電壓</span><span class="lang-en">Power and Mains Voltage</span></a></li>
+                <li><a href="#section-2"><span class="toc-num">2</span> <span class="lang-zh">電能消耗</span><span class="lang-en">Energy Consumption</span></a></li>
+                <li><a href="#section-3"><span class="toc-num">3</span> <span class="lang-zh">交流電</span><span class="lang-en">Alternating Current</span></a></li>
+            </ul>
+            <div class="progress-bar-wrap">
+                <div class="progress-bar-fill" id="progress-fill"></div>
+            </div>
+            <div class="progress-label score-text">
+                <span class="lang-zh">答對 0 / 3 題</span><span class="lang-en">Correct: 0 / 3</span>
+            </div>
+        </aside>
+
+        <main class="container">
+            <header class="header-banner">
+                <h1><span class="lang-zh">家居電學</span><span class="lang-en">Domestic Electricity</span></h1>
+                <p><span class="lang-zh">家用電器的功率和能量消耗 ｜ 交流電</span><span class="lang-en">Power and energy consumption ｜ Alternating current</span></p>
+                <div class="score-badge score-text">
+                    <span class="lang-zh">答對 0 / 3 題</span><span class="lang-en">Correct: 0 / 3</span>
+                </div>
+            </header>
+
+            <section id="section-1">
+                <div class="section-heading">
+                    <span class="section-num">1</span>
+                    <h2><span class="lang-zh">功率與市電電壓</span><span class="lang-en">Power and Mains Voltage</span></h2>
+                </div>
+
+                <div class="formula-box">
+                    <div class="formula-main">
+                        $$P = \frac{V^2}{R}$$
+                    </div>
+                    <div class="formula-derived">
+                        $$R = \frac{V^2}{P}$$
+                    </div>
+                </div>
+
+                <div class="symbol-list">
+                    <div class="symbol-list-title"><span class="lang-zh">變數與單位</span><span class="lang-en">Symbol List</span></div>
+                    <ul>
+                        <li><span class="sym-math">$P$</span><span class="sym-desc"><span class="lang-zh">功率 (單位：$\text{W}$)</span><span class="lang-en">Power (Unit: $\text{W}$)</span></span></li>
+                        <li><span class="sym-math">$V$</span><span class="sym-desc"><span class="lang-zh">電壓 (單位：$\text{V}$)</span><span class="lang-en">Voltage (Unit: $\text{V}$)</span></span></li>
+                        <li><span class="sym-math">$R$</span><span class="sym-desc"><span class="lang-zh">電阻 (單位：$\Omega$)</span><span class="lang-en">Resistance (Unit: $\Omega$)</span></span></li>
+                    </ul>
+                </div>
+
+                <div class="card card-example">
+                    <div class="badge badge-example">
+                        <span class="lang-zh">📌 應用範例</span><span class="lang-en">📌 Example</span>
+                    </div>
+                    <div class="problem-text">
+                        <span class="lang-zh">
+                            電熨斗的額定值是「$220\ \text{V}, 1800\ \text{W}$」。<br>
+                            (a) 求電熨斗的電阻。<br>
+                            (b) 電熨斗在美國使用，美國的市電電壓為 $120\ \text{V}$。求電熨斗消耗的功率。
+                        </span>
+                        <span class="lang-en">
+                            An electric iron is rated at '$220\ \text{V}, 1800\ \text{W}$'.<br>
+                            (a) Find the resistance of the iron.<br>
+                            (b) The iron is used in the USA where the mains voltage is $120\ \text{V}$. Find the power consumed by the iron.
+                        </span>
+                    </div>
+                    <div class="solution-text">
+                        <span class="lang-zh">
+                            (a) $R = \frac{V^2}{P} = \frac{220^2}{1800} = 26.9\ \Omega$<br>
+                            (b) $P = \frac{V^2}{R} = \frac{120^2}{26.9} = 535\ \text{W}$
+                        </span>
+                        <span class="lang-en">
+                            (a) $R = \frac{V^2}{P} = \frac{220^2}{1800} = 26.9\ \Omega$<br>
+                            (b) $P = \frac{V^2}{R} = \frac{120^2}{26.9} = 535\ \text{W}$
+                        </span>
+                    </div>
+                </div>
+
+                <div class="card card-practice">
+                    <div class="badge badge-practice">
+                        <span class="lang-zh">✍️ 隨堂練習</span><span class="lang-en">✍️ Practice</span>
+                    </div>
+                    <div class="problem-text">
+                        <span class="lang-zh">
+                            電水煲的額定值是「$220\ \text{V}, 1500\ \text{W}$」，連接到 $110\ \text{V}$ 的市電時，需要 $6$ 分鐘才能煮沸一定分量的水。<br>
+                            (a) 求電水煲的電阻。
+                        </span>
+                        <span class="lang-en">
+                            An electric kettle rated '$220\ \text{V}, 1500\ \text{W}$' takes $6$ minutes to boil a certain amount of water when connected to a $110\ \text{V}$ mains supply.<br>
+                            (a) Find its resistance.
+                        </span>
+                    </div>
+                    <button class="toggle-answer-btn" onclick="toggleAnswer(this)">
+                        <span class="btn-icon">▼</span>
+                        <span class="text-label"><span class="lang-zh">顯示答案</span><span class="lang-en">Show Answer</span></span>
+                    </button>
+                    <div class="answer-panel solution-text">
+                        <span class="lang-zh">
+                            (a) $R = \frac{V^2}{P} = \frac{220^2}{1500} = 32.3\ \Omega$
+                        </span>
+                        <span class="lang-en">
+                            (a) $R = \frac{V^2}{P} = \frac{220^2}{1500} = 32.3\ \Omega$
+                        </span>
+                    </div>
+                </div>
+
+                <div class="quiz-box">
+                    <div class="quiz-label"><span class="lang-zh">🎯 概念測驗</span><span class="lang-en">🎯 Quiz</span></div>
+                    <div class="quiz-question">
+                        <span class="lang-zh">焗爐的額定功率大約是多少？</span>
+                        <span class="lang-en">An oven has a rated power close to...</span>
+                    </div>
+                    <div class="quiz-options">
+                        <div class="quiz-option" onclick="checkAnswer(this, false, 1)">
+                            <span class="option-radio">A</span>
+                            <span>$10\ \text{W}$</span>
+                        </div>
+                        <div class="quiz-option" onclick="checkAnswer(this, false, 1)">
+                            <span class="option-radio">B</span>
+                            <span>$100\ \text{W}$</span>
+                        </div>
+                        <div class="quiz-option" onclick="checkAnswer(this, true, 1)">
+                            <span class="option-radio">C</span>
+                            <span>$1000\ \text{W}$</span>
+                        </div>
+                        <div class="quiz-option" onclick="checkAnswer(this, false, 1)">
+                            <span class="option-radio">D</span>
+                            <span>$10000\ \text{W}$</span>
+                        </div>
+                    </div>
+                    <div id="feedback-1" class="quiz-feedback">
+                        <span class="lang-zh">答對了！一般焗爐的額定功率大約為 $1200\ \text{W}$，最接近 $1000\ \text{W}$。</span>
+                        <span class="lang-en">Correct! The typical rated power of an oven is about $1200\ \text{W}$, which is close to $1000\ \text{W}$.</span>
+                    </div>
+                </div>
+            </section>
+
+            <section id="section-2">
+                <div class="section-heading">
+                    <span class="section-num">2</span>
+                    <h2><span class="lang-zh">電能消耗</span><span class="lang-en">Energy Consumption</span></h2>
+                </div>
+
+                <div class="formula-box">
+                    <div class="formula-main">
+                        $$E = Pt$$
+                    </div>
+                </div>
+
+                <div class="symbol-list">
+                    <div class="symbol-list-title"><span class="lang-zh">變數與單位</span><span class="lang-en">Symbol List</span></div>
+                    <ul>
+                        <li><span class="sym-math">$E$</span><span class="sym-desc"><span class="lang-zh">電能 (單位：$\text{J}$ 或 $\text{kW h}$)</span><span class="lang-en">Electrical energy (Unit: $\text{J}$ or $\text{kW h}$)</span></span></li>
+                        <li><span class="sym-math">$P$</span><span class="sym-desc"><span class="lang-zh">功率 (單位：$\text{W}$ 或 $\text{kW}$)</span><span class="lang-en">Power (Unit: $\text{W}$ or $\text{kW}$)</span></span></li>
+                        <li><span class="sym-math">$t$</span><span class="sym-desc"><span class="lang-zh">時間 (單位：$\text{s}$ 或 $\text{h}$)</span><span class="lang-en">Time (Unit: $\text{s}$ or $\text{h}$)</span></span></li>
+                    </ul>
+                </div>
+
+                <div class="card card-example">
+                    <div class="badge badge-example">
+                        <span class="lang-zh">📌 應用範例</span><span class="lang-en">📌 Example</span>
+                    </div>
+                    <div class="problem-text">
+                        <span class="lang-zh">
+                            電暖爐消耗 $2\ \text{kW}$ 的功率，並開着了 $45$ 分鐘。<br>
+                            求消耗的電能，答案以 $\text{kW h}$ 為單位。
+                        </span>
+                        <span class="lang-en">
+                            An electric heater consumes a power of $2\ \text{kW}$ and is switched on for $45$ minutes.<br>
+                            Find the electrical energy consumed in $\text{kW h}$.
+                        </span>
+                    </div>
+                    <div class="solution-text">
+                        <span class="lang-zh">
+                            $E = Pt = (2\ \text{kW}) \times \left(\frac{45}{60}\ \text{h}\right) = 1.5\ \text{kW h}$
+                        </span>
+                        <span class="lang-en">
+                            $E = Pt = (2\ \text{kW}) \times \left(\frac{45}{60}\ \text{h}\right) = 1.5\ \text{kW h}$
+                        </span>
+                    </div>
+                </div>
+
+                <div class="card card-practice">
+                    <div class="badge badge-practice">
+                        <span class="lang-zh">✍️ 隨堂練習</span><span class="lang-en">✍️ Practice</span>
+                    </div>
+                    <div class="problem-text">
+                        <span class="lang-zh">
+                            電視機消耗的功率為 $100\ \text{W}$。求電視機開着 $500$ 小時消耗的電能（以 $\text{kW h}$ 為單位）。
+                        </span>
+                        <span class="lang-en">
+                            The power consumed by a TV is $100\ \text{W}$. Find the electrical energy consumed (in $\text{kW h}$) for operating the TV for $500$ hours.
+                        </span>
+                    </div>
+                    <button class="toggle-answer-btn" onclick="toggleAnswer(this)">
+                        <span class="btn-icon">▼</span>
+                        <span class="text-label"><span class="lang-zh">顯示答案</span><span class="lang-en">Show Answer</span></span>
+                    </button>
+                    <div class="answer-panel solution-text">
+                        <span class="lang-zh">
+                            $E = Pt = (0.1\ \text{kW}) \times (500\ \text{h}) = 50\ \text{kW h}$
+                        </span>
+                        <span class="lang-en">
+                            $E = Pt = (0.1\ \text{kW}) \times (500\ \text{h}) = 50\ \text{kW h}$
+                        </span>
+                    </div>
+                </div>
+
+                <div class="quiz-box">
+                    <div class="quiz-label"><span class="lang-zh">🎯 概念測驗</span><span class="lang-en">🎯 Quiz</span></div>
+                    <div class="quiz-question">
+                        <span class="lang-zh">下列哪個單位與其他單位不同？</span>
+                        <span class="lang-en">Which unit is different from the others?</span>
+                    </div>
+                    <div class="quiz-options">
+                        <div class="quiz-option" onclick="checkAnswer(this, false, 2)">
+                            <span class="option-radio">A</span>
+                            <span>$\text{J}$</span>
+                        </div>
+                        <div class="quiz-option" onclick="checkAnswer(this, false, 2)">
+                            <span class="option-radio">B</span>
+                            <span>$\text{kW h}$</span>
+                        </div>
+                        <div class="quiz-option" onclick="checkAnswer(this, true, 2)">
+                            <span class="option-radio">C</span>
+                            <span>$\text{W}$</span>
+                        </div>
+                        <div class="quiz-option" onclick="checkAnswer(this, false, 2)">
+                            <span class="option-radio">D</span>
+                            <span>$\text{W s}$</span>
+                        </div>
+                    </div>
+                    <div id="feedback-2" class="quiz-feedback">
+                        <span class="lang-zh">答對了！$\text{W}$ 是功率的單位，而 $\text{J}$, $\text{kW h}$ 和 $\text{W s}$ 都是能量的單位。</span>
+                        <span class="lang-en">Correct! $\text{W}$ is a unit of power, while $\text{J}$, $\text{kW h}$ and $\text{W s}$ are units of energy.</span>
+                    </div>
+                </div>
+            </section>
+
+            <section id="section-3">
+                <div class="section-heading">
+                    <span class="section-num">3</span>
+                    <h2><span class="lang-zh">交流電</span><span class="lang-en">Alternating Current</span></h2>
+                </div>
+
+                <div class="formula-box">
+                    <div class="formula-main">
+                        $$V_{rms} = \frac{V_p}{\sqrt{2}}$$
+                    </div>
+                    <div class="formula-derived">
+                        $$I_{rms} = \frac{I_p}{\sqrt{2}} \quad , \quad \overline{P} = V_{rms} I_{rms} = \frac{V_{rms}^2}{R}$$
+                    </div>
+                </div>
+
+                <div class="symbol-list">
+                    <div class="symbol-list-title"><span class="lang-zh">變數與單位</span><span class="lang-en">Symbol List</span></div>
+                    <ul>
+                        <li><span class="sym-math">$V_{rms}$</span><span class="sym-desc"><span class="lang-zh">方均根電壓 (單位：$\text{V}$)</span><span class="lang-en">R.m.s. voltage (Unit: $\text{V}$)</span></span></li>
+                        <li><span class="sym-math">$V_p$</span><span class="sym-desc"><span class="lang-zh">峯值電壓 (單位：$\text{V}$)</span><span class="lang-en">Peak voltage (Unit: $\text{V}$)</span></span></li>
+                        <li><span class="sym-math">$I_{rms}$</span><span class="sym-desc"><span class="lang-zh">方均根電流 (單位：$\text{A}$)</span><span class="lang-en">R.m.s. current (Unit: $\text{A}$)</span></span></li>
+                        <li><span class="sym-math">$I_p$</span><span class="sym-desc"><span class="lang-zh">峯值電流 (單位：$\text{A}$)</span><span class="lang-en">Peak current (Unit: $\text{A}$)</span></span></li>
+                        <li><span class="sym-math">$\overline{P}$</span><span class="sym-desc"><span class="lang-zh">平均功率 (單位：$\text{W}$)</span><span class="lang-en">Average power (Unit: $\text{W}$)</span></span></li>
+                    </ul>
+                </div>
+
+                <div class="card card-example">
+                    <div class="badge badge-example">
+                        <span class="lang-zh">📌 應用範例</span><span class="lang-en">📌 Example</span>
+                    </div>
+                    <div class="problem-text">
+                        <span class="lang-zh">
+                            焗爐的額定值是「$220\ \text{V}, 1500\ \text{W}$」，連接到電壓方均根值為 $220\ \text{V}$，頻率為 $50\ \text{Hz}$ 的市電。<br>
+                            求流過焗爐的最大瞬時電流（即峯值電流）$I_p$。
+                        </span>
+                        <span class="lang-en">
+                            An oven is rated at '$220\ \text{V}, 1500\ \text{W}$'. It is connected to the mains which has a r.m.s. voltage of $220\ \text{V}$ and a frequency of $50\ \text{Hz}$.<br>
+                            Find the maximum instantaneous current (i.e. peak current) $I_p$ through the oven.
+                        </span>
+                    </div>
+                    <div class="solution-text">
+                        <span class="lang-zh">
+                            $I_{rms} = \frac{\overline{P}}{V_{rms}} = \frac{1500}{220} = 6.82\ \text{A}$<br>
+                            $I_p = \sqrt{2} I_{rms} = \sqrt{2} \times 6.82 = 9.64\ \text{A}$
+                        </span>
+                        <span class="lang-en">
+                            $I_{rms} = \frac{\overline{P}}{V_{rms}} = \frac{1500}{220} = 6.82\ \text{A}$<br>
+                            $I_p = \sqrt{2} I_{rms} = \sqrt{2} \times 6.82 = 9.64\ \text{A}$
+                        </span>
+                    </div>
+                </div>
+
+                <div class="card card-practice">
+                    <div class="badge badge-practice">
+                        <span class="lang-zh">✍️ 隨堂練習</span><span class="lang-en">✍️ Practice</span>
+                    </div>
+                    <div class="problem-text">
+                        <span class="lang-zh">
+                            考慮一盞連接到正弦交流電源的電燈，峯值電流是 $I_p$。若 $I_p = 15\ \text{A}$，求 $I_{rms}$。
+                        </span>
+                        <span class="lang-en">
+                            Consider a lamp connected to a sinusoidal a.c. power supply. The peak current is $I_p$. If $I_p = 15\ \text{A}$, find $I_{rms}$.
+                        </span>
+                    </div>
+                    <button class="toggle-answer-btn" onclick="toggleAnswer(this)">
+                        <span class="btn-icon">▼</span>
+                        <span class="text-label"><span class="lang-zh">顯示答案</span><span class="lang-en">Show Answer</span></span>
+                    </button>
+                    <div class="answer-panel solution-text">
+                        <span class="lang-zh">
+                            $I_{rms} = \frac{I_p}{\sqrt{2}} = \frac{15}{\sqrt{2}} = 10.6\ \text{A}$
+                        </span>
+                        <span class="lang-en">
+                            $I_{rms} = \frac{I_p}{\sqrt{2}} = \frac{15}{\sqrt{2}} = 10.6\ \text{A}$
+                        </span>
+                    </div>
+                </div>
+
+                <div class="quiz-box">
+                    <div class="quiz-label"><span class="lang-zh">🎯 概念測驗</span><span class="lang-en">🎯 Quiz</span></div>
+                    <div class="quiz-question">
+                        <span class="lang-zh">某燈泡的額定值是「$220\ \text{V}, 100\ \text{W}$」。如果燈泡接駁到峯值電壓為 $220\ \text{V}$ 的正弦交流電源，燈泡消耗的平均功率是多少？</span>
+                        <span class="lang-en">A '$220\ \text{V}, 100\ \text{W}$' light bulb is connected to a power supply providing sinusoidal a.c. with a peak voltage equal to $220\ \text{V}$. What is the average power consumed by the bulb?</span>
+                    </div>
+                    <div class="quiz-options">
+                        <div class="quiz-option" onclick="checkAnswer(this, true, 3)">
+                            <span class="option-radio">A</span>
+                            <span>$50\ \text{W}$</span>
+                        </div>
+                        <div class="quiz-option" onclick="checkAnswer(this, false, 3)">
+                            <span class="option-radio">B</span>
+                            <span>$70.7\ \text{W}$</span>
+                        </div>
+                        <div class="quiz-option" onclick="checkAnswer(this, false, 3)">
+                            <span class="option-radio">C</span>
+                            <span>$100\ \text{W}$</span>
+                        </div>
+                        <div class="quiz-option" onclick="checkAnswer(this, false, 3)">
+                            <span class="option-radio">D</span>
+                            <span>$141\ \text{W}$</span>
+                        </div>
+                    </div>
+                    <div id="feedback-3" class="quiz-feedback">
+                        <span class="lang-zh">答對了！方均根電壓 $V_{rms} = \frac{220}{\sqrt{2}}\ \text{V}$，平均功率 $\overline{P} = \frac{V_{rms}^2}{R} = 50\ \text{W}$。</span>
+                        <span class="lang-en">Correct! The r.m.s. voltage $V_{rms} = \frac{220}{\sqrt{2}}\ \text{V}$, so the average power $\overline{P} = \frac{V_{rms}^2}{R} = 50\ \text{W}$.</span>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <script>
+        let totalQuizzes = 3;
+        let answered = {};
+
+        function toggleLanguage() {
+            document.body.classList.toggle('en-mode');
+        }
+
+        function toggleAnswer(btn) {
+            const panel = btn.nextElementSibling;
+            btn.classList.toggle('open');
+            panel.classList.toggle('visible');
+            
+            if (panel.classList.contains('visible')) {
+                btn.querySelector('.text-label').innerHTML = `<span class="lang-zh">隱藏答案</span><span class="lang-en">Hide Answer</span>`;
+            } else {
+                btn.querySelector('.text-label').innerHTML = `<span class="lang-zh">顯示答案</span><span class="lang-en">Show Answer</span>`;
+            }
+        }
+
+        function checkAnswer(el, isCorrect, quizId) {
+            const feedback = document.getElementById('feedback-' + quizId);
+            if (feedback.classList.contains('visible')) return;
+
+            const options = el.closest('.quiz-options').querySelectorAll('.quiz-option');
+            options.forEach(opt => opt.classList.add('disabled'));
+            
+            if (isCorrect) {
+                el.classList.add('correct');
+                el.querySelector('.option-radio').innerHTML = '✓';
+                feedback.className = 'quiz-feedback correct visible';
+                answered[quizId] = true;
+            } else {
+                el.classList.add('wrong');
+                el.querySelector('.option-radio').innerHTML = '✗';
+                options.forEach(opt => {
+                    if (opt.getAttribute('onclick') && opt.getAttribute('onclick').includes('true')) {
+                        opt.classList.add('correct');
+                        opt.querySelector('.option-radio').innerHTML = '✓';
+                    }
+                });
+                feedback.className = 'quiz-feedback wrong visible';
+                answered[quizId] = false;
+            }
+            updateProgress();
+        }
+
+        function updateProgress() {
+            const correctCount = Object.values(answered).filter(v => v).length;
+            const progressPercent = (correctCount / totalQuizzes) * 100;
+            
+            document.getElementById('progress-fill').style.width = progressPercent + '%';
+            
+            document.querySelectorAll('.score-text').forEach(el => {
+                el.innerHTML = `<span class="lang-zh">答對 ${correctCount} / ${totalQuizzes} 題</span><span class="lang-en">Correct: ${correctCount} / ${totalQuizzes}</span>`;
+            });
+        }
+    </script>
+</body>
+</html>

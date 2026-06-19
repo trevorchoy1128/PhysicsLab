@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>庫侖定律力學實驗室 | HK DSE Physics</title>
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+
+    <style>
+        :root {
+            --lab-gray: #eef2f5;
+            --panel-bg: rgba(33, 37, 43, 0.95);
+            --accent-blue: #4da6ff;
+            --accent-pink: #ff66ff;
+            --text-main: #abb2bf;
+            --border-light: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            margin: 0; overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--lab-gray); color: #ffffff;
+        }
+
+        /* 頂部懸浮控制按鈕 */
+        #floating-controls {
+            position: absolute; top: 15px; left: 50%;
+            transform: translateX(-50%); z-index: 50;
+            display: flex; gap: 12px;
+        }
+        .float-btn {
+            background: rgba(33, 37, 43, 0.7); border: 1px solid var(--border-light);
+            color: var(--text-main); padding: 8px 16px; border-radius: 20px;
+            cursor: pointer; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+            font-size: 13px; font-weight: bold; transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+        .float-btn:hover { color: #fff; background: rgba(77, 166, 255, 0.4); border-color: var(--accent-blue); }
+        .float-btn.active { background: var(--accent-blue); color: #000; border-color: var(--accent-blue); }
+        .float-btn.active-pink { background: var(--accent-pink); color: #000; border-color: var(--accent-pink); }
+
+        /* 左側 UI 面板 */
+        #ui-panel {
+            position: absolute; top: 0; left: 0;
+            width: 350px; height: 100vh; background: var(--panel-bg);
+            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            padding: 25px 20px; box-sizing: border-box;
+            box-shadow: 5px 0 20px rgba(0,0,0,0.15);
+            border-right: 1px solid var(--border-light);
+            z-index: 30; overflow-y: auto;
+            transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        /* 右側 數學面板 */
+        #math-panel-right {
+            position: absolute; top: 0; right: 0;
+            width: 585px; height: 100vh; background: var(--panel-bg);
+            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            padding: 30px 25px; box-sizing: border-box;
+            box-shadow: -5px 0 20px rgba(0,0,0,0.15);
+            border-left: 3px solid var(--accent-pink);
+            z-index: 30; overflow-y: auto;
+            transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        h1 {
+            font-size: 22px; color: var(--accent-blue);
+            border-bottom: 2px solid var(--border-light);
+            padding-bottom: 12px; margin-top: 0; letter-spacing: 1px;
+        }
+
+        .control-group { margin-bottom: 18px; }
+        label { font-size: 13px; color: var(--text-main); display: block; margin-bottom: 6px; }
+
+        select {
+            width: 100%; padding: 10px; background: rgba(0, 0, 0, 0.3); color: white;
+            border: 1px solid var(--border-light); border-radius: 6px;
+            outline: none; font-size: 13px;
+        }
+
+        input[type="range"] { -webkit-appearance: none; width: 100%; background: transparent; margin-top: 5px; }
+        input[type="range"]:focus { outline: none; }
+        input[type="range"]::-webkit-slider-runnable-track {
+            width: 100%; height: 6px; cursor: pointer; background: rgba(255,255,255,0.1); border-radius: 3px;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            height: 18px; width: 18px; border-radius: 50%; background: var(--accent-blue); cursor: pointer;
+            -webkit-appearance: none; margin-top: -6px; box-shadow: 0 0 10px rgba(77, 166, 255, 0.5);
+        }
+
+        .btn-group { display: flex; gap: 8px; margin-top: 10px; margin-bottom: 10px; }
+        button {
+            flex: 1; padding: 10px 5px; background: linear-gradient(135deg, #4da6ff 0%, #2980b9 100%); 
+            color: #fff; border: none; border-radius: 6px; cursor: pointer;
+            font-weight: bold; font-size: 12px; text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+            transition: all 0.2s ease; box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+        button:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.3); }
+        button:active { transform: translateY(0); }
+        .toggle-btn { background: linear-gradient(135deg, #555 0%, #333 100%); }
+
+        .data-display {
+            background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px;
+            font-size: 14px; margin-bottom: 15px; border: 1px solid var(--border-light);
+        }
+        .data-display span { font-weight: bold; color: #e5c07b; font-size: 16px; }
+        
+        /* 數學面板排版 */
+        .math-eq { margin-bottom: 15px; font-size: 16px; overflow-x: auto; overflow-y: hidden; padding-bottom: 5px; }
+        .math-divider { border-top: 1px solid var(--border-light); margin: 20px 0; }
+
+        #canvas-container, #labels-container {
+            position: absolute; top: 0; left: 350px;
+            width: calc(100vw - 935px); height: 100vh;
+            transition: left 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), width 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+        #canvas-container { z-index: 10; }
+        #labels-container { pointer-events: none; z-index: 20; }
+        
+        .force-label {
+            position: absolute; background: rgba(33, 37, 43, 0.9); padding: 4px 8px; border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.15); font-size: 12px; font-weight: bold; letter-spacing: 0.5px;
+            pointer-events: none; white-space: nowrap; transform: translate(-50%, -50%); box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .sphere-label {
+            position: absolute; color: #ffffff; font-size: 18px; font-weight: 800; pointer-events: none;
+            text-shadow: 0px 2px 4px rgba(0,0,0,0.6), 0px 0px 8px rgba(255,255,255,0.4);
+            transform: translate(-50%, -100%); z-index: 25;
+        }
+        .dist-label {
+            position: absolute; color: #abb2bf; font-size: 12px; font-weight: bold;
+            background: rgba(40, 44, 52, 0.9); padding: 3px 8px; border-radius: 4px; pointer-events: none;
+            transform: translate(-50%, -50%); z-index: 15; border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        #chart-container {
+            margin-top: 20px; background: rgba(255,255,255,0.95); border-radius: 8px;
+            padding: 10px; height: 280px; position: relative; box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+        }
+        .hidden { display: none !important; }
+        
+        #instruction-text {
+            font-size: 13px; color: #98c379; margin-top: 15px; margin-bottom: 15px;
+            background: rgba(152, 195, 121, 0.1); padding: 12px; border-radius: 6px;
+            line-height: 1.5; border-left: 4px solid #98c379;
+        }
+    </style>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/DragControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+    <div id="floating-controls">
+        <button id="btn-toggle-ui" class="float-btn active" onclick="toggleUIPanel()">◧ 顯示/隱藏 控制面板</button>
+        <button id="btn-toggle-math" class="float-btn active-pink" onclick="toggleMathPanel()">◨ 顯示/隱藏 數學面板</button>
+    </div>
+
+    <div id="ui-panel">
+        <h1>庫侖定律力學實驗室</h1>
+        
+        <div class="control-group">
+            <label for="mode-select">實驗模式：</label>
+            <select id="mode-select">
+                <option value="A">雙電荷實驗</option>
+                <option value="B">疊加原理挑戰</option>
+                <option value="C">懸掛小球</option>
+            </select>
+        </div>
+
+        <div id="instruction-text">💡 提示載入中...</div>
+
+        <div id="mode-b-tools" class="control-group hidden">
+            <label>顯示開關與排列：</label>
+            <div class="btn-group">
+                <button id="toggle-para-btn" class="toggle-btn" onclick="toggleParallelogram()">平行四邊形 (Off)</button>
+                <button id="toggle-decomp-btn" class="toggle-btn" onclick="toggleDecomp()">X-Y 虛線拆力 (Off)</button>
+            </div>
+            <div class="btn-group">
+                <button onclick="setTriangle('equilateral')">等邊三角形</button>
+                <button onclick="setTriangle('isosceles')">等腰三角形</button>
+                <button onclick="setTriangle('right')">直角三角形</button>
+            </div>
+        </div>
+
+        <div id="controls" class="control-group">
+            <label>Q₁ 電荷量 (<span id="q1-val">5.0</span> μC):</label>
+            <input type="range" id="q1-slider" min="-10" max="10" step="0.1" value="5">
+            
+            <label class="q2-group">Q₂ 電荷量 (<span id="q2-val">-5.0</span> μC):</label>
+            <input type="range" id="q2-slider" class="q2-group" min="-10" max="10" step="0.1" value="-5">
+            
+            <label class="q3-group hidden" style="margin-top: 15px;">Q₃ 電荷量 (<span id="q3-val">3.0</span> μC):</label>
+            <input type="range" id="q3-slider" class="q3-group hidden" min="-10" max="10" step="0.1" value="3">
+        </div>
+
+        <div id="mode-c-mass" class="control-group hidden">
+            <label>Q₁ 質量 (<span id="m1-val">50</span> g):</label>
+            <input type="range" id="m1-slider" min="10" max="200" step="10" value="50">
+            
+            <label>Q₂ 質量 (<span id="m2-val">50</span> g):</label>
+            <input type="range" id="m2-slider" min="10" max="200" step="10" value="50">
+        </div>
+
+        <div class="data-display" id="data-panel">
+            <div style="color:var(--text-main); font-size:12px; margin-bottom:4px;">距離 r (m):</div>
+            <span id="dist-val">5.00</span><br><br>
+            <div id="force-title" style="color:var(--text-main); font-size:12px; margin-bottom:4px;">靜電力 F (N):</div>
+            <span id="force-val">0.090 N</span>
+        </div>
+
+        <div id="chart-container">
+            <canvas id="f-r-chart"></canvas>
+        </div>
+    </div>
+
+    <div id="math-panel-right">
+        
+        <div id="math-mode-A" class="hidden">
+            <h3 style="color:var(--accent-blue); margin-top:0; letter-spacing:1px;">數學運算面板</h3>
+            <div style="color:var(--text-main); font-size:13px; margin-bottom:15px;">庫侖定律代入計算 (Q₁ 與 Q₂ 之間的作用力):</div>
+            <div id="math-f12" class="math-eq"></div>
+        </div>
+
+        <div id="math-mode-B" class="hidden">
+            <h3 style="color:var(--accent-pink); margin-top:0; letter-spacing:1px;">數學運算面板</h3>
+            <div style="color:var(--text-main); font-size:13px; margin-bottom:15px;">庫侖定律純量計算 (Q₃ 受力):</div>
+            <div id="math-f31" class="math-eq"></div>
+            <div id="math-f32" class="math-eq"></div>
+            
+            <div class="math-divider"></div>
+            <div style="color:var(--text-main); font-size:13px; margin-bottom:15px;">利用 sin / cos 將力分解至 X 軸與 Y 軸方向:</div>
+            <div id="math-decomp1" class="math-eq"></div>
+            <div id="math-decomp2" class="math-eq"></div>
+            
+            <div class="math-divider"></div>
+            <div style="color:var(--text-main); font-size:13px; margin-bottom:15px;">畢氏定理求最終合力 (Pythagorean Theorem):</div>
+            <div id="math-sumx" class="math-eq"></div>
+            <div id="math-sumy" class="math-eq"></div>
+            <div id="math-fres" class="math-eq"></div>
+        </div>
+
+    </div>
+
+    <div id="labels-container"></div>
+    <div id="canvas-container"></div>
+
+    <script>
+        const k = 9e9; 
+        const micro = 1e-6; 
+        const G = 9.81; 
+        
+        const FORCE_SCALE_FACTOR = 45; 
+        const MAX_ARROW_LENGTH = 6;
+        let currentMinDist = 1.0; 
+
+        let scene, camera, renderer, orbitControls, dragControls;
+        let charges = [], arrows = [], strings = [], sphereLabels = []; 
+        let distLabels = [], distanceLines = [], parallelogramLines = [], decompArrows = []; 
+        
+        let currentMode = 'A';
+        let isParallelogramVisible = false;
+        let isDecompVisible = false; 
+
+        let uiPanelVisible = true;
+        let mathPanelVisible = true;
+
+        const pivot1 = new THREE.Vector3(-1.5, 5, 0);
+        const pivot2 = new THREE.Vector3(1.5, 5, 0);
+
+        const q1Slider = document.getElementById('q1-slider'), q2Slider = document.getElementById('q2-slider'), q3Slider = document.getElementById('q3-slider');
+        const m1Slider = document.getElementById('m1-slider'), m2Slider = document.getElementById('m2-slider');
+        const q1Val = document.getElementById('q1-val'), q2Val = document.getElementById('q2-val'), q3Val = document.getElementById('q3-val');
+        const m1Val = document.getElementById('m1-val'), m2Val = document.getElementById('m2-val');
+        const distVal = document.getElementById('dist-val'), forceTitle = document.getElementById('force-title'), forceVal = document.getElementById('force-val');
+        const modeSelect = document.getElementById('mode-select'), instructionText = document.getElementById('instruction-text');
+        const labelsContainer = document.getElementById('labels-container');
+
+        let frChart;
+
+        window.onload = () => {
+            init();
+            animate();
+        };
+
+        function init() {
+            const container = document.getElementById('canvas-container');
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xeef2f5); 
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            
+            const hemiLight = new THREE.HemisphereLight(0xffffff, 0xc0c4c8, 0.6);
+            hemiLight.position.set(0, 20, 0);
+            scene.add(hemiLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.7);
+            dirLight.position.set(5, 10, 10);
+            scene.add(dirLight);
+
+            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.set(0, 0, 20); 
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            container.appendChild(renderer.domElement);
+
+            orbitControls = new THREE.OrbitControls(camera, renderer.domElement);
+            orbitControls.enableDamping = true;
+            orbitControls.target.set(0, 0, 0);
+
+            initChart();
+
+            window.addEventListener('resize', onWindowResize);
+            q1Slider.addEventListener('input', updatePhysics);
+            q2Slider.addEventListener('input', updatePhysics);
+            q3Slider.addEventListener('input', updatePhysics);
+            m1Slider.addEventListener('input', updatePhysics);
+            m2Slider.addEventListener('input', updatePhysics);
+            modeSelect.addEventListener('change', (e) => switchMode(e.target.value));
+
+            switchMode('A');
+        }
+
+        function toggleUIPanel() {
+            uiPanelVisible = !uiPanelVisible;
+            const btn = document.getElementById('btn-toggle-ui');
+            const panel = document.getElementById('ui-panel');
+            if (uiPanelVisible) {
+                btn.classList.add('active');
+                panel.style.transform = 'translateX(0)';
+            } else {
+                btn.classList.remove('active');
+                panel.style.transform = 'translateX(-100%)';
+            }
+            updateCanvasLayout();
+        }
+
+        function toggleMathPanel() {
+            mathPanelVisible = !mathPanelVisible;
+            const btn = document.getElementById('btn-toggle-math');
+            const panel = document.getElementById('math-panel-right');
+            if (mathPanelVisible) {
+                btn.classList.add('active-pink');
+                panel.style.transform = 'translateX(0)';
+            } else {
+                btn.classList.remove('active-pink');
+                panel.style.transform = 'translateX(100%)';
+            }
+            updateCanvasLayout();
+        }
+
+        function updateCanvasLayout() {
+            const container = document.getElementById('canvas-container');
+            const labels = document.getElementById('labels-container');
+            const mathBtn = document.getElementById('btn-toggle-math');
+            
+            if (currentMode === 'C') {
+                mathBtn.style.display = 'none';
+                document.getElementById('math-panel-right').style.transform = 'translateX(100%)';
+            } else {
+                mathBtn.style.display = 'block';
+                if (mathPanelVisible) {
+                    document.getElementById('math-panel-right').style.transform = 'translateX(0)';
+                }
+            }
+
+            let leftW = uiPanelVisible ? 350 : 0;
+            let rightW = (mathPanelVisible && currentMode !== 'C') ? 585 : 0;
+
+            container.style.left = leftW + 'px';
+            container.style.width = `calc(100vw - ${leftW + rightW}px)`;
+            labels.style.left = leftW + 'px';
+            labels.style.width = `calc(100vw - ${leftW + rightW}px)`;
+
+            setTimeout(onWindowResize, 400);
+        }
+
+        function toggleParallelogram() {
+            isParallelogramVisible = !isParallelogramVisible;
+            const btn = document.getElementById('toggle-para-btn');
+            if (isParallelogramVisible) {
+                btn.innerText = "平行四邊形 (On)";
+                btn.style.background = "linear-gradient(135deg, #ff66ff 0%, #c832c8 100%)";
+                btn.style.color = "#fff";
+            } else {
+                btn.innerText = "平行四邊形 (Off)";
+                btn.style.background = "linear-gradient(135deg, #555 0%, #333 100%)";
+                btn.style.color = "#fff";
+            }
+            updatePhysics();
+        }
+
+        function toggleDecomp() {
+            isDecompVisible = !isDecompVisible;
+            const btn = document.getElementById('toggle-decomp-btn');
+            if (isDecompVisible) {
+                btn.innerText = "X-Y 虛線拆力 (On)";
+                btn.style.background = "linear-gradient(135deg, #00bbff 0%, #0088cc 100%)";
+                btn.style.color = "#fff";
+            } else {
+                btn.innerText = "X-Y 虛線拆力 (Off)";
+                btn.style.background = "linear-gradient(135deg, #555 0%, #333 100%)";
+                btn.style.color = "#fff";
+            }
+            updatePhysics();
+        }
+
+        function createDashedLine(colorHex, dSize, gSize) {
+            const mat = new THREE.LineDashedMaterial({ color: colorHex, dashSize: dSize, gapSize: gSize });
+            const geo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
+            const line = new THREE.Line(geo, mat);
+            scene.add(line);
+            return line;
+        }
+
+        function createCustomDashedArrow(colorHex) {
+            const group = new THREE.Group();
+            const matLine = new THREE.LineDashedMaterial({ color: colorHex, dashSize: 0.15, gapSize: 0.1 });
+            const geoLine = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0), new THREE.Vector3(0,1,0)]);
+            const line = new THREE.Line(geoLine, matLine);
+            
+            const geoCone = new THREE.ConeGeometry(1, 1, 16);
+            geoCone.translate(0, 0.5, 0); 
+            const matCone = new THREE.MeshBasicMaterial({ color: colorHex });
+            const cone = new THREE.Mesh(geoCone, matCone);
+            
+            group.add(line);
+            group.add(cone);
+            scene.add(group);
+            return { group, line, cone };
+        }
+
+        function updateCustomDashedArrow(aObj, origin, dir, length, visible) {
+            aObj.group.visible = visible && length > 0.05;
+            if (!aObj.group.visible) return;
+
+            aObj.group.position.copy(origin);
+            const axis = new THREE.Vector3(0, 1, 0);
+            aObj.group.quaternion.setFromUnitVectors(axis, dir);
+
+            const headLen = Math.min(0.2, length * 0.25);
+            const headWidth = Math.min(0.12, headLen * 0.6);
+            const lineLen = length - headLen;
+
+            aObj.line.geometry.setFromPoints([new THREE.Vector3(0,0,0), new THREE.Vector3(0, lineLen, 0)]);
+            aObj.line.computeLineDistances();
+
+            aObj.cone.scale.set(headWidth, headLen, headWidth);
+            aObj.cone.position.set(0, lineLen, 0); 
+        }
+
+        function calculateCoulombForce(q1, q2, r) {
+            if (q1 === 0 && q2 === 0) return { magnitude: 0, isRepulsive: true };
+            const rSqBounded = Math.max(r * r, currentMinDist * currentMinDist);
+            const scale = currentMode === 'C' ? 0.1 : 1.0;
+
+            if (q1 === 0 || q2 === 0) {
+                const q_charged = q1 === 0 ? q2 : q1;
+                const F_induced = (k * Math.abs(q_charged * micro * 0.05 * micro) / rSqBounded) * scale;
+                return { magnitude: F_induced, isRepulsive: false }; 
+            }
+            const F_mag = (k * Math.abs(q1 * micro * q2 * micro) / rSqBounded) * scale;
+            return { magnitude: F_mag, isRepulsive: (q1 * q2) > 0 };
+        }
+
+        function solveModeCEquilibrium(q1, q2, m1, m2) {
+            const L = 9;
+            let isRepulsive = true;
+
+            if (q1 === 0 && q2 === 0) return { th1: 0, th2: 0 };
+            if (q1 !== 0 && q2 !== 0) isRepulsive = (q1 * q2) > 0;
+            else isRepulsive = false; 
+
+            if (!isRepulsive) {
+                let cx1 = (-1.5 * m1 + 0.5 * m2) / (m1 + m2);
+                let cx2 = (-0.5 * m1 + 1.5 * m2) / (m1 + m2);
+                let cth1 = Math.asin((cx1 + 1.5) / L);
+                let cth2 = Math.asin((cx2 - 1.5) / L);
+
+                let forceMag = 0;
+                if (q1 !== 0 && q2 !== 0) {
+                    forceMag = (k * Math.abs(q1 * micro * q2 * micro) / (currentMinDist * currentMinDist)) * 0.1;
+                } else {
+                    let qc = q1 === 0 ? q2 : q1;
+                    forceMag = (k * Math.abs(qc * micro * 0.05 * micro) / (currentMinDist * currentMinDist)) * 0.1;
+                }
+
+                let grav_pull = m1 * G * Math.tan(cth1); 
+                if (forceMag >= grav_pull) return { th1: cth1, th2: cth2 }; 
+            }
+
+            let low = isRepulsive ? -1.5 : 0;
+            let high = isRepulsive ? 0 : 1.5;
+            let th1 = 0, th2 = 0;
+
+            for (let i = 0; i < 60; i++) {
+                th1 = (low + high) / 2;
+                th2 = Math.atan(-(m1 / m2) * Math.tan(th1));
+
+                let x1 = -1.5 + L * Math.sin(th1);
+                let x2 = 1.5 + L * Math.sin(th2);
+                let r = x2 - x1;
+
+                if (!isRepulsive && r < currentMinDist) {
+                    high = th1; continue;
+                }
+
+                let forceMag = 0;
+                if (q1 !== 0 && q2 !== 0) {
+                    forceMag = (k * Math.abs(q1 * micro * q2 * micro) / (r * r)) * 0.1;
+                } else {
+                    let qc = q1 === 0 ? q2 : q1;
+                    forceMag = (k * Math.abs(qc * micro * 0.05 * micro) / (r * r)) * 0.1;
+                }
+
+                let sign = isRepulsive ? 1 : -1;
+                let Fc = forceMag * sign;
+                let error = -Fc - m1 * G * Math.tan(th1);
+
+                if (error > 0) low = th1;
+                else high = th1;
+            }
+            return { th1, th2 };
+        }
+
+        function createCharge(x, y, z, qValue, name, radius = 0.5) {
+            const geometry = new THREE.SphereGeometry(radius, 32, 32);
+            const material = new THREE.MeshPhysicalMaterial({ 
+                roughness: 0.15, metalness: 0.1, clearcoat: 0.8, clearcoatRoughness: 0.1,
+                transparent: true, opacity: 0.82 
+            });
+            const sphere = new THREE.Mesh(geometry, material);
+            
+            const coreGeo = new THREE.SphereGeometry(radius * 0.15, 16, 16);
+            const coreMat = new THREE.MeshBasicMaterial({ color: 0x222222 });
+            const coreDot = new THREE.Mesh(coreGeo, coreMat);
+            sphere.add(coreDot); 
+
+            sphere.position.set(x, y, z);
+            sphere.userData = { q: qValue, radius: radius };
+            scene.add(sphere);
+            charges.push(sphere);
+
+            const labelEl = document.createElement('div');
+            labelEl.className = 'sphere-label';
+            labelEl.innerText = name;
+            labelsContainer.appendChild(labelEl);
+            sphereLabels.push(labelEl);
+
+            return sphere;
+        }
+
+        function createLabeledArrow(colorHex, labelText, textColorStr) {
+            const arrowHelper = new THREE.ArrowHelper(
+                new THREE.Vector3(1,0,0), new THREE.Vector3(0,0,0), 1, colorHex, 0.25, 0.15
+            );
+            scene.add(arrowHelper);
+
+            const labelEl = document.createElement('div');
+            labelEl.className = 'force-label';
+            labelEl.innerText = labelText;
+            labelEl.style.color = textColorStr;
+            labelEl.style.borderColor = textColorStr;
+            labelsContainer.appendChild(labelEl);
+
+            const arrowObj = { helper: arrowHelper, label: labelEl, dir: new THREE.Vector3(), visualLength: 0 };
+            arrows.push(arrowObj);
+            return arrowObj;
+        }
+
+        function switchMode(mode) {
+            currentMode = mode;
+            
+            charges.forEach(c => scene.remove(c));
+            arrows.forEach(a => { scene.remove(a.helper); a.label.remove(); });
+            sphereLabels.forEach(el => el.remove());
+            distLabels.forEach(el => el.remove());
+            distanceLines.forEach(l => scene.remove(l));
+            parallelogramLines.forEach(l => scene.remove(l));
+            decompArrows.forEach(a => scene.remove(a.group));
+            strings.forEach(s => scene.remove(s));
+            
+            charges = []; arrows = []; sphereLabels = []; distLabels = []; 
+            distanceLines = []; parallelogramLines = []; decompArrows = []; strings = [];
+            
+            if(dragControls) dragControls.dispose();
+
+            document.querySelectorAll('.q3-group').forEach(el => el.classList.add('hidden'));
+            document.getElementById('chart-container').classList.add('hidden');
+            document.getElementById('mode-b-tools').classList.add('hidden');
+            document.getElementById('mode-c-mass').classList.add('hidden');
+            document.getElementById('data-panel').classList.remove('hidden');
+
+            orbitControls.enableRotate = true;
+            orbitControls.enablePan = true;
+
+            if (mode === 'A') {
+                currentMinDist = 1.0; 
+                camera.position.set(0, 0, 18);
+                instructionText.innerHTML = "💡 <b>提示：</b>小球中央的黑點代表「質點/點電荷」。注意下方量度線是從「中心到中心」進行測量。";
+                document.getElementById('chart-container').classList.remove('hidden');
+                forceTitle.innerText = "靜電力 F (N):";
+                
+                document.getElementById('math-mode-A').classList.remove('hidden');
+                document.getElementById('math-mode-B').classList.add('hidden');
+                updateCanvasLayout();
+
+                let c1 = createCharge(-3.5, 0, 0, parseFloat(q1Slider.value), "Q₁", 0.5); 
+                let c2 = createCharge(3.5, 0, 0, parseFloat(q2Slider.value), "Q₂", 0.5);  
+                
+                createLabeledArrow(0x00bbff, "F₁₂", "#00bbff"); 
+                createLabeledArrow(0xff8800, "F₂₁", "#ff8800"); 
+
+                distanceLines.push(createDashedLine(0x777777, 0.2, 0.15)); 
+                distanceLines.push(createDashedLine(0xaaaaaa, 0.1, 0.1));  
+                distanceLines.push(createDashedLine(0xaaaaaa, 0.1, 0.1));  
+                
+                const el = document.createElement('div');
+                el.className = 'dist-label';
+                labelsContainer.appendChild(el);
+                distLabels.push(el);
+
+                setupDragControls([c1, c2]);
+            } 
+            else if (mode === 'B') {
+                currentMinDist = 0.6; 
+                orbitControls.enableRotate = false;
+                orbitControls.enablePan = false;
+                camera.position.set(0, 0, 22);
+
+                instructionText.innerHTML = "💡 <b>提示：</b>已將小球縮小，以便更直觀地觀察點電荷在 2D 平面上的受力。";
+                document.querySelectorAll('.q3-group').forEach(el => el.classList.remove('hidden'));
+                document.getElementById('mode-b-tools').classList.remove('hidden'); 
+                document.getElementById('data-panel').classList.add('hidden');
+                
+                document.getElementById('math-mode-A').classList.add('hidden');
+                document.getElementById('math-mode-B').classList.remove('hidden');
+                updateCanvasLayout();
+                
+                let c1 = createCharge(-2, -1.15, 0, parseFloat(q1Slider.value), "Q₁", 0.25); 
+                let c2 = createCharge(2, -1.15, 0, parseFloat(q2Slider.value), "Q₂", 0.25);  
+                let c3 = createCharge(0, 2.31, 0, parseFloat(q3Slider.value), "Q₃", 0.25);   
+                
+                createLabeledArrow(0xff8800, "F₃₁", "#ff8800"); 
+                createLabeledArrow(0x00bbff, "F₃₂", "#00bbff"); 
+                createLabeledArrow(0xd124d1, "F₃ 合力", "#d124d1"); 
+                
+                for(let i=0; i<3; i++) {
+                    distanceLines.push(createDashedLine(0x777777, 0.15, 0.15));
+                    const el = document.createElement('div');
+                    el.className = 'dist-label';
+                    labelsContainer.appendChild(el);
+                    distLabels.push(el);
+                }
+
+                parallelogramLines.push(createDashedLine(0x888888, 0.15, 0.1));
+                parallelogramLines.push(createDashedLine(0x888888, 0.15, 0.1));
+
+                decompArrows.push(createCustomDashedArrow(0xff8800)); 
+                decompArrows.push(createCustomDashedArrow(0xff8800)); 
+                decompArrows.push(createCustomDashedArrow(0x00bbff)); 
+                decompArrows.push(createCustomDashedArrow(0x00bbff)); 
+
+                setupDragControls([c1, c2, c3]);
+            }
+            else if (mode === 'C') {
+                currentMinDist = 1.0;
+                camera.position.set(0, 1, 18);
+                instructionText.innerHTML = "💡 <b>提示：</b>為提供平滑動畫，引力與斥力已等比例<b>縮小 10 倍 (x0.1)</b>。";
+                document.getElementById('mode-c-mass').classList.remove('hidden'); 
+                forceTitle.innerText = "靜電力 F_e (縮放 x0.1):";
+                
+                updateCanvasLayout();
+
+                let c1 = createCharge(-1.5, -4, 0, parseFloat(q1Slider.value), "Q₁", 0.5);
+                let c2 = createCharge(1.5, -4, 0, parseFloat(q2Slider.value), "Q₂", 0.5);
+                
+                const mat = new THREE.LineBasicMaterial({ color: 0x444444, linewidth: 2 });
+                strings.push(new THREE.Line(new THREE.BufferGeometry().setFromPoints([pivot1, c1.position]), mat));
+                strings.push(new THREE.Line(new THREE.BufferGeometry().setFromPoints([pivot2, c2.position]), mat));
+                scene.add(strings[0]);
+                scene.add(strings[1]);
+                
+                createLabeledArrow(0x00bbff, "F_e (Q₁)", "#00bbff"); 
+                createLabeledArrow(0xff8800, "F_e (Q₂)", "#ff8800"); 
+            }
+
+            charges.forEach(c => { gsap.from(c.scale, {x: 0, y: 0, z: 0, duration: 0.4, ease: "back.out(1.5)"}); });
+            updatePhysics();
+        }
+
+        function setTriangle(type) {
+            if(currentMode !== 'B' || charges.length < 3) return;
+            if(type === 'equilateral') {
+                charges[0].position.set(-2.5, -1.44, 0); charges[1].position.set(2.5, -1.44, 0); charges[2].position.set(0, 2.88, 0);
+            } else if(type === 'isosceles') {
+                charges[0].position.set(-2, -2, 0); charges[1].position.set(2, -2, 0); charges[2].position.set(0, 2, 0);
+            } else if(type === 'right') {
+                charges[0].position.set(-2, -2, 0); charges[1].position.set(2, -2, 0); charges[2].position.set(-2, 2, 0);
+            }
+            updatePhysics();
+        }
+
+        function setupDragControls(objects) {
+            dragControls = new THREE.DragControls(objects, camera, renderer.domElement);
+            dragControls.addEventListener('dragstart', function () { if(currentMode !== 'B') orbitControls.enabled = false; });
+            
+            dragControls.addEventListener('drag', function(event) {
+                const dragged = event.object;
+                if (currentMode === 'A') { dragged.position.y = 0; dragged.position.z = 0; } 
+                else if (currentMode === 'B') { dragged.position.z = 0; }
+
+                charges.forEach(other => {
+                    if (other !== dragged) {
+                        const distVec = new THREE.Vector3().subVectors(dragged.position, other.position);
+                        if (distVec.length() < currentMinDist) {
+                            if(distVec.length() === 0) distVec.set(1,0,0);
+                            distVec.normalize().multiplyScalar(currentMinDist);
+                            dragged.position.copy(other.position).add(distVec);
+                            
+                            if (currentMode === 'A') { dragged.position.y = 0; dragged.position.z = 0; } 
+                            else if (currentMode === 'B') { dragged.position.z = 0; }
+                        }
+                    }
+                });
+                updatePhysics();
+            });
+            dragControls.addEventListener('dragend', function () { if(currentMode !== 'B') orbitControls.enabled = true; });
+        }
+
+        function getForceLatex(qA, qB, r, mag, subscript, labelA, labelB) {
+            if (qA === 0 && qB === 0) return `F_{${subscript}} = 0 \\text{ N}`;
+            let qA_val = qA !== 0 ? Math.abs(qA) : 0.05;
+            let qB_val = qB !== 0 ? Math.abs(qB) : 0.05;
+            let isInduction = (qA === 0 || qB === 0) && !(qA === 0 && qB === 0);
+            
+            let tex = `F_{${subscript}} = \\frac{Q_${labelA} Q_${labelB}}{4\\pi\\varepsilon_0 r^2} = \\frac{1}{4\\pi\\varepsilon_0} \\frac{(${qA_val}{\\times}10^{-6})(${qB_val}{\\times}10^{-6})}{${r.toFixed(2)}^2}`;
+            tex += ` = ${mag.toFixed(3)}\\text{ N}`;
+            if(isInduction) tex += ` \\text{ (感應)}`;
+            return tex;
+        }
+
+        function updatePhysics() {
+            const q1 = parseFloat(q1Slider.value);
+            const q2 = parseFloat(q2Slider.value);
+            const q3 = parseFloat(q3Slider.value);
+            
+            q1Val.innerText = q1.toFixed(1); 
+            q2Val.innerText = q2.toFixed(1); 
+            q3Val.innerText = q3.toFixed(1);
+
+            if(charges[0]) updateChargeColor(charges[0], q1);
+            if(charges[1]) updateChargeColor(charges[1], q2);
+            if(charges[2]) updateChargeColor(charges[2], q3);
+
+            if (currentMode === 'A') {
+                const c1 = charges[0], c2 = charges[1];
+                const rVec = new THREE.Vector3().subVectors(c2.position, c1.position);
+                let r = Math.max(rVec.length(), currentMinDist); 
+
+                const res = calculateCoulombForce(q1, q2, r);
+                const dir1 = rVec.clone().normalize().multiplyScalar(res.isRepulsive ? -1 : 1);
+                const dir2 = rVec.clone().normalize().multiplyScalar(res.isRepulsive ? 1 : -1);
+
+                updateArrowVisual(arrows[0], c1.position, dir1, res.magnitude, (q1 !== 0 || q2 !== 0));
+                updateArrowVisual(arrows[1], c2.position, dir2, res.magnitude, (q1 !== 0 || q2 !== 0));
+
+                const offsetY = -1.5;
+                const p1 = c1.position;
+                const p2 = c2.position;
+                
+                distanceLines[0].geometry.setFromPoints([
+                    new THREE.Vector3(p1.x, p1.y + offsetY, p1.z), 
+                    new THREE.Vector3(p2.x, p2.y + offsetY, p2.z)
+                ]);
+                distanceLines[0].computeLineDistances();
+                
+                distanceLines[1].geometry.setFromPoints([p1, new THREE.Vector3(p1.x, p1.y + offsetY, p1.z)]);
+                distanceLines[1].computeLineDistances();
+                distanceLines[2].geometry.setFromPoints([p2, new THREE.Vector3(p2.x, p2.y + offsetY, p2.z)]);
+                distanceLines[2].computeLineDistances();
+
+                distLabels[0].innerText = `r = ${r.toFixed(2)} m`;
+
+                distVal.innerText = r.toFixed(2);
+                forceVal.innerText = `${res.magnitude.toFixed(3)} N`;
+                updateChartData(r, res.magnitude);
+
+                if (typeof katex !== 'undefined') {
+                    katex.render(getForceLatex(q1, q2, r, res.magnitude, "12", "1", "2"), document.getElementById('math-f12'), {throwOnError: false, displayMode: true});
+                }
+
+            } 
+            else if (currentMode === 'B') {
+                const c1 = charges[0], c2 = charges[1], c3 = charges[2];
+                const r31Vec = new THREE.Vector3().subVectors(c3.position, c1.position);
+                const r32Vec = new THREE.Vector3().subVectors(c3.position, c2.position);
+                const r12Vec = new THREE.Vector3().subVectors(c2.position, c1.position);
+                
+                let r31 = Math.max(r31Vec.length(), currentMinDist);
+                let r32 = Math.max(r32Vec.length(), currentMinDist);
+                let r12 = Math.max(r12Vec.length(), currentMinDist);
+
+                distanceLines[0].geometry.setFromPoints([c1.position, c2.position]); distanceLines[0].computeLineDistances();
+                distanceLines[1].geometry.setFromPoints([c2.position, c3.position]); distanceLines[1].computeLineDistances();
+                distanceLines[2].geometry.setFromPoints([c1.position, c3.position]); distanceLines[2].computeLineDistances();
+                distLabels[0].innerText = `r₁₂ = ${r12.toFixed(2)}m`;
+                distLabels[1].innerText = `r₂₃ = ${r32.toFixed(2)}m`;
+                distLabels[2].innerText = `r₁₃ = ${r31.toFixed(2)}m`;
+
+                const res31 = calculateCoulombForce(q1, q3, r31);
+                const res32 = calculateCoulombForce(q2, q3, r32);
+
+                const dir31 = r31Vec.clone().normalize().multiplyScalar(res31.isRepulsive ? 1 : -1);
+                const dir32 = r32Vec.clone().normalize().multiplyScalar(res32.isRepulsive ? 1 : -1);
+
+                updateArrowVisual(arrows[0], c3.position, dir31, res31.magnitude, (q1 !== 0 || q3 !== 0));
+                updateArrowVisual(arrows[1], c3.position, dir32, res32.magnitude, (q2 !== 0 || q3 !== 0));
+
+                let v31 = dir31.clone().multiplyScalar(arrows[0].visualLength);
+                let v32 = dir32.clone().multiplyScalar(arrows[1].visualLength);
+                let vRes = new THREE.Vector3().addVectors(v31, v32);
+                
+                let f31_vec = dir31.clone().multiplyScalar(res31.magnitude);
+                let f32_vec = dir32.clone().multiplyScalar(res32.magnitude);
+                let forceRes = new THREE.Vector3().addVectors(f31_vec, f32_vec);
+                let resultantMag = forceRes.length();
+
+                arrows[2].helper.position.copy(c3.position);
+                if (vRes.lengthSq() > 0.001 && (arrows[0].helper.visible || arrows[1].helper.visible)) {
+                    arrows[2].helper.setDirection(vRes.clone().normalize());
+                    arrows[2].visualLength = vRes.length();
+                    let headLen = Math.min(0.25, vRes.length() * 0.25);
+                    let headWidth = Math.min(0.15, headLen * 0.6);
+                    arrows[2].helper.setLength(vRes.length(), headLen, headWidth);
+                    arrows[2].helper.visible = true;
+                } else {
+                    arrows[2].helper.visible = false;
+                }
+
+                const pEnd = c3.position.clone().add(vRes);
+                parallelogramLines[0].geometry.setFromPoints([c3.position.clone().add(v31), pEnd]);
+                parallelogramLines[1].geometry.setFromPoints([c3.position.clone().add(v32), pEnd]);
+                parallelogramLines[0].computeLineDistances();
+                parallelogramLines[1].computeLineDistances();
+                
+                const bothArrowsVisible = arrows[0].helper.visible && arrows[1].helper.visible;
+                parallelogramLines[0].visible = isParallelogramVisible && bothArrowsVisible;
+                parallelogramLines[1].visible = isParallelogramVisible && bothArrowsVisible;
+
+                let v31x = new THREE.Vector3(v31.x, 0, 0);
+                let v31y = new THREE.Vector3(0, v31.y, 0);
+                
+                updateCustomDashedArrow(decompArrows[0], c3.position, v31x.clone().normalize(), v31x.length(), isDecompVisible && arrows[0].helper.visible);
+                updateCustomDashedArrow(decompArrows[1], c3.position, v31y.clone().normalize(), v31y.length(), isDecompVisible && arrows[0].helper.visible);
+                
+                let v32y = new THREE.Vector3(0, v32.y, 0);
+                let v32x = new THREE.Vector3(v32.x, 0, 0);
+                
+                updateCustomDashedArrow(decompArrows[2], c3.position, v32y.clone().normalize(), v32y.length(), isDecompVisible && arrows[1].helper.visible);
+                updateCustomDashedArrow(decompArrows[3], c3.position, v32x.clone().normalize(), v32x.length(), isDecompVisible && arrows[1].helper.visible);
+
+                if (typeof katex !== 'undefined') {
+                    katex.render(getForceLatex(q1, q3, r31, res31.magnitude, "31", "1", "3"), document.getElementById('math-f31'), {throwOnError: false, displayMode: true});
+                    katex.render(getForceLatex(q2, q3, r32, res32.magnitude, "32", "2", "3"), document.getElementById('math-f32'), {throwOnError: false, displayMode: true});
+                    
+                    let a1 = Math.atan2(f31_vec.y, f31_vec.x) * 180 / Math.PI;
+                    let a2 = Math.atan2(f32_vec.y, f32_vec.x) * 180 / Math.PI;
+                    let a1_s = a1 < 0 ? `(${a1.toFixed(1)}^\\circ)` : `${a1.toFixed(1)}^\\circ`;
+                    let a2_s = a2 < 0 ? `(${a2.toFixed(1)}^\\circ)` : `${a2.toFixed(1)}^\\circ`;
+
+                    let decomp1Str = `\\begin{aligned} 
+                    F_{31,x} &= F_{31} \\cos ${a1_s} = ${f31_vec.x.toFixed(3)}\\text{ N} \\\\ 
+                    F_{31,y} &= F_{31} \\sin ${a1_s} = ${f31_vec.y.toFixed(3)}\\text{ N} 
+                    \\end{aligned}`;
+                    let decomp2Str = `\\begin{aligned} 
+                    F_{32,x} &= F_{32} \\cos ${a2_s} = ${f32_vec.x.toFixed(3)}\\text{ N} \\\\ 
+                    F_{32,y} &= F_{32} \\sin ${a2_s} = ${f32_vec.y.toFixed(3)}\\text{ N} 
+                    \\end{aligned}`;
+
+                    katex.render(decomp1Str, document.getElementById('math-decomp1'), {throwOnError: false, displayMode: true});
+                    katex.render(decomp2Str, document.getElementById('math-decomp2'), {throwOnError: false, displayMode: true});
+
+                    let sumxStr = `F_x = F_{31,x} + F_{32,x} = ${f31_vec.x.toFixed(3)} + (${f32_vec.x.toFixed(3)}) = ${forceRes.x.toFixed(3)}\\text{ N}`;
+                    let sumyStr = `F_y = F_{31,y} + F_{32,y} = ${f31_vec.y.toFixed(3)} + (${f32_vec.y.toFixed(3)}) = ${forceRes.y.toFixed(3)}\\text{ N}`;
+                    katex.render(sumxStr, document.getElementById('math-sumx'), {throwOnError: false, displayMode: true});
+                    katex.render(sumyStr, document.getElementById('math-sumy'), {throwOnError: false, displayMode: true});
+
+                    let FresStr = `F_3 = \\sqrt{F_x^2 + F_y^2} = \\sqrt{(${forceRes.x.toFixed(3)})^2 + (${forceRes.y.toFixed(3)})^2} = ${resultantMag.toFixed(3)}\\text{ N}`;
+                    katex.render(FresStr, document.getElementById('math-fres'), {throwOnError: false, displayMode: true});
+                }
+            }
+            else if (currentMode === 'C') {
+                const m1 = parseInt(m1Slider.value) / 1000; 
+                const m2 = parseInt(m2Slider.value) / 1000;
+                m1Val.innerText = m1Slider.value; m2Val.innerText = m2Slider.value;
+
+                const c1 = charges[0], c2 = charges[1];
+
+                const eq = solveModeCEquilibrium(q1, q2, m1, m2);
+
+                const L = 9;
+                c1.position.set(-1.5 + L * Math.sin(eq.th1), 5 - L * Math.cos(eq.th1), 0);
+                c2.position.set(1.5 + L * Math.sin(eq.th2), 5 - L * Math.cos(eq.th2), 0);
+                    
+                const rVec = new THREE.Vector3().subVectors(c2.position, c1.position);
+                const r = Math.max(rVec.length(), currentMinDist);
+                
+                const res = calculateCoulombForce(q1, q2, r);
+                const dir1 = rVec.clone().normalize().multiplyScalar(res.isRepulsive ? -1 : 1);
+                const dir2 = rVec.clone().normalize().multiplyScalar(res.isRepulsive ? 1 : -1);
+
+                updateArrowVisual(arrows[0], c1.position, dir1, res.magnitude * 10, (q1 !== 0 || q2 !== 0));
+                updateArrowVisual(arrows[1], c2.position, dir2, res.magnitude * 10, (q1 !== 0 || q2 !== 0));
+
+                distVal.innerText = r.toFixed(2);
+                forceVal.innerText = `${res.magnitude.toFixed(4)} N`;
+            }
+        }
+
+        function updateChargeColor(mesh, q) {
+            mesh.userData.q = q;
+            if (q > 0) mesh.material.color.setHex(0xff4757); 
+            else if (q < 0) mesh.material.color.setHex(0x3a82f7); 
+            else mesh.material.color.setHex(0x8c92a0); 
+        }
+
+        function updateArrowVisual(aObj, origin, dir, magnitude, visible) {
+            aObj.helper.position.copy(origin);
+            if(dir.lengthSq() > 0) aObj.helper.setDirection(dir);
+            aObj.dir.copy(dir); 
+            
+            let visualLength = magnitude * FORCE_SCALE_FACTOR;
+            if (visualLength > MAX_ARROW_LENGTH) visualLength = MAX_ARROW_LENGTH;
+            if (magnitude > 0.00001 && visualLength < 1.0) visualLength = 1.0;
+            
+            aObj.visualLength = visible ? visualLength : 0;
+
+            const headLen = Math.min(0.25, visualLength * 0.25);
+            const headWidth = Math.min(0.15, headLen * 0.6);
+            
+            aObj.helper.setLength(visualLength, headLen, headWidth); 
+            aObj.helper.visible = visible && magnitude > 0.00001;
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('f-r-chart').getContext('2d');
+            frChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: [{
+                        label: '平方反比曲線',
+                        data: [], borderColor: '#4da6ff', borderWidth: 2, fill: false, pointRadius: 0
+                    }, {
+                        label: '當前數值',
+                        data: [], backgroundColor: '#ffcc00', pointRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false, 
+                    scales: {
+                        x: { type: 'linear', title: { display: true, text: '距離 r (m)', color:'#999' }, min: 1, max: 12 },
+                        y: { title: { display: true, text: '靜電力 F (N)', color:'#999' }, beginAtZero: true, max: 0.5 }
+                    },
+                    animation: false
+                }
+            });
+        }
+
+        function updateChartData(currentR, currentF) {
+            const q1 = parseFloat(q1Slider.value);
+            const q2 = parseFloat(q2Slider.value);
+            const curveData = [];
+            const scale = currentMode === 'C' ? 0.1 : 1.0;
+
+            for (let r = 1; r <= 12; r += 0.2) {
+                const res = calculateCoulombForce(q1, q2, r);
+                curveData.push({ x: r, y: res.magnitude });
+            }
+            frChart.data.datasets[0].data = curveData;
+            frChart.data.datasets[1].data = [{ x: currentR, y: currentF }];
+            
+            let maxF = scale === 0.1 ? 0.05 : 0.5;
+            if(currentF > maxF) frChart.options.scales.y.max = Math.ceil(currentF * 1.2 * 100) / 100;
+            else frChart.options.scales.y.max = maxF;
+
+            frChart.update();
+        }
+
+        function onWindowResize() {
+            const container = document.getElementById('canvas-container');
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if(currentMode !== 'B') orbitControls.update(); 
+
+            if (currentMode === 'C' && strings.length === 2 && charges.length >= 2) {
+                strings[0].geometry.setFromPoints([pivot1, charges[0].position]);
+                strings[1].geometry.setFromPoints([pivot2, charges[1].position]);
+            }
+
+            const container = document.getElementById('canvas-container');
+            
+            arrows.forEach(a => {
+                if (a.helper.visible) {
+                    a.label.style.display = 'block';
+                    const midPoint = a.helper.position.clone().addScaledVector(a.dir, a.visualLength + 0.4);
+                    midPoint.project(camera);
+                    const x = (midPoint.x * 0.5 + 0.5) * container.clientWidth;
+                    const y = (midPoint.y * -0.5 + 0.5) * container.clientHeight;
+                    a.label.style.left = `${x}px`;
+                    a.label.style.top = `${y}px`;
+                } else {
+                    a.label.style.display = 'none';
+                }
+            });
+
+            charges.forEach((c, i) => {
+                if (sphereLabels[i]) {
+                    const pos = c.position.clone();
+                    pos.y += c.userData.radius + 0.4; 
+                    pos.project(camera);
+                    const x = (pos.x * 0.5 + 0.5) * container.clientWidth;
+                    const y = (pos.y * -0.5 + 0.5) * container.clientHeight;
+                    sphereLabels[i].style.left = `${x}px`;
+                    sphereLabels[i].style.top = `${y}px`;
+                }
+            });
+            
+            if (currentMode === 'A' && charges.length === 2) {
+                const mid = new THREE.Vector3().addVectors(charges[0].position, charges[1].position).multiplyScalar(0.5);
+                mid.y -= 1.5; 
+                mid.project(camera);
+                distLabels[0].style.left = `${(mid.x * 0.5 + 0.5) * container.clientWidth}px`;
+                distLabels[0].style.top = `${(mid.y * -0.5 + 0.5) * container.clientHeight}px`;
+            } else if (currentMode === 'B' && charges.length === 3) {
+                const pairs = [[0,1], [1,2], [0,2]];
+                pairs.forEach((p, idx) => {
+                    if(distLabels[idx]) {
+                        const mid = new THREE.Vector3().addVectors(charges[p[0]].position, charges[p[1]].position).multiplyScalar(0.5);
+                        mid.project(camera);
+                        distLabels[idx].style.left = `${(mid.x * 0.5 + 0.5) * container.clientWidth}px`;
+                        distLabels[idx].style.top = `${(mid.y * -0.5 + 0.5) * container.clientHeight}px`;
+                    }
+                });
+            }
+
+            renderer.render(scene, camera);
+        }
+    </script>
+</body>
+</html>

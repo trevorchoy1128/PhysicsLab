@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="page-title">物理公式全指南 — 變壓器與輸電</title>
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            options: { skipHtmlTags: ['script','noscript','style','textarea','pre'] }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+    <style>
+        /* ── Language Toggle Logic ── */
+        span.lang-zh { display: inline; }
+        div.lang-zh { display: block; }
+        span.lang-en { display: none; }
+        div.lang-en { display: none; }
+
+        body.en-mode span.lang-zh, body.en-mode div.lang-zh { display: none !important; }
+        body.en-mode span.lang-en { display: inline !important; }
+        body.en-mode div.lang-en { display: block !important; }
+
+        /* ── Toggle Button Style ── */
+        .lang-toggle-btn {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 1000;
+            background: linear-gradient(135deg, #1e3a8a, #2563eb);
+            color: #fff;
+            border: 2px solid #ffffff;
+            padding: 10px 20px;
+            border-radius: 99px;
+            font-size: 10.5pt;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(30, 58, 138, 0.3);
+            transition: all .2s;
+        }
+        .lang-toggle-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(30, 58, 138, 0.4);
+        }
+
+        /* ── Reset ── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        /* ── Base ── */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Microsoft JhengHei", sans-serif;
+            background: linear-gradient(135deg, #e8f0fe 0%, #f0f4ff 50%, #faf5ff 100%);
+            color: #1e293b;
+            line-height: 1.7;
+            min-height: 100vh;
+        }
+
+        /* ── Layout ── */
+        .page-wrapper { display: flex; max-width: 1100px; margin: 0 auto; padding: 40px 20px; gap: 28px; align-items: flex-start; }
+
+        /* ── Sticky TOC Sidebar ── */
+        .toc {
+            width: 250px; flex-shrink: 0; position: sticky; top: 24px; background: #ffffff;
+            border-radius: 14px; box-shadow: 0 4px 20px rgba(30, 58, 138, 0.08); padding: 20px 16px; border: 1px solid #dbeafe;
+        }
+        .toc h3 { font-size: 11pt; font-weight: 700; color: #1e3a8a; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 2px solid #dbeafe; }
+        .toc ul { list-style: none; }
+        .toc li { margin-bottom: 6px; }
+        .toc a { display: flex; align-items: center; gap: 7px; font-size: 9.5pt; color: #475569; text-decoration: none; padding: 5px 8px; border-radius: 7px; transition: all .2s; }
+        .toc a:hover { background: #eff6ff; color: #1d4ed8; }
+        .toc-num { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; background: #dbeafe; color: #1e40af; border-radius: 50%; font-size: 8pt; font-weight: 700; flex-shrink: 0; }
+
+        /* ── Progress Bar ── */
+        .progress-bar-wrap { background: #e2e8f0; border-radius: 99px; height: 6px; margin-top: 16px; overflow: hidden; }
+        .progress-bar-fill { height: 100%; background: linear-gradient(90deg, #3b82f6, #6366f1); border-radius: 99px; transition: width .5s ease; width: 0%; }
+        .progress-label { font-size: 8.5pt; color: #64748b; margin-top: 6px; text-align: center; }
+
+        /* ── Main Content ── */
+        .container { flex: 1; min-width: 0; }
+
+        /* ── Header Banner ── */
+        .header-banner { background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 60%, #7c3aed 100%); color: #ffffff; padding: 36px 32px; border-radius: 16px; margin-bottom: 36px; text-align: center; box-shadow: 0 8px 32px rgba(37, 99, 235, 0.3); position: relative; overflow: hidden; }
+        .header-banner::before { content: ''; position: absolute; top: -40px; right: -40px; width: 200px; height: 200px; background: rgba(255,255,255,.06); border-radius: 50%; }
+        .header-banner::after { content: ''; position: absolute; bottom: -60px; left: -30px; width: 250px; height: 250px; background: rgba(255,255,255,.04); border-radius: 50%; }
+        .header-banner h1 { font-size: 24pt; font-weight: 800; letter-spacing: 1px; position: relative; z-index: 1; }
+        .header-banner p { margin: 10px 0 0; font-size: 11pt; opacity: .85; position: relative; z-index: 1; }
+        .score-badge { display: inline-flex; align-items: center; gap: 6px; margin-top: 16px; background: rgba(255,255,255,.2); backdrop-filter: blur(4px); color: #fff; padding: 6px 16px; border-radius: 99px; font-size: 10pt; font-weight: 600; border: 1px solid rgba(255,255,255,.3); position: relative; z-index: 1; }
+
+        /* ── Section Heading ── */
+        .section-heading { display: flex; align-items: center; gap: 12px; margin: 44px 0 20px; }
+        .section-num { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: linear-gradient(135deg, #1e3a8a, #3b82f6); color: #fff; border-radius: 10px; font-size: 14pt; font-weight: 800; flex-shrink: 0; box-shadow: 0 4px 12px rgba(37,99,235,.3); }
+        .section-heading h2 { color: #1e3a8a; font-size: 15pt; font-weight: 700; }
+
+        /* ── Formula Box ── */
+        .formula-box { background: linear-gradient(135deg, #eff6ff 0%, #f5f3ff 100%); border: 1px solid #bfdbfe; border-left: 5px solid #3b82f6; border-radius: 12px; padding: 24px 28px; margin: 4px 0 16px; box-shadow: 0 2px 12px rgba(59,130,246,.08); transition: box-shadow .25s; }
+        .formula-box:hover { box-shadow: 0 6px 24px rgba(59,130,246,.15); }
+        .formula-main { font-size: 17pt; font-weight: bold; color: #1d4ed8; text-align: center; margin-bottom: 12px; }
+        .formula-derived { font-size: 10.5pt; color: #475569; text-align: center; border-top: 1px dashed #c7d2fe; padding-top: 10px; margin-top: 10px; }
+
+        /* ── Symbol List ── */
+        .symbol-list { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 18px; margin: 0 0 16px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); }
+        .symbol-list-title { font-size: 9.5pt; font-weight: 700; color: #64748b; margin-bottom: 10px; border-bottom: 2px solid #e2e8f0; padding-bottom: 6px; }
+        .symbol-list ul { list-style: none; }
+        .symbol-list li { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-size: 10pt; }
+        .symbol-list li:last-child { border-bottom: none; }
+        .sym-math { min-width: 50px; display: inline-flex; justify-content: center; font-size: 11pt; }
+        .sym-desc { flex: 1; }
+
+        /* ── Cards ── */
+        .card { border-radius: 12px; padding: 22px 24px; margin: 14px 0; transition: transform .2s, box-shadow .2s; }
+        .card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.08); }
+        .card-example { background: linear-gradient(135deg, #f0fdf4 0%, #f7fffe 100%); border: 1px solid #bbf7d0; border-left: 4px solid #10b981; }
+        .card-practice { background: linear-gradient(135deg, #faf5ff 0%, #f5f3ff 100%); border: 1px solid #ddd6fe; border-left: 4px solid #8b5cf6; }
+        
+        .badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 12px; font-size: 9pt; font-weight: 700; border-radius: 99px; color: #ffffff; margin-bottom: 12px; }
+        .badge-example { background: linear-gradient(90deg, #059669, #10b981); }
+        .badge-practice { background: linear-gradient(90deg, #7c3aed, #8b5cf6); }
+
+        .problem-text { font-weight: 500; margin-bottom: 12px; color: #1e293b; font-size: 10.5pt; line-height: 1.8; }
+        .solution-text { font-size: 10pt; color: #334155; padding: 14px 16px; border-left: 3px solid #cbd5e1; background: rgba(255,255,255,.6); border-radius: 0 8px 8px 0; line-height: 1.9; }
+
+        /* ── Toggle Answer Button ── */
+        .toggle-answer-btn { display: inline-flex; align-items: center; gap: 7px; margin-top: 10px; padding: 8px 18px; background: linear-gradient(90deg, #7c3aed, #8b5cf6); color: #fff; border: none; border-radius: 99px; font-size: 9.5pt; font-weight: 600; cursor: pointer; transition: all .2s; box-shadow: 0 2px 8px rgba(124,58,237,.25); }
+        .toggle-answer-btn:hover { background: linear-gradient(90deg, #6d28d9, #7c3aed); box-shadow: 0 4px 14px rgba(124,58,237,.35); transform: translateY(-1px); }
+        .toggle-answer-btn .btn-icon { transition: transform .3s; }
+        .toggle-answer-btn.open .btn-icon { transform: rotate(180deg); }
+        .answer-panel { display: none; margin-top: 12px; animation: slideDown .25s ease; }
+        .answer-panel.visible { display: block; }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* ── Quiz ── */
+        .quiz-box { background: linear-gradient(135deg, #fff7ed 0%, #fffbf0 100%); border: 1px solid #fed7aa; border-left: 5px solid #f97316; border-radius: 12px; padding: 22px 24px; margin: 18px 0; box-shadow: 0 2px 10px rgba(249,115,22,.07); }
+        .quiz-label { display: inline-flex; align-items: center; gap: 6px; font-size: 9pt; font-weight: 700; color: #ea580c; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 10px; }
+        .quiz-question { font-size: 10.5pt; font-weight: 600; color: #1e293b; margin-bottom: 14px; line-height: 1.7; }
+        .quiz-options { display: flex; flex-direction: column; gap: 8px; }
+        .quiz-option { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #fff; border: 1.5px solid #e2e8f0; border-radius: 9px; cursor: pointer; font-size: 10pt; transition: all .2s; user-select: none; }
+        .quiz-option:hover:not(.disabled) { border-color: #f97316; background: #fff7ed; }
+        .quiz-option.correct { border-color: #10b981; background: #f0fdf4; color: #065f46; font-weight: 600; }
+        .quiz-option.wrong { border-color: #ef4444; background: #fef2f2; color: #991b1b; }
+        .quiz-option.disabled { cursor: default; }
+        .option-radio { width: 18px; height: 18px; border: 2px solid #cbd5e1; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all .2s; }
+        .quiz-option.correct .option-radio { background: #10b981; border-color: #10b981; }
+        .quiz-option.wrong .option-radio { background: #ef4444; border-color: #ef4444; }
+        .quiz-feedback { margin-top: 12px; padding: 10px 14px; border-radius: 8px; font-size: 10pt; font-weight: 500; display: none; }
+        .quiz-feedback.correct { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+        .quiz-feedback.wrong { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+        .quiz-feedback.visible { display: block; animation: slideDown .25s ease; }
+
+        /* ── Divider & Footer ── */
+        .section-divider { height: 1px; background: linear-gradient(90deg, transparent, #cbd5e1, transparent); margin: 36px 0 0; }
+        .footer { text-align: center; margin-top: 48px; padding: 24px; border-top: 1px solid #e2e8f0; font-size: 9pt; color: #94a3b8; }
+
+        @media (max-width: 768px) {
+            .page-wrapper { flex-direction: column; padding: 16px; }
+            .toc { width: 100%; position: static; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Language Toggle Button -->
+    <button class="lang-toggle-btn" onclick="toggleLanguage()">
+        <span class="lang-zh">切換至英文</span>
+        <span class="lang-en">Switch to Chinese</span>
+    </button>
+
+    <div class="page-wrapper">
+        
+        <!-- Sticky TOC -->
+        <aside class="toc">
+            <h3>
+                <span class="lang-zh">📋 目錄</span>
+                <span class="lang-en">📋 Contents</span>
+            </h3>
+            <ul>
+                <li><a href="#sec1"><span class="toc-num">1</span><span class="lang-zh">簡單變壓器</span><span class="lang-en">Simple Transformer</span></a></li>
+                <li><a href="#sec2"><span class="toc-num">2</span><span class="lang-zh">實用變壓器的效率</span><span class="lang-en">Efficiency of Practical Transformer</span></a></li>
+                <li><a href="#sec3"><span class="toc-num">3</span><span class="lang-zh">輸電</span><span class="lang-en">Transmission of Electricity</span></a></li>
+            </ul>
+            
+            <div class="progress-bar-wrap">
+                <div class="progress-bar-fill"></div>
+            </div>
+            <div class="progress-label">
+                <span class="lang-zh">已完成：<span id="prog-answered-zh">0</span> / 3 | 答對：<span id="prog-correct-zh">0</span></span>
+                <span class="lang-en">Completed: <span id="prog-answered-en">0</span> / 3 | Score: <span id="prog-correct-en">0</span></span>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="container">
+            
+            <!-- Header Banner -->
+            <div class="header-banner">
+                <h1>
+                    <span class="lang-zh">變壓器與輸電</span>
+                    <span class="lang-en">Transformers and Transmission of Electricity</span>
+                </h1>
+                <p>
+                    <span class="lang-zh">物理公式全指南 — 概念、應用與測驗</span>
+                    <span class="lang-en">Physics Formula Guide — Concepts, Applications and Quizzes</span>
+                </p>
+                <div class="score-badge">
+                    🏆 <span class="lang-zh">答對題數：<span id="top-score-zh">0</span></span>
+                    <span class="lang-en">Correct Answers: <span id="top-score-en">0</span></span>
+                </div>
+            </div>
+
+            <!-- ================= SECTION 1 ================= -->
+            <div id="sec1">
+                <div class="section-heading">
+                    <div class="section-num">1</div>
+                    <h2>
+                        <span class="lang-zh">簡單變壓器</span>
+                        <span class="lang-en">Simple Transformer</span>
+                    </h2>
+                </div>
+
+                <div class="formula-box">
+                    <div class="formula-main">
+                        $$\frac{V_p}{V_s} = \frac{N_p}{N_s}$$
+                    </div>
+                    <div class="formula-derived">
+                        $$V_s = \frac{N_s}{N_p} \times V_p \quad , \quad V_p = \frac{N_p}{N_s} \times V_s$$
+                    </div>
+                </div>
+
+                <div class="symbol-list">
+                    <div class="symbol-list-title">
+                        <span class="lang-zh">符號意義</span>
+                        <span class="lang-en">Symbol List</span>
+                    </div>
+                    <ul>
+                        <li>
+                            <div class="sym-math">$V_p$</div>
+                            <div class="sym-desc">
+                                <span class="lang-zh">：原電壓，單位：$\text{V}$</span>
+                                <span class="lang-en">: primary voltage, unit: $\text{V}$</span>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="sym-math">$V_s$</div>
+                            <div class="sym-desc">
+                                <span class="lang-zh">：副電壓，單位：$\text{V}$</span>
+                                <span class="lang-en">: secondary voltage, unit: $\text{V}$</span>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="sym-math">$N_p$</div>
+                            <div class="sym-desc">
+                                <span class="lang-zh">：原線圈匝數</span>
+                                <span class="lang-en">: number of turns in primary coil</span>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="sym-math">$N_s$</div>
+                            <div class="sym-desc">
+                                <span class="lang-zh">：副線圈匝數</span>
+                                <span class="lang-en">: number of turns in secondary coil</span>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="card card-example">
+                    <div class="badge badge-example">
+                        <span class="lang-zh">💡 例題</span>
+                        <span class="lang-en">💡 Example</span>
+                    </div>
+                    <div class="problem-text">
+                        <span class="lang-zh">變壓器的原線圈連接到 $220\ \text{V}$ 市電。原線圈有 $2200$ 匝，副線圈有 $110$ 匝。副線圈兩端的電壓是多少？</span>
+                        <span class="lang-en">The primary coil of a transformer is connected to the $220\ \text{V}$ mains. There are $2200$ turns in the primary coil and $110$ turns in the secondary coil. What is the voltage across the secondary coil?</span>
+                    </div>
+                    <div class="solution-text">
+                        <div class="lang-zh">根據 $\frac{V_p}{V_s} = \frac{N_p}{N_s}$，<br>$V_s = \frac{N_s}{N_p} \times V_p = \frac{110}{2200} \times 220 = 11\ \text{V}$。</div>
+                        <div class="lang-en">By $\frac{V_p}{V_s} = \frac{N_p}{N_s}$,<br>$V_s = \frac{N_s}{N_p} \times V_p = \frac{110}{2200} \times 220 = 11\ \text{V}$.</div>
+                    </div>
+                </div>
+
+                <div class="card card-practice">
+                    <div class="badge badge-practice">
+                        <span class="lang-zh">✏️ 隨堂練習</span>
+                        <span class="lang-en">✏️ Practice</span>
+                    </div>
+                    <div class="problem-text">
+                        <span class="lang-zh">變壓器的原線圈連接至 $20\ \text{V}$ 交流電源。副線圈兩端的電壓為 $100\ \text{V}$。求變壓器的匝數比。</span>
+                        <span class="lang-en">The primary coil of a transformer is connected to a $20\ \text{V}$ a.c. supply. The voltage across the secondary coil is $100\ \text{V}$. Find the turns ratio of the transformer.</span>
+                    </div>
+                    <button class="toggle-answer-btn" onclick="toggleAnswer(this, 'ans1')">
+                        <span class="text-label show-text"><span class="lang-zh">顯示答案</span><span class="lang-en">Show Answer</span></span>
+                        <span class="text-label hide-text" style="display: none;"><span class="lang-zh">隱藏答案</span><span class="lang-en">Hide Answer</span></span>
+                        <span class="btn-icon">▼</span>
+                    </button>
+                    <div id="ans1" class="answer-panel">
+                        <div class="solution-text">
+                            <div class="lang-zh">$\frac{N_p}{N_s} = \frac{V_p}{V_s} = \frac{20}{100} = \frac{1}{5}$。<br>變壓器的匝數比是 $1:5$。</div>
+                            <div class="lang-en">$\frac{N_p}{N_s} = \frac{V_p}{V_s} = \frac{20}{100} = \frac{1}{5}$.<br>The turns ratio is $1:5$.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="quiz-box">
+                    <div class="quiz-label">
+                        <span class="lang-zh">🎯 概念測驗</span>
+                        <span class="lang-en">🎯 Quiz</span>
+                    </div>
+                    <div class="quiz-question">
+                        <span class="lang-zh">下列哪項有關變壓器的敍述正確？</span>
+                        <span class="lang-en">Which of the following statements about a transformer is correct?</span>
+                    </div>
+                    <div class="quiz-options">
+                        <div class="quiz-option" onclick="checkAnswer(this, false, 'q1')">
+                            <div class="option-radio"></div>
+                            <span class="lang-zh">穩定的直流電通過原線圈時，沒有磁場產生。</span>
+                            <span class="lang-en">No magnetic field is produced if a steady d.c. passes through the primary coil.</span>
+                        </div>
+                        <div class="quiz-option" onclick="checkAnswer(this, true, 'q1')">
+                            <div class="option-radio"></div>
+                            <span class="lang-zh">只要通過副線圈的磁通量有所變化，副線圈就會感生出電動勢。</span>
+                            <span class="lang-en">An e.m.f. is induced in the secondary coil as long as the secondary coil experiences a change in magnetic flux.</span>
+                        </div>
+                        <div class="quiz-option" onclick="checkAnswer(this, false, 'q1')">
+                            <div class="option-radio"></div>
+                            <span class="lang-zh">變壓器只能以交流電操作。</span>
+                            <span class="lang-en">The transformer only works with a.c.</span>
+                        </div>
+                        <div class="quiz-option" onclick="checkAnswer(this, false, 'q1')">
+                            <div class="option-radio"></div>
+                            <span class="lang-zh">副電壓必定低於原電壓。</span>
+                            <span class="lang-en">The secondary voltage is always lower than the primary voltage.</span>
+                        </div>
+                    </div>
+                    <div id="feedback-q1" class="quiz-feedback">
+                        <div class="correct-msg" style="display:none;">
+                            <span class="lang-zh">答對了！根據法拉第電磁感應定律，只要磁通量有變化即可感生電動勢。</span>
+                            <span class="lang-en">Correct! According to Faraday's law, an e.m.f. is induced as long as there is a change in magnetic flux.</span>
+                        </div>
+                        <div class="wrong-msg" style="display:none;">
+                            <span class="lang-zh">答錯了。請注意穩定的直流電仍會產生磁場（只是磁場不變），變壓器也可用不斷變化的直流電操作，且升壓器的副電壓大於原電壓。</span>
+                            <span class="lang-en">Incorrect. Note that steady d.c. still produces a magnetic field (just not varying), transformers can work with varying d.c., and step-up transformers have a higher secondary voltage.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-divider"></div>
+
+            <!-- ================= SECTION 2 ================= -->
+            <div id="sec2">
+                <div class="section-heading">
+                    <div class="section-num">2</div>
+                    <h2>
+                        <span class="lang-zh">實用變壓器的效率</span>
+                        <span class="lang-en">Efficiency of Practical Transformer</span>
+                    </h2>
+                </div>
+
+                <div class="formula-box">
+                    <div class="formula-main">
+                        <div class="lang-zh">$$\text{效率} = \frac{P_s}{P_p} \times 100\% = \frac{V_s I_s}{V_p I_p} \times 100\%$$</div>
+                        <div class="lang-en">$$\text{Efficiency} = \frac{P_s}{P_p} \times 100\% = \frac{V_s I_s}{V_p I_p} \times 100\%$$</div>
+                    </div>
+                    <div class="formula-derived">
+                        <div class="lang-zh">理想變壓器（效率 $= 100\%$）：</div>
+                        <div class="lang-en">Ideal transformer (Efficiency $= 100\%$):</div>
+                        $$V_p I_p = V_s I_s \implies \frac{I_s}{I_p} = \frac{V_p}{V_s} = \frac{N_p}{N_s}$$
+                    </div>
+                </div>
+
+                <div class="symbol-list">
+                    <div class="symbol-list-title">
+                        <span class="lang-zh">符號意義</span>
+                        <span class="lang-en">Symbol List</span>
+                    </div>
+                    <ul>
+                        <li>
+                            <div class="sym-math">$P_p$</div>
+                            <div class="sym-desc">
+                                <span class="lang-zh">：原線圈的功率輸入，單位：$\text{W}$</span>
+                                <span class="lang-en">: power input to primary coil, unit: $\text{W}$</span>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="sym-math">$P_s$</div>
+                            <div class="sym-desc">
+                                <span class="lang-zh">：副線圈的功率輸出，單位：$\text{W}$</span>
+                                <span class="lang-en">: power output from secondary coil, unit: $\text{W}$</span>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="sym-math">$I_p$</div>
+                            <div class="sym-desc">
+                                <span class="lang-zh">：原電流，單位：$\text{A}$</span>
+                                <span class="lang-en">: primary current, unit: $\text{A}$</span>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="sym-math">$I_s$</div>
+                            <div class="sym-desc">
+                                <span class="lang-zh">：副電流，單位：$\text{A}$</span>
+                                <span class="lang-en">: secondary current, unit: $\text{A}$</span>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="card card-example">
+                    <div class="badge badge-example">
+                        <span class="lang-zh">💡 例題</span>
+                        <span class="lang-en">💡 Example</span>
+                    </div>
+                    <div class="problem-text">
+                        <span class="lang-zh">燈泡經變壓器連接至 $220\ \text{V}$ 市電。變壓器的匝數比是 $11:1$。燈泡消耗的功率是 $50\ \text{W}$。原電流是 $0.3\ \text{A}$。求變壓器的效率。</span>
+                        <span class="lang-en">A light bulb is connected to the $220\ \text{V}$ mains via a transformer. The turns ratio of the transformer is $11:1$. The power consumed by the bulb is $50\ \text{W}$. The primary current is $0.3\ \text{A}$. Find the efficiency of the transformer.</span>
+                    </div>
+                    <div class="solution-text">
+                        <div class="lang-zh">
+                            $P_p = V_p I_p = (220)(0.3) = 66\ \text{W}$。<br>
+                            效率 $= \frac{P_s}{P_p} \times 100\% = \frac{50}{66} \times 100\% = 75.8\%$。
+                        </div>
+                        <div class="lang-en">
+                            $P_p = V_p I_p = (220)(0.3) = 66\ \text{W}$.<br>
+                            Efficiency $= \frac{P_s}{P_p} \times 100\% = \frac{50}{66} \times 100\% = 75.8\%$.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card card-practice">
+                    <div class="badge badge-practice">
+                        <span class="lang-zh">✏️ 隨堂練習</span>
+                        <span class="lang-en">✏️ Practice</span>
+                    </div>
+                    <div class="problem-text">
+                        <span class="lang-zh">負荷連接到變壓器，原電壓是 $240\ \text{V}$，原電流是 $2\ \text{A}$，副電壓是 $100\ \text{V}$，副電流是 $4\ \text{A}$。求變壓器的效率。</span>
+                        <span class="lang-en">A load is connected to a transformer. The primary voltage is $240\ \text{V}$. The primary current is $2\ \text{A}$. The secondary voltage is $100\ \text{V}$. The secondary current is $4\ \text{A}$. Find the efficiency of the transformer.</span>
+                    </div>
+                    <button class="toggle-answer-btn" onclick="toggleAnswer(this, 'ans2')">
+                        <span class="text-label show-text"><span class="lang-zh">顯示答案</span><span class="lang-en">Show Answer</span></span>
+                        <span class="text-label hide-text" style="display: none;"><span class="lang-zh">隱藏答案</span><span class="lang-en">Hide Answer</span></span>
+                        <span class="btn-icon">▼</span>
+                    </button>
+                    <div id="ans2" class="answer-panel">
+                        <div class="solution-text">
+                            <div class="lang-zh">效率 $= \frac{V_s I_s}{V_p I_p} \times 100\% = \frac{100 \times 4}{240 \times 2} \times 100\% = 83.3\%$。</div>
+                            <div class="lang-en">Efficiency $= \frac{V_s I_s}{V_p I_p} \times 100\% = \frac{100 \times 4}{240 \times 2} \times 100\% = 83.3\%$.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="quiz-box">
+                    <div class="quiz-label">
+                        <span class="lang-zh">🎯 概念測驗</span>
+                        <span class="lang-en">🎯 Quiz</span>
+                    </div>
+                    <div class="quiz-question">
+                        <span class="lang-zh">減少變壓器功率損耗的方法是甚麼？</span>
+                        <span class="lang-en">How can the power loss of a transformer be reduced?</span>
+                    </div>
+                    <div class="quiz-options">
+                        <div class="quiz-option" onclick="checkAnswer(this, false, 'q2')">
+                            <div class="option-radio"></div>
+                            <span class="lang-zh">使用較幼的導線來繞成線圈</span>
+                            <span class="lang-en">Using thinner wires to make the coil</span>
+                        </div>
+                        <div class="quiz-option" onclick="checkAnswer(this, false, 'q2')">
+                            <div class="option-radio"></div>
+                            <span class="lang-zh">使用鋼來製造磁心</span>
+                            <span class="lang-en">Using steel to make the core</span>
+                        </div>
+                        <div class="quiz-option" onclick="checkAnswer(this, false, 'q2')">
+                            <div class="option-radio"></div>
+                            <span class="lang-zh">使用實心鐵心</span>
+                            <span class="lang-en">Using a solid core</span>
+                        </div>
+                        <div class="quiz-option" onclick="checkAnswer(this, true, 'q2')">
+                            <div class="option-radio"></div>
+                            <span class="lang-zh">使用疊片式鐵心</span>
+                            <span class="lang-en">Using a laminated core</span>
+                        </div>
+                    </div>
+                    <div id="feedback-q2" class="quiz-feedback">
+                        <div class="correct-msg" style="display:none;">
+                            <span class="lang-zh">答對了！使用疊片式鐵心可以減少渦電流損耗。</span>
+                            <span class="lang-en">Correct! Using a laminated core reduces eddy current loss.</span>
+                        </div>
+                        <div class="wrong-msg" style="display:none;">
+                            <span class="lang-zh">答錯了。較幼的導線會增加電阻；鋼不易磁化和去磁；實心鐵心會產生較大的渦電流。正確方法是使用疊片式鐵心。</span>
+                            <span class="lang-en">Incorrect. Thinner wires increase resistance; steel is hard to magnetize/demagnetize; a solid core produces large eddy currents. The correct method is using a laminated core.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-divider"></div>
+
+            <!-- ================= SECTION 3 ================= -->
+            <div id="sec3">
+                <div class="section-heading">
+                    <div class="section-num">3</div>
+                    <h2>
+                        <span class="lang-zh">輸電</span>
+                        <span class="lang-en">Transmission of Electricity</span>
+                    </h2>
+                </div>
+
+                <div class="formula-box">
+                    <div class="formula-main">
+                        <div class="lang-zh">$$\text{功率損耗} = I^2 R$$</div>
+                        <div class="lang-en">$$\text{Power loss} = I^2 R$$</div>
+                    </div>
+                    <div class="formula-derived">
+                        <div class="lang-zh">$$I = \frac{P}{V_T} \implies \text{功率損耗} = \left(\frac{P}{V_T}\right)^2 R$$</div>
+                        <div class="lang-en">$$I = \frac{P}{V_T} \implies \text{Power loss} = \left(\frac{P}{V_T}\right)^2 R$$</div>
+                    </div>
+                </div>
+
+                <div class="symbol-list">
+                    <div class="symbol-list-title">
+                        <span class="lang-zh">符號意義</span>
+                        <span class="lang-en">Symbol List</span>
+                    </div>
+                    <ul>
+                        <li>
+                            <div class="sym-math">$I$</div>
+                            <div class="sym-desc">
+                                <span class="lang-zh">：通過電纜的電流，單位：$\text{A}$</span>
+                                <span class="lang-en">: current through the cables, unit: $\text{A}$</span>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="sym-math">$R$</div>
+                            <div class="sym-desc">
+                                <span class="lang-zh">：電纜的電阻，單位：$\Omega$</span>
+                                <span class="lang-en">: resistance of the cables, unit: $\Omega$</span>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="sym-math">$P$</div>
+                            <div class="sym-desc">
+                                <span class="lang-zh">：傳送的電功率，單位：$\text{W}$</span>
+                                <span class="lang-en">: electrical power transmitted, unit: $\text{W}$</span>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="sym-math">$V_T$</div>
+                            <div class="sym-desc">
+                                <span class="lang-zh">：輸電電壓，單位：$\text{V}$</span>
+                                <span class="lang-en">: transmitting voltage, unit: $\text{V}$</span>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="card card-example">
+                    <div class="badge badge-example">
+                        <span class="lang-zh">💡 例題</span>
+                        <span class="lang-en">💡 Example</span>
+                    </div>
+                    <div class="problem-text">
+                        <span class="lang-zh">一段總電阻為 $5\ \Omega$ 的電纜以電壓 $2\ \text{kV}$ 把 $4\ \text{kW}$ 的電功率傳送到負荷。找出輸電過程中功率損耗的百分比。</span>
+                        <span class="lang-en">Electrical power of $4\ \text{kW}$ is transmitted from a power supply to a load at $2\ \text{kV}$ via transmission cables with a total resistance of $5\ \Omega$. Find the percentage of power loss during transmission.</span>
+                    </div>
+                    <div class="solution-text">
+                        <div class="lang-zh">
+                            通過電纜的電流 $= \frac{P}{V_T} = \frac{4000}{2000} = 2\ \text{A}$。<br>
+                            電纜的功率損耗 $= I^2 R = (2)^2(5) = 20\ \text{W}$。<br>
+                            功率損耗的百分比 $= \frac{20}{4000} \times 100\% = 0.5\%$。
+                        </div>
+                        <div class="lang-en">
+                            Current through cables $= \frac{P}{V_T} = \frac{4000}{2000} = 2\ \text{A}$.<br>
+                            Power loss in cables $= I^2 R = (2)^2(5) = 20\ \text{W}$.<br>
+                            Percentage of power loss $= \frac{20}{4000} \times 100\% = 0.5\%$.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card card-practice">
+                    <div class="badge badge-practice">
+                        <span class="lang-zh">✏️ 隨堂練習</span>
+                        <span class="lang-en">✏️ Practice</span>
+                    </div>
+                    <div class="problem-text">
+                        <span class="lang-zh">總電阻為 $2\ \Omega$ 的電纜輸送 $20\ \text{MW}$ 電力。假設電力以 $20\ \text{kV}$ 傳輸。求電纜的功率損耗。</span>
+                        <span class="lang-en">Electrical power of $20\ \text{MW}$ is transmitted via transmission cables with a total resistance of $2\ \Omega$. Suppose the power is transmitted at $20\ \text{kV}$. Find the power loss in the cables.</span>
+                    </div>
+                    <button class="toggle-answer-btn" onclick="toggleAnswer(this, 'ans3')">
+                        <span class="text-label show-text"><span class="lang-zh">顯示答案</span><span class="lang-en">Show Answer</span></span>
+                        <span class="text-label hide-text" style="display: none;"><span class="lang-zh">隱藏答案</span><span class="lang-en">Hide Answer</span></span>
+                        <span class="btn-icon">▼</span>
+                    </button>
+                    <div id="ans3" class="answer-panel">
+                        <div class="solution-text">
+                            <div class="lang-zh">
+                                $I = \frac{P}{V_T} = \frac{20 \times 10^6}{20 \times 10^3} = 1000\ \text{A}$。<br>
+                                功率損耗 $= I^2 R = (1000)^2 \times 2 = 2 \times 10^6\ \text{W} = 2\ \text{MW}$。
+                            </div>
+                            <div class="lang-en">
+                                $I = \frac{P}{V_T} = \frac{20 \times 10^6}{20 \times 10^3} = 1000\ \text{A}$.<br>
+                                Power loss $= I^2 R = (1000)^2 \times 2 = 2 \times 10^6\ \text{W} = 2\ \text{MW}$.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="quiz-box">
+                    <div class="quiz-label">
+                        <span class="lang-zh">🎯 概念測驗</span>
+                        <span class="lang-en">🎯 Quiz</span>
+                    </div>
+                    <div class="quiz-question">
+                        <span class="lang-zh">為甚麼輸電時使用高電壓？</span>
+                        <span class="lang-en">Why is high voltage used in power transmission?</span>
+                    </div>
+                    <div class="quiz-options">
+                        <div class="quiz-option" onclick="checkAnswer(this, false, 'q3')">
+                            <div class="option-radio"></div>
+                            <span class="lang-zh">可降低電纜的電阻</span>
+                            <span class="lang-en">This reduces the resistance of the transmission cables.</span>
+                        </div>
+                        <div class="quiz-option" onclick="checkAnswer(this, true, 'q3')">
+                            <div class="option-radio"></div>
+                            <span class="lang-zh">可減少通過電纜的電流</span>
+                            <span class="lang-en">This reduces the current through the transmission cables.</span>
+                        </div>
+                        <div class="quiz-option" onclick="checkAnswer(this, false, 'q3')">
+                            <div class="option-radio"></div>
+                            <span class="lang-zh">交流電可以輕易地升壓或降壓</span>
+                            <span class="lang-en">A.c. can be stepped up or down easily.</span>
+                        </div>
+                        <div class="quiz-option" onclick="checkAnswer(this, false, 'q3')">
+                            <div class="option-radio"></div>
+                            <span class="lang-zh">交流電通過電纜時沒有功率損耗</span>
+                            <span class="lang-en">No power is lost when a.c. flows through the transmission cables.</span>
+                        </div>
+                    </div>
+                    <div id="feedback-q3" class="quiz-feedback">
+                        <div class="correct-msg" style="display:none;">
+                            <span class="lang-zh">答對了！根據 $P = V_T I$，當傳送功率相同時，提高電壓能減少電流，進而大幅降低 $I^2 R$ 的功率損耗。</span>
+                            <span class="lang-en">Correct! By $P = V_T I$, for the same power transmitted, higher voltage reduces the current, thus significantly reducing $I^2 R$ power loss.</span>
+                        </div>
+                        <div class="wrong-msg" style="display:none;">
+                            <span class="lang-zh">答錯了。電纜電阻取決於長度和材質；容易升降壓是交流電的好處，但不是高壓輸電直接減少損耗的根本原因。真正原因是減少了電流。</span>
+                            <span class="lang-en">Incorrect. Cable resistance depends on material and length; ease of voltage change is an advantage of a.c., but not the root cause of reduced power loss. The true reason is the reduction of current.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="footer">
+                <span class="lang-zh">物理公式全指南 &copy; 2026</span>
+                <span class="lang-en">Physics Formula Guide &copy; 2026</span>
+            </div>
+            
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        function toggleLanguage() {
+            document.body.classList.toggle('en-mode');
+            
+            const isEn = document.body.classList.contains('en-mode');
+            if (isEn) {
+                document.getElementById('page-title').innerText = "Physics Formula Guide — Transformers and Transmission of Electricity";
+            } else {
+                document.getElementById('page-title').innerText = "物理公式全指南 — 變壓器與輸電";
+            }
+        }
+
+        function toggleAnswer(btn, answerId) {
+            const panel = document.getElementById(answerId);
+            const isVisible = panel.classList.contains('visible');
+            
+            const showText = btn.querySelector('.show-text');
+            const hideText = btn.querySelector('.hide-text');
+
+            if (isVisible) {
+                panel.classList.remove('visible');
+                btn.classList.remove('open');
+                showText.style.display = 'inline';
+                hideText.style.display = 'none';
+            } else {
+                panel.classList.add('visible');
+                btn.classList.add('open');
+                showText.style.display = 'none';
+                hideText.style.display = 'inline';
+            }
+        }
+
+        let answered = {};
+        const totalQuizzes = 3;
+
+        function checkAnswer(el, isCorrect, quizId) {
+            const feedback = document.getElementById('feedback-' + quizId);
+            if (feedback.classList.contains('visible')) return;
+
+            const options = el.closest('.quiz-options').querySelectorAll('.quiz-option');
+            options.forEach(opt => opt.classList.add('disabled'));
+            
+            if (isCorrect) {
+                el.classList.add('correct');
+                el.querySelector('.option-radio').innerHTML = '✓';
+                feedback.className = 'quiz-feedback correct visible';
+                feedback.querySelector('.correct-msg').style.display = 'block';
+                answered[quizId] = true;
+            } else {
+                el.classList.add('wrong');
+                el.querySelector('.option-radio').innerHTML = '✗';
+                options.forEach(opt => {
+                    if (opt.getAttribute('onclick') && opt.getAttribute('onclick').includes('true')) {
+                        opt.classList.add('correct');
+                        opt.querySelector('.option-radio').innerHTML = '✓';
+                    }
+                });
+                feedback.className = 'quiz-feedback wrong visible';
+                feedback.querySelector('.wrong-msg').style.display = 'block';
+                answered[quizId] = false;
+            }
+            updateProgress();
+        }
+
+        function updateProgress() {
+            const correctCount = Object.values(answered).filter(v => v).length;
+            const progress = (Object.keys(answered).length / totalQuizzes) * 100;
+            
+            document.querySelector('.progress-bar-fill').style.width = progress + '%';
+            
+            document.getElementById('top-score-zh').innerText = correctCount;
+            document.getElementById('top-score-en').innerText = correctCount;
+            
+            document.getElementById('prog-answered-zh').innerText = Object.keys(answered).length;
+            document.getElementById('prog-correct-zh').innerText = correctCount;
+            document.getElementById('prog-answered-en').innerText = Object.keys(answered).length;
+            document.getElementById('prog-correct-en').innerText = correctCount;
+        }
+    </script>
+</body>
+</html>
