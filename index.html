@@ -16,6 +16,14 @@
         }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
+
+        /* ── 響應式補充 ── */
+        @media (max-width: 480px) {
+            /* Tab 按鈕在超小螢幕改為可換行 */
+            .tab-btn { padding: 10px 12px; font-size: 12px; }
+            /* 卡片標題文字縮小 */
+            h1 { font-size: 1.4rem !important; }
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans min-h-screen flex flex-col">

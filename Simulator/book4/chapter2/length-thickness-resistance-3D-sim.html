@@ -1,0 +1,637 @@
+﻿<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>影響電阻的因素：微觀實驗室 v2.5 (高密度碰撞 & 長度衰減流速)</title>
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+
+    <style>
+        body {
+            margin: 0; overflow: hidden;
+            font-family: "PingFang HK", "Microsoft JhengHei", sans-serif;
+            background-color: #dddddd; color: #333; cursor: grab;
+        }
+        body:active { cursor: grabbing; }
+        
+        #canvas-container { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
+        .ui-panel {
+            position: absolute; background: rgba(20, 20, 20, 0.85); border: 1px solid #333;
+            border-radius: 8px; padding: 20px; z-index: 10; backdrop-filter: blur(5px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5); color: #fff; max-height: 90vh; overflow-y: auto;
+        }
+        .ui-panel::-webkit-scrollbar { width: 6px; }
+        .ui-panel::-webkit-scrollbar-thumb { background: #666; border-radius: 3px; }
+
+        #controls-panel { top: 20px; left: 20px; width: 350px; }
+        #data-panel { top: 20px; right: 20px; width: 400px; }
+        
+        h2 {
+            margin-top: 0; font-size: 17px; color: #4da6ff; border-bottom: 1px solid #444;
+            padding-bottom: 10px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;
+        }
+        .control-group {
+            margin-bottom: 12px; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 6px;
+        }
+        .control-group.wire-a { border-left: 3px solid #4da6ff; }
+        .control-group.wire-b { border-left: 3px solid #ff9900; display: none; }
+        label { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 5px; color: #ddd; }
+        input[type=range] { width: 100%; cursor: pointer; }
+        .btn-group { display: flex; gap: 5px; margin-bottom: 5px; flex-wrap: wrap; }
+        
+        button {
+            flex: 1; min-width: 60px; padding: 6px 4px; background: #333; color: #fff;
+            border: 1px solid #555; border-radius: 4px; cursor: pointer; transition: all 0.2s; font-size: 12px;
+        }
+        button:hover { background: #444; }
+        button.active { font-weight: bold; }
+        button.active-a { background: #4da6ff; color: #000; border-color: #4da6ff; }
+        button.active-b { background: #ff9900; color: #000; border-color: #ff9900; }
+        button.active-view { background: #fff; color: #000; border-color: #fff; }
+
+        .data-display {
+            background: #000; padding: 15px; border-radius: 6px; margin-bottom: 15px; border: 1px solid #333;
+        }
+        
+        .formula-container { font-size: 15px; color: #4da6ff; text-align: center; margin-top: 10px; overflow-x: auto; padding: 5px 0; }
+        .wire-result { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid #333; }
+        .wire-result:last-child { border-bottom: none; }
+        
+        .wire-label-a { color: #4da6ff; font-weight: bold; }
+        #katex-ra { color: #4da6ff; font-weight: bold; }
+        
+        .wire-label-b { color: #ff9900; font-weight: bold; display: none; }
+        #katex-rb { color: #ff9900; font-weight: bold; }
+        
+        #chart-container { width: 100%; height: 220px; background: #f0f0f0; border-radius: 6px; border: 1px solid #ccc; padding: 5px; }
+        .toggle-container { display: flex; align-items: center; gap: 8px; font-size: 13px; margin-top: 8px;}
+        input[type=checkbox] { cursor: pointer; }
+
+        .flow-tag {
+            position: absolute; background: rgba(10, 10, 10, 0.85); border: 1px solid; color: #fff;
+            padding: 6px 10px; border-radius: 6px; font-size: 13px; pointer-events: none;
+            transform: translate(15px, -50%); display: none; z-index: 5; white-space: nowrap;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5); backdrop-filter: blur(2px);
+        }
+        #flow-tag-a { border-color: #4da6ff; }
+        #flow-tag-b { border-color: #ff9900; }
+        .flow-tag .val { font-family: monospace; font-size: 16px; font-weight: bold; }
+        #flow-tag-a .val { color: #00ffcc; }
+        #flow-tag-b .val { color: #ffcc00; }
+
+        .res-tag {
+            position: absolute; background: rgba(20, 20, 20, 0.85); border: 1px solid; color: #fff;
+            padding: 5px 10px; border-radius: 6px; font-size: 14px; font-weight: bold; pointer-events: none;
+            transform: translate(-50%, -100%); display: none; z-index: 4; white-space: nowrap;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.6); backdrop-filter: blur(2px);
+        }
+        #res-tag-a { border-color: #4da6ff; color: #4da6ff; }
+        #res-tag-b { border-color: #ff9900; color: #ff9900; }
+        .rho-info { font-size: 12px; color: #bbb; text-align: right; min-height: 18px; margin-bottom: 8px; }
+
+        #chart-controls { margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .custom-select {
+            position: relative; display: inline-block; width: 190px; background: #333; color: white;
+            border: 1px solid #555; border-radius: 4px; font-size: 13px; cursor: pointer; user-select: none;
+        }
+        .select-selected { padding: 6px 10px; display: flex; justify-content: space-between; align-items: center; }
+        .select-selected::after { content: "▼"; font-size: 10px; margin-left: 5px; color: #aaa; }
+        .select-items {
+            position: absolute; background-color: #222; top: 100%; left: 0; right: 0;
+            z-index: 99; border: 1px solid #555; border-radius: 4px; margin-top: 2px; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+        .select-hide { display: none; }
+        .select-item { padding: 8px 10px; border-bottom: 1px solid #444; transition: 0.1s; }
+        .select-item:last-child { border-bottom: none; }
+        .select-item:hover { background-color: #4da6ff; color: #000; }
+    
+        /* -- Responsive (Mobile / Tablet) -- */
+        @media (max-width: 768px) {
+            #ui-panel, .ui-panel {
+                width: calc(100vw - 20px) !important;
+                max-width: 100vw !important;
+                max-height: 45vh !important;
+                overflow-y: auto !important;
+                top: auto !important;
+                bottom: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                border-radius: 12px 12px 0 0 !important;
+                padding: 12px !important;
+                font-size: 12px !important;
+            }
+            #ui-panel h2, .ui-panel h2 { font-size: 14px !important; margin: 0 0 6px 0 !important; }
+            #ui-panel h3, .ui-panel h3 { font-size: 13px !important; }
+            #ui-panel label, .ui-panel label { font-size: 11px !important; }
+            #ui-panel input[type=range], .ui-panel input[type=range] { height: 20px !important; }
+            #ui-panel .btn, .ui-panel .btn { padding: 7px 4px !important; font-size: 11px !important; }
+        }
+        @media (min-width: 769px) and (max-width: 1024px) {
+            #ui-panel, .ui-panel {
+                width: 260px !important;
+                font-size: 13px !important;
+            }
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+    <div id="canvas-container"></div>
+    
+    <div id="flow-tag-a" class="flow-tag">導線 A 電子流 ($I$)<br><span class="val" id="flow-val-a">0 / s</span></div>
+    <div id="flow-tag-b" class="flow-tag">導線 B 電子流 ($I$)<br><span class="val" id="flow-val-b">0 / s</span></div>
+
+    <div id="res-tag-a" class="res-tag"><span id="res-val-a">0.00 Ω</span></div>
+    <div id="res-tag-b" class="res-tag"><span id="res-val-b">0.00 Ω</span></div>
+
+    <div id="controls-panel" class="ui-panel">
+        <h2>控制面板
+            <div class="toggle-container" style="margin-top: 0;">
+                <input type="checkbox" id="compare-toggle">
+                <label for="compare-toggle" style="margin:0; color:#ff9900;">對比模式</label>
+            </div>
+        </h2>
+
+        <div class="control-group" style="background: rgba(255,255,255,0.1);">
+            <label>環境溫度 Temperature ($T$) <span id="val-t">20 °C</span></label>
+            <input type="range" id="slider-t" min="20" max="200" step="1" value="20">
+        </div>
+
+        <div class="control-group wire-a">
+            <strong style="color:#4da6ff; font-size:14px; display:block; margin-bottom:8px;">導線 A 規格 ($Wire_A$)</strong>
+            <div class="btn-group" id="mat-btns-a">
+                <button class="active active-a" data-mat="copper">銅</button>
+                <button data-mat="nichrome">鎳鉻</button>
+                <button data-mat="graphite">石墨</button>
+                <button data-mat="glass">玻璃</button>
+            </div>
+            <div id="rho-info-a" class="rho-info"></div>
+
+            <label><span>長度 ($L_A$)</span> <span id="val-l">1.0 m</span></label>
+            <input type="range" id="slider-l" min="0.1" max="5.0" step="0.1" value="1.0">
+            <label style="margin-top:10px;"><span>半徑 ($r_A$)</span> <span id="val-r">1.0 mm</span></label>
+            <input type="range" id="slider-r" min="0.1" max="3.0" step="0.1" value="1.0">
+        </div>
+
+        <div class="control-group wire-b" id="control-b">
+            <strong style="color:#ff9900; font-size:14px; display:block; margin-bottom:8px;">導線 B 規格 ($Wire_B$)</strong>
+            <div class="btn-group" id="mat-btns-b">
+                <button data-mat="copper">銅</button>
+                <button class="active active-b" data-mat="nichrome">鎳鉻</button>
+                <button data-mat="graphite">石墨</button>
+                <button data-mat="glass">玻璃</button>
+            </div>
+            <div id="rho-info-b" class="rho-info"></div>
+
+            <label><span>長度 ($L_B$)</span> <span id="val-l2">2.0 m</span></label>
+            <input type="range" id="slider-l2" min="0.1" max="5.0" step="0.1" value="2.0">
+            <label style="margin-top:10px;"><span>半徑 ($r_B$)</span> <span id="val-r2">0.5 mm</span></label>
+            <input type="range" id="slider-r2" min="0.1" max="3.0" step="0.1" value="0.5">
+        </div>
+
+        <div class="control-group" style="background: transparent;">
+            <label>視圖模式 View Mode:</label>
+            <div class="btn-group" id="view-btns">
+                <button class="active active-view" data-view="macro">宏觀 Macroscopic</button>
+                <button data-view="micro">微觀 Microscopic</button>
+            </div>
+            <div class="toggle-container" style="justify-content: center;">
+                <input type="checkbox" id="res-toggle">
+                <label for="res-toggle" style="margin:0; color:#ddd;">在導線上顯示實時電阻 ($R$)</label>
+            </div>
+            <div class="toggle-container" style="justify-content: center;" id="flow-toggle-container">
+                <input type="checkbox" id="flow-toggle" checked>
+                <label for="flow-toggle" style="margin:0; color:#ddd;">在導線末端顯示電子流 ($I$)</label>
+            </div>
+        </div>
+    </div>
+
+    <div id="data-panel" class="ui-panel">
+        <h2>運算結果 ($R = \rho \frac{L}{A}$)</h2>
+        <div class="data-display">
+            <div class="wire-result">
+                <span class="wire-label-a">導線 A 電阻 $R_A$</span>
+                <span id="katex-ra">0.00 \Omega</span>
+            </div>
+            <div class="wire-result wire-label-b" id="result-b-container">
+                <span>導線 B 電阻 $R_B$</span>
+                <span id="katex-rb">0.00 \Omega</span>
+            </div>
+            <div class="formula-container" id="katex-formula"></div>
+        </div>
+        
+        <div id="chart-controls">
+            <span style="font-size: 13px;">圖表關係：</span>
+            <div class="custom-select" id="chart-dropdown">
+                <div class="select-selected" id="select-selected">$R$ 對 $L$ (正比)</div>
+                <div class="select-items select-hide" id="select-items">
+                    <div class="select-item" data-val="Rl">$R$ 對 $L$ (正比)</div>
+                    <div class="select-item" data-val="RA">$R$ 對 $A$ (反比)</div>
+                    <div class="select-item" data-val="R1A">$R$ 對 $1/A$ (正比)</div>
+                </div>
+            </div>
+        </div>
+        <div id="chart-container">
+            <canvas id="r-l-chart"></canvas>
+        </div>
+    </div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    renderMathInElement(document.body, { delimiters: [{left: "$$", right: "$$", display: true}, {left: "$", right: "$", display: false}], throwOnError: false });
+});
+
+// ==========================================
+// 1. 物理數據及邏輯 Physics Data
+// ==========================================
+// 【更新】調升了 baseSpeed 基礎流速，用來抵銷 L 增加時的劇烈衰減，確保 L=1 時觀感依然順暢
+const materials = {
+    copper: { rho20: 1.72e-8, alpha: 0.0039, color: 0xb87333, type: 'metal', ionColor: 0xffaa44, electronColor: 0x00ffff, eDensity: 1.0, baseSpeed: 0.035 },
+    nichrome: { rho20: 1.1e-6, alpha: 0.0004, color: 0x888899, type: 'metal', ionColor: 0xcccccc, electronColor: 0x00ffff, eDensity: 0.35, baseSpeed: 0.015 },
+    graphite: { rho20: 1.0e-5, alpha: -0.0005, color: 0x333333, type: 'semiconductor', ionColor: 0x666666, electronColor: 0xffcc00, eDensity: 0.08, baseSpeed: 0.020 },
+    glass: { rho20: Infinity, alpha: 0, color: 0x99ddff, type: 'insulator', ionColor: 0x88bbcc, electronColor: 0x000000, eDensity: 0.0, baseSpeed: 0.0 }
+};
+
+let currentMatA = 'copper', currentMatB = 'nichrome', currentView = 'macro';
+let isCompareMode = false, currentChartMode = 'Rl', showFlowRate = true, showResTag = false; 
+let passedA = 0, passedB = 0, lastTime = 0;
+
+let state = { l: 1.0, r: 1.0, l2: 2.0, r2: 0.5, t: 20 };
+const VISUAL_R_SCALE = 0.35; 
+
+function getResistivity(mat, temp) {
+    const m = materials[mat];
+    if (m.type === 'insulator') return Infinity;
+    if (m.type === 'metal') return m.rho20 * (1 + m.alpha * (temp - 20));
+    return m.rho20 * Math.exp(m.alpha * (temp - 20));
+}
+function calculateR(mat, length, radiusMm, temp) {
+    const rho = getResistivity(mat, temp);
+    if (rho === Infinity) return Infinity;
+    return rho * (length / (Math.PI * Math.pow(radiusMm * 1e-3, 2)));
+}
+function formatSciLatex(val) {
+    if (val === Infinity) return "\\infty";
+    if (val === 0) return "0.00";
+    if (val >= 0.01 && val < 100) return val.toPrecision(3);
+    const parts = val.toExponential(2).split('e');
+    return `${parts[0]} \\times 10^{${parseInt(parts[1])}}`;
+}
+function getRandomPointInCircle(radius) {
+    const r = radius * Math.sqrt(Math.random()), theta = Math.random() * 2 * Math.PI;
+    return { y: r * Math.cos(theta), z: r * Math.sin(theta) };
+}
+
+// ==========================================
+// 2. Three.js 初始化
+// ==========================================
+const container = document.getElementById('canvas-container');
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0xdddddd);
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+camera.position.set(0, 3, 12);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight); container.appendChild(renderer.domElement);
+const controls = new THREE.OrbitControls(camera, renderer.domElement); controls.enableDamping = true; controls.dampingFactor = 0.05;
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.9); dirLight.position.set(5, 5, 5); scene.add(dirLight);
+
+// ==========================================
+// 3. 模型建立 (獨立的 A 與 B)
+// ==========================================
+const wireGeo = new THREE.CylinderGeometry(1, 1, 1, 32); wireGeo.rotateZ(Math.PI / 2); 
+const wireMatA = new THREE.MeshStandardMaterial({ roughness: 0.3, metalness: 0.8 });
+const wireMatB = new THREE.MeshStandardMaterial({ roughness: 0.3, metalness: 0.8 });
+const wireMeshA = new THREE.Mesh(wireGeo, wireMatA); scene.add(wireMeshA);
+const wireMeshB = new THREE.Mesh(wireGeo, wireMatB); scene.add(wireMeshB); wireMeshB.visible = false;
+
+const microGroupA = new THREE.Group(); scene.add(microGroupA);
+const microGroupB = new THREE.Group(); scene.add(microGroupB);
+
+// 【更新】大幅提升原子上限，確保高密度填滿
+const MAX_IONS = 6000, MAX_ELEC = 3000;
+const ionGeo = new THREE.SphereGeometry(0.06, 16, 16), elecGeo = new THREE.SphereGeometry(0.04, 16, 16);
+let matIonA = new THREE.MeshStandardMaterial(), matElecA = new THREE.MeshBasicMaterial();
+let matIonB = new THREE.MeshStandardMaterial(), matElecB = new THREE.MeshBasicMaterial();
+const ionsA = [], elecsA = [], ionsB = [], elecsB = [];
+
+function buildParticles(grp, ionsArr, elecsArr, mIon, mElec) {
+    for (let i = 0; i < MAX_IONS; i++) { const m = new THREE.Mesh(ionGeo, mIon); m.visible = false; grp.add(m); ionsArr.push(m); }
+    for (let i = 0; i < MAX_ELEC; i++) { const m = new THREE.Mesh(elecGeo, mElec); m.visible = false; m.userData.speedX = 0; grp.add(m); elecsArr.push(m); }
+}
+buildParticles(microGroupA, ionsA, elecsA, matIonA, matElecA);
+buildParticles(microGroupB, ionsB, elecsB, matIonB, matElecB);
+
+// ==========================================
+// 4. 圖表初始化
+// ==========================================
+const ctx = document.getElementById('r-l-chart').getContext('2d');
+const chart = new Chart(ctx, {
+    type: 'line',
+    data: { labels: [], datasets: [
+        { label: '導線 A', data: [], borderColor: '#4da6ff', backgroundColor: 'rgba(77, 166, 255, 0.1)', borderWidth: 2, tension: 0.2 },
+        { label: '導線 B', data: [], borderColor: '#ff9900', backgroundColor: 'rgba(255, 153, 0, 0.1)', borderWidth: 2, tension: 0.2, hidden: true }
+    ]},
+    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } }, animation: { duration: 300 } }
+});
+
+// ==========================================
+// 5. 更新邏輯
+// ==========================================
+function updatePhysics() {
+    const rA = calculateR(currentMatA, state.l, state.r, state.t);
+    const rB = calculateR(currentMatB, state.l2, state.r2, state.t);
+    const rhoA = getResistivity(currentMatA, state.t);
+    const rhoB = getResistivity(currentMatB, state.t);
+
+    if(window.katex) {
+        katex.render(`R_A = ${formatSciLatex(rA)} \\,\\Omega`, document.getElementById('katex-ra'), {throwOnError: false});
+        if(isCompareMode) katex.render(`R_B = ${formatSciLatex(rB)} \\,\\Omega`, document.getElementById('katex-rb'), {throwOnError: false});
+        if (rhoA === Infinity) katex.render(`Wire_A: \\text{絕緣體 }`, document.getElementById('katex-formula'), {throwOnError: false});
+        else katex.render(`Wire_A: R = (${formatSciLatex(rhoA)}) \\frac{${state.l.toFixed(1)}}{\\pi (${state.r.toFixed(1)} \\times 10^{-3})^2}`, document.getElementById('katex-formula'), {throwOnError: false});
+        
+        katex.render(`\\rho_A = ${formatSciLatex(rhoA)} \\,\\Omega\\cdot\\text{m}`, document.getElementById('rho-info-a'), {throwOnError: false});
+        katex.render(`\\rho_B = ${formatSciLatex(rhoB)} \\,\\Omega\\cdot\\text{m}`, document.getElementById('rho-info-b'), {throwOnError: false});
+
+        if(showResTag) {
+            katex.render(`R_A = ${formatSciLatex(rA)} \\,\\Omega`, document.getElementById('res-val-a'), {throwOnError: false});
+            if(isCompareMode) katex.render(`R_B = ${formatSciLatex(rB)} \\,\\Omega`, document.getElementById('res-val-b'), {throwOnError: false});
+        }
+    }
+
+    updateChart();
+
+    if (isCompareMode) {
+        gsap.to(wireMeshA.position, { z: -2.0, duration: 0.3 });
+        gsap.to(wireMeshB.position, { z: 2.0, duration: 0.3 });
+        gsap.to(wireMeshB.scale, { x: state.l2, y: state.r2 * VISUAL_R_SCALE, z: state.r2 * VISUAL_R_SCALE, duration: 0.2 });
+        wireMeshB.visible = true;
+        microGroupA.position.z = -2.0; microGroupB.position.z = 2.0;
+    } else {
+        gsap.to(wireMeshA.position, { z: 0, duration: 0.3 });
+        wireMeshB.visible = false;
+        microGroupA.position.z = 0;
+    }
+    gsap.to(wireMeshA.scale, { x: state.l, y: state.r * VISUAL_R_SCALE, z: state.r * VISUAL_R_SCALE, duration: 0.2, onUpdate: updateParticles });
+
+    wireMatA.color.setHex(materials[currentMatA].color); matIonA.color.setHex(materials[currentMatA].ionColor); matElecA.color.setHex(materials[currentMatA].electronColor);
+    wireMatB.color.setHex(materials[currentMatB].color); matIonB.color.setHex(materials[currentMatB].ionColor); matElecB.color.setHex(materials[currentMatB].electronColor);
+
+    const isMicro = currentView === 'micro';
+    wireMatA.transparent = wireMatB.transparent = isMicro;
+    wireMatA.opacity = wireMatB.opacity = isMicro ? 0.25 : 1.0;
+    microGroupA.visible = isMicro; microGroupB.visible = isMicro && isCompareMode;
+
+    document.getElementById('flow-toggle-container').style.display = isMicro ? 'flex' : 'none';
+    if(!isMicro || !showFlowRate) {
+        document.getElementById('flow-tag-a').style.display = 'none';
+        document.getElementById('flow-tag-b').style.display = 'none';
+        passedA = 0; passedB = 0;
+    }
+    updateParticles();
+}
+
+function updateChart() {
+    let labels = [], dataA = [], dataB = [], xLabel = '';
+    
+    if (currentChartMode === 'Rl') {
+        xLabel = 'L (m)';
+        for(let l = 0.5; l <= 5.0; l += 0.5) {
+            labels.push(l.toFixed(1));
+            dataA.push(calculateR(currentMatA, l, state.r, state.t));
+            dataB.push(calculateR(currentMatB, l, state.r2, state.t));
+        }
+    } else if (currentChartMode === 'RA') {
+        xLabel = 'A (mm²)';
+        for(let a = 1; a <= 28; a += 3) {
+            labels.push(a.toFixed(1)); let r_for_A = Math.sqrt(a / Math.PI);
+            dataA.push(calculateR(currentMatA, state.l, r_for_A, state.t));
+            dataB.push(calculateR(currentMatB, state.l2, r_for_A, state.t));
+        }
+    } else if (currentChartMode === 'R1A') {
+        xLabel = '1/A (1/mm²)';
+        for(let invA = 0.1; invA <= 1.3; invA += 0.15) {
+            labels.push(invA.toFixed(2)); let r_for_invA = Math.sqrt(1 / (invA * Math.PI));
+            dataA.push(calculateR(currentMatA, state.l, r_for_invA, state.t));
+            dataB.push(calculateR(currentMatB, state.l2, r_for_invA, state.t));
+        }
+    }
+    chart.data.labels = labels;
+    chart.data.datasets[0].data = dataA.map(v=>v===Infinity?null:v);
+    chart.data.datasets[1].data = dataB.map(v=>v===Infinity?null:v);
+    chart.data.datasets[1].hidden = !isCompareMode;
+    chart.options.scales.x.title.text = xLabel;
+    chart.update();
+}
+
+function configureParticles(mesh, matKey, ionsArr, elecsArr, realRadius) {
+    const len = mesh.scale.x, visRadius = mesh.scale.y, halfLen = len/2;
+    
+    // 【更新】調降晶格間距，從 0.28 縮小到 0.20，讓原子看起來非常密集
+    const spacing = 0.20; 
+    let activeIons = 0;
+    const steps = Math.max(0, Math.floor((visRadius - 0.05) / spacing));
+
+    for(let x = -halfLen+spacing/2; x <= halfLen; x+=spacing) {
+        for(let y = -steps*spacing; y <= steps*spacing; y+=spacing) {
+            for(let z = -steps*spacing; z <= steps*spacing; z+=spacing) {
+                if(y*y + z*z <= visRadius*visRadius && activeIons < ionsArr.length) {
+                    const ion = ionsArr[activeIons++];
+                    ion.position.set(x, y, z); ion.userData.basePos = new THREE.Vector3(x, y, z); ion.visible = true;
+                }
+            }
+        }
+    }
+    for(let i=activeIons; i<ionsArr.length; i++) ionsArr[i].visible = false;
+
+    const mat = materials[matKey];
+    let density = mat.eDensity; if(mat.type==='semiconductor') density *= (1 + (state.t-20)*0.03);
+    let activeElec = Math.min(MAX_ELEC, Math.floor((20 + len*realRadius*realRadius*100)*density));
+    if(mat.type === 'insulator') activeElec = 0;
+
+    for(let i=0; i<activeElec; i++) {
+        const el = elecsArr[i];
+        if(!el.visible) {
+            const p = getRandomPointInCircle(visRadius*0.9);
+            el.position.set((Math.random()-0.5)*len, p.y, p.z);
+            el.userData.speedX = (Math.random()*0.4 + 0.8) * mat.baseSpeed;
+        }
+        el.visible = true;
+    }
+    for(let i=activeElec; i<elecsArr.length; i++) elecsArr[i].visible = false;
+}
+
+function updateParticles() {
+    if(currentView !== 'micro') return;
+    configureParticles(wireMeshA, currentMatA, ionsA, elecsA, state.r);
+    if(isCompareMode) configureParticles(wireMeshB, currentMatB, ionsB, elecsB, state.r2);
+}
+
+// ==========================================
+// 6. UI 事件與 3D 投影
+// ==========================================
+['l','r','l2','r2','t'].forEach(k => document.getElementById('slider-'+k).addEventListener('input', e=>{
+    state[k] = parseFloat(e.target.value); 
+    document.getElementById('val-'+k).innerText = state[k].toFixed(1) + (k==='t'?' °C':(k.startsWith('r')?' mm':' m'));
+    updatePhysics();
+}));
+
+document.getElementById('compare-toggle').addEventListener('change', e=>{
+    isCompareMode = e.target.checked;
+    document.getElementById('control-b').style.display = isCompareMode ? 'block' : 'none';
+    document.getElementById('result-b-container').style.display = isCompareMode ? 'flex' : 'none';
+    updatePhysics();
+});
+document.getElementById('flow-toggle').addEventListener('change', e=>{ showFlowRate=e.target.checked; updatePhysics(); });
+document.getElementById('res-toggle').addEventListener('change', e=>{ showResTag=e.target.checked; updatePhysics(); });
+
+document.getElementById('select-selected').addEventListener('click', function(e) {
+    e.stopPropagation(); document.getElementById('select-items').classList.toggle('select-hide');
+});
+document.querySelectorAll('.select-item').forEach(item => {
+    item.addEventListener('click', function(e) {
+        currentChartMode = this.dataset.val; document.getElementById('select-selected').innerHTML = this.innerHTML;
+        document.getElementById('select-items').classList.add('select-hide'); updatePhysics();
+    });
+});
+document.addEventListener('click', () => document.getElementById('select-items').classList.add('select-hide'));
+
+function setupMaterialBtns(groupId, isWireA) {
+    document.querySelectorAll(`#${groupId} button`).forEach(btn => {
+        btn.addEventListener('click', e => {
+            document.querySelectorAll(`#${groupId} button`).forEach(b => b.className='');
+            e.target.className = isWireA ? 'active active-a' : 'active active-b';
+            if(isWireA) { currentMatA = e.target.dataset.mat; elecsA.forEach(el=>el.visible=false); }
+            else { currentMatB = e.target.dataset.mat; elecsB.forEach(el=>el.visible=false); }
+            updatePhysics();
+        });
+    });
+}
+setupMaterialBtns('mat-btns-a', true); setupMaterialBtns('mat-btns-b', false);
+
+document.querySelectorAll('#view-btns button').forEach(btn => {
+    btn.addEventListener('click', e => {
+        document.querySelectorAll('#view-btns button').forEach(b => b.className='');
+        e.target.className = 'active active-view';
+        currentView = e.target.dataset.view; updatePhysics();
+    });
+});
+
+function updateTagPositionEnd(tag, meshObj) {
+    const endPos = new THREE.Vector3(meshObj.scale.x / 2, 0, meshObj.position.z);
+    endPos.project(camera);
+    const x = (endPos.x * 0.5 + 0.5) * window.innerWidth;
+    const y = (endPos.y * -0.5 + 0.5) * window.innerHeight;
+    if(endPos.z > 1) { tag.style.display = 'none'; return; }
+    tag.style.display = 'block'; tag.style.left = `${x}px`; tag.style.top = `${y}px`;
+}
+
+function updateTagPositionCenter(tag, meshObj) {
+    const centerPos = new THREE.Vector3(0, meshObj.scale.y + 0.5, meshObj.position.z);
+    centerPos.project(camera);
+    const x = (centerPos.x * 0.5 + 0.5) * window.innerWidth;
+    const y = (centerPos.y * -0.5 + 0.5) * window.innerHeight;
+    if(centerPos.z > 1) { tag.style.display = 'none'; return; }
+    tag.style.display = 'block'; tag.style.left = `${x}px`; tag.style.top = `${y}px`;
+}
+
+// ==========================================
+// 7. 動畫循環
+// ==========================================
+const clock = new THREE.Clock();
+function animateParticlesEngine(ionsArr, elecsArr, mesh, matKey, counterObj) {
+    const time = clock.getElapsedTime(), tFactor = state.t - 20;
+    const mat = materials[matKey], rLimit2 = Math.pow(mesh.scale.y * 0.95, 2);
+    let ampBase = mat.type!=='insulator' ? 0.003 + tFactor*0.00015 : 0.003;
+    
+    // 【更新】調高基礎碰撞抖動值，讓碰撞視覺更加明顯
+    let jitter = 0.0035; 
+    
+    // 【更新核心】引入電場強度 E = V/L 的概念，假設定電壓，長度越長則流速等比例下降
+    const lengthFactor = 1.0 / mesh.scale.x; 
+    let flowMul = lengthFactor;
+
+    if(mat.type==='metal') { 
+        jitter += tFactor*0.0004; 
+        flowMul *= Math.max(0.1, 1.0 - tFactor*0.005); 
+    }
+    else if(mat.type==='semiconductor') { 
+        jitter += tFactor*0.00015; 
+        flowMul *= Math.min(3.0, 1.0 + tFactor*0.015); 
+    }
+
+    ionsArr.forEach((ion, i) => {
+        if(!ion.visible) return; const bp = ion.userData.basePos;
+        ion.position.set(bp.x + Math.sin(time*(15+i%5)+i*0.7)*ampBase, bp.y + Math.cos(time*(15+i%5)+i*0.7)*ampBase, bp.z + Math.sin(time*(15+i%5)*1.3+i*0.7)*ampBase);
+    });
+
+    const halfLen = mesh.scale.x / 2;
+    elecsArr.forEach(el => {
+        if(!el.visible) return;
+        el.position.x += el.userData.speedX * flowMul + (Math.random()-0.5)*jitter;
+        el.position.y += (Math.random()-0.5)*jitter; el.position.z += (Math.random()-0.5)*jitter;
+        if(el.position.y*el.position.y + el.position.z*el.position.z > rLimit2) {
+            const p = getRandomPointInCircle(mesh.scale.y*0.9); el.position.y = p.y; el.position.z = p.z;
+        }
+        if(el.position.x > halfLen) { el.position.x -= mesh.scale.x; counterObj.count++; }
+        else if(el.position.x < -halfLen) el.position.x += mesh.scale.x;
+    });
+}
+
+function animate() {
+    requestAnimationFrame(animate); controls.update();
+    
+    if(currentView === 'micro') {
+        let passCounterA = { count: 0 }, passCounterB = { count: 0 };
+        animateParticlesEngine(ionsA, elecsA, wireMeshA, currentMatA, passCounterA);
+        passedA += passCounterA.count;
+        if(isCompareMode) {
+            animateParticlesEngine(ionsB, elecsB, wireMeshB, currentMatB, passCounterB);
+            passedB += passCounterB.count;
+        }
+
+        const now = performance.now();
+        if(now - lastTime > 1000) {
+            if(showFlowRate) {
+                document.getElementById('flow-val-a').innerText = passedA + ' / s';
+                if(isCompareMode) document.getElementById('flow-val-b').innerText = passedB + ' / s';
+            }
+            passedA = 0; passedB = 0; lastTime = now;
+        }
+
+        if(showFlowRate) {
+            updateTagPositionEnd(document.getElementById('flow-tag-a'), wireMeshA);
+            if(isCompareMode) updateTagPositionEnd(document.getElementById('flow-tag-b'), wireMeshB);
+            else document.getElementById('flow-tag-b').style.display = 'none';
+        }
+    }
+
+    if(showResTag) {
+        updateTagPositionCenter(document.getElementById('res-tag-a'), wireMeshA);
+        if(isCompareMode) updateTagPositionCenter(document.getElementById('res-tag-b'), wireMeshB);
+        else document.getElementById('res-tag-b').style.display = 'none';
+    } else {
+        document.getElementById('res-tag-a').style.display = 'none';
+        document.getElementById('res-tag-b').style.display = 'none';
+    }
+
+    renderer.render(scene, camera);
+}
+
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+setTimeout(() => { updatePhysics(); }, 300);
+animate();
+
+</script>
+</body>
+</html>

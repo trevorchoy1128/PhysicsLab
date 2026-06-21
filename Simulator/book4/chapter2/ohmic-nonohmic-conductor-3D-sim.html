@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高擬真物理實驗室 - 歐姆定律</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+
+    <style>
+        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; background-color: #e0e0e0; color: #ecf0f1; }
+        #canvas-container { position: absolute; top: 0; left: 0; width: 65%; height: 100vh; overflow: hidden; transition: width 0.3s ease; }
+        
+        #ui-panel {
+            position: absolute; top: 0; right: 0; width: 35%; height: 100vh;
+            background-color: #1e2128; border-left: 1px solid #2c313c; padding: 25px; box-sizing: border-box;
+            display: flex; flex-direction: column; overflow-y: auto; box-shadow: -10px 0 30px rgba(0,0,0,0.2); z-index: 10;
+        }
+        .control-group { background: #282c34; padding: 18px; border-radius: 12px; margin-bottom: 18px; border: 1px solid #3e4451; }
+        label { display: block; margin-bottom: 10px; font-weight: 500; font-size: 0.95rem; color: #abb2bf; }
+        select, input[type="range"] { 
+            width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #3e4451; 
+            background: #1e2128; color: #e06c75; font-size: 1rem; cursor: pointer; outline: none; box-sizing: border-box;
+        }
+        select:focus { border-color: #61afef; }
+        .meter-readout {
+            display: flex; justify-content: space-between; background: #1e2128; padding: 15px; border: 1px solid #3e4451;
+            border-radius: 10px; font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 1.3rem; color: #98c379; margin-bottom: 18px;
+        }
+        .readout-box { display: flex; flex-direction: column; align-items: center; width: 45%; }
+        .readout-label { font-size: 0.8rem; color: #5c6370; margin-bottom: 5px; font-weight: bold; }
+        
+        /* 將原本 280px 的高度增加至 450px，放大整個圖表的 Dimension */
+        #chart-container { background: #fff; border-radius: 12px; padding: 15px; margin-bottom: 15px; height: 450px; box-shadow: inset 0 0 10px rgba(0,0,0,0.1); position: relative; }
+        
+        .theory-box { background: rgba(97, 175, 239, 0.1); color: #61afef; padding: 15px; border-radius: 10px; font-size: 0.9rem; line-height: 1.6; border-left: 4px solid #61afef; }
+        .warning-banner { background-color: rgba(224, 108, 117, 0.2); color: #e06c75; padding: 12px; border-radius: 8px; margin-bottom: 15px; font-weight: bold; border: 1px solid #e06c75; display: none; }
+        
+        input[type=range] { -webkit-appearance: none; background: transparent; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 20px; width: 20px; border-radius: 50%; background: #61afef; cursor: pointer; margin-top: -8px; box-shadow: 0 0 10px rgba(97,175,239,0.5); }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 6px; cursor: pointer; background: #3e4451; border-radius: 3px; }
+
+        .btn-row { display: flex; gap: 10px; margin-bottom: 10px; }
+        .btn { flex: 1; padding: 10px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.9rem; transition: 0.2s opacity; }
+        .btn:hover { opacity: 0.8; }
+        .btn-record { background: #61afef; color: #282c34; }
+        .btn-auto { background: #98c379; color: #1e2128; }
+        .btn-fit { background: #e5c07b; color: #282c34; }
+        .btn-clear { background: #e06c75; color: #282c34; }
+
+        .scene-label {
+            position: absolute;
+            background: rgba(15, 17, 21, 0.85);
+            border: 1px solid #61afef;
+            color: #61afef;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: bold;
+            font-size: 0.9rem;
+            pointer-events: none; 
+            transform: translate(-50%, -100%);
+            display: none; 
+            z-index: 5;
+            box-shadow: 0 0 10px rgba(97, 175, 239, 0.3);
+            white-space: nowrap;
+        }
+        .label-highlight { color: #e5c07b; border-color: #e5c07b; box-shadow: 0 0 10px rgba(229, 192, 123, 0.3); }
+
+        #togglePanelBtn {
+            position: absolute; top: 15px; right: calc(35% + 15px); z-index: 100;
+            padding: 10px 15px; background: #61afef; color: #1e2128; border: none;
+            border-radius: 8px; font-weight: bold; cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3); transition: right 0.3s ease;
+        }
+        #togglePanelBtn:hover { filter: brightness(1.1); }
+        
+        #conductorBadge {
+            margin-top: 10px; padding: 8px; border-radius: 6px; text-align: center; 
+            font-weight: bold; font-size: 0.9rem; transition: background 0.3s ease;
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 768px) {
+            body { overflow-y: auto; }
+            #canvas-container {
+                position: relative !important; width: 100% !important; height: 55vw;
+                min-height: 220px; max-height: 60vh; left: auto; top: auto;
+            }
+            #ui-panel {
+                position: relative !important; width: 100% !important; height: auto;
+                box-shadow: none; border-left: none; border-top: 2px solid #2c313c;
+                max-height: none; overflow-y: visible; right: auto; top: auto;
+            }
+            #togglePanelBtn { display: none; }
+            #chart-container { height: 260px; }
+        }
+        @media (min-width: 769px) and (max-width: 1024px) {
+            #canvas-container { width: 55% !important; }
+            #ui-panel { width: 45% !important; }
+            #togglePanelBtn { right: calc(45% + 15px); }
+        }
+    </style>
+</head>
+<body>
+
+    <button id="togglePanelBtn">隱藏面板 ➡</button>
+
+    <div id="canvas-container">
+        <div id="label-battery" class="scene-label">🔋 電源: 0.00 V</div>
+        <div id="label-rheostat" class="scene-label">VR (變阻器): 0.00 V</div>
+        <div id="label-resistor" class="scene-label label-highlight">VT (待測元件): 0.00 V</div>
+    </div>
+
+    <div id="ui-panel">
+        <div id="danger-alert" class="warning-banner"></div>
+
+        <div class="control-group">
+            <label>1. 電池數量：</label>
+            <select id="batteryCount">
+                <option value="1">1 粒 (1.5V)</option>
+                <option value="2" selected>2 粒 (3.0V)</option>
+                <option value="3">3 粒 (4.5V)</option>
+                <option value="4">4 粒 (6.0V)</option>
+            </select>
+
+            <label style="margin-top: 15px;">2. 待測元件：</label>
+            <select id="componentSelect">
+                <option value="ohmic">定值電阻器 (常規)</option>
+                <option value="wire">鎳鉻合金線 (金屬導體)</option>
+                <option value="bulb">鎢絲燈泡 (燈絲)</option>
+                <option value="diode">半導體二極管 (正向)</option>
+                <option value="led">發光二極管 (LED)</option>
+                <option value="ntc">熱敏電阻 (NTC 負溫度係數)</option>
+                <option value="ptc">熱敏電阻 (PTC 正溫度係數)</option>
+            </select>
+            <div id="conductorBadge">載入中...</div>
+
+            <label style="margin-top: 15px;">3. 儀錶量程：</label>
+            <div style="display: flex; gap: 10px;">
+                <select id="ammeterRange" style="flex: 1;">
+                    <option value="10">安培: 0-10A</option>
+                    <option value="5" selected>安培: 0-5A</option>
+                    <option value="1">安培: 0-1A</option>
+                </select>
+                <select id="voltmeterRange" style="flex: 1;">
+                    <option value="15">伏特: 0-15V</option>
+                    <option value="5" selected>伏特: 0-5V</option>
+                    <option value="3">伏特: 0-3V</option>
+                </select>
+            </div>
+            
+            <label style="margin-top: 15px;">4. 圖表類型：</label>
+            <select id="graphTypeSelect">
+                <option value="VI" selected>V-I 圖 (Y軸: 電壓, X軸: 電流)</option>
+                <option value="IV">I-V 圖 (Y軸: 電流, X軸: 電壓)</option>
+            </select>
+        </div>
+
+        <div class="meter-readout">
+            <div class="readout-box">
+                <span class="readout-label">電壓 (V)</span>
+                <span id="v-num">0.00</span>
+            </div>
+            <div class="readout-box">
+                <span class="readout-label">電流 (A)</span>
+                <span id="i-num">0.00</span>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label>5. 變阻器滑桿 (手動調壓)：</label>
+            <input type="range" id="rheostatSlider" min="0" max="1" step="0.002" value="0">
+        </div>
+
+        <div class="control-group">
+            <label>6. 數據記錄與圖表分析：</label>
+            <div class="btn-row">
+                <button id="recordBtn" class="btn btn-record">📝 手動記錄</button>
+                <button id="autoBtn" class="btn btn-auto">🤖 自動掃描</button>
+            </div>
+            <div class="btn-row">
+                <button id="fitBtn" class="btn btn-fit">📈 顯示最佳擬合線</button>
+                <button id="clearBtn" class="btn btn-clear">🗑️ 清除所有數據</button>
+            </div>
+        </div>
+
+        <div class="control-group" style="padding-bottom: 12px; margin-top: -5px;">
+            <label style="display: flex; align-items: center; cursor: pointer; margin-bottom: 10px;">
+                <input type="checkbox" id="showCurrentToggle" style="width: 18px; height: 18px; margin-right: 10px; accent-color: #f1c40f;" checked>
+                <span style="font-weight: bold; color: #f1c40f;">顯示電流方向</span>
+            </label>
+            <label style="display: flex; align-items: center; cursor: pointer; margin-bottom: 10px;">
+                <input type="checkbox" id="showLabelsToggle" style="width: 18px; height: 18px; margin-right: 10px; accent-color: #61afef;">
+                <span style="font-weight: bold; color: #61afef;">顯示 3D 實時電壓標籤</span>
+            </label>
+            <label style="display: flex; align-items: center; cursor: pointer; margin-bottom: 0;">
+                <input type="checkbox" id="showResistanceToggle" style="width: 18px; height: 18px; margin-right: 10px; accent-color: #e5c07b;">
+                <span style="font-weight: bold; color: #e5c07b;">顯示實時電阻值</span>
+            </label>
+            
+            <div id="resistance-display" style="display: none; margin-top: 15px; padding: 15px; background: #181a1f; border-radius: 8px; border-left: 3px solid #e5c07b;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                    <span style="color: #abb2bf; font-size: 0.9rem;">變阻器接入阻值</span>
+                    <span id="r-rheo-num" style="color: #61afef; font-family: 'JetBrains Mono', monospace; font-weight: bold;">0.00 Ω</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span style="color: #abb2bf; font-size: 0.9rem;">待測元件阻值</span>
+                    <span id="r-test-num" style="color: #e5c07b; font-family: 'JetBrains Mono', monospace; font-weight: bold;">0.00 Ω</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="chart-container">
+            <canvas id="ivChart"></canvas>
+        </div>
+
+        <div class="theory-box" id="analysis-text">
+            初始化完成。請手動滑動變阻器，或點擊「自動掃描」來提取完整的圖表特徵。
+        </div>
+    </div>
+
+    <script>
+        window.addEventListener('load', () => {
+
+            let isAmpOverloaded = false;
+            let isVoltOverloaded = false;
+            let isPanelVisible = true;
+            let activeI = 0; 
+
+            const toggleBtn = document.getElementById('togglePanelBtn');
+            const uiPanel = document.getElementById('ui-panel');
+            const canvasContainer = document.getElementById('canvas-container');
+            const conductorBadge = document.getElementById('conductorBadge');
+
+            toggleBtn.addEventListener('click', () => {
+                isPanelVisible = !isPanelVisible;
+                if (isPanelVisible) {
+                    uiPanel.style.display = 'flex';
+                    canvasContainer.style.width = '65%';
+                    toggleBtn.style.right = 'calc(35% + 15px)';
+                    toggleBtn.innerText = '隱藏面板 ➡';
+                } else {
+                    uiPanel.style.display = 'none';
+                    canvasContainer.style.width = '100%';
+                    toggleBtn.style.right = '15px';
+                    toggleBtn.innerText = '⬅ 顯示面板';
+                }
+                setTimeout(() => {
+                    camera.aspect = canvasContainer.clientWidth / canvasContainer.clientHeight;
+                    camera.updateProjectionMatrix();
+                    renderer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight);
+                }, 300);
+            });
+
+            // ==========================================
+            // 1. 儀表板繪製引擎
+            // ==========================================
+            const ammeterCanvas = document.createElement('canvas'); ammeterCanvas.width = 1024; ammeterCanvas.height = 1024;
+            const ammeterCtx = ammeterCanvas.getContext('2d');
+            const voltmeterCanvas = document.createElement('canvas'); voltmeterCanvas.width = 1024; voltmeterCanvas.height = 1024;
+            const voltmeterCtx = voltmeterCanvas.getContext('2d');
+
+            const ammeterTexture = new THREE.CanvasTexture(ammeterCanvas);
+            ammeterTexture.generateMipmaps = false; ammeterTexture.minFilter = THREE.LinearFilter;
+            const voltmeterTexture = new THREE.CanvasTexture(voltmeterCanvas);
+            voltmeterTexture.generateMipmaps = false; voltmeterTexture.minFilter = THREE.LinearFilter;
+
+            function drawMeterDial(ctx, type, currentVal, maxRange) {
+                ctx.clearRect(0, 0, 1024, 1024);
+                ctx.fillStyle = '#fdfcf0'; ctx.fillRect(0, 0, 1024, 1024);
+                
+                const cx = 512, cy = 820, r = 520;
+                const startAng = Math.PI * 1.15; const endAng = Math.PI * 1.85;
+
+                ctx.beginPath(); ctx.arc(cx, cy, r - 50, startAng, endAng);
+                ctx.lineWidth = 25; ctx.strokeStyle = '#cdd0d6'; ctx.stroke();
+                
+                ctx.beginPath(); ctx.arc(cx, cy, r, startAng, endAng);
+                ctx.lineWidth = 6; ctx.strokeStyle = '#111'; ctx.stroke();
+
+                for (let i = 0; i <= 50; i++) {
+                    const a = startAng + (endAng - startAng) * (i / 50);
+                    const isMajor = i % 10 === 0; const isHalf = i % 5 === 0 && !isMajor;
+                    const len = isMajor ? 40 : (isHalf ? 25 : 12);
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+                    ctx.lineTo(cx + Math.cos(a) * (r - len), cy + Math.sin(a) * (r - len));
+                    ctx.lineWidth = isMajor ? 5 : 2; ctx.stroke();
+
+                    if (isMajor) {
+                        ctx.fillStyle = '#000'; ctx.font = 'bold 36px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                        const val = (maxRange * (i/50)).toFixed(1);
+                        ctx.fillText(val, cx + Math.cos(a) * (r - 85), cy + Math.sin(a) * (r - 85));
+                    }
+                }
+
+                ctx.fillStyle = type === 'A' ? '#e74c3c' : '#2980b9';
+                ctx.font = 'bold 80px "Times New Roman"'; ctx.fillText(type, cx, cy - 310);
+                ctx.fillStyle = '#555'; ctx.font = '22px Arial'; ctx.fillText("直流電錶", cx, cy - 260);
+
+                ctx.save(); ctx.translate(cx, cy);
+                let ratio = Math.max(0, Math.min(currentVal / maxRange, 1.05));
+                let pointerAngle = startAng + (endAng - startAng) * ratio;
+                ctx.rotate(pointerAngle + Math.PI / 2);
+
+                ctx.beginPath(); ctx.moveTo(-4, 80); ctx.lineTo(4, 80); ctx.lineTo(1.5, -r - 15); ctx.lineTo(-1.5, -r - 15);
+                ctx.fillStyle = '#c0392b'; ctx.fill(); 
+                
+                ctx.beginPath(); ctx.arc(0, 0, 45, 0, Math.PI * 2); ctx.fillStyle = '#222'; ctx.fill();
+                ctx.beginPath(); ctx.arc(0, 0, 35, 0, Math.PI * 2); ctx.fillStyle = '#d4af37'; ctx.fill();
+                ctx.restore();
+
+                ctx.beginPath(); ctx.arc(cx, cy + 100, 30, 0, Math.PI * 2); ctx.fillStyle = '#333'; ctx.fill();
+                ctx.beginPath(); ctx.arc(cx, cy + 100, 24, 0, Math.PI * 2); ctx.fillStyle = '#aaa'; ctx.fill();
+                ctx.beginPath(); ctx.moveTo(cx - 20, cy + 100); ctx.lineTo(cx + 20, cy + 100); ctx.lineWidth=3; ctx.strokeStyle='#222'; ctx.stroke();
+            }
+
+            // ==========================================
+            // 2. Three.js 場景設置
+            // ==========================================
+            const scene = new THREE.Scene(); 
+            scene.background = new THREE.Color(0xe0e0e0); 
+            
+            const camera = new THREE.PerspectiveCamera(35, canvasContainer.clientWidth / canvasContainer.clientHeight, 0.1, 1000);
+            camera.position.set(0, 28, 30); 
+            
+            const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+            renderer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight);
+            renderer.shadowMap.enabled = false; 
+            canvasContainer.appendChild(renderer.domElement);
+            
+            const controls = new THREE.OrbitControls(camera, renderer.domElement); 
+            controls.enableDamping = true; 
+            controls.maxPolarAngle = Math.PI/2 - 0.1;
+            controls.maxDistance = 150; 
+
+            const ambient = new THREE.AmbientLight(0xffffff, 0.85); scene.add(ambient);
+            const dirLight = new THREE.DirectionalLight(0xfffaee, 0.4);
+            dirLight.position.set(15, 30, 15); scene.add(dirLight);
+
+            const deskCanvas = document.createElement('canvas');
+            deskCanvas.width = 512;
+            deskCanvas.height = 512;
+            const dCtx = deskCanvas.getContext('2d');
+            dCtx.fillStyle = '#355E3B'; 
+            dCtx.fillRect(0, 0, 512, 512);
+            for(let i = 0; i <= 512; i += 32) {
+                dCtx.lineWidth = (i % 128 === 0) ? 3 : 1.5;
+                dCtx.strokeStyle = (i % 128 === 0) ? 'rgba(255, 255, 255, 0.4)' : 'rgba(255, 255, 255, 0.15)';
+                dCtx.beginPath(); dCtx.moveTo(i, 0); dCtx.lineTo(i, 512); dCtx.stroke();
+                dCtx.beginPath(); dCtx.moveTo(0, i); dCtx.lineTo(512, i); dCtx.stroke();
+            }
+            const deskTex = new THREE.CanvasTexture(deskCanvas);
+            deskTex.wrapS = THREE.RepeatWrapping; deskTex.wrapT = THREE.RepeatWrapping; deskTex.repeat.set(12, 8); 
+
+            const tableMat = new THREE.MeshLambertMaterial({ map: deskTex });
+            const table = new THREE.Mesh(new THREE.BoxGeometry(45, 1, 30), tableMat);
+            table.position.y = -0.5; scene.add(table);
+
+            // ==========================================
+            // 3. 組件建模
+            // ==========================================
+            function createTerminal(pos, isRed, parentGroup) {
+                const group = new THREE.Group();
+                const color = isRed ? 0xd63031 : 0x2d3436;
+                const base = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.4, 32), new THREE.MeshLambertMaterial({ color: color }));
+                base.position.y = 0.2; group.add(base);
+                const metal = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.45, 32), new THREE.MeshLambertMaterial({ color: 0xecf0f1 }));
+                metal.position.y = 0.225; group.add(metal);
+                const hole = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.46, 16), new THREE.MeshBasicMaterial({ color: 0x000 }));
+                hole.position.y = 0.23; group.add(hole);
+                group.position.copy(pos); parentGroup.add(group);
+                return new THREE.Vector3(pos.x, pos.y + 0.45, pos.z); 
+            }
+
+            function buildEdulabMeter(pos, texture, isAmmeter) {
+                const group = new THREE.Group();
+                const caseColor = isAmmeter ? 0xf39c12 : 0xf1c40f; 
+                const caseMat = new THREE.MeshLambertMaterial({ color: caseColor });
+
+                const base = new THREE.Mesh(new THREE.BoxGeometry(5.6, 1.4, 5.0), caseMat);
+                base.position.set(0, 0.7, 0); group.add(base);
+
+                const slantGroup = new THREE.Group();
+                const backBox = new THREE.Mesh(new THREE.BoxGeometry(5.2, 4.5, 1.5), caseMat);
+                backBox.position.z = -0.75; slantGroup.add(backBox);
+
+                const faceMat = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
+                const face = new THREE.Mesh(new THREE.PlaneGeometry(4.8, 4.2), faceMat);
+                face.position.set(0, 0, 0.01); slantGroup.add(face);
+
+                const glass = new THREE.Mesh(new THREE.BoxGeometry(5.0, 4.4, 0.1), new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.15 }));
+                glass.position.set(0, 0, 0.1); slantGroup.add(glass);
+
+                slantGroup.position.set(0, 2.8, -1.0);
+                slantGroup.rotation.x = -Math.PI / 5; 
+                group.add(slantGroup);
+                group.position.copy(pos); scene.add(group);
+            }
+
+            buildEdulabMeter(new THREE.Vector3(9, 0, 4), ammeterTexture, true);
+            buildEdulabMeter(new THREE.Vector3(1, 0, -8), voltmeterTexture, false);
+
+            const bGroup = new THREE.Group(); scene.add(bGroup);
+
+            function updateBatteryModel() {
+                bGroup.clear(); 
+                const count = parseInt(document.getElementById('batteryCount').value);
+                const spacing = 1.4; const totalZ = count * spacing;
+                
+                const bBase = new THREE.Mesh(new THREE.BoxGeometry(6.0, 0.6, totalZ + 0.8), new THREE.MeshLambertMaterial({ color: 0x111 })); 
+                bBase.position.y = 0.3; bGroup.add(bBase);
+
+                const padMat = new THREE.MeshLambertMaterial({ color: 0x222 });
+                const rightPad = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.6, totalZ), padMat); rightPad.position.set(3.75, 0.3, 0); 
+                const leftPad = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.6, totalZ), padMat); leftPad.position.set(-3.75, 0.3, 0);
+                bGroup.add(rightPad, leftPad);
+
+                const clipMat = new THREE.MeshLambertMaterial({ color: 0x050505 });
+                const batBodyMat = new THREE.MeshLambertMaterial({ color: 0x1e272e });
+                const batMetalMat = new THREE.MeshLambertMaterial({ color: 0xd4af37 }); 
+                
+                for(let i=0; i<count; i++) {
+                    const z = (i - (count-1)/2) * spacing;
+                    const clipL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.2, 1.2), clipMat); clipL.position.set(-2.8, 0.9, z);
+                    const clipR = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.2, 1.2), clipMat); clipR.position.set(2.8, 0.9, z);
+                    bGroup.add(clipL, clipR);
+
+                    const bat = new THREE.Mesh(new THREE.CylinderGeometry(0.65, 0.65, 3.0, 32), batBodyMat); bat.rotation.z = Math.PI/2; bat.position.set(-0.5, 1.25, z);
+                    const head = new THREE.Mesh(new THREE.CylinderGeometry(0.65, 0.65, 1.0, 32), batMetalMat); head.rotation.z = Math.PI/2; head.position.set(1.5, 1.25, z);
+                    const tip = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.2), batMetalMat); tip.rotation.z = Math.PI/2; tip.position.set(2.1, 1.25, z);
+                    bGroup.add(bat, head, tip);
+                }
+                bGroup.position.set(-10, 0, -7);
+            }
+            updateBatteryModel();
+            
+            document.getElementById('batteryCount').addEventListener('change', () => {
+                updateBatteryModel(); rawData.length = 0; updateChartData(); isFitLineVisible = false;
+                document.getElementById('fitBtn').innerText = "📈 顯示最佳擬合線"; document.getElementById('fitBtn').style.background = "#e5c07b";
+                document.getElementById('rheostatSlider').value = 0; calculatePhysics();
+            });
+
+            const rGroup = new THREE.Group();
+            const rBase = new THREE.Mesh(new THREE.BoxGeometry(9, 0.8, 3.2), new THREE.MeshLambertMaterial({ color: 0x222 })); rBase.position.y = 0.4; rGroup.add(rBase);
+            const bracketMat = new THREE.MeshLambertMaterial({ color: 0xbdc3c7 });
+            const brL = new THREE.Mesh(new THREE.BoxGeometry(0.6, 2.5, 2.4), bracketMat); brL.position.set(-4.0, 1.8, 0); 
+            const brR = brL.clone(); brR.position.x = 4.0; rGroup.add(brL, brR);
+
+            const coilCan = document.createElement('canvas'); coilCan.width = 32; coilCan.height = 256; const ctxC = coilCan.getContext('2d');
+            ctxC.fillStyle = '#a0522d'; ctxC.fillRect(0,0,32,256); ctxC.strokeStyle = '#5c2c16'; ctxC.lineWidth = 3;
+            for(let j=0; j<256; j+=6) { ctxC.beginPath(); ctxC.moveTo(0,j); ctxC.lineTo(32,j); ctxC.stroke(); }
+            const coilTex = new THREE.CanvasTexture(coilCan); coilTex.wrapS = THREE.RepeatWrapping; coilTex.wrapT = THREE.RepeatWrapping; coilTex.repeat.set(1, 30);
+            
+            const coil = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, 7.4, 64), new THREE.MeshLambertMaterial({ map: coilTex })); coil.rotation.z = Math.PI/2; coil.position.y = 1.8; rGroup.add(coil);
+            const rail = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 8.2), new THREE.MeshLambertMaterial({ color: 0xecf0f1 })); rail.rotation.z = Math.PI/2; rail.position.set(0, 3.3, 0); rGroup.add(rail);
+            
+            const slider = new THREE.Group();
+            const sBody = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.8, 1.4), new THREE.MeshLambertMaterial({ color: 0x111 })); sBody.position.y = 3.3; 
+            const leaf = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.0, 0.6), new THREE.MeshLambertMaterial({ color: 0xd4af37 })); leaf.position.set(0, 2.5, 0); 
+            slider.add(sBody, leaf); slider.position.x = 3.0; rGroup.add(slider); 
+            rGroup.position.set(-8, 0, 5); scene.add(rGroup);
+
+            const cGroup = new THREE.Group();
+            const cBase = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.4, 2.5), new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 })); cBase.position.y = 0.2; cGroup.add(cBase);
+            cGroup.position.set(-1, 0, 5); scene.add(cGroup);
+
+            let activeComp = new THREE.Group(); scene.add(activeComp);
+            let bulbLight = new THREE.PointLight(0xffa502, 0, 15); scene.add(bulbLight);
+
+            function updateConductorBadge(type) {
+                const isOhmic = (type === 'ohmic' || type === 'wire');
+                if (isOhmic) {
+                    conductorBadge.innerHTML = "✅ 當前元件：歐姆導體 (遵守歐姆定律)";
+                    conductorBadge.style.background = "#28a745"; conductorBadge.style.color = "#fff";
+                } else {
+                    conductorBadge.innerHTML = "❌ 當前元件：非歐姆導體 (不遵守歐姆定律)";
+                    conductorBadge.style.background = "#e06c75"; conductorBadge.style.color = "#fff";
+                }
+            }
+
+            function setComponentType(type) {
+                activeComp.clear(); bulbLight.intensity = 0;
+                updateConductorBadge(type);
+                
+                if (type === 'ohmic') {
+                    const r = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 2.2), new THREE.MeshLambertMaterial({ color: 0x8b4513 })); r.rotation.z = Math.PI/2; r.position.set(-1, 0.7, 5);
+                    const band = new THREE.Mesh(new THREE.CylinderGeometry(0.31, 0.31, 0.2), new THREE.MeshBasicMaterial({ color: 0xc0392b })); band.rotation.z=Math.PI/2; band.position.set(-1.5, 0.7, 5);
+                    activeComp.add(r, band);
+                } else if (type === 'wire') {
+                    const w = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 3.0), new THREE.MeshLambertMaterial({ color: 0xcd7f32 })); w.rotation.z = Math.PI/2; w.position.set(-1, 0.5, 5);
+                    activeComp.add(w);
+                } else if (type === 'bulb') {
+                    const glass = new THREE.Mesh(new THREE.SphereGeometry(0.9, 32, 32), new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.2 })); glass.position.set(-1, 1.5, 5);
+                    const filament = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.6), new THREE.MeshBasicMaterial({ color: 0x333 })); filament.position.set(-1, 1.3, 5);
+                    const metalBase = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.6), new THREE.MeshLambertMaterial({ color: 0xaaa })); metalBase.position.set(-1, 0.7, 5);
+                    activeComp.add(glass, filament, metalBase); activeComp.userData = { glass, filament }; bulbLight.position.copy(glass.position);
+                } else if (type === 'diode') {
+                    const d = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 1.8), new THREE.MeshLambertMaterial({ color: 0x111 })); d.rotation.z = Math.PI/2; d.position.set(-1, 0.8, 5);
+                    const band = new THREE.Mesh(new THREE.CylinderGeometry(0.41, 0.41, 0.3), new THREE.MeshLambertMaterial({ color: 0xbdc3c7 })); band.rotation.z=Math.PI/2; band.position.set(-0.3, 0.8, 5);
+                    activeComp.add(d, band);
+                } else if (type === 'led') {
+                    const ledMat = new THREE.MeshLambertMaterial({ color: 0x882222, transparent: true, opacity: 0.6 });
+                    const ledBase = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.4, 32), ledMat); ledBase.position.set(-1, 0.9, 5);
+                    const ledDome = new THREE.Mesh(new THREE.SphereGeometry(0.35, 32, 16), ledMat); ledDome.position.set(-1, 1.1, 5);
+                    const leg1 = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.6), new THREE.MeshLambertMaterial({ color: 0xbdc3c7 })); leg1.position.set(-1.15, 0.5, 5);
+                    const leg2 = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.6), new THREE.MeshLambertMaterial({ color: 0xbdc3c7 })); leg2.position.set(-0.85, 0.5, 5);
+                    activeComp.add(ledBase, ledDome, leg1, leg2); activeComp.userData = { ledMat }; bulbLight.position.copy(ledDome.position);
+                } else if (type === 'ntc') {
+                    const ntcMat = new THREE.MeshLambertMaterial({ color: 0x16a085 });
+                    const ntcDisc = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.25, 32), ntcMat); ntcDisc.rotation.x = Math.PI/2; ntcDisc.position.set(-1, 1.1, 5);
+                    const leg1 = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.8), new THREE.MeshLambertMaterial({ color: 0xbdc3c7 })); leg1.position.set(-1.25, 0.6, 5);
+                    const leg2 = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.8), new THREE.MeshLambertMaterial({ color: 0xbdc3c7 })); leg2.position.set(-0.75, 0.6, 5);
+                    activeComp.add(ntcDisc, leg1, leg2);
+                } else if (type === 'ptc') {
+                    const ptcMat = new THREE.MeshLambertMaterial({ color: 0x2980b9 });
+                    const ptcDisc = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.25, 32), ptcMat); ptcDisc.rotation.x = Math.PI/2; ptcDisc.position.set(-1, 1.1, 5);
+                    const leg1 = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.8), new THREE.MeshLambertMaterial({ color: 0xbdc3c7 })); leg1.position.set(-1.25, 0.6, 5);
+                    const leg2 = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.8), new THREE.MeshLambertMaterial({ color: 0xbdc3c7 })); leg2.position.set(-0.75, 0.6, 5);
+                    activeComp.add(ptcDisc, leg1, leg2);
+                }
+            }
+            setComponentType('ohmic');
+
+            // ==========================================
+            // 3.5 模組化火焰特效
+            // ==========================================
+            function createFireSystem(position) {
+                const group = new THREE.Group(); group.position.copy(position); scene.add(group);
+                const light = new THREE.PointLight(0xff3300, 0, 15); group.add(light);
+                const particleCount = 45; const geo = new THREE.BoxGeometry(0.5, 0.5, 0.5); const particles = [];
+                for (let i = 0; i < particleCount; i++) {
+                    const mat = new THREE.MeshBasicMaterial({ color: 0xff5500, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false });
+                    const mesh = new THREE.Mesh(geo, mat); resetFireParticle(mesh); mesh.userData.life = Math.random(); 
+                    group.add(mesh); particles.push(mesh);
+                }
+                return { group, light, particles };
+            }
+            function resetFireParticle(mesh) {
+                mesh.position.set((Math.random() - 0.5) * 2.5, 0, (Math.random() - 0.5) * 1.5); mesh.userData.life = 0;
+                mesh.userData.speed = Math.random() * 0.04 + 0.02; mesh.userData.scale = Math.random() * 0.8 + 0.5;
+                mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+            }
+            function updateFireSystem(sys) {
+                sys.group.visible = true; sys.light.intensity = 2 + Math.random() * 2;
+                sys.particles.forEach(p => {
+                    p.userData.life += 0.015 + Math.random() * 0.01;
+                    if (p.userData.life >= 1) resetFireParticle(p);
+                    p.position.y += p.userData.speed; p.position.x += (Math.random() - 0.5) * 0.05; p.position.z += (Math.random() - 0.5) * 0.05;
+                    p.rotation.x += 0.05; p.rotation.y += 0.05;
+                    const life = p.userData.life; p.scale.setScalar(p.userData.scale * (1 - life));
+                    p.material.color.setHSL(0.12 * (1 - life), 1, 0.5); p.material.opacity = 1 - Math.pow(life, 2);
+                });
+            }
+            function hideFireSystem(sys) { sys.group.visible = false; sys.light.intensity = 0; }
+            
+            const ampFire = createFireSystem(new THREE.Vector3(9, 2.5, 3.5));
+            const voltFire = createFireSystem(new THREE.Vector3(1, 2.5, -8.5));
+
+            // ==========================================
+            // 4. 香蕉插頭智慧疊加佈線系統與電流粒子
+            // ==========================================
+            const terminalsGroup = new THREE.Group(); scene.add(terminalsGroup);
+            const currentParticles = [];
+
+            const T = {
+                BatPos: createTerminal(new THREE.Vector3(-6.25, 0.6, -7.0), true, terminalsGroup),   
+                BatNeg: createTerminal(new THREE.Vector3(-13.75, 0.6, -7.0), false, terminalsGroup), 
+                RheoFixL: createTerminal(new THREE.Vector3(-11.8, 0.8, 6.5), true, terminalsGroup),  
+                RheoRailL: createTerminal(new THREE.Vector3(-11.8, 3.1, 5.0), true, terminalsGroup), 
+                SockPos: createTerminal(new THREE.Vector3(-2.3, 0.2, 5.0), true, terminalsGroup),
+                SockNeg: createTerminal(new THREE.Vector3(0.3, 0.2, 5.0), false, terminalsGroup),
+                AmmPos: createTerminal(new THREE.Vector3(10.5, 1.4, 5.5), true, terminalsGroup),
+                AmmNeg: createTerminal(new THREE.Vector3(7.5, 1.4, 5.5), false, terminalsGroup),
+                VoltPos: createTerminal(new THREE.Vector3(2.5, 1.4, -6.5), true, terminalsGroup),
+                VoltNeg: createTerminal(new THREE.Vector3(-0.5, 1.4, -6.5), false, terminalsGroup)
+            };
+
+            const terminalUsageTracker = new Map();
+            function getStackLevel(pos) {
+                const key = `${pos.x.toFixed(1)},${pos.y.toFixed(1)},${pos.z.toFixed(1)}`;
+                const count = terminalUsageTracker.get(key) || 0; terminalUsageTracker.set(key, count + 1); return count;
+            }
+
+            function drawRoutedWire(start, end, colorHex, deskPath) {
+                const sLevel = getStackLevel(start); const eLevel = getStackLevel(end);
+                const plugMat = new THREE.MeshLambertMaterial({ color: colorHex }); const stackOffset = 1.2;
+                
+                const p1Y = start.y + 0.6 + (sLevel * stackOffset);
+                const p1 = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 1.2), plugMat); p1.position.set(start.x, p1Y, start.z); scene.add(p1);
+                
+                const p2Y = end.y + 0.6 + (eLevel * stackOffset);
+                const p2 = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 1.2), plugMat); p2.position.set(end.x, p2Y, end.z); scene.add(p2);
+
+                const points = []; const sTop = p1Y + 0.6;
+                points.push(new THREE.Vector3(start.x, sTop, start.z)); points.push(new THREE.Vector3(start.x, sTop + 1.5, start.z)); 
+                deskPath.forEach(wp => points.push(wp));
+                const eTop = p2Y + 0.6;
+                points.push(new THREE.Vector3(end.x, eTop + 1.5, end.z)); points.push(new THREE.Vector3(end.x, eTop, end.z));
+
+                const curve = new THREE.CatmullRomCurve3(points, false, 'catmullrom', 0.15);
+                const wireMesh = new THREE.Mesh(new THREE.TubeGeometry(curve, 150, 0.12, 16, false), new THREE.MeshLambertMaterial({ color: colorHex }));
+                scene.add(wireMesh); return curve;
+            }
+
+            function createCurrentParticles(curve, isReverse = false, isVoltmeter = false) {
+                const length = curve.getLength(); const particleCount = Math.max(3, Math.floor(length / 2)); 
+                const mat = new THREE.MeshBasicMaterial({ color: 0xf1c40f }); const geo = new THREE.SphereGeometry(0.18, 8, 8);
+                for(let i = 0; i < particleCount; i++) {
+                    const mesh = new THREE.Mesh(geo, mat); scene.add(mesh);
+                    currentParticles.push({ mesh: mesh, curve: curve, t: i / particleCount, speed: isReverse ? -1 : 1, length: length, isVoltmeter: isVoltmeter });
+                }
+            }
+
+            const c1 = drawRoutedWire(T.BatPos, T.RheoFixL, 0xd63031, [ new THREE.Vector3(-6.25, 0.12, -2.0), new THREE.Vector3(-15.0, 0.12, -2.0), new THREE.Vector3(-15.0, 0.12, 8.0), new THREE.Vector3(-11.8, 0.12, 8.0) ]);
+            const c2 = drawRoutedWire(T.RheoRailL, T.SockPos, 0xd63031, [ new THREE.Vector3(-11.8, 0.12, 2.0), new THREE.Vector3(-2.3, 0.12, 2.0) ]);
+            const c3 = drawRoutedWire(T.SockNeg, T.AmmPos, 0x0984e3, [ new THREE.Vector3(0.3, 0.12, 8.5), new THREE.Vector3(10.5, 0.12, 8.5) ]);
+            const c4 = drawRoutedWire(T.AmmNeg, T.BatNeg, 0x2d3436, [ new THREE.Vector3(7.5, 0.12, 8.5), new THREE.Vector3(14.0, 0.12, 8.5), new THREE.Vector3(14.0, 0.12, -11.0), new THREE.Vector3(-13.75, 0.12, -11.0) ]);
+            const c5 = drawRoutedWire(T.VoltPos, T.SockPos, 0xd63031, [ new THREE.Vector3(2.5, 0.12, -3.0), new THREE.Vector3(-2.3, 0.12, -3.0), new THREE.Vector3(-2.3, 0.12, 3.0) ]);
+            const c6 = drawRoutedWire(T.VoltNeg, T.SockNeg, 0x2d3436, [ new THREE.Vector3(-0.5, 0.12, -2.0), new THREE.Vector3(0.3, 0.12, -2.0), new THREE.Vector3(0.3, 0.12, 3.0) ]);
+
+            createCurrentParticles(c1, false); createCurrentParticles(c2, false); createCurrentParticles(c3, false);
+            createCurrentParticles(c4, false); createCurrentParticles(c5, true, true); createCurrentParticles(c6, false, true); 
+
+            // ==========================================
+            // 5. 數據引擎與 Chart.js (保留副格線，移除縮放)
+            // ==========================================
+            const ctxChart = document.getElementById('ivChart').getContext('2d');
+            
+            const rawData = []; const pointsArray = []; const fitLineArray = []; 
+            
+            const ivChart = new Chart(ctxChart, {
+                type: 'scatter',
+                data: { 
+                    datasets: [
+                        { label: '實測數據點', data: pointsArray, backgroundColor: '#61afef', borderColor: '#61afef', pointRadius: 5, z: 2 },
+                        { label: '理論最佳擬合線', data: fitLineArray, type: 'line', borderColor: '#e5c07b', borderWidth: 2, pointRadius: 0, showLine: true, borderDash: [5, 5], z: 1 }
+                    ] 
+                },
+                options: { 
+                    animation: false, responsive: true, maintainAspectRatio: false, 
+                    plugins: { 
+                        legend: { labels: { color: '#abb2bf', font: { size: 13 } } }
+                    },
+                    scales: { 
+                        x: { 
+                            type: 'linear', title: { display: true, text: '', color: '#abb2bf', font: { size: 14, weight: 'bold' } }, 
+                            ticks: { color: '#abb2bf', maxTicksLimit: 40 }, 
+                            grid: { 
+                                color: (ctx) => {
+                                    if (ctx.tick.value === 0) return '#98c379'; 
+                                    return (ctx.tick.value % 1 === 0) ? '#5c6370' : '#2c313c'; // 整數線較亮，副格線較暗
+                                },
+                                lineWidth: (ctx) => (ctx.tick.value % 1 === 0) ? 1.5 : 0.5
+                            }, min: 0 
+                        }, 
+                        y: { 
+                            type: 'linear', title: { display: true, text: '', color: '#abb2bf', font: { size: 14, weight: 'bold' } }, 
+                            ticks: { color: '#abb2bf', maxTicksLimit: 40 }, 
+                            grid: { 
+                                color: (ctx) => {
+                                    if (ctx.tick.value === 0) return '#98c379'; 
+                                    return (ctx.tick.value % 1 === 0) ? '#5c6370' : '#2c313c'; 
+                                },
+                                lineWidth: (ctx) => (ctx.tick.value % 1 === 0) ? 1.5 : 0.5
+                            }, min: 0 
+                        } 
+                    } 
+                }
+            });
+
+            const uiSlider = document.getElementById('rheostatSlider');
+            const uiComp = document.getElementById('componentSelect');
+            const uiRangeAmp = document.getElementById('ammeterRange');
+            const uiRangeVolt = document.getElementById('voltmeterRange');
+            const uiGraphType = document.getElementById('graphTypeSelect');
+            const alertBox = document.getElementById('danger-alert');
+            
+            let theoreticalV = 0; let theoreticalI = 0; let isFitLineVisible = false;
+
+            function updateChartAxes() {
+                const gType = uiGraphType.value;
+                const maxI = parseFloat(uiRangeAmp.value) * 1.1;
+                const maxV = parseFloat(uiRangeVolt.value) * 1.1;
+                
+                if (gType === 'VI') { 
+                    ivChart.options.scales.x.title.text = '電流 I (A)';
+                    ivChart.options.scales.x.suggestedMax = maxI;
+                    ivChart.options.scales.y.title.text = '電壓 V (V)';
+                    ivChart.options.scales.y.suggestedMax = maxV;
+                } else { 
+                    ivChart.options.scales.x.title.text = '電壓 V (V)';
+                    ivChart.options.scales.x.suggestedMax = maxV;
+                    ivChart.options.scales.y.title.text = '電流 I (A)';
+                    ivChart.options.scales.y.suggestedMax = maxI;
+                }
+                ivChart.update('none');
+            }
+
+            function updateChartData() {
+                const gType = uiGraphType.value; pointsArray.length = 0;
+                rawData.forEach(pt => {
+                    if (gType === 'VI') pointsArray.push({ x: pt.i, y: pt.v });
+                    else pointsArray.push({ x: pt.v, y: pt.i });
+                });
+                pointsArray.sort((a,b) => a.x - b.x); ivChart.update('none');
+            }
+
+            updateChartAxes();
+
+            document.getElementById('showResistanceToggle').addEventListener('change', (e) => {
+                document.getElementById('resistance-display').style.display = e.target.checked ? 'block' : 'none';
+            });
+
+            uiRangeAmp.addEventListener('change', () => { updateChartAxes(); calculatePhysics(); });
+            uiRangeVolt.addEventListener('change', () => { updateChartAxes(); calculatePhysics(); });
+
+            uiGraphType.addEventListener('change', () => {
+                updateChartAxes(); updateChartData();
+                if (isFitLineVisible) triggerFitLine(); 
+            });
+
+            document.getElementById('recordBtn').addEventListener('click', () => {
+                if (isAmpOverloaded || isVoltOverloaded) return; 
+                if (!rawData.find(p => Math.abs(p.v - theoreticalV) < 0.02)) {
+                    rawData.push({ v: theoreticalV, i: theoreticalI }); updateChartData();
+                }
+            });
+
+            document.getElementById('autoBtn').addEventListener('click', async () => {
+                const autoBtn = document.getElementById('autoBtn');
+                if (isAmpOverloaded || isVoltOverloaded) return;
+                autoBtn.disabled = true; autoBtn.innerText = "⏳ 掃描中..."; autoBtn.style.opacity = 0.6;
+                uiSlider.value = 0; calculatePhysics();
+                await new Promise(r => setTimeout(r, 300)); 
+
+                for(let k = 0; k <= 1.0; k += 0.05) {
+                    uiSlider.value = k; calculatePhysics();
+                    if (isAmpOverloaded || isVoltOverloaded) break;
+                    if (!rawData.find(p => Math.abs(p.v - theoreticalV) < 0.02)) {
+                        rawData.push({ v: theoreticalV, i: theoreticalI }); updateChartData();
+                    }
+                    await new Promise(r => setTimeout(r, 150)); 
+                }
+                autoBtn.disabled = false; autoBtn.innerText = "🤖 自動掃描"; autoBtn.style.opacity = 1.0;
+            });
+
+            function triggerFitLine() {
+                const comp = uiComp.value; const maxV = parseFloat(uiRangeVolt.value) * 1.1; const gType = uiGraphType.value;
+                fitLineArray.length = 0; 
+                for(let v = 0; v <= maxV; v += 0.1) {
+                    let iVal = 0;
+                    if (comp === 'ohmic') iVal = v / 1.5;
+                    else if (comp === 'wire') iVal = v / 0.5; 
+                    else if (comp === 'bulb') iVal = 1.5 * Math.pow(v, 0.55);
+                    else if (comp === 'diode') iVal = v < 0.6 ? 0 : 2.5 * Math.pow((v - 0.6), 1.6);
+                    else if (comp === 'ntc') iVal = 0.15 * Math.pow(v, 2.2);
+                    else if (comp === 'ptc') iVal = 2.0 * Math.tanh(v / 2.0);
+                    else if (comp === 'led') iVal = v < 1.8 ? 0 : 1.2 * Math.pow((v - 1.8), 1.5);
+                    
+                    if (gType === 'VI') fitLineArray.push({ x: iVal, y: v });
+                    else fitLineArray.push({ x: v, y: iVal });
+                }
+                ivChart.update('none');
+            }
+
+            const fitBtn = document.getElementById('fitBtn');
+            fitBtn.addEventListener('click', () => {
+                isFitLineVisible = !isFitLineVisible;
+                if (isFitLineVisible) {
+                    triggerFitLine();
+                    fitBtn.innerText = "📉 隱藏最佳擬合線"; fitBtn.style.background = "#d19a66"; 
+                } else {
+                    fitLineArray.length = 0; ivChart.update('none');
+                    fitBtn.innerText = "📈 顯示最佳擬合線"; fitBtn.style.background = "#e5c07b";
+                }
+            });
+
+            document.getElementById('clearBtn').addEventListener('click', () => {
+                rawData.length = 0; pointsArray.length = 0; fitLineArray.length = 0;
+                isFitLineVisible = false; fitBtn.innerText = "📈 顯示最佳擬合線"; fitBtn.style.background = "#e5c07b";
+                ivChart.update('none');
+            });
+
+            function calculatePhysics() {
+                const k = parseFloat(uiSlider.value); const comp = uiComp.value;
+                const maxI = parseFloat(uiRangeAmp.value); const maxVMeter = parseFloat(uiRangeVolt.value);
+                const count = parseInt(document.getElementById('batteryCount').value);
+                const V_source = count * 1.5;
+                
+                theoreticalV = 0.1 + (k * (V_source - 0.1)); theoreticalI = 0;
+
+                if (comp === 'ohmic') theoreticalI = theoreticalV / 1.5;
+                else if (comp === 'wire') theoreticalI = theoreticalV / 0.5; 
+                else if (comp === 'bulb') theoreticalI = 1.5 * Math.pow(theoreticalV, 0.55);
+                else if (comp === 'diode') theoreticalI = theoreticalV < 0.6 ? 0 : 2.5 * Math.pow((theoreticalV - 0.6), 1.6);
+                else if (comp === 'ntc') theoreticalI = 0.15 * Math.pow(theoreticalV, 2.2);
+                else if (comp === 'ptc') theoreticalI = 2.0 * Math.tanh(theoreticalV / 2.0); 
+                else if (comp === 'led') theoreticalI = theoreticalV < 1.8 ? 0 : 1.2 * Math.pow((theoreticalV - 1.8), 1.5);
+
+                isAmpOverloaded = theoreticalI > maxI; isVoltOverloaded = theoreticalV > maxVMeter;
+
+                let displayI = theoreticalI; let displayV = theoreticalV; activeI = theoreticalI; let vRheo = V_source - theoreticalV;
+                if (isAmpOverloaded) { displayI = 0; displayV = 0; activeI = 0; vRheo = V_source; } 
+                else if (isVoltOverloaded) { displayV = 0; }
+
+                if (isAmpOverloaded || isVoltOverloaded) {
+                    let msg = "⚠️ 過載警告：";
+                    if (isAmpOverloaded && isVoltOverloaded) msg += `電流 (${theoreticalI.toFixed(2)}A) 與 電壓 (${theoreticalV.toFixed(2)}V) 均超過量程。電路斷開。雙儀錶燒毀！🔥`;
+                    else if (isAmpOverloaded) msg += `電流 (${theoreticalI.toFixed(2)}A) 超過安培計量程。電路斷開。安培計燒毀！🔥`;
+                    else msg += `電壓 (${theoreticalV.toFixed(2)}V) 超過伏特計量程。伏特計燒毀！🔥`;
+                    alertBox.innerHTML = msg; alertBox.style.display = 'block'; 
+                } else { alertBox.style.display = 'none'; }
+
+                gsap.to(slider.position, { x: 3.0 - (k * 5.8), duration: 0.1 });
+                document.getElementById('v-num').innerText = displayV.toFixed(2); document.getElementById('i-num').innerText = displayI.toFixed(2);
+                
+                let rTestText = activeI > 0.001 ? (theoreticalV / activeI).toFixed(2) : "∞";
+                let rRheoText = activeI > 0.001 ? (vRheo / activeI).toFixed(2) : "∞";
+                document.getElementById('r-test-num').innerText = rTestText + ' Ω'; document.getElementById('r-rheo-num').innerText = rRheoText + ' Ω';
+
+                document.getElementById('label-battery').innerText = `🔋 電源: ${V_source.toFixed(2)} V`;
+                document.getElementById('label-rheostat').innerText = `VR (變阻器): ${vRheo.toFixed(2)} V`;
+                document.getElementById('label-resistor').innerText = `VT (待測元件): ${theoreticalV.toFixed(2)} V`;
+
+                drawMeterDial(ammeterCtx, 'A', displayI, maxI); ammeterTexture.needsUpdate = true;
+                drawMeterDial(voltmeterCtx, 'V', displayV, maxVMeter); voltmeterTexture.needsUpdate = true;
+
+                if (comp === 'bulb') {
+                    let lum = activeI / 3.0;
+                    if (lum > 0.05) {
+                        activeComp.userData.filament.material.color.setRGB(1, 0.3 + lum, 0.1); activeComp.userData.glass.material.opacity = 0.2 + lum * 0.3; bulbLight.intensity = lum * 12;
+                    } else {
+                        activeComp.userData.filament.material.color.setHex(0x333333); activeComp.userData.glass.material.opacity = 0.2; bulbLight.intensity = 0;
+                    }
+                } else if (comp === 'led') {
+                    if (activeI > 0.05) {
+                        activeComp.userData.ledMat.color.setHex(0xff3333); activeComp.userData.ledMat.opacity = 1.0; bulbLight.intensity = (activeI / maxI) * 15; bulbLight.color.setHex(0xff0000);
+                    } else {
+                        activeComp.userData.ledMat.color.setHex(0x882222); activeComp.userData.ledMat.opacity = 0.6; bulbLight.intensity = 0;
+                    }
+                }
+
+                let txt = `<strong>[限流接法]</strong><br>`;
+                if (comp === 'ohmic') txt += "<strong>[定值電阻器]</strong><br>呈線性關係。電阻值保持不變，符合歐姆定律。";
+                else if (comp === 'wire') txt += "<strong>[鎳鉻合金線]</strong><br>低阻值金屬導線，溫度變化不明顯時呈線性關係，符合歐姆定律。";
+                else if (comp === 'bulb') txt += "<strong>[鎢絲燈泡]</strong><br>溫度上升導致電阻增加。圖線斜率隨電壓上升而變化，非歐姆導體。";
+                else if (comp === 'diode') txt += "<strong>[半導體二極管]</strong><br>單向導電性。達到正向導通電壓（約 0.6V）後電流急升，非歐姆導體。";
+                else if (comp === 'ntc') txt += "<strong>[熱敏電阻 NTC]</strong><br>負溫度係數。隨電流增加，溫度上升，阻值顯著下降，非歐姆導體。";
+                else if (comp === 'ptc') txt += "<strong>[熱敏電阻 PTC]</strong><br>正溫度係數。隨溫度上升，阻值顯著增加，電流趨於飽和，非歐姆導體。";
+                else if (comp === 'led') txt += "<strong>[發光二極管]</strong><br>開啟電壓約為 1.8V。導通後將電能轉換為光能，電流急劇上升，非歐姆導體。";
+                document.getElementById('analysis-text').innerHTML = txt;
+            }
+
+            uiSlider.addEventListener('input', calculatePhysics);
+            uiComp.addEventListener('change', (e) => {
+                setComponentType(e.target.value); rawData.length = 0; updateChartData();
+                fitLineArray.length = 0; isFitLineVisible = false;
+                document.getElementById('fitBtn').innerText = "📈 顯示最佳擬合線"; document.getElementById('fitBtn').style.background = "#e5c07b";
+                uiSlider.value = 0; calculatePhysics();
+            });
+
+            function updateLabelPosition(el, worldPos) {
+                const isChecked = document.getElementById('showLabelsToggle').checked;
+                if (!isChecked) { el.style.display = 'none'; return; }
+                el.style.display = 'block'; const vector = worldPos.clone(); vector.project(camera);
+                if (vector.z > 1.0) { el.style.opacity = 0; } else {
+                    el.style.opacity = 1; const x = (vector.x * 0.5 + 0.5) * canvasContainer.clientWidth;
+                    const y = (vector.y * -0.5 + 0.5) * canvasContainer.clientHeight; el.style.left = `${x}px`; el.style.top = `${y}px`;
+                }
+            }
+
+            // ==========================================
+            // 6. 渲染循環
+            // ==========================================
+            const posBattery = new THREE.Vector3(-10, 3.5, -7); const posRheostat = new THREE.Vector3(-8, 5.5, 5); const posResistor = new THREE.Vector3(-1, 3.5, 5);
+
+            function animate() { 
+                requestAnimationFrame(animate); controls.update(); 
+                
+                if (isAmpOverloaded) updateFireSystem(ampFire); else hideFireSystem(ampFire);
+                if (isVoltOverloaded) updateFireSystem(voltFire); else hideFireSystem(voltFire);
+
+                updateLabelPosition(document.getElementById('label-battery'), posBattery);
+                updateLabelPosition(document.getElementById('label-rheostat'), posRheostat);
+                updateLabelPosition(document.getElementById('label-resistor'), posResistor);
+
+                const showCurrent = document.getElementById('showCurrentToggle').checked; const isCurrentActive = activeI > 0.001; 
+                const baseSpeed = isCurrentActive ? ((activeI / 5) * 0.3 + 0.08) / 3 : 0; 
+                const voltmeterSpeed = baseSpeed / 10; 
+
+                currentParticles.forEach(p => {
+                    if (!showCurrent || baseSpeed === 0) { p.mesh.visible = false; } else {
+                        p.mesh.visible = true; const currentSpeed = p.isVoltmeter ? voltmeterSpeed : baseSpeed;
+                        const tSpeed = currentSpeed / p.length; p.t += p.speed > 0 ? tSpeed : -tSpeed;
+                        if (p.t > 1) p.t -= 1; if (p.t < 0) p.t += 1;
+                        p.mesh.position.copy(p.curve.getPointAt(p.t));
+                    }
+                });
+
+                renderer.render(scene, camera); 
+            }
+            
+            calculatePhysics(); animate(); 
+
+            window.addEventListener('resize', () => { 
+                camera.aspect = canvasContainer.clientWidth / canvasContainer.clientHeight; camera.updateProjectionMatrix(); 
+                renderer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight); 
+            });
+        }); 
+    </script>
+</body>
+</html>

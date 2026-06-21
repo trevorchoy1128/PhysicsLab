@@ -107,7 +107,6 @@
         }
         .data-display span { font-weight: bold; color: #e5c07b; font-size: 16px; }
         
-        /* 數學面板排版 */
         .math-eq { margin-bottom: 15px; font-size: 16px; overflow-x: auto; overflow-y: hidden; padding-bottom: 5px; }
         .math-divider { border-top: 1px solid var(--border-light); margin: 20px 0; }
 
@@ -136,6 +135,13 @@
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
         
+        .angle-label {
+            position: absolute; padding: 2px 6px; background: rgba(33, 37, 43, 0.85); 
+            border-radius: 4px; font-size: 12px; font-weight: bold; color: #4da6ff;
+            pointer-events: none; transform: translate(-50%, -50%); border: 1px solid rgba(255,255,255,0.15);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2); z-index: 25; transition: opacity 0.2s;
+        }
+
         #chart-container {
             margin-top: 20px; background: rgba(255,255,255,0.95); border-radius: 8px;
             padding: 10px; height: 280px; position: relative; box-shadow: 0 4px 10px rgba(0,0,0,0.15);
@@ -146,6 +152,37 @@
             font-size: 13px; color: #98c379; margin-top: 15px; margin-bottom: 15px;
             background: rgba(152, 195, 121, 0.1); padding: 12px; border-radius: 6px;
             line-height: 1.5; border-left: 4px solid #98c379;
+        }
+    
+        #home-btn {
+            position: fixed; bottom: 16px; left: 16px; z-index: 99999;
+            background: rgba(30,41,59,0.85); backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 10px; padding: 8px 14px; font-size: 13px; font-weight: bold;
+            color: #fff; text-decoration: none; box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+            transition: background 0.2s, transform 0.2s; display: inline-flex; align-items: center; gap: 6px;
+        }
+        #home-btn:hover { background: rgba(30,41,59,0.95); transform: translateY(-2px); }
+
+        /* ── Responsive ── */
+        @media (max-width: 768px) {
+            body { overflow-y: auto; }
+            #ui-panel {
+                position: relative; width: 100% !important; height: auto;
+                transform: none !important; border-right: none; border-bottom: 1px solid var(--border-light);
+            }
+            #math-panel-right { display: none !important; }
+            #canvas-container, #labels-container {
+                position: relative; left: auto !important; width: 100% !important; height: 60vw;
+                min-height: 220px; max-height: 60vh;
+            }
+            #floating-controls { top: auto; bottom: 60px; left: 50%; transform: translateX(-50%); flex-wrap: wrap; justify-content: center; }
+        }
+        @media (min-width: 769px) and (max-width: 1200px) {
+            #math-panel-right { width: 320px; }
+            #canvas-container, #labels-container {
+                left: 350px; width: calc(100vw - 670px);
+            }
         }
     </style>
     
@@ -170,7 +207,8 @@
             <select id="mode-select">
                 <option value="A">雙電荷實驗</option>
                 <option value="B">疊加原理挑戰</option>
-                <option value="C">懸掛小球</option>
+                <option value="C">懸掛小球 (兩個相同)</option>
+                <option value="D">懸掛小球 (單一與固定)</option>
             </select>
         </div>
 
@@ -192,20 +230,27 @@
         <div id="controls" class="control-group">
             <label>Q₁ 電荷量 (<span id="q1-val">5.0</span> μC):</label>
             <input type="range" id="q1-slider" min="-10" max="10" step="0.1" value="5">
+            <button id="earth-btn-1" class="hidden toggle-btn" onclick="earthSphere(1)" style="margin-top:6px; font-size:11px; width:100%; padding:6px; margin-bottom:10px;">⚡ 將 Q₁ 接地 (變成中性 0 μC)</button>
             
             <label class="q2-group">Q₂ 電荷量 (<span id="q2-val">-5.0</span> μC):</label>
             <input type="range" id="q2-slider" class="q2-group" min="-10" max="10" step="0.1" value="-5">
+            <button id="earth-btn-2" class="hidden toggle-btn" onclick="earthSphere(2)" style="margin-top:6px; font-size:11px; width:100%; padding:6px;">⚡ 將 Q₂ 接地 (變成中性 0 μC)</button>
             
             <label class="q3-group hidden" style="margin-top: 15px;">Q₃ 電荷量 (<span id="q3-val">3.0</span> μC):</label>
             <input type="range" id="q3-slider" class="q3-group hidden" min="-10" max="10" step="0.1" value="3">
         </div>
 
-        <div id="mode-c-mass" class="control-group hidden">
-            <label>Q₁ 質量 (<span id="m1-val">50</span> g):</label>
-            <input type="range" id="m1-slider" min="10" max="200" step="10" value="50">
+        <div id="mode-cd-tools" class="control-group hidden" style="border-top: 1px solid rgba(255,255,255,0.1); padding-top:15px;">
+            <label>懸掛點間距 d₀ (<span id="val-d0">0.20</span> m):</label>
+            <input type="range" id="d0-slider" min="0.12" max="0.5" step="0.01" value="0.2">
             
-            <label>Q₂ 質量 (<span id="m2-val">50</span> g):</label>
-            <input type="range" id="m2-slider" min="10" max="200" step="10" value="50">
+            <label style="margin-top:10px;">小球質量 m (<span id="val-mass">0.50</span> kg):</label>
+            <input type="range" id="mass-slider" min="0.05" max="5.0" step="0.05" value="0.50">
+
+            <label class="flex items-center space-x-2 cursor-pointer mt-3" style="display:flex; align-items:center; gap:8px; margin-top: 12px;">
+                <input type="checkbox" id="fbd-checkbox" checked style="width:auto; margin:0;">
+                <span style="font-size:13px; color:var(--text-main);">顯示受力圖與角度標籤</span>
+            </label>
         </div>
 
         <div class="data-display" id="data-panel">
@@ -246,9 +291,29 @@
             <div id="math-fres" class="math-eq"></div>
         </div>
 
+        <div id="math-mode-CD" class="hidden">
+            <h3 style="color:var(--accent-blue); margin-top:0; letter-spacing:1px;">力學與靜電平衡分析</h3>
+            <div style="color:var(--text-main); font-size:13px; margin-bottom:15px;">考慮懸掛小球的自由體受力圖 (FBD)，在最終平衡狀態下：</div>
+            
+            <div style="color:#e5c07b; font-size:12px; margin-bottom:4px;">1. 垂直方向 (Y軸) 平衡：重力 (W) 與張力垂直分量抵消</div>
+            <div id="math-cd-y" class="math-eq"></div>
+            
+            <div style="color:#4da6ff; font-size:12px; margin-bottom:4px;">2. 水平方向 (X軸) 平衡：靜電力 (Fe) 與張力水平分量抵消</div>
+            <div id="math-cd-x" class="math-eq"></div>
+            
+            <div class="math-divider"></div>
+            
+            <div style="color:#98c379; font-size:13px; margin-bottom:15px;">3. 計算繩子張力 (T)：</div>
+            <div id="math-cd-t1" class="math-eq"></div>
+            <div id="math-cd-t2" class="math-eq" style="margin-top: 15px;"></div>
+        </div>
+
     </div>
 
-    <div id="labels-container"></div>
+    <div id="labels-container">
+        <div id="lbl-theta1" class="angle-label" style="display:none; color: #4da6ff;"></div>
+        <div id="lbl-theta2" class="angle-label" style="display:none; color: #ff66ff;"></div>
+    </div>
     <div id="canvas-container"></div>
 
     <script>
@@ -264,6 +329,14 @@
         let charges = [], arrows = [], strings = [], sphereLabels = []; 
         let distLabels = [], distanceLines = [], parallelogramLines = [], decompArrows = []; 
         
+        // Mode C/D Gemini variables
+        let geminiState = { d0: 0.2, mass: 0.5, theta1: 0, theta2: 0, showFBD: true, isInductionActive: false };
+        let cdExtras = [];
+        let fbd1 = null, fbd2 = null;
+        let arc1 = null, arc2 = null;
+        let normal1 = null, normal2 = null;
+        let stand = null;
+
         let currentMode = 'A';
         let isParallelogramVisible = false;
         let isDecompVisible = false; 
@@ -271,13 +344,8 @@
         let uiPanelVisible = true;
         let mathPanelVisible = true;
 
-        const pivot1 = new THREE.Vector3(-1.5, 5, 0);
-        const pivot2 = new THREE.Vector3(1.5, 5, 0);
-
         const q1Slider = document.getElementById('q1-slider'), q2Slider = document.getElementById('q2-slider'), q3Slider = document.getElementById('q3-slider');
-        const m1Slider = document.getElementById('m1-slider'), m2Slider = document.getElementById('m2-slider');
         const q1Val = document.getElementById('q1-val'), q2Val = document.getElementById('q2-val'), q3Val = document.getElementById('q3-val');
-        const m1Val = document.getElementById('m1-val'), m2Val = document.getElementById('m2-val');
         const distVal = document.getElementById('dist-val'), forceTitle = document.getElementById('force-title'), forceVal = document.getElementById('force-val');
         const modeSelect = document.getElementById('mode-select'), instructionText = document.getElementById('instruction-text');
         const labelsContainer = document.getElementById('labels-container');
@@ -322,8 +390,11 @@
             q1Slider.addEventListener('input', updatePhysics);
             q2Slider.addEventListener('input', updatePhysics);
             q3Slider.addEventListener('input', updatePhysics);
-            m1Slider.addEventListener('input', updatePhysics);
-            m2Slider.addEventListener('input', updatePhysics);
+            
+            document.getElementById('d0-slider').addEventListener('input', updatePhysics);
+            document.getElementById('mass-slider').addEventListener('input', updatePhysics);
+            document.getElementById('fbd-checkbox').addEventListener('change', updatePhysics);
+
             modeSelect.addEventListener('change', (e) => switchMode(e.target.value));
 
             switchMode('A');
@@ -362,18 +433,14 @@
             const labels = document.getElementById('labels-container');
             const mathBtn = document.getElementById('btn-toggle-math');
             
-            if (currentMode === 'C') {
-                mathBtn.style.display = 'none';
-                document.getElementById('math-panel-right').style.transform = 'translateX(100%)';
-            } else {
-                mathBtn.style.display = 'block';
-                if (mathPanelVisible) {
-                    document.getElementById('math-panel-right').style.transform = 'translateX(0)';
-                }
+            // Allow math panel to always be visible globally
+            mathBtn.style.display = 'block';
+            if (mathPanelVisible) {
+                document.getElementById('math-panel-right').style.transform = 'translateX(0)';
             }
 
             let leftW = uiPanelVisible ? 350 : 0;
-            let rightW = (mathPanelVisible && currentMode !== 'C') ? 585 : 0;
+            let rightW = mathPanelVisible ? 585 : 0;
 
             container.style.left = leftW + 'px';
             container.style.width = `calc(100vw - ${leftW + rightW}px)`;
@@ -383,6 +450,76 @@
             setTimeout(onWindowResize, 400);
         }
 
+        function earthSphere(index) {
+            if (index === 1) {
+                q1Slider.value = 0;
+                q1Val.innerText = "0.0";
+            } else {
+                q2Slider.value = 0;
+                q2Val.innerText = "0.0";
+            }
+            updatePhysics();
+        }
+
+        // ---------- Gemini Mode C/D Math Core ----------
+        function solveTheta(m_kg, q1_c, q2_c, mode, d0_m) {
+            let L = 0.2;
+            let R = 0.05;
+            let Fe = 0;
+            let repulsive = true;
+            let qProd = q1_c * q2_c;
+            let qSum = q1_c + q2_c;
+            geminiState.isInductionActive = false;
+
+            if (qProd !== 0) {
+                repulsive = qProd > 0;
+            } else if (qSum !== 0) {
+                repulsive = false;
+                geminiState.isInductionActive = true;
+            } else {
+                return 0;
+            }
+
+            let low = 0, high = Math.PI / 2.2, mid = 0; 
+            let minGap = 2.05 * R; 
+            let isTwo = (mode === 'C');
+
+            if (!repulsive) {
+                if (d0_m > minGap) {
+                    high = isTwo ? Math.asin((d0_m - minGap) / (2 * L)) : Math.asin((d0_m - minGap) / L);
+                } else {
+                    return 0; 
+                }
+            }
+
+            for (let i = 0; i < 50; i++) {
+                mid = (low + high) / 2;
+                let dx = isTwo ? (d0_m + 2 * L * Math.sin(mid)) : (d0_m + L * Math.sin(mid));
+                
+                if (!repulsive) {
+                    dx = isTwo ? (d0_m - 2 * L * Math.sin(mid)) : (d0_m - L * Math.sin(mid));
+                }
+                
+                if (dx < 0.01) dx = 0.01;
+
+                if (qProd !== 0) {
+                    Fe = (k * Math.abs(qProd)) / (dx * dx);
+                } else {
+                    let qActive = Math.abs(qSum);
+                    // 微調極化引力常數適應 μC 範圍
+                    Fe = (k * qActive * (qActive * 0.05)) / (dx * dx); 
+                }
+
+                let tanTheta = Fe / (m_kg * G);
+
+                if (Math.tan(mid) > tanTheta) high = mid;
+                else low = mid;
+            }
+
+            return repulsive ? mid : -mid; 
+        }
+
+        // ---------- Mode A/B Utilities ----------
         function toggleParallelogram() {
             isParallelogramVisible = !isParallelogramVisible;
             const btn = document.getElementById('toggle-para-btn');
@@ -460,75 +597,14 @@
         function calculateCoulombForce(q1, q2, r) {
             if (q1 === 0 && q2 === 0) return { magnitude: 0, isRepulsive: true };
             const rSqBounded = Math.max(r * r, currentMinDist * currentMinDist);
-            const scale = currentMode === 'C' ? 0.1 : 1.0;
 
             if (q1 === 0 || q2 === 0) {
                 const q_charged = q1 === 0 ? q2 : q1;
-                const F_induced = (k * Math.abs(q_charged * micro * 0.05 * micro) / rSqBounded) * scale;
+                const F_induced = (k * Math.abs(q_charged * micro * 0.05 * micro) / rSqBounded);
                 return { magnitude: F_induced, isRepulsive: false }; 
             }
-            const F_mag = (k * Math.abs(q1 * micro * q2 * micro) / rSqBounded) * scale;
+            const F_mag = (k * Math.abs(q1 * micro * q2 * micro) / rSqBounded);
             return { magnitude: F_mag, isRepulsive: (q1 * q2) > 0 };
-        }
-
-        function solveModeCEquilibrium(q1, q2, m1, m2) {
-            const L = 9;
-            let isRepulsive = true;
-
-            if (q1 === 0 && q2 === 0) return { th1: 0, th2: 0 };
-            if (q1 !== 0 && q2 !== 0) isRepulsive = (q1 * q2) > 0;
-            else isRepulsive = false; 
-
-            if (!isRepulsive) {
-                let cx1 = (-1.5 * m1 + 0.5 * m2) / (m1 + m2);
-                let cx2 = (-0.5 * m1 + 1.5 * m2) / (m1 + m2);
-                let cth1 = Math.asin((cx1 + 1.5) / L);
-                let cth2 = Math.asin((cx2 - 1.5) / L);
-
-                let forceMag = 0;
-                if (q1 !== 0 && q2 !== 0) {
-                    forceMag = (k * Math.abs(q1 * micro * q2 * micro) / (currentMinDist * currentMinDist)) * 0.1;
-                } else {
-                    let qc = q1 === 0 ? q2 : q1;
-                    forceMag = (k * Math.abs(qc * micro * 0.05 * micro) / (currentMinDist * currentMinDist)) * 0.1;
-                }
-
-                let grav_pull = m1 * G * Math.tan(cth1); 
-                if (forceMag >= grav_pull) return { th1: cth1, th2: cth2 }; 
-            }
-
-            let low = isRepulsive ? -1.5 : 0;
-            let high = isRepulsive ? 0 : 1.5;
-            let th1 = 0, th2 = 0;
-
-            for (let i = 0; i < 60; i++) {
-                th1 = (low + high) / 2;
-                th2 = Math.atan(-(m1 / m2) * Math.tan(th1));
-
-                let x1 = -1.5 + L * Math.sin(th1);
-                let x2 = 1.5 + L * Math.sin(th2);
-                let r = x2 - x1;
-
-                if (!isRepulsive && r < currentMinDist) {
-                    high = th1; continue;
-                }
-
-                let forceMag = 0;
-                if (q1 !== 0 && q2 !== 0) {
-                    forceMag = (k * Math.abs(q1 * micro * q2 * micro) / (r * r)) * 0.1;
-                } else {
-                    let qc = q1 === 0 ? q2 : q1;
-                    forceMag = (k * Math.abs(qc * micro * 0.05 * micro) / (r * r)) * 0.1;
-                }
-
-                let sign = isRepulsive ? 1 : -1;
-                let Fc = forceMag * sign;
-                let error = -Fc - m1 * G * Math.tan(th1);
-
-                if (error > 0) low = th1;
-                else high = th1;
-            }
-            return { th1, th2 };
         }
 
         function createCharge(x, y, z, qValue, name, radius = 0.5) {
@@ -576,6 +652,7 @@
             return arrowObj;
         }
 
+        // ---------- Mode Core Controller ----------
         function switchMode(mode) {
             currentMode = mode;
             
@@ -588,6 +665,12 @@
             decompArrows.forEach(a => scene.remove(a.group));
             strings.forEach(s => scene.remove(s));
             
+            cdExtras.forEach(obj => scene.remove(obj));
+            cdExtras = [];
+            
+            document.getElementById('lbl-theta1').style.display = 'none';
+            document.getElementById('lbl-theta2').style.display = 'none';
+
             charges = []; arrows = []; sphereLabels = []; distLabels = []; 
             distanceLines = []; parallelogramLines = []; decompArrows = []; strings = [];
             
@@ -596,8 +679,14 @@
             document.querySelectorAll('.q3-group').forEach(el => el.classList.add('hidden'));
             document.getElementById('chart-container').classList.add('hidden');
             document.getElementById('mode-b-tools').classList.add('hidden');
-            document.getElementById('mode-c-mass').classList.add('hidden');
+            document.getElementById('mode-cd-tools').classList.add('hidden');
+            document.getElementById('earth-btn-1').classList.add('hidden');
+            document.getElementById('earth-btn-2').classList.add('hidden');
             document.getElementById('data-panel').classList.remove('hidden');
+
+            document.getElementById('math-mode-A').classList.add('hidden');
+            document.getElementById('math-mode-B').classList.add('hidden');
+            document.getElementById('math-mode-CD').classList.add('hidden');
 
             orbitControls.enableRotate = true;
             orbitControls.enablePan = true;
@@ -610,7 +699,6 @@
                 forceTitle.innerText = "靜電力 F (N):";
                 
                 document.getElementById('math-mode-A').classList.remove('hidden');
-                document.getElementById('math-mode-B').classList.add('hidden');
                 updateCanvasLayout();
 
                 let c1 = createCharge(-3.5, 0, 0, parseFloat(q1Slider.value), "Q₁", 0.5); 
@@ -641,7 +729,6 @@
                 document.getElementById('mode-b-tools').classList.remove('hidden'); 
                 document.getElementById('data-panel').classList.add('hidden');
                 
-                document.getElementById('math-mode-A').classList.add('hidden');
                 document.getElementById('math-mode-B').classList.remove('hidden');
                 updateCanvasLayout();
                 
@@ -671,26 +758,63 @@
 
                 setupDragControls([c1, c2, c3]);
             }
-            else if (mode === 'C') {
-                currentMinDist = 1.0;
-                camera.position.set(0, 1, 18);
-                instructionText.innerHTML = "💡 <b>提示：</b>為提供平滑動畫，引力與斥力已等比例<b>縮小 10 倍 (x0.1)</b>。";
-                document.getElementById('mode-c-mass').classList.remove('hidden'); 
-                forceTitle.innerText = "靜電力 F_e (縮放 x0.1):";
+            else if (mode === 'C' || mode === 'D') {
+                currentMinDist = 0.05;
+                camera.position.set(0, -1, 12);
+                orbitControls.enableRotate = true;
+                orbitControls.enablePan = true;
+
+                document.getElementById('mode-cd-tools').classList.remove('hidden');
+                document.getElementById('earth-btn-1').classList.remove('hidden');
+                document.getElementById('earth-btn-2').classList.remove('hidden');
+                document.getElementById('math-mode-CD').classList.remove('hidden');
+                forceTitle.innerText = "靜電力 F_e (N):";
                 
                 updateCanvasLayout();
 
-                let c1 = createCharge(-1.5, -4, 0, parseFloat(q1Slider.value), "Q₁", 0.5);
-                let c2 = createCharge(1.5, -4, 0, parseFloat(q2Slider.value), "Q₂", 0.5);
-                
-                const mat = new THREE.LineBasicMaterial({ color: 0x444444, linewidth: 2 });
-                strings.push(new THREE.Line(new THREE.BufferGeometry().setFromPoints([pivot1, c1.position]), mat));
-                strings.push(new THREE.Line(new THREE.BufferGeometry().setFromPoints([pivot2, c2.position]), mat));
-                scene.add(strings[0]);
-                scene.add(strings[1]);
-                
-                createLabeledArrow(0x00bbff, "F_e (Q₁)", "#00bbff"); 
-                createLabeledArrow(0xff8800, "F_e (Q₂)", "#ff8800"); 
+                const ceilingMat = new THREE.MeshLambertMaterial({ color: 0x4a5568 });
+                const ceiling = new THREE.Mesh(new THREE.BoxGeometry(10, 0.2, 2), ceilingMat);
+                ceiling.position.y = 0.1;
+                scene.add(ceiling); cdExtras.push(ceiling);
+
+                // 移除了地板 (Floor)
+
+                const standGeo = new THREE.CylinderGeometry(0.05, 0.05, 3, 16);
+                stand = new THREE.Mesh(standGeo, new THREE.MeshLambertMaterial({ color: 0x8b5a2b }));
+                scene.add(stand); cdExtras.push(stand);
+
+                const lineMat = new THREE.LineBasicMaterial({ color: 0xabb2bf, linewidth: 2 });
+                const string1 = new THREE.Line(new THREE.BufferGeometry(), lineMat);
+                const string2 = new THREE.Line(new THREE.BufferGeometry(), lineMat);
+                scene.add(string1); scene.add(string2);
+                cdExtras.push(string1, string2);
+                strings = [string1, string2];
+
+                const dashedMat = new THREE.LineDashedMaterial({ color: 0x7f848e, dashSize: 0.3, gapSize: 0.2 });
+                normal1 = new THREE.Line(new THREE.BufferGeometry(), dashedMat);
+                normal2 = new THREE.Line(new THREE.BufferGeometry(), dashedMat);
+                scene.add(normal1); scene.add(normal2);
+                cdExtras.push(normal1, normal2);
+
+                const arcMat1 = new THREE.LineBasicMaterial({ color: 0x4da6ff, linewidth: 2 });
+                const arcMat2 = new THREE.LineBasicMaterial({ color: 0xff66ff, linewidth: 2 });
+                arc1 = new THREE.Line(new THREE.BufferGeometry(), arcMat1);
+                arc2 = new THREE.Line(new THREE.BufferGeometry(), arcMat2);
+                scene.add(arc1); scene.add(arc2);
+                cdExtras.push(arc1, arc2);
+
+                const createFBD = () => ({
+                    mg: new THREE.ArrowHelper(new THREE.Vector3(0,-1,0), new THREE.Vector3(), 1.2, 0xe5c07b, 0.3, 0.2),
+                    t: new THREE.ArrowHelper(new THREE.Vector3(0,1,0), new THREE.Vector3(), 1.2, 0x98c379, 0.3, 0.2),
+                    fe: new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(), 1.2, 0x4da6ff, 0.3, 0.2)
+                });
+                fbd1 = createFBD(); fbd2 = createFBD();
+                Object.values(fbd1).forEach(a => { scene.add(a); cdExtras.push(a); });
+                Object.values(fbd2).forEach(a => { scene.add(a); cdExtras.push(a); });
+
+                // 小球半徑從 0.75 縮小至 0.35
+                let c1 = createCharge(-1.5, -3, 0, parseFloat(q1Slider.value), "Q₁", 0.35); 
+                let c2 = createCharge(1.5, -3, 0, parseFloat(q2Slider.value), "Q₂", 0.35);
             }
 
             charges.forEach(c => { gsap.from(c.scale, {x: 0, y: 0, z: 0, duration: 0.4, ease: "back.out(1.5)"}); });
@@ -759,7 +883,7 @@
 
             if(charges[0]) updateChargeColor(charges[0], q1);
             if(charges[1]) updateChargeColor(charges[1], q2);
-            if(charges[2]) updateChargeColor(charges[2], q3);
+            if(charges[2] && currentMode === 'B') updateChargeColor(charges[2], q3);
 
             if (currentMode === 'A') {
                 const c1 = charges[0], c2 = charges[1];
@@ -797,7 +921,6 @@
                 if (typeof katex !== 'undefined') {
                     katex.render(getForceLatex(q1, q2, r, res.magnitude, "12", "1", "2"), document.getElementById('math-f12'), {throwOnError: false, displayMode: true});
                 }
-
             } 
             else if (currentMode === 'B') {
                 const c1 = charges[0], c2 = charges[1], c3 = charges[2];
@@ -898,31 +1021,48 @@
                     katex.render(FresStr, document.getElementById('math-fres'), {throwOnError: false, displayMode: true});
                 }
             }
-            else if (currentMode === 'C') {
-                const m1 = parseInt(m1Slider.value) / 1000; 
-                const m2 = parseInt(m2Slider.value) / 1000;
-                m1Val.innerText = m1Slider.value; m2Val.innerText = m2Slider.value;
+            else if (currentMode === 'C' || currentMode === 'D') {
+                geminiState.d0 = parseFloat(document.getElementById('d0-slider').value);
+                geminiState.mass = parseFloat(document.getElementById('mass-slider').value);
+                geminiState.showFBD = document.getElementById('fbd-checkbox').checked;
 
-                const c1 = charges[0], c2 = charges[1];
+                document.getElementById('val-d0').innerText = geminiState.d0.toFixed(2);
+                document.getElementById('val-mass').innerText = geminiState.mass.toFixed(2);
 
-                const eq = solveModeCEquilibrium(q1, q2, m1, m2);
+                let t = solveTheta(geminiState.mass, q1 * 1e-6, q2 * 1e-6, currentMode, geminiState.d0);
 
-                const L = 9;
-                c1.position.set(-1.5 + L * Math.sin(eq.th1), 5 - L * Math.cos(eq.th1), 0);
-                c2.position.set(1.5 + L * Math.sin(eq.th2), 5 - L * Math.cos(eq.th2), 0);
-                    
-                const rVec = new THREE.Vector3().subVectors(c2.position, c1.position);
-                const r = Math.max(rVec.length(), currentMinDist);
-                
-                const res = calculateCoulombForce(q1, q2, r);
-                const dir1 = rVec.clone().normalize().multiplyScalar(res.isRepulsive ? -1 : 1);
-                const dir2 = rVec.clone().normalize().multiplyScalar(res.isRepulsive ? 1 : -1);
+                if (geminiState.isInductionActive) {
+                    instructionText.innerHTML = "💡 <b>提示：</b>中性小球因靜電極化而與帶電體相吸。";
+                } else {
+                    instructionText.innerHTML = "💡 <b>提示：</b>觀察重力、繩子張力與靜電力的平衡狀態。動態平衡受小球質量與電荷量影響。";
+                }
 
-                updateArrowVisual(arrows[0], c1.position, dir1, res.magnitude * 10, (q1 !== 0 || q2 !== 0));
-                updateArrowVisual(arrows[1], c2.position, dir2, res.magnitude * 10, (q1 !== 0 || q2 !== 0));
+                gsap.to(geminiState, {
+                    theta1: (currentMode === 'C') ? t : 0,
+                    theta2: t,
+                    duration: 0.8,
+                    ease: "elastic.out(1, 0.5)"
+                });
 
-                distVal.innerText = r.toFixed(2);
-                forceVal.innerText = `${res.magnitude.toFixed(4)} N`;
+                // 更新右側數學面版的 FBD 力學解析
+                let theta_rad = Math.abs(t);
+                let theta_deg = theta_rad * 180 / Math.PI;
+                let m = geminiState.mass;
+                let w = m * G; 
+                let fe_math = w * Math.tan(theta_rad); // 基於平衡方程 T sin(t) = mg tan(t)
+                let T = w / Math.cos(theta_rad);
+
+                if (typeof katex !== 'undefined') {
+                    let yStr = `T \\cos\\theta = W = mg = (${m.toFixed(2)})(9.81) = ${w.toFixed(3)}\\text{ N}`;
+                    let xStr = `T \\sin\\theta = F_e = ${fe_math.toFixed(3)}\\text{ N}`;
+                    let t1Str = `T = \\frac{mg}{\\cos\\theta} = \\frac{${w.toFixed(3)}}{\\cos(${theta_deg.toFixed(1)}^\\circ)} = ${T.toFixed(3)}\\text{ N}`;
+                    let t2Str = `\\text{或 } T = \\sqrt{(mg)^2 + F_e^2} = ${T.toFixed(3)}\\text{ N}`;
+
+                    katex.render(yStr, document.getElementById('math-cd-y'), {throwOnError: false, displayMode: true});
+                    katex.render(xStr, document.getElementById('math-cd-x'), {throwOnError: false, displayMode: true});
+                    katex.render(t1Str, document.getElementById('math-cd-t1'), {throwOnError: false, displayMode: true});
+                    katex.render(t2Str, document.getElementById('math-cd-t2'), {throwOnError: false, displayMode: true});
+                }
             }
         }
 
@@ -951,6 +1091,154 @@
             aObj.helper.visible = visible && magnitude > 0.00001;
         }
 
+        // ---------- Gemini C/D Visuals Core ----------
+        function updateVisualsCD() {
+            if (currentMode !== 'C' && currentMode !== 'D') return;
+
+            const scale = 15;
+            const L = 0.2;
+            const L_vis = L * scale;
+            let d0_vis = geminiState.d0 * scale;
+
+            let pivot1 = new THREE.Vector3(-d0_vis/2, 0, 0);
+            let pivot2 = new THREE.Vector3(d0_vis/2, 0, 0);
+
+            let p1 = new THREE.Vector3(pivot1.x - L_vis * Math.sin(geminiState.theta1), -L_vis * Math.cos(geminiState.theta1), 0);
+            let p2 = new THREE.Vector3(pivot2.x + L_vis * Math.sin(geminiState.theta2), -L_vis * Math.cos(geminiState.theta2), 0);
+
+            let normalLength = L_vis * 0.4;
+
+            if (currentMode === 'D') {
+                p1.set(-d0_vis/2, -L_vis, 0);
+                stand.position.set(-d0_vis/2, -L_vis - 1.5, 0);
+                stand.visible = true;
+                strings[0].visible = false;
+                normal1.visible = false;
+            } else {
+                stand.visible = false;
+                strings[0].visible = true;
+                strings[0].geometry.setFromPoints([pivot1, p1]);
+                normal1.geometry.setFromPoints([pivot1, new THREE.Vector3(pivot1.x, -normalLength, 0)]);
+                normal1.computeLineDistances();
+                normal1.visible = geminiState.showFBD;
+            }
+
+            charges[0].position.copy(p1);
+            charges[1].position.copy(p2);
+            strings[1].geometry.setFromPoints([pivot2, p2]);
+
+            normal2.geometry.setFromPoints([pivot2, new THREE.Vector3(pivot2.x, -normalLength, 0)]);
+            normal2.computeLineDistances();
+            normal2.visible = geminiState.showFBD;
+
+            // Arcs
+            const drawArc = (arcMesh, pivot, theta, isLeft) => {
+                if (Math.abs(theta) < 0.02 || !geminiState.showFBD) { arcMesh.visible = false; return; }
+                arcMesh.visible = true;
+                const points = [];
+                const segments = 16;
+                const r = L_vis * 0.25; 
+                for (let i = 0; i <= segments; i++) {
+                    let t = (i / segments) * Math.abs(theta);
+                    let sign = isLeft ? -1 : 1;
+                    if (theta < 0) sign *= -1; 
+                    points.push(new THREE.Vector3(pivot.x + sign * r * Math.sin(t), -r * Math.cos(t), 0));
+                }
+                arcMesh.geometry.setFromPoints(points);
+            };
+
+            if (currentMode === 'C') drawArc(arc1, pivot1, geminiState.theta1, true);
+            else arc1.visible = false;
+            drawArc(arc2, pivot2, geminiState.theta2, false);
+
+            // FBD Check & Update
+            const toggle = (fbd, show) => Object.values(fbd).forEach(a => a.visible = show);
+            if (!geminiState.showFBD) { 
+                toggle(fbd1, false); toggle(fbd2, false); 
+            } else {
+                const mgLength = 1.5;
+                toggle(fbd2, true);
+                fbd2.mg.position.copy(p2);
+                fbd2.mg.setLength(mgLength);
+                let tDir2 = new THREE.Vector3(d0_vis/2, 0, 0).sub(p2).normalize();
+                fbd2.t.position.copy(p2);
+                fbd2.t.setDirection(tDir2);
+                fbd2.t.setLength(mgLength / Math.cos(geminiState.theta2));
+                
+                let feLength = mgLength * Math.tan(Math.abs(geminiState.theta2));
+                if (feLength > 0.05) {
+                    let feDir2 = Math.sign(geminiState.theta2); 
+                    fbd2.fe.position.copy(p2);
+                    fbd2.fe.setDirection(new THREE.Vector3(feDir2, 0, 0));
+                    fbd2.fe.setLength(feLength);
+                    fbd2.fe.visible = true;
+                } else fbd2.fe.visible = false;
+
+                if (currentMode === 'C') {
+                    toggle(fbd1, true);
+                    fbd1.mg.position.copy(p1);
+                    fbd1.mg.setLength(mgLength);
+                    let tDir1 = new THREE.Vector3(-d0_vis/2, 0, 0).sub(p1).normalize();
+                    fbd1.t.position.copy(p1);
+                    fbd1.t.setDirection(tDir1);
+                    fbd1.t.setLength(mgLength / Math.cos(geminiState.theta1));
+                    
+                    if (feLength > 0.05) {
+                        let feDir1 = Math.sign(geminiState.theta1) * -1;
+                        fbd1.fe.position.copy(p1);
+                        fbd1.fe.setDirection(new THREE.Vector3(feDir1, 0, 0));
+                        fbd1.fe.setLength(feLength);
+                        fbd1.fe.visible = true;
+                    } else fbd1.fe.visible = false;
+                } else {
+                    toggle(fbd1, false);
+                }
+            }
+
+            // CSS Angle Labels
+            const updateSingleLabel = (id, theta, pivot, isLeft) => {
+                const el = document.getElementById(id);
+                if (Math.abs(theta) < 0.02 || !geminiState.showFBD) {
+                    el.style.display = 'none'; return;
+                }
+                let offsetY = -L_vis * 0.35;
+                let offsetX = L_vis * 0.35 * Math.sin(Math.abs(theta));
+                if (isLeft) offsetX *= -1; 
+                if (theta < 0) offsetX *= -1; 
+
+                let pos = new THREE.Vector3(pivot.x + offsetX, pivot.y + offsetY, 0);
+                pos.project(camera);
+                const container = document.getElementById('canvas-container');
+                let x = (pos.x * 0.5 + 0.5) * container.clientWidth;
+                let y = -(pos.y * 0.5 - 0.5) * container.clientHeight;
+                
+                el.style.display = 'block';
+                el.innerText = Math.abs(theta * 180 / Math.PI).toFixed(1) + '°';
+                el.style.left = `${x}px`;
+                el.style.top = `${y}px`;
+            };
+
+            if (currentMode === 'C') updateSingleLabel('lbl-theta1', geminiState.theta1, pivot1, true);
+            else document.getElementById('lbl-theta1').style.display = 'none';
+            updateSingleLabel('lbl-theta2', geminiState.theta2, pivot2, false);
+
+            // Overlay Data
+            let dist_m = p1.distanceTo(p2) / scale;
+            let q1 = parseFloat(q1Slider.value);
+            let q2 = parseFloat(q2Slider.value);
+            let fe = 0;
+            if (q1 !== 0 && q2 !== 0) {
+                fe = (k * Math.abs(q1 * 1e-6 * q2 * 1e-6)) / (dist_m * dist_m);
+            } else if (geminiState.isInductionActive) {
+                let qActive = Math.abs(q1 + q2) * 1e-6;
+                fe = (k * qActive * (qActive * 0.05)) / (dist_m * dist_m);
+            }
+
+            distVal.innerText = dist_m.toFixed(3);
+            forceVal.innerText = `${fe.toFixed(3)} N`;
+        }
+
+        // ---------- Chart Logic ----------
         function initChart() {
             const ctx = document.getElementById('f-r-chart').getContext('2d');
             frChart = new Chart(ctx, {
@@ -979,7 +1267,6 @@
             const q1 = parseFloat(q1Slider.value);
             const q2 = parseFloat(q2Slider.value);
             const curveData = [];
-            const scale = currentMode === 'C' ? 0.1 : 1.0;
 
             for (let r = 1; r <= 12; r += 0.2) {
                 const res = calculateCoulombForce(q1, q2, r);
@@ -988,7 +1275,7 @@
             frChart.data.datasets[0].data = curveData;
             frChart.data.datasets[1].data = [{ x: currentR, y: currentF }];
             
-            let maxF = scale === 0.1 ? 0.05 : 0.5;
+            let maxF = 0.5;
             if(currentF > maxF) frChart.options.scales.y.max = Math.ceil(currentF * 1.2 * 100) / 100;
             else frChart.options.scales.y.max = maxF;
 
@@ -1006,9 +1293,8 @@
             requestAnimationFrame(animate);
             if(currentMode !== 'B') orbitControls.update(); 
 
-            if (currentMode === 'C' && strings.length === 2 && charges.length >= 2) {
-                strings[0].geometry.setFromPoints([pivot1, charges[0].position]);
-                strings[1].geometry.setFromPoints([pivot2, charges[1].position]);
+            if (currentMode === 'C' || currentMode === 'D') {
+                updateVisualsCD();
             }
 
             const container = document.getElementById('canvas-container');
@@ -1060,5 +1346,6 @@
             renderer.render(scene, camera);
         }
     </script>
+    <a id="home-btn" href="../../../index.html">&#127968; &#20027;&#38913;</a>
 </body>
 </html>
