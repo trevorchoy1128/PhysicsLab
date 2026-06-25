@@ -3,693 +3,2085 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>電力物流學：貨櫃車與超市類比實驗室 (極致流暢鮮豔版)</title>
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-
+    <title>電荷與能量守恆 - DSE 專業虛擬實驗室 (全景電壓版)</title>
     <style>
-        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; background-color: #ebf4fa; color: #ffffff; }
+        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; background-color: #e0e0e0; color: #ecf0f1; touch-action: none; }
         
-        #canvas-container { position: absolute; top: 0; left: 0; width: 65%; height: 100vh; overflow: hidden; transition: width 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); }
-        #canvas-container canvas { width: 100% !important; height: 100% !important; display: block; outline: none; }
-
-        #ui-panel {
-            position: absolute; top: 0; right: 0; width: 35%; height: 100vh;
-            background-color: #0d1117; border-left: 1px solid #1a2332; padding: 25px; box-sizing: border-box;
-            display: flex; flex-direction: column; overflow-y: auto; box-shadow: -10px 0 40px rgba(0,0,0,0.8); z-index: 10;
-            transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
-        }
-
-        body.panel-collapsed #ui-panel { transform: translateX(100%); }
-        body.panel-collapsed #canvas-container { width: 100%; }
+        #canvas-container { position: absolute; top: 0; left: 0; width: 65%; height: 100vh; background: #2c3e50; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 15px; box-sizing: border-box; }
+        #ui-panel { position: absolute; top: 0; right: 0; width: 35%; height: 100vh; background-color: #1e2128; border-left: 1px solid #2c313c; padding: 20px; box-sizing: border-box; display: flex; flex-direction: column; overflow-y: auto; box-shadow: -10px 0 30px rgba(0,0,0,0.2); z-index: 10; }
+        #ui-panel::-webkit-scrollbar { width: 8px; }
+        #ui-panel::-webkit-scrollbar-thumb { background: #3e4451; border-radius: 4px; }
         
-        #toggle-panel-btn {
-            position: absolute; top: 20px; right: calc(35% + 20px); z-index: 100;
-            background: #161b22; color: #00ccff; border: 2px solid #00ccff;
-            padding: 10px 18px; border-radius: 8px; font-weight: bold; font-size: 0.95rem;
-            cursor: pointer; box-shadow: 0 4px 20px rgba(0,204,255,0.4);
-            transition: right 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), background 0.2s, color 0.2s;
-            display: flex; align-items: center; gap: 8px;
-        }
-        #toggle-panel-btn:hover { background: #00ccff; color: #0d1117; }
-        body.panel-collapsed #toggle-panel-btn { right: 20px; background: #ffcc00; color: #0d1117; border-color: #ffcc00; box-shadow: 0 4px 20px rgba(255,204,0,0.4); }
+        #circuitCanvas { width: 100%; height: 50%; background: #eceff1; border-radius: 15px; box-shadow: inset 0 0 20px rgba(0,0,0,0.1); cursor: grab; }
+        #circuitCanvas:active { cursor: grabbing; }
         
-        h2 { color: #00ccff; margin-top: 0; font-size: 1.5rem; border-bottom: 2px solid #1f2937; padding-bottom: 10px; text-shadow: 0 0 10px rgba(0,204,255,0.5); }
-        .control-group { background: #161b22; padding: 18px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #1f2937; border-left: 4px solid #00ccff; }
-        .analogy-group { border-left-color: #ffcc00; }
-        label { display: flex; justify-content: space-between; margin-bottom: 8px; font-weight: bold; font-size: 0.95rem; color: #c9d1d9; align-items: center;}
-        input[type="range"] { width: 100%; margin-bottom: 15px; -webkit-appearance: none; background: transparent; }
-        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 20px; width: 20px; border-radius: 50%; background: #00ccff; cursor: pointer; margin-top: -7px; box-shadow: 0 0 15px rgba(0,204,255,0.8); }
-        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 6px; cursor: pointer; background: #30363d; border-radius: 3px; }
-        .btn-group { display: flex; justify-content: space-between; margin-bottom: 15px; gap: 8px;}
-        .btn { flex: 1; background: #21262d; color: #ffffff; border: 1px solid #30363d; padding: 10px; cursor: pointer; border-radius: 5px; font-weight: bold; transition: all 0.2s; font-size: 0.85rem;}
-        .btn:hover { background: #30363d; }
-        .btn.active { background: #00ccff; color: #0d1117; border-color: #00ccff; box-shadow: 0 0 15px rgba(0, 204, 255, 0.6); }
-        .btn-small { flex: none; width: 40px; padding: 5px; font-size: 1.2rem; }
+        .meters-container { display: flex; justify-content: space-around; width: 100%; height: 46%; background: rgba(0,0,0,0.2); border-radius: 15px; padding: 10px; box-sizing: border-box; gap: 15px; }
+        .meter-wrapper { flex: 1; text-align: center; color: #abb2bf; font-weight: bold; display: flex; flex-direction: column; justify-content: center; align-items: center; overflow: hidden; }
+        .meter-wrapper span { margin-bottom: 5px; font-size: 1.05rem; color: #61afef; }
+        .meter-wrapper canvas { width: 100%; height: auto; max-height: 95%; aspect-ratio: 1/1; object-fit: contain; filter: drop-shadow(0px 8px 16px rgba(0,0,0,0.4)); transition: 0.2s filter; }
+        .meter-active { filter: drop-shadow(0px 0px 25px rgba(241, 196, 15, 0.6)) !important; }
+
+        .control-group { background: #282c34; padding: 12px; border-radius: 12px; margin-bottom: 12px; border: 1px solid #3e4451; flex-shrink: 0; }
+        label { display: block; margin-bottom: 8px; font-weight: 500; font-size: 0.95rem; color: #abb2bf; }
+        select, input[type="range"] { width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #3e4451; background: #1e2128; color: #61afef; font-size: 1rem; cursor: pointer; outline: none; box-sizing: border-box; }
+        select:focus { border-color: #61afef; }
         
-        #speed-controls .btn.active { background: #ffcc00; color: #0d1117; border-color: #ffcc00; box-shadow: 0 0 15px rgba(255, 204, 0, 0.6); }
+        .btn-row { display: flex; gap: 8px; margin-top: 8px; margin-bottom: 8px; }
+        .btn { flex: 1; padding: 8px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.85rem; transition: 0.2s opacity; text-align: center; }
+        .btn:hover { opacity: 0.8; }
+        .btn-add { background: #98c379; color: #1e2128; }
+        .btn-remove { background: #e06c75; color: #1e2128; }
+        .btn-meter-a { background: #e67e22; color: #fff; }
+        .btn-meter-v { background: #3498db; color: #fff; }
+        .btn-clear-m { background: #7f8c8d; color: #fff; }
+        .btn-voltage-overlay { background: #8e44ad; color: #fff; }
+        
+        input[type=range] { -webkit-appearance: none; background: transparent; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 18px; width: 18px; border-radius: 50%; background: #61afef; cursor: pointer; margin-top: -7px; box-shadow: 0 0 8px rgba(97,175,239,0.5); }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: #3e4451; border-radius: 2px; }
 
-        .meter-readout { display: flex; justify-content: space-between; background: #0d1117; padding: 12px; border: 1px solid #30363d; border-radius: 10px; font-family: 'JetBrains Mono', Courier, monospace; font-size: 1.05rem; color: #39ff14; margin-bottom: 8px; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); }
-        .readout-box { display: flex; flex-direction: column; align-items: center; width: 48%; }
-        .readout-label { font-size: 0.75rem; color: #8b949e; margin-bottom: 5px; font-weight: bold; text-align: center;}
-        .theory-box { background: rgba(255, 204, 0, 0.15); color: #ffcc00; padding: 15px; border-radius: 10px; font-size: 0.95rem; line-height: 1.6; border: 1px solid rgba(255, 204, 0, 0.5); margin-top: 10px; text-shadow: 0 0 5px rgba(255,204,0,0.2);}
-        .highlight { color: #00ccff; font-weight: bold; text-shadow: 0 0 8px rgba(0,204,255,0.6); }
-        .overlay-text { position: absolute; top: 15px; left: 15px; color: #ffffff; pointer-events: none; background: rgba(13, 17, 23, 0.9); padding: 15px; border-radius: 8px; border: 1px solid #30363d; font-size: 0.95rem; z-index: 5; line-height: 1.6; box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
+        /* 電阻清單 UI */
+        #resistor-list-wrapper { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; margin-bottom: 12px; transition: 0.3s flex-grow; }
+        #resistor-list-container { flex-grow: 1; overflow-y: auto; background: rgba(0,0,0,0.15); border-radius: 8px; padding: 10px; border: 1px solid #3e4451; }
+        #resistor-list-container::-webkit-scrollbar { width: 8px; }
+        #resistor-list-container::-webkit-scrollbar-thumb { background: #61afef; border-radius: 4px; }
+        #resistor-list-container::-webkit-scrollbar-track { background: #1e2128; }
 
-        /* ── Responsive ── */
-        @media (max-width: 768px) {
-            body { overflow-y: auto; }
-            #canvas-container {
-                position: relative; width: 100% !important; height: 55vw; min-height: 240px; max-height: 60vh;
-            }
-            #ui-panel {
-                position: relative; width: 100% !important; height: auto; transform: none !important;
-                box-shadow: none; border-left: none; border-top: 2px solid #1a2332;
-                max-height: none; overflow-y: visible;
-            }
-            #toggle-panel-btn { display: none; }
-            .overlay-text { font-size: 0.75rem; padding: 8px; max-width: 70vw; }
+        .resistor-item { background: #282c34; padding: 10px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #3e4451; border-left: 4px solid #61afef; }
+        .resistor-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .stage-select { width: 125px; padding: 4px; font-size: 0.8rem; background: #1e2128; border: 1px solid #61afef; color: #61afef; border-radius: 4px; }
+        .btn-del-res { background: #e06c75; color: white; border: none; border-radius: 4px; width: 28px; height: 28px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; }
+        .btn-del-res:hover { background: #c0392b; }
+
+        .meter-readout { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; background: #1e2128; padding: 12px; border: 1px solid #3e4451; border-radius: 10px; margin-bottom: 12px; flex-shrink: 0; }
+        .readout-box { flex: 1 1 45%; display: flex; flex-direction: column; align-items: center; background: #282c34; padding: 8px; border-radius: 8px; border: 1px solid #3e4451;}
+        .readout-label { font-size: 0.8rem; color: #5c6370; margin-bottom: 3px; font-weight: bold; }
+        .readout-value { font-family: 'JetBrains Mono', monospace; font-size: 1.1rem; color: #98c379; font-weight: bold; }
+
+        .theory-box { background: rgba(97, 175, 239, 0.1); color: #61afef; padding: 12px; border-radius: 10px; font-size: 0.85rem; line-height: 1.5; border-left: 4px solid #61afef; flex-shrink: 0; }
+
+        /* Phase 2 編輯器工具列 */
+        .tool-btn { background: #3e4451; color: #abb2bf; }
+        .tool-btn.tool-active { background: #61afef; color: #1e2128; box-shadow: 0 0 10px rgba(97,175,239,0.5); }
+
+        /* Phase 5 響應式：窄螢幕 / 手機直向改為上下堆疊 */
+        @media (max-width: 820px) {
+            body { overflow-y: auto; height: auto; }
+            #canvas-container { position: static; width: 100%; height: auto; padding: 10px; gap: 10px; }
+            #circuitCanvas { height: 42vh; }
+            .meters-container { height: auto; padding: 8px; }
+            .meter-wrapper canvas { max-height: 28vh; }
+            #ui-panel { position: static; width: 100%; height: auto; border-left: none; border-top: 2px solid #2c313c; box-shadow: none; overflow-y: visible; }
+            #resistor-list-wrapper { flex: none; }
+            #resistor-list-container { max-height: 38vh; }
         }
-        @media (min-width: 769px) and (max-width: 1024px) {
-            #canvas-container { width: 55% !important; }
-            #ui-panel { width: 45% !important; }
-            #toggle-panel-btn { right: calc(45% + 15px); }
-            body:not(.panel-collapsed) #toggle-panel-btn { right: calc(45% + 15px); }
-        }
+        .probe-hint { color: #f1c40f; font-weight: bold; font-size: 0.9rem; margin-top: 5px; text-align: center; background: rgba(241, 196, 15, 0.1); padding: 8px; border-radius: 8px;}
     </style>
 </head>
 <body>
 
-    <button id="toggle-panel-btn">👁️ 隱藏控制面板</button>
-
     <div id="canvas-container">
-        <div class="overlay-text">
-            <strong>視覺對應指南與升級說明：</strong><br>
-            🚀 <span style="color:#39ff14">流暢度極致優化：</span>拉桿控制引擎已重構，現在調整阻抗數值如絲綢般滑順，絕不卡頓！<br>
-            ⚡ <span style="color:#ff2a55">嚴格電勢定律：</span>電量數值**絕對不會在電線上消耗**，只有當電子進入金黃色的「電阻器內部」時，電壓才會精確下降！<br>
-            ⏱️ <span style="color:#00ccff">真實阻抗類比：</span>電阻越大，對應超市的卸貨時間越長，引發宏觀的物流塞車。<br>
-            ➕ <span style="color:#ffcc00">自由增減負載：</span>利用右側面板「+ / -」動態加入最多 5 間超市/電阻！
+        <canvas id="circuitCanvas"></canvas>
+        <div class="probe-hint">💡 操作：拖曳電阻至不同區域可實現「先串後並再串」。右側面板可開啟全局電壓標籤！</div>
+        
+        <div class="meters-container">
+            <div class="meter-wrapper">
+                <span id="titleA">當前選中：安培計 (未連接)</span>
+                <canvas id="ammeterCanvas" width="1024" height="1024"></canvas>
+            </div>
+            <div class="meter-wrapper">
+                <span id="titleV">當前選中：伏特計 ΔV (未連接)</span>
+                <canvas id="voltmeterCanvas" width="1024" height="1024"></canvas>
+            </div>
         </div>
     </div>
 
     <div id="ui-panel">
-        <h2>電力物流學虛擬實驗室</h2>
-        
-        <div class="btn-group">
-            <button class="btn active" id="btn-series">串聯電路 (Series)</button>
-            <button class="btn" id="btn-parallel">並聯分支電路 (Parallel)</button>
-        </div>
-
-        <div class="control-group" style="padding-bottom: 10px;">
-            <label style="color: #00ccff; border-bottom: 1px solid #30363d; padding-bottom: 5px; margin-bottom: 12px;">⏱️ 教學速度控制</label>
-            <div class="btn-group" id="speed-controls" style="margin-bottom: 0;">
-                <button class="btn active" data-speed="1">1.0x (正常)</button>
-                <button class="btn" data-speed="0.5">0.5x (慢速)</button>
-                <button class="btn" data-speed="0.25">0.25x (極慢)</button>
-                <button class="btn" data-speed="0.1">0.1x (分解)</button>
-            </div>
-            
-            <label style="display: flex; align-items: center; justify-content: flex-start; gap: 10px; cursor: pointer; color: #ff2a55; margin-top: 15px; border-top: 1px solid #30363d; padding-top: 12px;">
-                <input type="checkbox" id="toggle-charge-flow" style="width: 18px; height: 18px; margin: 0; cursor: pointer; accent-color: #ff2a55;">
-                <span style="font-size: 0.9rem; font-weight: bold;">👁️ 顯示實時流經量 (C/s 與 架/秒)</span>
-            </label>
-        </div>
-
         <div class="control-group">
-            <label><span>📦 貨倉總裝貨量 (電源 e.m.f.)</span> <span id="val-emf" class="highlight">12 V</span></label>
-            <input type="range" id="slider-emf" min="6" max="24" value="12" step="2">
+            <label>1. 電路連接模式：</label>
+            <select id="circuitMode">
+                <option value="series">純串聯 (Series)</option>
+                <option value="parallel">純並聯 (Parallel)</option>
+                <option value="mixed" selected>自訂混合電路 (支援先串後並再串)</option>
+                <option value="editor">🔧 自由編輯電路 (Free Editor)</option>
+            </select>
         </div>
 
-        <div class="control-group" id="resistors-control-group">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #30363d; padding-bottom: 8px; margin-bottom: 12px;">
-                <label style="margin: 0; color: #ffcc00;">⚙️ 動態增減超市 / 電阻器</label>
-                <div style="display: flex; gap: 5px;">
-                    <button class="btn btn-small" id="btn-sub-r" style="background:#ff2a55; border:none;">-</button>
-                    <button class="btn btn-small" id="btn-add-r" style="background:#39ff14; color:#000; border:none;">+</button>
+        <div class="control-group" id="editor-palette" style="display:none;">
+            <label>🔧 編輯工具：</label>
+            <div class="btn-row">
+                <button class="btn tool-btn tool-active" data-tool="select">🖐 選取/移動</button>
+                <button class="btn tool-btn" data-tool="wire">／ 導線</button>
+                <button class="btn tool-btn" data-tool="delete">🗑 刪除</button>
+            </div>
+            <div class="btn-row">
+                <button class="btn tool-btn" data-tool="resistor">⊏⊐ 電阻</button>
+                <button class="btn tool-btn" data-tool="battery">🔋 電池</button>
+                <button class="btn tool-btn" data-tool="lamp">💡 燈泡</button>
+            </div>
+            <div class="btn-row">
+                <button class="btn tool-btn" data-tool="switch">⏻ 開關</button>
+                <button class="btn tool-btn" data-tool="ammeter">Ⓐ 串接安培計</button>
+            </div>
+            <div class="btn-row">
+                <button id="editorResetBtn" class="btn btn-clear-m">🔄 重設範例</button>
+                <button id="editorClearBtn" class="btn btn-remove">🗑 清空畫布</button>
+            </div>
+            <div class="btn-row">
+                <button id="editorSaveBtn" class="btn btn-meter-v">💾 儲存電路</button>
+                <button id="editorLoadBtn" class="btn btn-meter-a">📂 載入電路</button>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
+                <label style="margin:0;">電動勢: <span id="v-label-ed">12.0 V</span></label>
+                <input type="range" id="voltageSliderEd" min="1" max="24" step="0.5" value="12" style="width:55%;">
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+                <label style="margin:0;">電池內阻 r: <span id="r-label-ed">0.0 Ω</span></label>
+                <input type="range" id="internalRSliderEd" min="0" max="5" step="0.1" value="0" style="width:55%;">
+            </div>
+            <div style="font-size:0.78rem; color:#7f8c8d; margin-top:8px; line-height:1.5;">
+                選工具後於格點間<b>拖拉</b>放置元件，或<b>單擊</b>放一個預設元件；游標會顯示吸附點。<br>
+                「選取」可拖動元件、點開關切換；<b>雙擊</b>改數值；<b>Delete</b> 刪除游標下元件、<b>Esc</b> 取消；探針儀錶照常使用。
+            </div>
+        </div>
+
+        <div class="control-group" id="resistor-list-wrapper">
+            <label style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <span>2. 電源與電阻清單 (<span id="resistor-count" style="color: #98c379;">4 / 10</span>)</span>
+                <button id="toggleListBtn" style="background:none; border:none; color:#61afef; cursor:pointer; font-weight:bold;">🔽 隱藏</button>
+            </label>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <label style="margin:0;">電動勢: <span id="v-label">12.0 V</span></label>
+                <input type="range" id="voltageSlider" min="1" max="24" step="0.5" value="12" style="width: 60%;">
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <label style="margin:0;">電池內阻 r: <span id="r-label">0.0 Ω</span></label>
+                <input type="range" id="internalRSlider" min="0" max="5" step="0.1" value="0" style="width: 60%;">
+            </div>
+            <button id="addResistorBtn" class="btn btn-add" style="width: 100%; margin-bottom: 10px; flex: none;">➕ 加入新電阻</button>
+            
+            <div id="resistor-list-container"></div>
+        </div>
+        
+        <div class="control-group">
+            <label style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0;">
+                <span>3. 實驗儀錶管理：</span>
+                <button id="toggleMeterMgmtBtn" style="background:none; border:none; color:#61afef; cursor:pointer; font-weight:bold;">🔽 隱藏</button>
+            </label>
+            <div id="meter-mgmt-content" style="margin-top: 8px;">
+                <div class="btn-row">
+                    <button id="addAmmeterBtn" class="btn btn-meter-a">+ 安培</button>
+                    <button id="removeAmmeterBtn" class="btn btn-remove">- 安培</button>
+                    <button id="addVoltmeterBtn" class="btn btn-meter-v">+ 伏特</button>
+                    <button id="removeVoltmeterBtn" class="btn btn-remove">- 伏特</button>
+                </div>
+                <div class="btn-row">
+                    <button id="toggleMetersBtn" class="btn btn-clear-m">👁️ 隱藏探針儀錶</button>
+                    <button id="toggleResistorVoltagesBtn" class="btn btn-voltage-overlay">⚡ 顯示電阻電壓</button>
+                </div>
+                <div class="btn-row">
+                    <button id="toggleCurrentBtn" class="btn btn-clear-m">🌀 隱藏電流流動</button>
+                    <button id="togglePowerBtn" class="btn btn-voltage-overlay">🔥 顯示功率</button>
+                </div>
+                <div class="btn-row">
+                    <button id="toggleExplicitRBtn" class="btn btn-voltage-overlay">🔋 內阻顯示為電阻</button>
                 </div>
             </div>
-            <div id="resistors-container">
-                </div>
         </div>
 
-        <div class="control-group analogy-group">
-            <label style="color: #ffcc00; border-bottom: 1px solid #30363d; padding-bottom: 5px;">📊 實時物流數據監控</label>
-            <div id="meters-container">
-                </div>
-            <div class="theory-box" id="exp-text"></div>
+        <div class="meter-readout">
+            <div class="readout-box">
+                <span class="readout-label">系統等效電阻 (Req)</span>
+                <span class="readout-value" id="req-readout">0.00 Ω</span>
+            </div>
+            <div class="readout-box">
+                <span class="readout-label">總輸出電流 (Itotal)</span>
+                <span class="readout-value" style="color:#e06c75;" id="itotal-readout">0.00 A</span>
+            </div>
+            <div class="readout-box">
+                <span class="readout-label">端電壓 (Vterm)</span>
+                <span class="readout-value" style="color:#61afef;" id="vterm-readout">0.00 V</span>
+            </div>
+            <div class="readout-box">
+                <span class="readout-label">總消耗功率 (P)</span>
+                <span class="readout-value" style="color:#f1c40f;" id="ptotal-readout">0.00 W</span>
+            </div>
         </div>
+
+        <div class="control-group" id="data-section">
+            <label>📊 V-I 數據記錄（驗證歐姆定律 / 求內阻）</label>
+            <div class="btn-row">
+                <button id="recordPointBtn" class="btn btn-add">📌 記錄 (V, I)</button>
+                <button id="exportCsvBtn" class="btn btn-meter-v">📥 CSV</button>
+                <button id="clearDataBtn" class="btn btn-remove">🗑 清除</button>
+            </div>
+            <canvas id="viCanvas" width="600" height="360" style="width:100%; background:#fff; border-radius:8px; margin-top:8px; display:block;"></canvas>
+            <div id="vi-fit" style="font-size:0.8rem; color:#abb2bf; margin-top:6px; text-align:center;">尚無數據點</div>
+        </div>
+
+        <div class="control-group" id="challenge-section">
+            <label style="display:flex; justify-content:space-between; align-items:center;">
+                <span>🎯 挑戰模式</span>
+                <button id="newChallengeBtn" class="btn btn-meter-a" style="flex:none; padding:5px 12px; font-size:0.82rem;">新挑戰</button>
+            </label>
+            <div id="challenge-text" style="font-size:0.85rem; color:#abb2bf; line-height:1.5;">按「新挑戰」開始：嘗試擺出指定的系統等效電阻。</div>
+            <div id="challenge-status" style="font-size:1rem; font-weight:bold; margin-top:8px; text-align:center; color:#5c6370;">—</div>
+        </div>
+
+        <div class="theory-box" id="theory-text">載入中...</div>
     </div>
 
     <script>
-        let isSeries = true;
-        let currentSpeed = 1.0; 
-        let showChargeFlow = false; 
-        
-        let N = 2; 
-        let R_vals = [2, 5]; 
-        let P = { emf: 12, req: 7, iTotal: 1.71, v: [], i: [], p: [] }; 
-        
-        let eAcc = [], tAcc = [];
-        let sceneBuildTimer = null; 
+        // ==========================================
+        // 1. DSE 傳統實驗室防視差儀錶
+        // ==========================================
+        const ammeterCanvas = document.getElementById('ammeterCanvas');
+        const ammeterCtx = ammeterCanvas.getContext('2d');
+        const voltmeterCanvas = document.getElementById('voltmeterCanvas');
+        const voltmeterCtx = voltmeterCanvas.getContext('2d');
 
-        const ui = {
-            btnSeries: document.getElementById('btn-series'), btnParallel: document.getElementById('btn-parallel'),
-            sEmf: document.getElementById('slider-emf'), vEmf: document.getElementById('val-emf'),
-            btnAddR: document.getElementById('btn-add-r'), btnSubR: document.getElementById('btn-sub-r'),
-            rContainer: document.getElementById('resistors-container'), mContainer: document.getElementById('meters-container'),
-            expText: document.getElementById('exp-text'), tChargeFlow: document.getElementById('toggle-charge-flow'),
-            togglePanelBtn: document.getElementById('toggle-panel-btn')
+        function drawLabMeter(ctx, type, currentVal, maxRange, isConnected) {
+            ctx.clearRect(0, 0, 1024, 1024);
+            
+            ctx.fillStyle = '#ecf0f1';
+            ctx.beginPath(); ctx.roundRect(40, 40, 944, 920, 40); ctx.fill();
+            ctx.strokeStyle = '#bdc3c7'; ctx.lineWidth = 12; ctx.stroke();
+            
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.roundRect(100, 100, 824, 760, 20); ctx.fill();
+            ctx.strokeStyle = '#34495e'; ctx.lineWidth = 8; ctx.stroke();
+
+            const cx = 512, cy = 760, r = 460;
+            const startAng = Math.PI * 1.18; const endAng = Math.PI * 1.82;
+
+            ctx.beginPath(); ctx.arc(cx, cy, r - 60, startAng, endAng);
+            ctx.lineWidth = 20; ctx.strokeStyle = '#d2dae2'; ctx.stroke();
+
+            ctx.beginPath(); ctx.arc(cx, cy, r, startAng, endAng);
+            ctx.lineWidth = 5; ctx.strokeStyle = '#2c3e50'; ctx.stroke();
+
+            for (let i = 0; i <= 50; i++) {
+                const a = startAng + (endAng - startAng) * (i / 50);
+                const isMajor = i % 10 === 0; const isHalf = i % 5 === 0 && !isMajor;
+                const len = isMajor ? 30 : (isHalf ? 18 : 10);
+                
+                ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+                ctx.lineTo(cx + Math.cos(a) * (r - len), cy + Math.sin(a) * (r - len));
+                ctx.lineWidth = isMajor ? 5 : (isHalf ? 3 : 1.5); ctx.strokeStyle = '#2c3e50'; ctx.stroke();
+
+                if (isMajor) {
+                    ctx.fillStyle = '#2c3e50'; ctx.font = 'bold 30px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                    const val = (maxRange * (i/50)).toFixed(1);
+                    ctx.fillText(val, cx + Math.cos(a) * (r - 85), cy + Math.sin(a) * (r - 85));
+                }
+            }
+
+            ctx.fillStyle = type === 'A' ? '#e74c3c' : '#2980b9';
+            ctx.font = 'bold 70px "Times New Roman"'; ctx.fillText(type, cx, cy - 360);
+            ctx.fillStyle = '#7f8c8d'; ctx.font = 'bold 22px Arial'; ctx.fillText("DSE Standard Analog Meter", cx, cy - 300);
+
+            if (!isConnected) {
+                ctx.fillStyle = '#c0392b'; ctx.font = 'bold 32px Arial'; ctx.fillText("⚠️ 探針未妥善連接", cx, cy - 180);
+            } else {
+                ctx.fillStyle = '#2c3e50'; ctx.font = 'bold 40px "JetBrains Mono"';
+                ctx.fillText(`讀數: ${Math.abs(currentVal).toFixed(2)} ${type}`, cx, cy - 180);
+            }
+
+            ctx.fillStyle = '#c0392b'; ctx.beginPath(); ctx.arc(300, 900, 30, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#2c3e50'; ctx.beginPath(); ctx.arc(724, 900, 30, 0, Math.PI*2); ctx.fill();
+
+            ctx.save(); ctx.translate(cx, cy);
+            let displayVal = isConnected ? Math.abs(currentVal) : 0;
+            let ratio = Math.max(0, Math.min(displayVal / maxRange, 1.05));
+            let pointerAngle = startAng + (endAng - startAng) * ratio;
+            ctx.rotate(pointerAngle + Math.PI / 2);
+
+            ctx.beginPath(); ctx.moveTo(-3, 0); ctx.lineTo(3, 0); ctx.lineTo(1, -r - 15); ctx.lineTo(-1, -r - 15);
+            ctx.fillStyle = isConnected ? '#c0392b' : '#95a5a6'; ctx.fill(); 
+            ctx.beginPath(); ctx.arc(0, 0, 35, 0, Math.PI * 2); ctx.fillStyle = '#2c3e50'; ctx.fill();
+            ctx.beginPath(); ctx.arc(0, 0, 12, 0, Math.PI * 2); ctx.fillStyle = '#ecf0f1'; ctx.fill();
+            ctx.restore();
+        }
+
+        // ==========================================
+        // 2. 物理狀態與 UI 清單管理 (上限 10 組)
+        // ==========================================
+        let state = { 
+            mode: 'mixed', V: 12.0, Req: 0, Itotal: 0, 
+            resistors: [
+                { id: 1, val: 10.0, stage: 'pre', cx: 0, cy: 0, isDragging: false, voltage: 0 }, 
+                { id: 2, val: 20.0, stage: 1, cx: 0, cy: 0, isDragging: false, voltage: 0 }, 
+                { id: 3, val: 20.0, stage: 2, cx: 0, cy: 0, isDragging: false, voltage: 0 },
+                { id: 4, val: 10.0, stage: 'post', cx: 0, cy: 0, isDragging: false, voltage: 0 }
+            ] 
+        };
+        const MAX_RESISTORS = 10;
+        let nextResistorId = 5;
+
+        // 探針與儀錶
+        // 儀錶自動換檔：選出 ≥ 讀數的最小標準量程 (取代寫死的 5A / 25V)
+        const AMM_RANGES = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20];
+        const VOLT_RANGES = [1, 3, 5, 10, 25, 50, 100];
+        function pickRange(val, ranges) {
+            let a = Math.abs(val);
+            for (const r of ranges) if (a <= r) return r;
+            return ranges[ranges.length - 1];
+        }
+        let ammeters = [ { id: 1, x: 400, y: 400, radius: 22, active: false, readingI: 0, snapX: 0, snapY: 0 } ];
+        let voltmeters = [ { id: 1, base: { x: 800, y: 100, radius: 28 }, red: { x: 700, y: 250, radius: 14, active: false, readingV: 0, snapX: 0, snapY: 0 }, black: { x: 850, y: 250, radius: 14, active: false, readingV: 0, snapX: 0, snapY: 0 }, active: false, readingV: 0 } ];
+        let activeDragProbe = null; let activeDragResistor = null; 
+        let selectedAmmeter = ammeters[0]; let selectedVoltmeter = voltmeters[0]; 
+        
+        let showMeters = true;
+        let showResistorVoltages = false; // 新增：全局電壓標籤開關狀態
+        let showCurrent = true;           // 電流粒子動畫開關 (編輯模式預設關閉)
+        let showPower = false;            // 顯示各元件功率 P=I²R 標籤
+        let showInternalRExplicit = false; // 內阻顯示為「理想電池 + 串聯電阻」組合 (預設關閉)
+
+        // 隱藏/顯示清單功能 (同步收合 flex-grow)
+        let listVisible = true;
+        document.getElementById('toggleListBtn').addEventListener('click', (e) => {
+            listVisible = !listVisible;
+            document.getElementById('resistor-list-container').style.display = listVisible ? 'block' : 'none';
+            document.getElementById('resistor-list-wrapper').style.flexGrow = listVisible ? '1' : '0';
+            e.target.innerText = listVisible ? '🔽 隱藏' : '▶️ 顯示';
+        });
+
+        // 實驗儀錶管理清單收合
+        let meterMgmtVisible = true;
+        document.getElementById('toggleMeterMgmtBtn').addEventListener('click', (e) => {
+            meterMgmtVisible = !meterMgmtVisible;
+            document.getElementById('meter-mgmt-content').style.display = meterMgmtVisible ? 'block' : 'none';
+            e.target.innerText = meterMgmtVisible ? '🔽 隱藏' : '▶️ 顯示';
+        });
+
+        // 增減儀錶功能
+        document.getElementById('addAmmeterBtn').addEventListener('click', () => {
+            if(ammeters.length >= 4) return alert("為維持畫面整潔，上限 4 個安培計。");
+            let newA = { id: Date.now(), x: 300 + Math.random()*200, y: 400, radius: 22, active: false, readingI: 0, snapX: 0, snapY: 0 };
+            ammeters.push(newA); selectedAmmeter = newA; updateMeters();
+        });
+        document.getElementById('removeAmmeterBtn').addEventListener('click', () => {
+            if (ammeters.length > 1) {
+                let removed = ammeters.pop();
+                if (selectedAmmeter === removed) selectedAmmeter = ammeters[ammeters.length - 1];
+                updateMeters();
+            } else { alert("最少需要保留 1 個安培計。"); }
+        });
+        
+        document.getElementById('addVoltmeterBtn').addEventListener('click', () => {
+            if(voltmeters.length >= 4) return alert("為維持畫面整潔，上限 4 個伏特計。");
+            let newV = {
+                id: Date.now(), base: { x: 700 + Math.random()*100, y: 100 + Math.random()*50, radius: 28 },
+                red: { x: 650 + Math.random()*50, y: 250, radius: 14, active: false }, black: { x: 800 + Math.random()*50, y: 250, radius: 14, active: false }, active: false, readingV: 0
+            };
+            voltmeters.push(newV); selectedVoltmeter = newV; updateMeters();
+        });
+        document.getElementById('removeVoltmeterBtn').addEventListener('click', () => {
+            if (voltmeters.length > 1) {
+                let removed = voltmeters.pop();
+                if (selectedVoltmeter === removed) selectedVoltmeter = voltmeters[voltmeters.length - 1];
+                updateMeters();
+            } else { alert("最少需要保留 1 個伏特計。"); }
+        });
+
+        document.getElementById('toggleMetersBtn').addEventListener('click', (e) => {
+            showMeters = !showMeters; e.target.innerText = showMeters ? "👁️ 隱藏探針儀錶" : "👁️‍🗨️ 顯示探針儀錶";
+            if (!showMeters) activeDragProbe = null; updateMeters();
+        });
+
+        // 新增：切換全局電壓標籤按鈕事件
+        document.getElementById('toggleResistorVoltagesBtn').addEventListener('click', (e) => {
+            showResistorVoltages = !showResistorVoltages;
+            e.target.innerText = showResistorVoltages ? "⚡ 隱藏電阻電壓" : "⚡ 顯示電阻電壓";
+            e.target.style.opacity = showResistorVoltages ? "0.7" : "1";
+        });
+
+        // 電流粒子動畫開關 (獨立功能，連接電路時可關閉)
+        function syncCurrentBtn() {
+            let b = document.getElementById('toggleCurrentBtn');
+            b.innerText = showCurrent ? "🌀 隱藏電流流動" : "🌀 顯示電流流動";
+            b.style.opacity = showCurrent ? "1" : "0.7";
+        }
+        document.getElementById('toggleCurrentBtn').addEventListener('click', () => {
+            showCurrent = !showCurrent; syncCurrentBtn();
+        });
+
+        // 動態生成電阻清單 (List UI)
+        function renderResistorList() {
+            const container = document.getElementById('resistor-list-container');
+            container.innerHTML = '';
+            document.getElementById('resistor-count').innerText = `${state.resistors.length} / ${MAX_RESISTORS}`;
+
+            state.resistors.forEach((res, index) => {
+                const div = document.createElement('div'); div.className = 'resistor-item';
+                
+                let selectHTML = '';
+                if (state.mode === 'mixed') {
+                    selectHTML = `
+                        <select class="stage-select" id="stage-r${res.id}">
+                            <option value="pre" ${res.stage === 'pre' ? 'selected' : ''}>主幹 (分流前)</option>
+                            <option value="1" ${res.stage == 1 ? 'selected' : ''}>並聯支路 1</option>
+                            <option value="2" ${res.stage == 2 ? 'selected' : ''}>並聯支路 2</option>
+                            <option value="3" ${res.stage == 3 ? 'selected' : ''}>並聯支路 3</option>
+                            <option value="post" ${res.stage === 'post' ? 'selected' : ''}>主幹 (匯流後)</option>
+                        </select>
+                    `;
+                }
+
+                div.innerHTML = `
+                    <div class="resistor-header">
+                        <label style="margin:0; color:#fff;">R${index + 1}：<span id="r${res.id}-label">${res.val.toFixed(1)} Ω</span></label>
+                        ${selectHTML}
+                        <button class="btn-del-res" onclick="removeResistorById(${res.id})">✕</button>
+                    </div>
+                    <input type="range" id="slider-r${res.id}" min="2" max="50" step="1" value="${res.val}">
+                `;
+                container.appendChild(div);
+                
+                document.getElementById(`slider-r${res.id}`).addEventListener('input', (e) => {
+                    res.val = parseFloat(e.target.value); document.getElementById(`r${res.id}-label`).innerText = res.val.toFixed(1) + ' Ω';
+                    updatePhysics();
+                });
+
+                if (state.mode === 'mixed') {
+                    document.getElementById(`stage-r${res.id}`).addEventListener('change', (e) => {
+                        res.stage = e.target.value === 'pre' || e.target.value === 'post' ? e.target.value : parseInt(e.target.value);
+                        updatePhysics();
+                    });
+                }
+            });
+        }
+
+        window.removeResistorById = function(id) {
+            if (state.resistors.length <= 1) return alert("最少需要保留 1 個待測元件。");
+            state.resistors = state.resistors.filter(r => r.id !== id);
+            renderResistorList(); updatePhysics();
         };
 
-        let isPanelVisible = true;
-        ui.togglePanelBtn.addEventListener('click', () => {
-            isPanelVisible = !isPanelVisible;
-            if (isPanelVisible) {
-                document.body.classList.remove('panel-collapsed');
-                ui.togglePanelBtn.innerHTML = '👁️ 隱藏控制面板';
-            } else {
-                document.body.classList.add('panel-collapsed');
-                ui.togglePanelBtn.innerHTML = '👁️ 顯示控制面板';
-            }
+        document.getElementById('addResistorBtn').addEventListener('click', () => {
+            if (state.resistors.length >= MAX_RESISTORS) return alert(`最多支援 ${MAX_RESISTORS} 個電阻器，已達上限。`);
+            state.resistors.push({ id: nextResistorId++, val: 10.0, stage: 'pre', cx: 0, cy: 0, isDragging: false, voltage: 0 }); 
+            renderResistorList(); updatePhysics();
+            
+            if (!listVisible) document.getElementById('toggleListBtn').click();
+            
+            const list = document.getElementById('resistor-list-container');
+            setTimeout(() => list.scrollTop = list.scrollHeight, 50);
         });
 
-        const speedBtns = document.querySelectorAll('#speed-controls .btn');
-        speedBtns.forEach(btn => {
-            btn.addEventListener('click', () => {
-                speedBtns.forEach(b => b.classList.remove('active')); btn.classList.add('active');
-                currentSpeed = parseFloat(btn.dataset.speed); gsap.globalTimeline.timeScale(currentSpeed); 
-            });
-        });
+        // ==========================================
+        // 2.5 MNA 物理引擎 (Modified Nodal Analysis)
+        //     通用節點法求解器，取代寫死的串/並/混合公式。
+        //     可解任意串並聯拓樸，並為 Phase 2 自由式編輯器奠基。
+        // ==========================================
 
-        ui.tChargeFlow.addEventListener('change', (e) => {
-            showChargeFlow = e.target.checked;
-            if (activeElements.flowLabels) activeElements.flowLabels.forEach(lbl => lbl.visible = showChargeFlow);
-        });
-
-        function initUIStructure() {
-            ui.rContainer.innerHTML = '';
-            R_vals.forEach((r, i) => {
-                const num = i + 1;
-                ui.rContainer.innerHTML += `
-                    <label><span>🏢 超市 ${num} (R<sub>${num}</sub>) &rarr; <span style="color:#ffff00; text-shadow: 0 0 5px rgba(255,255,0,0.5);" id="lbl-time-${i}">單箱卸貨 ${ (0.02 * r).toFixed(2) }s</span></span> <span id="val-r${i}">${r} &Omega;</span></label>
-                    <input type="range" class="slider-r" data-idx="${i}" id="slider-r${i}" min="1" max="10" value="${r}" step="1">
-                `;
-            });
-
-            document.querySelectorAll('.slider-r').forEach(slider => {
-                slider.addEventListener('input', (e) => {
-                    R_vals[e.target.dataset.idx] = parseFloat(e.target.value);
-                    updatePhysics(); 
-                });
-            });
-        }
-
-        ui.btnAddR.addEventListener('click', () => { if (N < 5) { N++; R_vals.push(4); initUIStructure(); updatePhysics(); } });
-        ui.btnSubR.addEventListener('click', () => { if (N > 1) { N--; R_vals.pop(); initUIStructure(); updatePhysics(); } });
-
-        const container = document.getElementById('canvas-container');
-        const scene = new THREE.Scene(); 
-        // 更明亮清爽的背景色
-        scene.background = new THREE.Color(0xebf4fa); 
-        const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
-        camera.position.set(0, 85, 100); 
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        
-        renderer.setSize(container.clientWidth, container.clientHeight, false);
-        renderer.setPixelRatio(window.devicePixelRatio);
-        renderer.toneMapping = THREE.ACESFilmicToneMapping; 
-        renderer.toneMappingExposure = 1.2; // 增加曝光讓顏色更亮
-        renderer.shadowMap.enabled = true;
-        container.appendChild(renderer.domElement);
-        const controls = new THREE.OrbitControls(camera, renderer.domElement); controls.enableDamping = true; controls.target.set(0, 0, 0);
-
-        // 增強環境光與方向光
-        scene.add(new THREE.AmbientLight(0xffffff, 0.9));
-        const dirLight = new THREE.DirectionalLight(0xffffff, 0.9); dirLight.position.set(10, 40, 20); dirLight.castShadow = true; scene.add(dirLight);
-
-        const circuitGroup = new THREE.Group(); scene.add(circuitGroup);
-        const analogyGroup = new THREE.Group(); scene.add(analogyGroup);
-        let activeElements = { electrons: [], trucks: [], floatingBoxes: [], circuitPaths: [], roadPaths: [], flowLabels: [] };
-
-        function createBatteryTexture() {
-            const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 512; const ctx = canvas.getContext('2d');
-            const grd = ctx.createLinearGradient(0, 0, 0, 512); 
-            // 更鮮豔的電池顏色
-            grd.addColorStop(0, "#ff3300"); grd.addColorStop(0.2, "#ff8800"); grd.addColorStop(0.25, "#1a2a3a"); grd.addColorStop(1, "#000000");
-            ctx.fillStyle = grd; ctx.fillRect(0, 0, 512, 512);
-            ctx.fillStyle = '#ffffff'; ctx.font = 'bold 80px "Segoe UI"'; ctx.textAlign = 'center'; ctx.fillText("+", 256, 80);
-            ctx.font = 'bold 70px "Segoe UI"'; ctx.fillText("POWER", 256, 280); ctx.fillText("CELL", 256, 360); ctx.font = 'bold 80px "Segoe UI"'; ctx.fillText("-", 256, 480);
-            return new THREE.CanvasTexture(canvas);
-        }
-
-        function createBuildingMaterials(type) {
-            const canvas = document.createElement('canvas'); canvas.width = 1024; canvas.height = 512; const ctx = canvas.getContext('2d');
-            if (type === 'warehouse') {
-                // 更亮的貨倉配色
-                ctx.fillStyle = '#5fa8d3'; ctx.fillRect(0, 0, 1024, 512); 
-                ctx.strokeStyle = '#87c3e5'; ctx.lineWidth = 4; for(let i=0; i<1024; i+=30) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,512); ctx.stroke(); }
-                ctx.fillStyle = '#1d5885'; ctx.fillRect(80, 200, 220, 312); ctx.fillRect(390, 200, 220, 312); ctx.fillRect(700, 200, 220, 312); 
-                ctx.fillStyle = '#ffea00'; ctx.fillRect(80, 150, 220, 50); ctx.fillRect(390, 150, 220, 50); ctx.fillRect(700, 150, 220, 50); 
-                ctx.fillStyle = '#0d2b45'; ctx.fillRect(212, 30, 600, 100); 
-                ctx.fillStyle = '#ffcc00'; ctx.font = 'bold 70px "Segoe UI"'; ctx.textAlign = 'center'; ctx.fillText("物流貨倉", 512, 105);
-            } else {
-                // 更亮的超市配色
-                ctx.fillStyle = '#dce8f2'; ctx.fillRect(0, 0, 1024, 512); 
-                ctx.fillStyle = '#00ffff'; ctx.fillRect(50, 150, 924, 362); ctx.strokeStyle = '#111111'; ctx.lineWidth = 10; ctx.strokeRect(50, 150, 924, 362);
-                for(let i=50; i<950; i+=150) { ctx.beginPath(); ctx.moveTo(i, 150); ctx.lineTo(i, 512); ctx.stroke(); } 
-                ctx.fillStyle = '#ff0033'; ctx.fillRect(0, 0, 1024, 120); 
-                ctx.fillStyle = '#ffffff'; ctx.font = 'bold 80px "Segoe UI"'; ctx.textAlign = 'center'; ctx.fillText("超級市場", 512, 95);
-            }
-            return [
-                new THREE.MeshLambertMaterial({ color: type === 'warehouse' ? 0x5fa8d3 : 0xdce8f2 }), new THREE.MeshLambertMaterial({ color: type === 'warehouse' ? 0x5fa8d3 : 0xdce8f2 }),
-                new THREE.MeshLambertMaterial({ color: type === 'warehouse' ? 0x5fa8d3 : 0xdce8f2 }), new THREE.MeshLambertMaterial({ color: type === 'warehouse' ? 0x5fa8d3 : 0xdce8f2 }),
-                new THREE.MeshLambertMaterial({ map: new THREE.CanvasTexture(canvas) }), new THREE.MeshLambertMaterial({ color: type === 'warehouse' ? 0x5fa8d3 : 0xdce8f2 })
-            ]; 
-        }
-
-        const batTexture = createBatteryTexture();
-        const warehouseMats = createBuildingMaterials('warehouse');
-        const supermarketMats = createBuildingMaterials('supermarket');
-        // 更深邃的馬路顏色以凸顯貨車
-        const roadMat = new THREE.MeshLambertMaterial({ color: 0x203547 }); 
-
-        function createTextSprite(message, color = "#ffffff", scale = 1) {
-            const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 128; const ctx = canvas.getContext('2d');
-            ctx.font = "Bold 52px 'Segoe UI', Arial"; ctx.textAlign = "center"; ctx.lineWidth = 8; ctx.strokeStyle = '#111'; ctx.strokeText(message, 256, 80);
-            ctx.fillStyle = color; ctx.fillText(message, 256, 80);
-            const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), transparent: true }));
-            sprite.scale.set(6 * scale, 1.5 * scale, 1); return sprite;
-        }
-
-        function createDigitalLabel(text, color) {
-            const canvas = document.createElement('canvas'); canvas.width = 300; canvas.height = 80; const ctx = canvas.getContext('2d');
-            ctx.fillStyle = 'rgba(10, 15, 20, 0.9)'; ctx.fillRect(0, 0, 300, 80); ctx.strokeStyle = color; ctx.lineWidth = 4; ctx.strokeRect(2, 2, 296, 76);
-            ctx.fillStyle = color; ctx.font = "bold 32px 'Courier New', monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(text, 150, 40);
-            const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), transparent: true })); 
-            sprite.scale.set(4.5, 1.2, 1); return sprite;
-        }
-
-        function createFlowLabel(text, color) {
-            const canvas = document.createElement('canvas'); canvas.width = 500; canvas.height = 80; const ctx = canvas.getContext('2d');
-            ctx.fillStyle = 'rgba(20, 25, 30, 0.95)'; ctx.fillRect(0, 0, 500, 80); ctx.strokeStyle = color; ctx.lineWidth = 4; ctx.strokeRect(2, 2, 496, 76);
-            ctx.fillStyle = color; ctx.font = "bold 30px 'Segoe UI', Courier, monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(text, 250, 42);
-            const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), transparent: true, depthTest: false })); 
-            sprite.scale.set(7.5, 1.2, 1); return sprite;
-        }
-
-        function addDualFlowLabel(posLeft, posRight, val, leftName, rightName) {
-            const lblLeft = createFlowLabel(`📍${leftName}: ${val.toFixed(2)} C/s`, '#ff2a55');
-            lblLeft.position.copy(posLeft); lblLeft.visible = showChargeFlow;
-            circuitGroup.add(lblLeft); activeElements.flowLabels.push(lblLeft);
-
-            const lblRight = createFlowLabel(`📍${rightName}: ${val.toFixed(2)} 架/秒`, '#ffcc00');
-            lblRight.position.copy(posRight); lblRight.visible = showChargeFlow;
-            analogyGroup.add(lblRight); activeElements.flowLabels.push(lblRight);
-        }
-
-        function updateDOMValues() {
-            ui.vEmf.innerText = `${P.emf} V`;
-            R_vals.forEach((r, i) => {
-                const timeLbl = document.getElementById(`lbl-time-${i}`);
-                const valLbl = document.getElementById(`val-r${i}`);
-                if(timeLbl) timeLbl.innerText = `單箱卸貨 ${ (0.02 * r).toFixed(2) }s`;
-                if(valLbl) valLbl.innerHTML = `${r} &Omega;`;
-            });
-
-            let metersHtml = `
-                <div class="meter-readout">
-                    <div class="readout-box"><span class="readout-label">總車流量 (I)</span><span style="color:#ff2a55;">${P.iTotal.toFixed(2)} A</span></div>
-                    <div class="readout-box"><span class="readout-label">貨倉總裝貨量 (&epsilon;)</span><span style="color:#ffffff;">${P.emf.toFixed(2)} V</span></div>
-                </div>
-            `;
-            R_vals.forEach((r, i) => {
-                const num = i + 1;
-                metersHtml += `
-                    <div class="meter-readout" style="background: #161b22;">
-                        <div class="readout-box"><span class="readout-label">超市${num} 卸貨量 (V<sub>${num}</sub>)</span><span style="color:#ffcc00;">${P.v[i].toFixed(2)} V</span></div>
-                        <div class="readout-box"><span class="readout-label">超市${num} 分流 (I<sub>${num}</sub>)</span><span style="color:#ff2a55;">${P.i[i].toFixed(2)} A</span></div>
-                    </div>
-                `;
-            });
-            ui.mContainer.innerHTML = metersHtml;
-        }
-
-        function updatePhysics() {
-            P.emf = parseFloat(ui.sEmf.value);
-            P.v = []; P.i = []; P.p = [];
-
-            if (isSeries) {
-                let sumR = R_vals.reduce((a, b) => a + b, 0);
-                P.req = sumR; P.iTotal = P.emf / sumR;
-                R_vals.forEach((r, idx) => {
-                    P.i[idx] = P.iTotal; P.v[idx] = P.iTotal * r; P.p[idx] = P.v[idx] * P.i[idx];
-                });
-                ui.expText.innerHTML = `<strong>【嚴格理想電路驗證】</strong><br>導線電阻為零，因此電子的電量 (V) <strong>在純導線上移動時絕對不會下降</strong>。<br>👉 電量數值的扣減只會發生在穿過阻抗元件（電阻器 / 超市）的瞬間！`;
-            } else {
-                let invR = R_vals.reduce((a, b) => a + (1 / b), 0);
-                P.req = 1 / invR; P.iTotal = P.emf / P.req;
-                R_vals.forEach((r, idx) => {
-                    P.v[idx] = P.emf; P.i[idx] = P.emf / r; P.p[idx] = P.emf * P.i[idx];
-                });
-                ui.expText.innerHTML = `<strong>【並聯理想導線定律】</strong><br>主幹道分流至各分支時，電勢並未發生消耗。電子在進入各自支路的電阻器之前，都維持著滿載的電勢能！<br>👉 觀察電子到達不同分支，只有進入電阻本體時才會歸零。`;
-            }
-            
-            updateDOMValues();
-            eAcc = new Array(N).fill(0); tAcc = new Array(N).fill(0);
-            
-            if(sceneBuildTimer) clearTimeout(sceneBuildTimer);
-            sceneBuildTimer = setTimeout(() => {
-                buildScene();
-            }, 50); 
-        }
-
-        function drawWireSegment(pts, material) {
-            for(let i=1; i<pts.length; i++) {
-                const p1 = pts[i-1]; const p2 = pts[i]; const length = p1.distanceTo(p2); if(length < 0.1) continue;
-                const cylGeo = new THREE.CylinderGeometry(0.15, 0.15, length, 16); cylGeo.rotateX(Math.PI / 2);
-                const cyl = new THREE.Mesh(cylGeo, material); cyl.position.copy(p1).lerp(p2, 0.5); cyl.lookAt(p2); circuitGroup.add(cyl);
-                const sphere = new THREE.Mesh(new THREE.SphereGeometry(0.15, 16, 16), material); sphere.position.copy(p1); circuitGroup.add(sphere);
-                if (i === pts.length - 1) { const sEnd = new THREE.Mesh(new THREE.SphereGeometry(0.15, 16, 16), material); sEnd.position.copy(p2); circuitGroup.add(sEnd); }
-            }
-        }
-
-        function drawRoadSegment(pts, yOffset = 0.05) { 
-            for(let i=1; i<pts.length; i++) {
-                const p1 = pts[i-1]; const p2 = pts[i]; const length = p1.distanceTo(p2); if(length < 0.1) continue;
-                const roadGeo = new THREE.PlaneGeometry(3.0, length + 3.0); roadGeo.rotateX(-Math.PI / 2); 
-                const road = new THREE.Mesh(roadGeo, roadMat); road.position.copy(p1).lerp(p2, 0.5); road.position.y = yOffset; 
-                road.lookAt(new THREE.Vector3(p2.x, road.position.y, p2.z)); analogyGroup.add(road); 
-            }
-        }
-
-        function buildScene() {
-            activeElements.electrons.forEach(e => { e.tl.kill(); scene.remove(e.mesh); if(e.tex) e.tex.dispose(); });
-            activeElements.trucks.forEach(t => { t.tl.kill(); scene.remove(t.group); t.cargoBoxes.forEach(b => {scene.remove(b); b.material.dispose(); b.geometry.dispose();}); if(t.tTex) t.tTex.dispose(); });
-            activeElements.floatingBoxes.forEach(b => { gsap.killTweensOf(b.position); gsap.killTweensOf(b.material); scene.remove(b); b.material.dispose(); b.geometry.dispose(); });
-            if (activeElements.flowLabels) activeElements.flowLabels.forEach(lbl => { circuitGroup.remove(lbl); analogyGroup.remove(lbl); if(lbl.material.map) lbl.material.map.dispose(); lbl.material.dispose(); }); 
-            
-            circuitGroup.clear(); analogyGroup.clear();
-            activeElements = { electrons: [], trucks: [], floatingBoxes: [], circuitPaths: [], roadPaths: [], flowLabels: [] };
-
-            const cOffsetX = -24; const aOffsetX = 24; 
-            const p = (x,y,z) => new THREE.Vector3(cOffsetX+x, y, z); const rp = (x,y,z) => new THREE.Vector3(aOffsetX+x, y, z);
-            
-            let xLimit = 22; 
-            let maxZ = isSeries ? 6 : Math.max(6, -2 + 12 * (N - 1));
-            let centerZ = isSeries ? 0 : maxZ / 2;
-
-            gsap.to(camera.position, { z: 100 + centerZ * 0.4, y: 85 + centerZ * 0.2, duration: 1.2, ease: "power2.out" });
-            gsap.to(controls.target, { z: centerZ, duration: 1.2, ease: "power2.out" });
-
-            const batMesh = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 4.5, 32), new THREE.MeshLambertMaterial({ map: batTexture }));
-            batMesh.position.copy(p(0, 1.75, -14)); batMesh.rotation.y = Math.PI/2; circuitGroup.add(batMesh);
-            const batTop = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.6, 16), new THREE.MeshLambertMaterial({color: 0xcccccc}));
-            batTop.position.set(0, 2.4, 0); batMesh.add(batTop);
-            
-            circuitGroup.add(createTextSprite("電源", "#ff3333", 0.9).position.copy(p(0, 5.5, -14)));
-            circuitGroup.add(createDigitalLabel(`ε = ${P.emf.toFixed(1)} V`, "#ff3333").position.copy(p(-3.5, 2, -14)));
-
-            // 讓導線帶有更亮的金屬光澤感
-            const wireMat = new THREE.MeshLambertMaterial({color: 0x5588aa}); 
-            function addResistorObj(pos, label) {
-                // 更純粹閃亮的黃金電阻
-                const r = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 3, 16), new THREE.MeshLambertMaterial({color: 0xffd700})); r.rotation.z = Math.PI/2; r.position.copy(pos); circuitGroup.add(r);
-                circuitGroup.add(createTextSprite(label, "#ffcc00", 0.8).position.copy(pos).add(new THREE.Vector3(0, 1.5, 0)));
-            }
-
-            let s_x = []; 
-            if (N === 1) s_x = [0];
-            else {
-                let xStart = 16;
-                for(let i=0; i<N; i++) s_x.push(xStart - (xStart * 2 / (N - 1)) * i);
-            }
-
-            let p_z = []; 
-            for(let i=0; i<N; i++) p_z.push(-2 + 12 * i); 
-
-            if (isSeries) {
-                const pts = [ p(0,0,-14), p(xLimit,0,-14), p(xLimit,0,6) ];
-                s_x.forEach(x => {
-                    pts.push(p(x + 1.5, 0, 6)); 
-                    pts.push(p(x - 1.5, 0, 6)); 
-                });
-                pts.push(p(-xLimit,0,6), p(-xLimit,0,-14), p(0,0,-14));
-                activeElements.circuitPaths.push({ pts: pts, weight: 1 });
-                
-                drawWireSegment([ p(0,0,-14), p(xLimit,0,-14), p(xLimit,0,6), p(-xLimit,0,6), p(-xLimit,0,-14), p(0,0,-14) ], wireMat);
-                s_x.forEach((x, i) => {
-                    addResistorObj(p(x, 0, 6), `R${i+1}`);
-                    circuitGroup.add(createDigitalLabel(`V${i+1} = ${P.v[i].toFixed(1)} V`, "#ffcc00").position.copy(p(x, 3.5, 6)));
-                });
-                
-                circuitGroup.add(createDigitalLabel(`I = ${P.iTotal.toFixed(2)} A`, "#00ccff").position.copy(p(4, 1.5, -14)));
-                addDualFlowLabel(p(14, 1.5, -14), rp(14, 1.5, -14), P.iTotal, "出發總電荷", "出發總車流");
-            } else {
-                drawWireSegment([ p(0,0,-14), p(xLimit,0,-14), p(xLimit,0,-2) ], wireMat); 
-                if (N > 1) { drawWireSegment([ p(xLimit,0,-2), p(xLimit,0,maxZ) ], wireMat); drawWireSegment([ p(-xLimit,0,-2), p(-xLimit,0,maxZ) ], wireMat); }
-                drawWireSegment([ p(-xLimit,0,-2), p(-xLimit,0,-14), p(0,0,-14) ], wireMat);
-
-                p_z.forEach((z, i) => {
-                    const ptsA = [ p(0,0,-14), p(xLimit,0,-14), p(xLimit,0,z), p(1.5,0,z), p(-1.5,0,z), p(-xLimit,0,z), p(-xLimit,0,-14), p(0,0,-14) ];
-                    activeElements.circuitPaths.push({ pts: ptsA, weight: P.i[i] / P.iTotal });
-                    drawWireSegment([ p(xLimit,0,z), p(-xLimit,0,z) ], wireMat); 
-                    addResistorObj(p(0, 0, z), `R${i+1}`);
-                    circuitGroup.add(createDigitalLabel(`V${i+1} = ${P.v[i].toFixed(1)} V`, "#ffcc00").position.copy(p(0, 3.5, z)));
-                    addDualFlowLabel(p(8, 1.5, z), rp(8, 1.5, z), P.i[i], `支路${i+1}電荷`, `支路${i+1}車流`);
-                });
-                circuitGroup.add(createDigitalLabel(`I總 = ${P.iTotal.toFixed(2)} A`, "#00ccff").position.copy(p(4, 1.5, -14)));
-                addDualFlowLabel(p(14, 1.5, -14), rp(14, 1.5, -14), P.iTotal, "主幹總電荷", "主幹總車流");
-            }
-
-            const logCenter = new THREE.Mesh(new THREE.BoxGeometry(10, 6, 4), warehouseMats);
-            logCenter.position.copy(rp(0, 3, -17)); analogyGroup.add(logCenter);
-            analogyGroup.add(createTextSprite("🏭 電源 (物流貨倉)", "#00ccff").position.copy(logCenter.position).add(new THREE.Vector3(0, 4.5, 0)));
-
-            function addSupermarket(pos, label) {
-                const sm = new THREE.Mesh(new THREE.BoxGeometry(6, 4, 3), supermarketMats);
-                sm.position.copy(pos); sm.position.y = 2; analogyGroup.add(sm);
-                analogyGroup.add(createTextSprite(label, "#ffaa00").position.copy(pos).add(new THREE.Vector3(0, 4.5, 0)));
-            }
-
-            if (isSeries) {
-                const rPts = [ rp(0,0,-14), rp(xLimit,0,-14), rp(xLimit,0,6) ]; s_x.forEach(x => rPts.push(rp(x,0,6))); rPts.push(rp(-xLimit,0,6), rp(-xLimit,0,-14), rp(0,0,-14));
-                activeElements.roadPaths.push({ pts: rPts, weight: 1, type: 'series' }); 
-                drawRoadSegment([ rp(0,0,-14), rp(xLimit,0,-14), rp(xLimit,0,6), rp(-xLimit,0,6), rp(-xLimit,0,-14), rp(0,0,-14) ], 0.05);
-                s_x.forEach((x, i) => addSupermarket(rp(x, 0, 2.5), `超市 ${i+1} (R${i+1})`));
-            } else {
-                drawRoadSegment([ rp(0,0,-14), rp(xLimit,0,-14), rp(xLimit,0,-2) ], 0.05);
-                if(N > 1) { drawRoadSegment([ rp(xLimit,0,-2), rp(xLimit,0,maxZ) ], 0.05); drawRoadSegment([ rp(-xLimit,0,-2), rp(-xLimit,0,maxZ) ], 0.05); }
-                drawRoadSegment([ rp(-xLimit,0,-2), rp(-xLimit,0,-14), rp(0,0,-14) ], 0.05);
-                
-                p_z.forEach((z, i) => {
-                    const rPts = [ rp(0,0,-14), rp(xLimit,0,-14), rp(xLimit,0,z), rp(0,0,z), rp(-xLimit,0,z), rp(-xLimit,0,-14), rp(0,0,-14) ];
-                    activeElements.roadPaths.push({ pts: rPts, weight: P.i[i] / P.iTotal, type: `para${i}` });
-                    drawRoadSegment([ rp(xLimit,0,z), rp(-xLimit,0,z) ], 0.04);
-                    addSupermarket(rp(0, 0, z - 3.5), `超市 ${i+1} (R${i+1})`);
-                });
-            }
-        }
-
-        // 極致亮青色的電子
-        const electronMat = new THREE.MeshLambertMaterial({ color: 0x00e5ff }); const electronGeo = new THREE.SphereGeometry(0.35, 16, 16);
-        // 高飽和純黃色的貨物
-        const cargoGeo = new THREE.BoxGeometry(0.4, 0.4, 0.4); const cargoMatBase = new THREE.MeshLambertMaterial({color: 0xffea00});
-
-        function spawnElectron(pathIdx) {
-            const cPath = activeElements.circuitPaths[pathIdx].pts; 
-            const electron = new THREE.Mesh(electronGeo, electronMat); scene.add(electron); electron.position.copy(cPath[0]);
-            
-            const eCanv = document.createElement('canvas'); eCanv.width = 160; eCanv.height = 80; const eCtx = eCanv.getContext('2d');
-            const eTex = new THREE.CanvasTexture(eCanv);
-            const eSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: eTex, transparent: true, depthTest: false }));
-            eSprite.scale.set(4.5, 2.25, 1); eSprite.position.set(0, 3.2, 0); electron.add(eSprite);
-
-            let eData = { val: P.emf }; 
-            function drawVal() {
-                eCtx.clearRect(0,0,160,80); eCtx.fillStyle = 'rgba(10, 15, 20, 0.9)'; eCtx.fillRect(0,0,160,80);
-                eCtx.strokeStyle = '#00ffaa'; eCtx.lineWidth = 4; eCtx.strokeRect(2,2,156,76);
-                eCtx.fillStyle = '#00ffaa'; eCtx.font = "bold 34px 'Segoe UI'"; eCtx.textAlign = "center";
-                eCtx.fillText(`⚡ ${eData.val.toFixed(1)} V`, 80, 52); eTex.needsUpdate = true;
-            }
-            drawVal(); 
-
-            const baseSpeed = 10 + (P.iTotal * 4.0); 
-            const eTl = gsap.timeline({ onComplete: () => { scene.remove(electron); eTex.dispose(); activeElements.electrons = activeElements.electrons.filter(e => e.mesh !== electron); }});
-            activeElements.electrons.push({ mesh: electron, tl: eTl, tex: eTex });
-
-            for (let i = 1; i < cPath.length; i++) {
-                const dur = cPath[i-1].distanceTo(cPath[i]) / baseSpeed;
-                eTl.to(electron.position, { x: cPath[i].x, y: cPath[i].y, z: cPath[i].z, duration: dur, ease: "none" }, `move${i}`);
-
-                if (isSeries) {
-                    let j = (i - 4) / 2; 
-                    if (Number.isInteger(j) && j >= 0 && j < N) {
-                        let remainingVoltage = P.emf - P.v.slice(0, j + 1).reduce((a, b) => a + b, 0);
-                        if (remainingVoltage < 0.1) remainingVoltage = 0; 
-                        eTl.to(eData, { val: remainingVoltage, duration: dur, ease: "none", onUpdate: drawVal }, `move${i}`);
-                    }
-                } else {
-                    if (i === 4) { 
-                        eTl.to(eData, { val: 0, duration: dur, ease: "none", onUpdate: drawVal }, `move${i}`);
-                    } 
+        // 密集矩陣線性求解器：高斯消去 + 部分主元。解 A·x = b，奇異則回傳 null。
+        function solveLinearSystem(A, b) {
+            const n = b.length;
+            if (n === 0) return [];
+            // 建立增廣矩陣副本，避免污染輸入
+            let M = A.map((row, i) => row.slice().concat([b[i]]));
+            for (let col = 0; col < n; col++) {
+                // 部分主元：選該列絕對值最大者
+                let piv = col;
+                for (let r = col + 1; r < n; r++) {
+                    if (Math.abs(M[r][col]) > Math.abs(M[piv][col])) piv = r;
+                }
+                if (Math.abs(M[piv][col]) < 1e-12) return null; // 奇異矩陣
+                [M[col], M[piv]] = [M[piv], M[col]];
+                // 高斯-喬登消去
+                for (let r = 0; r < n; r++) {
+                    if (r === col) continue;
+                    let f = M[r][col] / M[col][col];
+                    if (f === 0) continue;
+                    for (let c = col; c <= n; c++) M[r][c] -= f * M[col][c];
                 }
             }
+            let x = new Array(n);
+            for (let i = 0; i < n; i++) x[i] = M[i][n] / M[i][i];
+            return x;
         }
 
-        function createTruckMesh(cargoCount) {
-            const group = new THREE.Group();
-            const chassis = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.2, 4.0), new THREE.MeshLambertMaterial({color: 0x000000})); chassis.position.set(0, 0.4, 0); group.add(chassis);
-            // 鮮豔粉紅的車頭
-            const cab = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.2, 1.2), new THREE.MeshLambertMaterial({color: 0xff0044})); cab.position.set(0, 1.1, 1.4); 
-            const cabWindow = new THREE.Mesh(new THREE.BoxGeometry(1.62, 0.5, 0.6), new THREE.MeshLambertMaterial({color: 0x00ffff})); cabWindow.position.set(0, 1.2, 1.5);
-            const hlL = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.2, 0.1), new THREE.MeshBasicMaterial({color: 0xffffee})); hlL.position.set(-0.6, 0.8, 2.05);
-            const hlR = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.2, 0.1), new THREE.MeshBasicMaterial({color: 0xffffee})); hlR.position.set(0.6, 0.8, 2.05);
-            group.add(cab, cabWindow, hlL, hlR);
-            const bed = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.1, 2.6), new THREE.MeshLambertMaterial({color: 0x888888})); bed.position.set(0, 0.55, -0.7); group.add(bed);
+        // MNA 組裝與求解。
+        //   nodeCount：節點總數，索引 0 = ground (接地，電位 0)，可用節點 1..nodeCount-1
+        //   elements：二端元件陣列
+        //     - 電阻：{ type:'R', a, b, R }
+        //     - 理想電壓源：{ type:'V', a, b, E }  (a=+ 端, b=- 端；安培計/導線/閉合開關 E=0)
+        // 解後回填每個元件的 curr (電流) 與 R 元件的 vDrop (電位差)，並回傳節點電位陣列。
+        function solveCircuit(nodeCount, elements) {
+            const n = nodeCount - 1;                 // 未知節點電壓數
+            const sources = elements.filter(e => e.type === 'V');
+            const m = sources.length;                // 電壓源支路電流未知數
+            const size = n + m;
+            if (size === 0) return { V: [0] };
 
-            const wheelGeo = new THREE.CylinderGeometry(0.35, 0.35, 0.25, 16); wheelGeo.rotateZ(Math.PI / 2); const wheelMat = new THREE.MeshLambertMaterial({color: 0x000000});
-            [[-0.9,0.35,1.2],[0.9,0.35,1.2],[-0.9,0.35,-0.4],[0.9,0.35,-0.4],[-0.9,0.35,-1.6],[0.9,0.35,-1.6]].forEach(pos => {
-                const wheel = new THREE.Mesh(wheelGeo, wheelMat); wheel.position.set(...pos); group.add(wheel);
+            const A = Array.from({ length: size }, () => new Array(size).fill(0));
+            const b = new Array(size).fill(0);
+            const gmin = 1e-9; // SPICE 慣用：每節點對地加微小電導，防止浮接節點造成奇異
+
+            for (let i = 1; i < nodeCount; i++) A[i - 1][i - 1] += gmin;
+
+            // Stamp 電阻電導
+            elements.forEach(e => {
+                if (e.type !== 'R') return;
+                let g = 1 / e.R, a = e.a, c = e.b;
+                if (a !== 0) A[a - 1][a - 1] += g;
+                if (c !== 0) A[c - 1][c - 1] += g;
+                if (a !== 0 && c !== 0) { A[a - 1][c - 1] -= g; A[c - 1][a - 1] -= g; }
             });
-            
-            const cargoBoxes = [];
-            for(let i=0; i<cargoCount; i++) {
-                const box = new THREE.Mesh(cargoGeo, cargoMatBase.clone()); 
-                const row = Math.floor(i / 6); const col = i % 6;
-                box.position.set((col%3)*0.45 - 0.45, 0.8 + row*0.45, Math.floor(col/3)*0.45 - 0.9);
-                group.add(box); cargoBoxes.push(box);
+
+            // Stamp 電壓源 (incidence ±1 + EMF)
+            sources.forEach((e, k) => {
+                let row = n + k, p = e.a, q = e.b;
+                if (p !== 0) { A[p - 1][row] += 1; A[row][p - 1] += 1; }
+                if (q !== 0) { A[q - 1][row] -= 1; A[row][q - 1] -= 1; }
+                b[row] = e.E;
+            });
+
+            let x = solveLinearSystem(A, b);
+            if (!x) return null;
+
+            let V = new Array(nodeCount).fill(0);
+            for (let i = 1; i < nodeCount; i++) V[i] = x[i - 1];
+
+            elements.forEach(e => {
+                if (e.type === 'R') { e.vDrop = V[e.a] - V[e.b]; e.curr = e.vDrop / e.R; }
+            });
+            sources.forEach((e, k) => { e.curr = x[n + k]; });
+            return { V };
+        }
+
+        // 電池：EMF + 內阻 r。r>0 時以隱藏內部節點串聯一個電阻 r 來模擬。
+        // isBattery 標記用於事後取總電流。
+        function addBattery(elements, neg, pos, emf, r, newNode) {
+            if (r > 1e-9) {
+                let mid = newNode();
+                elements.push({ type: 'V', a: mid, b: neg, E: emf, isBattery: true });
+                elements.push({ type: 'R', a: pos, b: mid, R: r });
+            } else {
+                elements.push({ type: 'V', a: pos, b: neg, E: emf, isBattery: true });
             }
+        }
 
-            const tCanv = document.createElement('canvas'); tCanv.width = 160; tCanv.height = 80; const tCtx = tCanv.getContext('2d');
-            const tTex = new THREE.CanvasTexture(tCanv); const tSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tTex, transparent: true, depthTest: false }));
-            tSprite.scale.set(5.5, 2.75, 1); tSprite.position.set(0, 3.8, 0); group.add(tSprite);
-            group.scale.set(0.65, 0.65, 0.65);
+        // 過渡橋接：把現有結構化佈局 (pre / 並聯支路 1-3 / post) 轉成抽象節點圖。
+        // 回傳 { nodeCount, elements, resElems }；resElems 內每個 R 元件帶 .res 指回原電阻物件。
+        function buildGraphFromLegacyState() {
+            const elements = [];
+            let nodeCount = 1;                 // node 0 = ground
+            const newNode = () => nodeCount++;
+            const GND = 0;
+            const active = state.resistors.filter(r => !r.isDragging);
+            const rInt = state.internalR || 0; // Phase 3 內阻滑桿；目前預設 0
 
-            const obj = { group, cargoBoxes, cargoCount, tCtx, tTex, tSprite };
-            obj.updateTruckLabel = function() {
-                tCtx.clearRect(0,0,160,80); tCtx.fillStyle = 'rgba(10, 15, 20, 0.9)'; tCtx.fillRect(0,0,160,80);
-                tCtx.strokeStyle = '#ffea00'; tCtx.lineWidth = 4; tCtx.strokeRect(2,2,156,76);
-                tCtx.fillStyle = '#ffea00'; tCtx.font = "bold 34px 'Segoe UI'"; tCtx.textAlign = "center";
-                tCtx.fillText(`📦 ${this.cargoCount}`, 80, 52); tTex.needsUpdate = true;
+            const posRail = newNode();
+            addBattery(elements, GND, posRail, state.V, rInt, newNode);
+
+            const resElems = [];
+            const addR = (a, b, res) => {
+                let e = { type: 'R', a, b, R: res.val, res };
+                elements.push(e); resElems.push(e); return e;
             };
-            obj.updateTruckLabel(); return obj;
+
+            if (state.mode === 'series') {
+                let prev = posRail;
+                active.forEach((res, i) => {
+                    let next = (i === active.length - 1) ? GND : newNode();
+                    addR(prev, next, res); prev = next;
+                });
+            } else if (state.mode === 'parallel') {
+                active.forEach(res => addR(posRail, GND, res));
+            } else { // mixed：先串 (pre) → 並聯支路 → 後串 (post)
+                const pre = active.filter(r => r.stage === 'pre');
+                const post = active.filter(r => r.stage === 'post');
+                const branches = [1, 2, 3].map(s => active.filter(r => r.stage == s));
+                const hasParallel = branches.some(b => b.length > 0);
+
+                let node = posRail;
+                pre.forEach(res => { let next = newNode(); addR(node, next, res); node = next; });
+                const split = node;
+
+                let merge;
+                if (hasParallel) {
+                    merge = newNode();
+                    branches.forEach(branchGroup => {
+                        if (branchGroup.length === 0) return;
+                        let bn = split;
+                        branchGroup.forEach((res, j) => {
+                            let next = (j === branchGroup.length - 1) ? merge : newNode();
+                            addR(bn, next, res); bn = next;
+                        });
+                    });
+                } else {
+                    merge = split; // 無並聯區段，主幹直通
+                }
+
+                let pnode = merge;
+                post.forEach((res, i) => {
+                    let next = (i === post.length - 1) ? GND : newNode();
+                    addR(pnode, next, res); pnode = next;
+                });
+                if (post.length === 0 && merge !== GND) {
+                    elements.push({ type: 'V', a: merge, b: GND, E: 0 }); // 以理想導線收尾
+                }
+            }
+            return { nodeCount, elements, resElems };
         }
 
-        function spawnTruck(pathIdx) {
-            const rPath = activeElements.roadPaths[pathIdx].pts;
-            const truckObj = createTruckMesh(Math.round(P.emf)); scene.add(truckObj.group); activeElements.trucks.push(truckObj);
-            truckObj.group.position.copy(rPath[0]);
-            
-            const tTl = gsap.timeline({ onComplete: () => { scene.remove(truckObj.group); truckObj.tTex.dispose(); activeElements.trucks = activeElements.trucks.filter(t => t.group !== truckObj.group); }});
-            truckObj.tl = tTl;
-            const baseSpeed = 12 + (P.iTotal * 3.0); 
+        // 核心物理運算：用 MNA 求解器取代寫死公式。被「拔起(Dragging)」的電阻不入圖，
+        // 自然形成真實斷路 (連串聯也正確斷開，修正舊版串聯被拔起仍導通的錯誤)。
+        function updatePhysics() {
+            state.mode = document.getElementById('circuitMode').value;
+            state.V = parseFloat(document.getElementById('voltageSlider').value);
+            document.getElementById('v-label').innerText = state.V.toFixed(1) + ' V';
 
-            for (let i = 1; i < rPath.length; i++) {
-                const dur = rPath[i-1].distanceTo(rPath[i]) / baseSpeed;
-                const dir = new THREE.Vector3().subVectors(rPath[i], rPath[i-1]).normalize(); const angle = Math.atan2(dir.x, dir.z);
-                tTl.to(truckObj.group.position, { x: rPath[i].x, y: rPath[i].y, z: rPath[i].z, duration: dur, ease: "none" }, `seq${i}`);
-                tTl.to(truckObj.group.rotation, { y: angle, duration: 0.1 }, `seq${i}`);
+            if (editor.enabled) { editorUpdatePhysics(); updateMeters(); updateTheoryText(); return; }
 
-                if (isSeries) {
-                    let rIdx = i - 3; 
-                    if (rIdx >= 0 && rIdx < N) {
-                        let currentR = R_vals[rIdx];
-                        let amount = Math.round(P.v[rIdx]);
-                        let interval = 0.02 * currentR;
-                        let flyDuration = 0.1 + (0.04 * currentR);
-                        let totalUnloadTime = (amount * interval) + flyDuration;
-                        
-                        tTl.call(() => unloadCargo(truckObj, amount, truckObj.group.position.x, truckObj.group.position.z + 2.5, currentR));
-                        tTl.to({}, {duration: totalUnloadTime}); 
+            state.resistors.forEach(r => { r.current = 0; r.voltage = 0; });
+
+            let active = state.resistors.filter(r => !r.isDragging);
+            if (active.length === 0) {
+                state.Req = 0; state.Itotal = 0;
+            } else {
+                let graph = buildGraphFromLegacyState();
+                let sol = solveCircuit(graph.nodeCount, graph.elements);
+                if (sol) {
+                    graph.resElems.forEach(e => {
+                        if (e.res) { e.res.current = Math.abs(e.curr); e.res.voltage = Math.abs(e.vDrop); }
+                    });
+                    let bat = graph.elements.find(e => e.isBattery);
+                    state.Itotal = bat ? Math.abs(bat.curr) : 0;
+                    // 內阻為 0 時 V/Itotal 即外部等效電阻；Phase 3 加內阻後再以端電壓校正
+                    state.Req = state.Itotal > 1e-9 ? (state.V - state.Itotal * (state.internalR || 0)) / state.Itotal : 0;
+                } else {
+                    state.Req = 0; state.Itotal = 0;
+                }
+            }
+
+            state.terminalV = state.V - state.Itotal * (state.internalR || 0);
+            state.Ptotal = state.resistors.reduce((s, r) => s + (r.current || 0) * (r.current || 0) * r.val, 0);
+            updateReadouts();
+
+            buildCircuitGraph(); updateMeters(); updateTheoryText();
+        }
+
+        function updateTheoryText() {
+            let txt = '';
+            if (state.mode === 'editor') txt = `<strong>【🔧 自由編輯模式 (MNA 節點法)】</strong><br>用工具列在格點間拖拉放置電池、電阻、導線、開關、燈泡、串接安培計，系統以節點法即時求解任意串並聯拓樸。<br>提示：相鄰元件端點落在同一格點即自動接通；點開關可切換通斷。`;
+            else if (state.mode === 'series') txt = `<strong>【純串聯定律】</strong> 電流全線相同： <strong>${state.Itotal.toFixed(2)} A</strong>。`;
+            else if (state.mode === 'parallel') txt = `<strong>【純並聯定律】</strong> 等電勢差： 任意支路電壓皆為 <strong>${state.V.toFixed(1)} V</strong>。`;
+            else txt = `<strong>【先串後並再串 (Mixed)】 💡可容納 10 個電阻，請自由拖曳！</strong><br>1. <strong>主幹 (串聯)：</strong> 流經「分流前」與「匯流後」的總電流相同。<br>2. <strong>支路 (並聯)：</strong> 垂直支路彼此並聯分享總電流，但支路內部的電阻為串聯相加。`;
+            document.getElementById('theory-text').innerHTML = txt;
+        }
+
+        document.getElementById('circuitMode').addEventListener('change', () => {
+            let mode = document.getElementById('circuitMode').value;
+            editor.enabled = (mode === 'editor');
+            document.getElementById('editor-palette').style.display = editor.enabled ? 'block' : 'none';
+            document.getElementById('resistor-list-wrapper').style.display = editor.enabled ? 'none' : 'flex';
+            if (editor.enabled && !editor.initialized) editorLoadTemplate();
+            editor.hoverComp = null; editor.hoverPt = null;
+            editorUpdateCursor();
+            showCurrent = !editor.enabled;   // 編輯模式預設關閉電流動畫，方便連接電路
+            syncCurrentBtn();
+            if (mode === 'mixed') {
+                state.resistors.forEach(r => { if (r.stage !== 'pre' && r.stage !== 'post' && ![1, 2, 3].includes(r.stage)) r.stage = 'pre'; });
+            }
+            if (!editor.enabled) renderResistorList();
+            updatePhysics();
+        });
+
+        // ==========================================
+        // 3. 完美流體圖論引擎 (校準的座標系統)
+        // ==========================================
+        let segments = []; 
+        const BatX = 100, TopY = 100, BotY = 350, BatY = 225; 
+        const SplitX = 300; 
+        const BranchXs = [450, 600, 750]; 
+
+        function addSeg(x1, y1, x2, y2, i, v) {
+            let s = {x1, y1, x2, y2, i: Math.max(i, 0.0001), v: v, len: Math.hypot(x2-x1, y2-y1)};
+            s.getPos = function(d) { let p = d / s.len; return { x: s.x1 + (s.x2-s.x1)*p, y: s.y1 + (s.y2-s.y1)*p }; };
+            segments.push(s); 
+        }
+
+        function getResistorColors(val) {
+            const colors = { 0: '#2c3e50', 1: '#8b4513', 2: '#e74c3c', 3: '#e67e22', 4: '#f1c40f', 5: '#27ae60', 6: '#2980b9', 7: '#8e44ad', 8: '#7f8c8d', 9: '#ffffff' };
+            const gold = '#d4af37'; let d1, d2, mult;
+            if (val < 10) { d1 = Math.floor(val); d2 = Math.round((val - d1) * 10); mult = gold; } 
+            else { let str = Math.round(val).toString(); d1 = parseInt(str[0]); d2 = parseInt(str[1]); mult = colors[0]; }
+            return [colors[d1] || colors[0], colors[d2] || colors[0], mult, gold];
+        }
+
+        function buildCircuitGraph() {
+            segments = [];
+            const n = state.resistors.filter(r => !r.isDragging).length;
+            let activeResistors = state.resistors.filter(r => !r.isDragging);
+            const Vterm = state.terminalV; // 端電壓 = EMF - I·r；視覺電位由此起算，內阻使端電壓低於電動勢
+
+            if (state.mode === 'series') {
+                let currentV = Vterm; let prevX = BatX, prevY = TopY;
+                addSeg(BatX, BatY, BatX, TopY, state.Itotal, currentV);
+                let startX = 150; let spacing = 750 / (n + 1 || 2);
+                activeResistors.forEach((res, idx) => {
+                    let rx = startX + (idx + 1) * spacing; 
+                    res.cx = rx; res.cy = TopY;
+                    addSeg(prevX, prevY, rx - 35, TopY, state.Itotal, currentV);
+                    addSeg(rx - 35, TopY, rx + 35, TopY, state.Itotal, currentV - res.voltage/2);
+                    currentV -= res.voltage; prevX = rx + 35; prevY = TopY;
+                });
+                addSeg(prevX, prevY, 900, TopY, state.Itotal, currentV);
+                addSeg(900, TopY, 900, BotY, state.Itotal, currentV);
+                addSeg(900, BotY, BatX, BotY, state.Itotal, currentV);
+                addSeg(BatX, BotY, BatX, BatY, state.Itotal, currentV);
+            } 
+            else if (state.mode === 'parallel') {
+                addSeg(BatX, BatY, BatX, TopY, state.Itotal, Vterm);
+                addSeg(BatX, BotY, BatX, BatY, state.Itotal, 0);
+                let startX = 250; let spacing = n > 1 ? 500 / (n - 1) : 0; if(n===1) startX=500;
+                let currentRemaining = state.Itotal; let prevTopX = BatX;
+                activeResistors.forEach((res, i) => {
+                    let cx = startX + i * spacing;
+                    res.cx = cx; res.cy = 225;
+                    addSeg(prevTopX, TopY, cx, TopY, currentRemaining, Vterm);
+                    let branchCurrent = res.current;
+                    addSeg(cx, TopY, cx, 225-35, branchCurrent, Vterm);
+                    addSeg(cx, 225-35, cx, 225+35, branchCurrent, Vterm/2);
+                    addSeg(cx, 225+35, cx, BotY, branchCurrent, 0);
+                    currentRemaining -= branchCurrent; prevTopX = cx; 
+                });
+                let bottomCurrentAccum = 0;
+                for(let i = n - 1; i >= 0; i--) {
+                    let cx = (n===1) ? 500 : startX + i * spacing; 
+                    let nextX = (i === 0) ? BatX : startX + (i-1)*spacing;
+                    bottomCurrentAccum += activeResistors[i].current;
+                    addSeg(cx, BotY, nextX, BotY, bottomCurrentAccum, 0);
+                }
+                if(n===0) { addSeg(BatX, TopY, 900, TopY, 0, Vterm); addSeg(900, TopY, 900, BotY, 0, 0); addSeg(900, BotY, BatX, BotY, 0, 0); }
+            }
+            else if (state.mode === 'mixed') {
+                let currentV = Vterm;
+                addSeg(BatX, BatY, BatX, TopY, state.Itotal, currentV);
+                
+                let preGroup = activeResistors.filter(r => r.stage === 'pre');
+                let prevX = BatX;
+                let preSpacing = (SplitX - BatX) / (preGroup.length + 1);
+                
+                preGroup.forEach((res, i) => {
+                    let rx = BatX + (i + 1) * preSpacing;
+                    res.cx = rx; res.cy = TopY;
+                    addSeg(prevX, TopY, rx - 35, TopY, state.Itotal, currentV);
+                    addSeg(rx - 35, TopY, rx + 35, TopY, state.Itotal, currentV - res.voltage/2);
+                    currentV -= res.voltage; prevX = rx + 35;
+                });
+                addSeg(prevX, TopY, SplitX, TopY, state.Itotal, currentV); 
+
+                let currentRemaining = state.Itotal;
+                let topDistribX = SplitX;
+                let activeBranches = [1, 2, 3].map(s => activeResistors.filter(r => r.stage == s));
+                let hasParallel = activeBranches.some(b => b.length > 0);
+                let bottomNodes = [];
+                let vPost = currentV; 
+
+                if (hasParallel) {
+                    activeBranches.forEach((branchGroup, idx) => {
+                        if (branchGroup.length > 0) {
+                            let cx = BranchXs[idx];
+                            let branchI = branchGroup[0].current;
+                            addSeg(topDistribX, TopY, cx, TopY, currentRemaining, currentV);
+                            let branchV = currentV;
+                            let bPrevY = TopY;
+                            let ySpacing = (BotY - TopY) / (branchGroup.length + 1);
+                            
+                            branchGroup.forEach((res, r_idx) => {
+                                let ry = TopY + (r_idx + 1) * ySpacing;
+                                res.cx = cx; res.cy = ry;
+                                addSeg(cx, bPrevY, cx, ry - 35, branchI, branchV);
+                                addSeg(cx, ry - 35, cx, ry + 35, branchI, branchV - res.voltage/2);
+                                branchV -= res.voltage; bPrevY = ry + 35;
+                            });
+                            addSeg(cx, bPrevY, cx, BotY, branchI, branchV);
+                            
+                            bottomNodes.push({ cx: cx, i: branchI });
+                            currentRemaining -= branchI; topDistribX = cx; vPost = branchV; 
+                        }
+                    });
+
+                    let accumI = 0;
+                    for (let i = bottomNodes.length - 1; i >= 0; i--) {
+                        let cx = bottomNodes[i].cx; let nextX = (i === 0) ? SplitX : bottomNodes[i-1].cx;
+                        accumI += bottomNodes[i].i;
+                        addSeg(cx, BotY, nextX, BotY, accumI, vPost);
                     }
                 } else {
-                    if (i === 3) {
-                        let currentR = R_vals[pathIdx];
-                        let amount = Math.round(P.emf);
-                        let interval = 0.02 * currentR;
-                        let flyDuration = 0.1 + (0.04 * currentR);
-                        let totalUnloadTime = (amount * interval) + flyDuration;
-                        
-                        tTl.call(() => unloadCargo(truckObj, amount, truckObj.group.position.x, truckObj.group.position.z - 3.5, currentR));
-                        tTl.to({}, {duration: totalUnloadTime});
+                    addSeg(SplitX, TopY, SplitX, BotY, state.Itotal, currentV);
+                }
+
+                let postGroup = activeResistors.filter(r => r.stage === 'post');
+                let postStart = SplitX;
+                let postSpacing = (SplitX - BatX) / (postGroup.length + 1);
+                
+                postGroup.forEach((res, i) => {
+                    let rx = SplitX - (i + 1) * postSpacing;
+                    res.cx = rx; res.cy = BotY;
+                    addSeg(postStart, BotY, rx + 35, BotY, state.Itotal, vPost);
+                    addSeg(rx + 35, BotY, rx - 35, BotY, state.Itotal, vPost - res.voltage/2);
+                    vPost -= res.voltage; postStart = rx - 35;
+                });
+                
+                addSeg(postStart, BotY, BatX, BotY, state.Itotal, vPost); 
+                addSeg(BatX, BotY, BatX, BatY, state.Itotal, vPost);      
+            }
+        }
+
+        // 輔助函數：繪製帶背景的微型標籤 (Smart Labels)
+        function drawFloatingLabel(ctx, text, x, y, align='center') {
+            ctx.font = 'bold 13px "JetBrains Mono", monospace';
+            let metrics = ctx.measureText(text);
+            let w = metrics.width + 12;
+            let h = 20;
+            let rx = x;
+            
+            // 智慧對齊，避免遮擋本體
+            if (align === 'center') rx = x - w/2;
+            else if (align === 'left') rx = x + 8;
+            else if (align === 'right') rx = x - w - 8;
+            
+            ctx.fillStyle = 'rgba(30, 33, 40, 0.85)';
+            ctx.beginPath(); ctx.roundRect(rx, y - h/2, w, h, 4); ctx.fill();
+            ctx.strokeStyle = '#61afef'; ctx.lineWidth = 1; ctx.stroke();
+            
+            ctx.fillStyle = '#98c379';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, rx + w/2, y);
+        }
+
+        // ==========================================
+        // 3.5 Phase 2：自由式 schematic 編輯器
+        //     於網格上擺放元件、拉導線；以幾何自動抽取電氣節點，
+        //     再餵給 MNA 引擎 (solveCircuit) 解任意串並聯拓樸。
+        // ==========================================
+        const editor = {
+            enabled: false,
+            grid: 50,
+            tool: 'select',          // select | wire | delete | resistor | battery | lamp | switch | ammeter
+            components: [],
+            nextId: 1,
+            placing: null,           // 放置中：{ type, x1, y1, x2, y2 }
+            moving: null,            // 移動中的元件
+            moveDX: 0, moveDY: 0,
+            initialized: false,
+            hoverPt: null,           // 游標最近的吸附格點 {x,y}
+            hoverComp: null,         // 游標下的元件 (選取/刪除時高亮)
+        };
+
+        const PLACEMENT_TOOLS = ['wire', 'resistor', 'battery', 'lamp', 'switch', 'ammeter'];
+        // 顯式內阻表示時，沿電池 (pos→neg) 軸上「內阻 r」與「理想電池本體」的位置比例
+        const BAT_R_POS = 0.33, BAT_R_HALF = 0.10, BAT_CELL_POS = 0.62, BAT_CELL_HALF = 0.07;
+
+        const eSnap = v => Math.round(v / editor.grid) * editor.grid;
+
+        // 點 p 是否落在線段 a-b 的「內部」(排除兩端點)
+        function pointOnSegment(p, a, b) {
+            let dx = b.x - a.x, dy = b.y - a.y, L2 = dx * dx + dy * dy;
+            if (L2 === 0) return false;
+            let t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / L2;
+            if (t <= 0.01 || t >= 0.99) return false;
+            return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy)) < 1;
+        }
+
+        // 端點磁吸：游標靠近既有連接點 (元件端點) 時吸附過去，否則對齊網格
+        function editorSnapPoint(x, y) {
+            let best = null, bestD = editor.grid * 0.6;
+            for (const c of editor.components) {
+                for (const [px, py] of [[c.x1, c.y1], [c.x2, c.y2]]) {
+                    let d = Math.hypot(x - px, y - py);
+                    if (d < bestD) { bestD = d; best = { x: px, y: py }; }
+                }
+            }
+            return best || { x: eSnap(x), y: eSnap(y) };
+        }
+
+        // 兩元件是否佔據相同位置 (端點對相同，與方向無關)
+        function editorSameSpan(a, b) {
+            return (a.x1 === b.x1 && a.y1 === b.y1 && a.x2 === b.x2 && a.y2 === b.y2) ||
+                   (a.x1 === b.x2 && a.y1 === b.y2 && a.x2 === b.x1 && a.y2 === b.y1);
+        }
+        // 覆蓋：移除與 keep 重疊 (同位置) 的其他元件，讓新放/移動的元件取代原有者
+        function editorRemoveOverlaps(keep) {
+            editor.components = editor.components.filter(c => c === keep || !editorSameSpan(c, keep));
+        }
+
+        // 點 p 是否落在線段 a-b 上 (含端點、需共線)
+        function editorPtOnSeg(p, a, b) {
+            let dx = b.x - a.x, dy = b.y - a.y, L2 = dx * dx + dy * dy;
+            if (L2 === 0) return false;
+            let t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / L2;
+            if (t < -0.001 || t > 1.001) return false;
+            return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy)) < 1;
+        }
+
+        // 把元件 c 壓住的導線從 c 兩端切斷，使 c 串接進電路 (避免被整條導線短路)
+        function editorSplitWiresAround(c) {
+            if (c.type === 'wire') return;
+            const param = (p, a, b) => ((p.x - a.x) * (b.x - a.x) + (p.y - a.y) * (b.y - a.y)) / (((b.x - a.x) ** 2) + ((b.y - a.y) ** 2));
+            const remove = [], add = [];
+            editor.components.forEach(w => {
+                if (w === c || w.type !== 'wire') return;
+                let a = { x: w.x1, y: w.y1 }, b = { x: w.x2, y: w.y2 };
+                let p = { x: c.x1, y: c.y1 }, q = { x: c.x2, y: c.y2 };
+                if (editorPtOnSeg(p, a, b) && editorPtOnSeg(q, a, b)) {   // c 兩端皆在此導線上 → 切斷
+                    remove.push(w);
+                    let near = param(p, a, b) <= param(q, a, b) ? p : q;
+                    let far = near === p ? q : p;
+                    if (Math.hypot(a.x - near.x, a.y - near.y) > 0.5) add.push([a, near]);
+                    if (Math.hypot(far.x - b.x, far.y - b.y) > 0.5) add.push([far, b]);
+                }
+            });
+            if (remove.length) {
+                editor.components = editor.components.filter(k => !remove.includes(k));
+                add.forEach(([s, e]) => editorAddComponent('wire', s.x, s.y, e.x, e.y));
+            }
+        }
+
+        // (x,y) 是否會接通既有電路 (落在某端點，或某導線中段)
+        function editorConnectsAt(x, y) {
+            for (const c of editor.components) {
+                if (Math.hypot(c.x1 - x, c.y1 - y) < 1 || Math.hypot(c.x2 - x, c.y2 - y) < 1) return true;
+            }
+            for (const c of editor.components) {
+                if (c.type === 'wire' && pointOnSegment({ x, y }, { x: c.x1, y: c.y1 }, { x: c.x2, y: c.y2 })) return true;
+            }
+            return false;
+        }
+
+        function editorAddComponent(type, x1, y1, x2, y2) {
+            const c = {
+                id: editor.nextId++, type, x1, y1, x2, y2,
+                value: (type === 'battery') ? state.V : 10, r: 0, closed: true,
+                _elem: null, n1: 0, n2: 0, _cur: 0
+            };
+            editor.components.push(c);
+            return c;
+        }
+
+        // 預設模板：把熟悉的「先串後並再串」電路鋪在網格上 (pre10 + 20‖20 + post10 = 30Ω)
+        function editorLoadTemplate() {
+            editor.components = []; editor.nextId = 1;
+            const W = (x1, y1, x2, y2) => editorAddComponent('wire', x1, y1, x2, y2);
+            const R = (x1, y1, x2, y2, v) => { let c = editorAddComponent('resistor', x1, y1, x2, y2); c.value = v; return c; };
+            editorAddComponent('battery', 100, 100, 100, 300).value = state.V; // p1(+)=上, p2(-)=下
+            W(100, 100, 150, 100); R(150, 100, 250, 100, 10); W(250, 100, 400, 100); // + → R_pre → 分流
+            W(400, 100, 550, 100); W(550, 100, 700, 100);                            // 並聯頂部
+            R(550, 100, 550, 300, 20); R(700, 100, 700, 300, 20);                    // 兩條垂直支路
+            W(400, 300, 550, 300); W(550, 300, 700, 300);                            // 並聯底部 → 匯流
+            R(400, 300, 250, 300, 10); W(250, 300, 100, 300);                        // R_post → 回到 (-)
+            editor.initialized = true;
+        }
+
+        // 由幾何抽取電氣節點 (union-find)：同座標自動為同節點，wire 合併其兩端。
+        function editorExtractNodes() {
+            const ptIndex = new Map(); const pts = [];
+            const getPt = (x, y) => { let k = x + ',' + y; if (!ptIndex.has(k)) { ptIndex.set(k, pts.length); pts.push({ x, y }); } return ptIndex.get(k); };
+            editor.components.forEach(c => { c.p1 = getPt(c.x1, c.y1); c.p2 = getPt(c.x2, c.y2); });
+            const parent = pts.map((_, i) => i);
+            const find = a => { while (parent[a] !== a) { parent[a] = parent[parent[a]]; a = parent[a]; } return a; };
+            const union = (a, b) => { parent[find(a)] = find(b); };
+            editor.components.forEach(c => { if (c.type === 'wire') union(c.p1, c.p2); });
+            // T 形接點：任何端點若落在某導線內部，視為與該導線相連
+            editor.components.forEach(w => {
+                if (w.type !== 'wire') return;
+                for (let i = 0; i < pts.length; i++) {
+                    if (i === w.p1 || i === w.p2) continue;
+                    if (pointOnSegment(pts[i], pts[w.p1], pts[w.p2])) union(i, w.p1);
+                }
+            });
+            const rootNode = new Map(); let nc = 0;
+            const bat = editor.components.find(c => c.type === 'battery');
+            if (bat) { rootNode.set(find(bat.p2), 0); nc = 1; }   // 電池負極 = ground (node 0)
+            for (let i = 0; i < pts.length; i++) { let r = find(i); if (!rootNode.has(r)) rootNode.set(r, nc++); }
+            editor.components.forEach(c => { c.n1 = rootNode.get(find(c.p1)); c.n2 = rootNode.get(find(c.p2)); });
+            return { nodeCount: nc, pts };
+        }
+
+        // 元件「通過電流」(由 terminal1 → terminal2)，符號一致供 KCL 與動畫使用
+        const editorThrough = c => (c._elem ? c._elem.curr : 0);
+
+        // 解整個編輯器電路：抽節點 → 組元件 → MNA 求解 → 分配導線電流
+        function editorSolve() {
+            const ext = editorExtractNodes();
+            let nodeCount = ext.nodeCount;
+            const newNode = () => nodeCount++;
+            const elements = [];
+            editor.components.forEach(c => {
+                c._elem = null;
+                if (c.type === 'resistor' || c.type === 'lamp') {
+                    c._elem = { type: 'R', a: c.n1, b: c.n2, R: Math.max(c.value, 1e-3) };
+                    elements.push(c._elem);
+                } else if (c.type === 'battery') {
+                    let idx = elements.length;
+                    addBattery(elements, c.n2, c.n1, c.value, c.r || 0, newNode); // neg=n2, pos=n1
+                    let added = elements.slice(idx);
+                    c._elem = added.find(e => e.isBattery);
+                    let rElem = added.find(e => e.type === 'R'); // r>0 時的串聯內阻
+                    c._midNode = rElem ? rElem.b : c.n1;          // 內部節點電位 = EMF (相對負極)
+                } else if (c.type === 'ammeter') {
+                    c._elem = { type: 'V', a: c.n1, b: c.n2, E: 0 }; elements.push(c._elem);
+                } else if (c.type === 'switch' && c.closed) {
+                    c._elem = { type: 'V', a: c.n1, b: c.n2, E: 0 }; elements.push(c._elem);
+                }
+                // wire：節點抽取階段已合併，不作為元件入矩陣
+            });
+            let sol = (nodeCount > 0 && elements.length) ? solveCircuit(nodeCount, elements) : null;
+            if (!sol) sol = { V: new Array(Math.max(nodeCount, 1)).fill(0) };
+            editorComputeWireCurrents(sol, ext.pts);
+            return sol;
+        }
+
+        // 葉節點剝離法：依 KCL 分配每條導線的電流，讓動畫正確呈現分流。
+        // 樹狀連線可唯一求解；含迴路的冗餘導線則設為 0 (視覺近似)。
+        function editorComputeWireCurrents(sol, pts) {
+            const wires = editor.components.filter(c => c.type === 'wire');
+            wires.forEach(w => w._cur = null);
+            const inj = new Array(pts.length).fill(0);
+            editor.components.forEach(c => {
+                if (c.type === 'wire') return;
+                let It = editorThrough(c) || 0;
+                inj[c.p1] -= It; inj[c.p2] += It;
+            });
+            const adj = pts.map(() => []);
+            wires.forEach(w => { adj[w.p1].push(w); adj[w.p2].push(w); });
+            const acc = inj.slice();
+            let changed = true, guard = 0;
+            while (changed && guard++ < pts.length + 5) {
+                changed = false;
+                for (let p = 0; p < pts.length; p++) {
+                    let unres = adj[p].filter(w => w._cur === null);
+                    if (unres.length === 1) {
+                        let w = unres[0], I = acc[p];
+                        w._cur = (w.p1 === p) ? I : -I;       // 統一存成 p1→p2 方向電流
+                        let other = (w.p1 === p) ? w.p2 : w.p1;
+                        acc[other] += I; acc[p] = 0;
+                        changed = true;
                     }
                 }
             }
+            wires.forEach(w => { if (w._cur === null) w._cur = 0; });
         }
 
-        function unloadCargo(truckObj, amount, targetX, targetZ, rVal) {
-            truckObj.cargoCount = Math.max(0, truckObj.cargoCount - amount); truckObj.updateTruckLabel(); 
-            let interval = 0.02 * rVal; 
-            let flyDuration = 0.1 + (0.04 * rVal);
+        // 依「帶符號電流」決定繪製方向，使粒子永遠由上游流向下游 (signedI>0：a→b)
+        function addSegDir(ax, ay, bx, by, signedI, v) {
+            if (signedI >= 0) addSeg(ax, ay, bx, by, Math.abs(signedI), v);
+            else addSeg(bx, by, ax, ay, Math.abs(signedI), v);
+        }
 
-            for(let i=0; i<amount; i++) {
-                if(truckObj.cargoBoxes.length > 0) {
-                    let box = truckObj.cargoBoxes.pop(); activeElements.floatingBoxes.push(box); 
-                    let worldPos = new THREE.Vector3(); box.getWorldPosition(worldPos); 
-                    let worldScale = new THREE.Vector3(); box.getWorldScale(worldScale);
-                    scene.add(box); box.position.copy(worldPos); box.scale.copy(worldScale);
+        // 由元件幾何生成繪圖/探針用的 segments，每段帶真實電流(含方向)與節點電位
+        function editorBuildSegments(sol) {
+            segments = [];
+            const V = sol.V;
+            editor.components.forEach(c => {
+                let dx = c.x2 - c.x1, dy = c.y2 - c.y1, L = Math.hypot(dx, dy);
+                if (L < 1) return;
+                let ux = dx / L, uy = dy / L;
+                let v1 = V[c.n1] || 0, v2 = V[c.n2] || 0;
+                if (c.type === 'wire') {
+                    addSegDir(c.x1, c.y1, c.x2, c.y2, c._cur || 0, v1);
+                } else if (c.type === 'battery' && showInternalRExplicit && (c.r || 0) > 1e-9) {
+                    // 顯式：pos引線(端電壓) → 內阻r → 中段(EMF) → 理想電池 → neg引線
+                    let Is = editorThrough(c), vMid = V[c._midNode] || 0;
+                    let P = fr => ({ x: c.x1 + (c.x2 - c.x1) * fr, y: c.y1 + (c.y2 - c.y1) * fr });
+                    let rA = P(BAT_R_POS - BAT_R_HALF), rB = P(BAT_R_POS + BAT_R_HALF);
+                    let cA = P(BAT_CELL_POS - BAT_CELL_HALF), cB = P(BAT_CELL_POS + BAT_CELL_HALF);
+                    addSegDir(c.x1, c.y1, rA.x, rA.y, Is, v1);
+                    addSegDir(rA.x, rA.y, rB.x, rB.y, Is, (v1 + vMid) / 2);
+                    addSegDir(rB.x, rB.y, cA.x, cA.y, Is, vMid);
+                    addSegDir(cA.x, cA.y, cB.x, cB.y, Is, (vMid + v2) / 2);
+                    addSegDir(cB.x, cB.y, c.x2, c.y2, Is, v2);
+                } else if (c.type === 'switch' && !c.closed) {
+                    let g = Math.min(18, L / 3);
+                    addSeg(c.x1, c.y1, c.x1 + ux * (L / 2 - g), c.y1 + uy * (L / 2 - g), 0, v1);
+                    addSeg(c.x2 - ux * (L / 2 - g), c.y2 - uy * (L / 2 - g), c.x2, c.y2, 0, v2);
+                } else {
+                    let Is = editorThrough(c);                         // 帶符號 (t1→t2)
+                    let half = Math.min(20, L / 2 - 2);
+                    let bs = { x: c.x1 + ux * (L / 2 - half), y: c.y1 + uy * (L / 2 - half) };
+                    let be = { x: c.x1 + ux * (L / 2 + half), y: c.y1 + uy * (L / 2 + half) };
+                    addSegDir(c.x1, c.y1, bs.x, bs.y, Is, v1);             // 引線 1
+                    addSegDir(bs.x, bs.y, be.x, be.y, Is, (v1 + v2) / 2);  // 本體 (中點電位)
+                    addSegDir(be.x, be.y, c.x2, c.y2, Is, v2);             // 引線 2
+                }
+            });
+        }
 
-                    let delay = i * interval;
-                    gsap.to(box.position, { x: targetX + (Math.random()-0.5)*0.8, y: 3, z: targetZ, duration: flyDuration, delay: delay, ease: "power1.out" });
-                    gsap.to(box.material, { opacity: 0, transparent: true, duration: flyDuration * 0.7, delay: delay + flyDuration * 0.3, onComplete: () => { 
-                        scene.remove(box); box.material.dispose(); box.geometry.dispose(); activeElements.floatingBoxes = activeElements.floatingBoxes.filter(b => b !== box); 
-                    }});
+        // 編輯器專用物理更新 (由 updatePhysics 在 editor 模式下呼叫)
+        function editorUpdatePhysics() {
+            let firstBat = editor.components.find(c => c.type === 'battery');
+            if (firstBat) { firstBat.value = state.V; firstBat.r = state.internalR || 0; } // 滑桿控制電動勢與內阻
+            let sol = editorSolve();
+            editorBuildSegments(sol);
+            state.Itotal = firstBat ? Math.abs(editorThrough(firstBat)) : 0;
+            let rInt = firstBat ? (firstBat.r || 0) : 0;
+            state.Req = state.Itotal > 1e-9 ? (state.V - state.Itotal * rInt) / state.Itotal : 0;
+            state.terminalV = state.V - state.Itotal * rInt;
+            state.Ptotal = editor.components.reduce((s, c) => {
+                if (c.type !== 'resistor' && c.type !== 'lamp') return s;
+                let I = Math.abs(editorThrough(c));
+                return s + I * I * Math.max(c.value, 1e-3);
+            }, 0);
+            updateReadouts();
+        }
+
+        // ---------- 編輯器繪圖 ----------
+        function editorDrawGrid(ctx) {
+            ctx.save(); ctx.strokeStyle = 'rgba(44,62,80,0.07)'; ctx.lineWidth = 1;
+            for (let x = 0; x <= LOGICAL_WIDTH; x += editor.grid) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, LOGICAL_HEIGHT); ctx.stroke(); }
+            for (let y = 0; y <= LOGICAL_HEIGHT; y += editor.grid) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(LOGICAL_WIDTH, y); ctx.stroke(); }
+            ctx.restore();
+        }
+
+        function editorBands(ctx, val) {
+            let bands = getResistorColors(val), x = -35, y = -12, w = 70, h = 24;
+            ctx.fillStyle = '#f5e6d3'; ctx.beginPath(); ctx.roundRect(x, y, w, h, 4); ctx.fill();
+            ctx.strokeStyle = '#2c3e50'; ctx.lineWidth = 2.5; ctx.stroke();
+            ctx.fillStyle = bands[0]; ctx.fillRect(x + 10, y, 6, h);
+            ctx.fillStyle = bands[1]; ctx.fillRect(x + 20, y, 6, h);
+            ctx.fillStyle = bands[2]; ctx.fillRect(x + 30, y, 6, h);
+            ctx.fillStyle = bands[3]; ctx.fillRect(x + w - 14, y, 4, h);
+        }
+
+        function editorLamp(ctx, c) {
+            let I = Math.abs(editorThrough(c)), P = I * I * Math.max(c.value, 1e-3);
+            let glow = Math.max(0, Math.min(1, P / 8));   // 0..1 亮度
+            const R = 17;
+
+            // 外圍光暈 (亮度越高越大越亮)
+            if (glow > 0.02) {
+                let halo = ctx.createRadialGradient(0, 0, 2, 0, 0, R * 2.6);
+                halo.addColorStop(0, `rgba(255,236,150,${0.6 * glow})`);
+                halo.addColorStop(1, 'rgba(255,236,150,0)');
+                ctx.fillStyle = halo;
+                ctx.beginPath(); ctx.arc(0, 0, R * 2.6, 0, Math.PI * 2); ctx.fill();
+            }
+
+            // 玻璃燈泡外殼
+            ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2);
+            ctx.fillStyle = glow > 0.02
+                ? `rgba(255,${230 - Math.round(20 * glow)},${150 + Math.round(70 * glow)},${0.22 + 0.5 * glow})`
+                : 'rgba(236,240,241,0.55)';
+            ctx.fill();
+            ctx.strokeStyle = '#2c3e50'; ctx.lineWidth = 2.5; ctx.stroke();
+
+            // 兩支金屬支柱 (由燈座往上撐起燈絲)
+            ctx.strokeStyle = '#7f8c8d'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+            ctx.beginPath(); ctx.moveTo(-7, R - 2); ctx.lineTo(-7, -1); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(7, R - 2); ctx.lineTo(7, -1); ctx.stroke();
+
+            // 鎢絲線圈 (兩柱間一連串小拱，受熱發光時變色發亮)
+            let filColor = glow < 0.02 ? '#556'
+                : `rgb(255,${Math.round(90 + 165 * glow)},${Math.round(30 + 200 * glow * glow)})`;
+            ctx.strokeStyle = filColor; ctx.lineWidth = 2;
+            if (glow > 0.25) { ctx.shadowBlur = 14 * glow; ctx.shadowColor = filColor; }
+            const loops = 4, x0 = -7, x1 = 7, step = (x1 - x0) / loops;
+            ctx.beginPath(); ctx.moveTo(x0, -1);
+            for (let k = 0; k < loops; k++) {
+                let xa = x0 + step * k, xb = x0 + step * (k + 1);
+                ctx.quadraticCurveTo((xa + xb) / 2, -12, xb, -1);  // 向上的線圈拱
+            }
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+
+            // 燈座
+            ctx.fillStyle = '#95a5a6'; ctx.beginPath(); ctx.roundRect(-7, R - 4, 14, 6, 2); ctx.fill();
+        }
+
+        function editorBatterySym(ctx) {
+            // 本體 +x 指向 p2(-)；故 +x 反向 (左) 為 p1(+)
+            ctx.strokeStyle = '#2c3e50';
+            ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-6, -16); ctx.lineTo(-6, 16); ctx.stroke();   // 長板 (+)
+            ctx.lineWidth = 8; ctx.beginPath(); ctx.moveTo(6, -9); ctx.lineTo(6, 9); ctx.stroke();        // 短板 (-)
+        }
+
+        // 顯式內阻用的鋸齒電阻符號 (紫色，與色環電阻區別)
+        function editorSmallResistor(ctx) {
+            ctx.strokeStyle = '#8e44ad'; ctx.lineWidth = 2.5; ctx.lineJoin = 'round';
+            ctx.beginPath(); ctx.moveTo(-16, 0); ctx.lineTo(-12, 0);
+            const zx = [-12, -8, -4, 0, 4, 8, 12], zy = [0, -7, 7, -7, 7, -7, 0];
+            for (let i = 0; i < zx.length; i++) ctx.lineTo(zx[i], zy[i]);
+            ctx.lineTo(16, 0); ctx.stroke();
+        }
+
+        function editorSwitchSym(ctx, c) {
+            ctx.fillStyle = '#2c3e50';
+            ctx.beginPath(); ctx.arc(-18, 0, 4, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(18, 0, 4, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = c.closed ? '#27ae60' : '#e06c75'; ctx.lineWidth = 3.5;
+            ctx.beginPath(); ctx.moveTo(-18, 0);
+            if (c.closed) ctx.lineTo(18, 0); else ctx.lineTo(13, -14);
+            ctx.stroke();
+        }
+
+        function editorAmmeterSym(ctx) {
+            ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = '#e67e22'; ctx.lineWidth = 3; ctx.stroke();
+        }
+
+        function editorDrawComp(ctx, c) {
+            let dx = c.x2 - c.x1, dy = c.y2 - c.y1, ang = Math.atan2(dy, dx);
+            let mx = (c.x1 + c.x2) / 2, my = (c.y1 + c.y2) / 2;
+            ctx.save(); ctx.translate(mx, my); ctx.rotate(ang);
+            if (editor.moving === c) { ctx.shadowBlur = 16; ctx.shadowColor = '#61afef'; }
+            else if (editor.hoverComp === c) { ctx.shadowBlur = 12; ctx.shadowColor = (editor.tool === 'delete') ? '#e06c75' : '#61afef'; }
+            if (c.type === 'resistor') editorBands(ctx, c.value);
+            else if (c.type === 'lamp') editorLamp(ctx, c);
+            else if (c.type === 'battery') {
+                if (showInternalRExplicit && (c.r || 0) > 1e-9) {
+                    let L = Math.hypot(c.x2 - c.x1, c.y2 - c.y1);
+                    ctx.save(); ctx.translate((BAT_R_POS - 0.5) * L, 0); editorSmallResistor(ctx); ctx.restore();
+                    ctx.save(); ctx.translate((BAT_CELL_POS - 0.5) * L, 0); editorBatterySym(ctx); ctx.restore();
+                } else editorBatterySym(ctx);
+            }
+            else if (c.type === 'switch') editorSwitchSym(ctx, c);
+            else if (c.type === 'ammeter') editorAmmeterSym(ctx);
+            ctx.restore();
+            // 安培計 'A' 字恆正立 (不隨元件旋轉)
+            if (c.type === 'ammeter') {
+                ctx.fillStyle = '#e67e22'; ctx.font = 'bold 18px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('A', mx, my);
+            }
+            if (c.type !== 'wire') {
+                let label = c.type === 'battery' ? (showInternalRExplicit && (c.r || 0) > 1e-9 ? c.value.toFixed(1) + 'V (EMF)' : c.value.toFixed(1) + 'V')
+                    : c.type === 'switch' ? (c.closed ? 'ON' : 'OFF')
+                        : c.type === 'ammeter' ? (Math.abs(editorThrough(c))).toFixed(2) + 'A'
+                            : c.value.toFixed(0) + 'Ω';
+                drawFloatingLabel(ctx, label, mx, my - 26, 'center');
+                if (c.type === 'battery' && showInternalRExplicit && (c.r || 0) > 1e-9) {
+                    drawFloatingLabel(ctx, 'r=' + c.r.toFixed(1) + 'Ω', mx, my + 26, 'center');
+                }
+                if (showResistorVoltages && (c.type === 'resistor' || c.type === 'lamp')) {
+                    drawFloatingLabel(ctx, Math.abs(c._elem ? c._elem.vDrop : 0).toFixed(2) + ' V', mx, my + 26, 'center');
+                }
+                if (showPower && (c.type === 'resistor' || c.type === 'lamp')) {
+                    let I = Math.abs(editorThrough(c));
+                    drawFloatingLabel(ctx, (I * I * Math.max(c.value, 1e-3)).toFixed(2) + ' W', mx, my + (showResistorVoltages ? 48 : 26), 'center');
                 }
             }
         }
 
-        let lastTime = performance.now(); 
-        function animateFlow(time) { 
-            const dt = time - lastTime; lastTime = time; if (dt > 100 || dt < 0) return; 
-            const scaledDt = dt * currentSpeed; 
-            
-            if (isSeries) {
-                if(!eAcc[0]) eAcc[0] = 0; if(!tAcc[0]) tAcc[0] = 0;
-                eAcc[0] += scaledDt; tAcc[0] += scaledDt;
-                const eRate = Math.max(80, 1000 / P.iTotal);
-                const tRate = Math.max(250, 1200 / P.iTotal); 
-                if (eAcc[0] > eRate) { spawnElectron(0); eAcc[0] = 0; }
-                if (tAcc[0] > tRate) { spawnTruck(0); tAcc[0] = 0; }
+        function editorDrawComponents(ctx) {
+            const ptCount = new Map();
+            editor.components.forEach(c => { [[c.x1, c.y1], [c.x2, c.y2]].forEach(([x, y]) => { let k = x + ',' + y; ptCount.set(k, (ptCount.get(k) || 0) + 1); }); });
+            editor.components.forEach(c => editorDrawComp(ctx, c));
+            ptCount.forEach((cnt, k) => { if (cnt >= 3) { let [x, y] = k.split(',').map(Number); ctx.fillStyle = '#2c3e50'; ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fill(); } });
+        }
+
+        function editorDrawGhost(ctx) {
+            if (!editor.placing) return;
+            let p = editor.placing;
+            ctx.save(); ctx.strokeStyle = '#61afef'; ctx.lineWidth = 3; ctx.setLineDash([6, 4]);
+            ctx.beginPath(); ctx.moveTo(p.x1, p.y1); ctx.lineTo(p.x2, p.y2); ctx.stroke();
+            ctx.restore();
+            [[p.x1, p.y1], [p.x2, p.y2]].forEach(([px, py]) => {
+                ctx.fillStyle = editorConnectsAt(px, py) ? '#2ecc71' : '#61afef';
+                ctx.beginPath(); ctx.arc(px, py, 4, 0, Math.PI * 2); ctx.fill();
+            });
+        }
+
+        // 放置工具下，於游標最近格點顯示吸附提示環 (綠=會接通既有電路，藍=自由格點)
+        function editorDrawHover(ctx) {
+            if (editor.placing || !editor.hoverPt) return;
+            if (!PLACEMENT_TOOLS.includes(editor.tool)) return;
+            let connects = editorConnectsAt(editor.hoverPt.x, editor.hoverPt.y);
+            let col = connects ? '#2ecc71' : '#61afef';
+            ctx.save();
+            ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.setLineDash([3, 3]);
+            ctx.beginPath(); ctx.arc(editor.hoverPt.x, editor.hoverPt.y, 8, 0, Math.PI * 2); ctx.stroke();
+            ctx.restore();
+            ctx.fillStyle = col;
+            ctx.beginPath(); ctx.arc(editor.hoverPt.x, editor.hoverPt.y, 3, 0, Math.PI * 2); ctx.fill();
+        }
+
+        // ---------- 編輯器互動 ----------
+        function editorComponentAt(x, y) {
+            for (let i = editor.components.length - 1; i >= 0; i--) {
+                let c = editor.components[i];
+                if (distToSegment(x, y, c.x1, c.y1, c.x2, c.y2).d < 14) return c;
+            }
+            return null;
+        }
+
+        function editorHandleDown(x, y) {
+            if (editor.tool === 'select' && showMeters && tryGrabProbe(x, y)) return; // 探針優先
+            let snap = editorSnapPoint(x, y), gx = snap.x, gy = snap.y;
+            if (editor.tool === 'select') {
+                let c = editorComponentAt(x, y);
+                if (c) {
+                    if (c.type === 'switch') { c.closed = !c.closed; updatePhysics(); return; }
+                    editor.moving = c; editor.moveDX = x - (c.x1 + c.x2) / 2; editor.moveDY = y - (c.y1 + c.y2) / 2;
+                }
+                return;
+            }
+            if (editor.tool === 'delete') {
+                let c = editorComponentAt(x, y);
+                if (c) { editor.components = editor.components.filter(k => k !== c); updatePhysics(); }
+                return;
+            }
+            editor.placing = { type: editor.tool, x1: gx, y1: gy, x2: gx, y2: gy };
+        }
+
+        function editorHandleMove(x, y) {
+            // 懸停追蹤 (吸附點 / 元件高亮)
+            editor.hoverPt = editorSnapPoint(x, y);
+            editor.hoverComp = (editor.tool === 'select' || editor.tool === 'delete') ? editorComponentAt(x, y) : null;
+
+            if (editor.moving) {
+                let c = editor.moving;
+                let cx = eSnap(x - editor.moveDX), cy = eSnap(y - editor.moveDY);
+                let ox = cx - (c.x1 + c.x2) / 2, oy = cy - (c.y1 + c.y2) / 2;
+                c.x1 += ox; c.y1 += oy; c.x2 += ox; c.y2 += oy;
+                updatePhysics(); return;
+            }
+            if (editor.placing) { let s = editorSnapPoint(x, y); editor.placing.x2 = s.x; editor.placing.y2 = s.y; }
+        }
+
+        function editorHandleUp() {
+            if (editor.moving) {
+                let m = editor.moving; editor.moving = null;
+                editorSplitWiresAround(m);  // 移動後若壓在導線上，切斷導線串接
+                editorRemoveOverlaps(m);    // 移動後若壓住同位置元件，覆蓋之
+                updatePhysics();
+            }
+            if (editor.placing) {
+                let p = editor.placing; editor.placing = null;
+                let len = Math.hypot(p.x2 - p.x1, p.y2 - p.y1);
+                if (len < editor.grid * 0.5) {
+                    // 點擊 (無拖拉)：導線需拖拉；其餘元件預設水平放一個 2 格長度
+                    if (p.type === 'wire') return;
+                    p.x2 = (p.x1 + editor.grid * 2 <= LOGICAL_WIDTH - 10) ? p.x1 + editor.grid * 2 : p.x1 - editor.grid * 2;
+                    p.y2 = p.y1;
+                }
+                let c = editorAddComponent(p.type, p.x1, p.y1, p.x2, p.y2);
+                editorSplitWiresAround(c);  // 若壓在導線上，切斷導線使其串接
+                editorRemoveOverlaps(c);    // 覆蓋原本同位置的元件
+                updatePhysics();
+            }
+        }
+
+        // 游標隨工具變化
+        function editorUpdateCursor() {
+            if (!editor.enabled) { circCanvas.style.cursor = ''; return; }
+            circCanvas.style.cursor = editor.tool === 'select' ? 'grab'
+                : editor.tool === 'delete' ? 'pointer' : 'crosshair';
+        }
+
+        // ==========================================
+        // 4. 高畫質物理畫布與互動渲染
+        // ==========================================
+        const circCanvas = document.getElementById('circuitCanvas');
+        const circCtx = circCanvas.getContext('2d');
+        const LOGICAL_WIDTH = 1000, LOGICAL_HEIGHT = 450; 
+        let globalTime = 0; 
+
+        const resizeObserver = new ResizeObserver(() => {
+            const rect = circCanvas.getBoundingClientRect(); const dpr = window.devicePixelRatio || 1;
+            circCanvas.width = rect.width * dpr; circCanvas.height = rect.height * dpr;
+        });
+        resizeObserver.observe(circCanvas);
+
+        function renderCircuitLoop() {
+            circCtx.clearRect(0, 0, circCanvas.width, circCanvas.height);
+            circCtx.save(); circCtx.scale(circCanvas.width / LOGICAL_WIDTH, circCanvas.height / LOGICAL_HEIGHT);
+
+            if (editor.enabled) editorDrawGrid(circCtx);
+
+            if (activeDragResistor && state.mode === 'mixed') {
+                circCtx.fillStyle = 'rgba(41, 128, 185, 0.1)'; 
+                circCtx.beginPath(); circCtx.roundRect(80, 40, 240, 120, 10); circCtx.fill();
+                circCtx.fillStyle = '#61afef'; circCtx.font = 'bold 18px "Segoe UI"'; circCtx.fillText('主幹 (分流前)', 200, 100);
+                
+                circCtx.fillStyle = 'rgba(41, 128, 185, 0.1)'; 
+                circCtx.beginPath(); circCtx.roundRect(80, 290, 240, 120, 10); circCtx.fill();
+                circCtx.fillStyle = '#61afef'; circCtx.fillText('主幹 (匯流後)', 200, 350);
+
+                circCtx.fillStyle = 'rgba(46, 204, 113, 0.1)';
+                circCtx.beginPath(); circCtx.roundRect(380, 40, 140, 370, 10); circCtx.fill();
+                circCtx.beginPath(); circCtx.roundRect(530, 40, 140, 370, 10); circCtx.fill();
+                circCtx.beginPath(); circCtx.roundRect(680, 40, 140, 370, 10); circCtx.fill();
+                
+                circCtx.fillStyle = '#2ecc71';
+                circCtx.fillText('支路 1', 450, 80);
+                circCtx.fillText('支路 2', 600, 80);
+                circCtx.fillText('支路 3', 750, 80);
+            }
+
+            circCtx.lineWidth = 4; circCtx.strokeStyle = '#7f8c8d'; circCtx.lineCap = 'round';
+            segments.forEach(seg => {
+                if(seg.len > 0) { circCtx.beginPath(); circCtx.moveTo(seg.x1, seg.y1); circCtx.lineTo(seg.x2, seg.y2); circCtx.stroke(); }
+            });
+
+            if (showCurrent) {
+                globalTime += 1.0;
+                circCtx.fillStyle = '#f1c40f'; circCtx.shadowBlur = 5; circCtx.shadowColor = '#e67e22';
+                const SPACING = 25;
+                // 每幀前進量必須 < SPACING/2 (=12.5)，否則大電流時粒子會因頻閃錯覺(wagon-wheel)看似逆流。
+                const MAX_FRAME_ADVANCE = 8;
+                segments.forEach(seg => {
+                    if(seg.len > 0) {
+                        let speed = Math.min(seg.i * 2.0, MAX_FRAME_ADVANCE);
+                        let offset = (globalTime * speed) % SPACING;
+                        for(let d = offset; d <= seg.len; d += SPACING) {
+                            let pos = seg.getPos(d);
+                            circCtx.beginPath(); circCtx.arc(pos.x, pos.y, 4, 0, Math.PI*2); circCtx.fill();
+                        }
+                    }
+                });
+                circCtx.shadowBlur = 0;
+            }
+
+            if (editor.enabled) {
+                editorDrawComponents(circCtx);
+                editorDrawHover(circCtx);
+                editorDrawGhost(circCtx);
             } else {
-                for(let i=0; i<N; i++) {
-                    if(!eAcc[i]) eAcc[i] = 0; if(!tAcc[i]) tAcc[i] = 0;
-                    eAcc[i] += scaledDt; tAcc[i] += scaledDt;
-                    const eRate = Math.max(80, 800 / P.i[i]);
-                    const tRate = Math.max(250, 1000 / P.i[i]); 
-                    if (eAcc[i] > eRate) { spawnElectron(i); eAcc[i] = 0; }
-                    if (tAcc[i] > tRate) { spawnTruck(i); tAcc[i] = 0; }
+                drawBattery(circCtx, BatX, BatY);
+
+                // 顯式內阻：在電池上方導線畫一個串聯內阻符號 (視覺示意)
+                if (showInternalRExplicit && (state.internalR || 0) > 1e-9) {
+                    circCtx.save(); circCtx.translate(BatX, 162); circCtx.rotate(Math.PI / 2);
+                    editorSmallResistor(circCtx); circCtx.restore();
+                    drawFloatingLabel(circCtx, 'r=' + state.internalR.toFixed(1) + 'Ω', BatX + 28, 162, 'left');
+                    drawFloatingLabel(circCtx, 'EMF=' + state.V.toFixed(1) + 'V', BatX + 28, 250, 'left');
+                }
+
+                // 繪製非拖曳狀態的電阻及智慧電壓標籤
+                state.resistors.forEach((res, i) => {
+                    if (res.isDragging) return;
+                    circCtx.save(); circCtx.translate(res.cx, res.cy);
+
+                    let isVertical = state.mode === 'parallel' || (state.mode === 'mixed' && [1,2,3].includes(res.stage));
+                    if (isVertical) circCtx.rotate(Math.PI/2);
+                    drawResistor(circCtx, -35, -14, 70, 28, `R${i+1}`, res.val);
+                    circCtx.restore();
+
+                    // 全局電壓標籤顯示 (Smart Rendering)
+                    if (showResistorVoltages) {
+                        let vText = (res.voltage || 0).toFixed(2) + ' V';
+                        if (isVertical) drawFloatingLabel(circCtx, vText, res.cx + 25, res.cy, 'left');
+                        else drawFloatingLabel(circCtx, vText, res.cx, res.cy - 30, 'center');
+                    }
+                    if (showPower) {
+                        let pText = ((res.current || 0) * (res.current || 0) * res.val).toFixed(2) + ' W';
+                        if (isVertical) drawFloatingLabel(circCtx, pText, res.cx + 25, res.cy + 22, 'left');
+                        else drawFloatingLabel(circCtx, pText, res.cx, res.cy + 30, 'center');
+                    }
+                });
+
+                // 繪製拖曳中的電阻及斷路電壓標籤 (恆為 0)
+                if (activeDragResistor) {
+                    circCtx.save(); circCtx.translate(activeDragResistor.cx, activeDragResistor.cy);
+                    circCtx.shadowBlur = 20; circCtx.shadowColor = '#61afef';
+
+                    let dragStage = determineStageByPosition(activeDragResistor.cx, activeDragResistor.cy);
+                    let isVertical = state.mode === 'parallel' || (state.mode === 'mixed' && [1,2,3].includes(dragStage));
+                    if (isVertical) circCtx.rotate(Math.PI/2);
+
+                    drawResistor(circCtx, -35, -14, 70, 28, `R`, activeDragResistor.val);
+                    circCtx.restore();
+
+                    if (showResistorVoltages) {
+                        drawFloatingLabel(circCtx, '0.00 V', activeDragResistor.cx, activeDragResistor.cy - 35, 'center');
+                    }
                 }
             }
-        }
 
-        ui.btnSeries.addEventListener('click', () => { isSeries = true; ui.btnSeries.classList.add('active'); ui.btnParallel.classList.remove('active'); updatePhysics(); });
-        ui.btnParallel.addEventListener('click', () => { isSeries = false; ui.btnParallel.classList.add('active'); ui.btnSeries.classList.remove('active'); updatePhysics(); });
-        ui.sEmf.addEventListener('input', updatePhysics);
-
-        initUIStructure();
-        updatePhysics();
-
-        function render(time) { 
-            requestAnimationFrame(render); 
-            controls.update(); 
-            animateFlow(time); 
+            processProbes();
             
-            const canvas = renderer.domElement;
-            const width = container.clientWidth;
-            const height = container.clientHeight;
-            
-            if (canvas.width !== width || canvas.height !== height) {
-                renderer.setSize(width, height, false);
-                camera.aspect = width / height;
-                camera.updateProjectionMatrix();
+            if (showMeters) {
+                voltmeters.forEach(v => drawDSEVoltmeter(circCtx, v));
+                ammeters.forEach(a => drawDSEAmmeter(circCtx, a));
             }
 
-            renderer.render(scene, camera); 
+            circCtx.restore(); requestAnimationFrame(renderCircuitLoop);
         }
-        
-        render(0);
+
+        function drawBattery(ctx, x, y) {
+            ctx.lineWidth = 4; ctx.strokeStyle = '#2c3e50';
+            ctx.beginPath(); ctx.moveTo(x - 20, y - 12); ctx.lineTo(x + 20, y - 12); ctx.stroke();
+            ctx.lineWidth = 8;
+            ctx.beginPath(); ctx.moveTo(x - 12, y + 12); ctx.lineTo(x + 12, y + 12); ctx.stroke();
+            ctx.fillStyle = '#e74c3c'; ctx.font = 'bold 18px Arial'; ctx.textAlign = 'center'; ctx.fillText('+', x, y - 20);
+            ctx.fillStyle = '#2c3e50'; ctx.fillText('-', x, y + 35);
+        }
+
+        function drawResistor(ctx, x, y, w, h, label, val) {
+            let bands = getResistorColors(val);
+            ctx.fillStyle = '#f5e6d3'; ctx.beginPath(); ctx.roundRect(x, y, w, h, 4); ctx.fill();
+            ctx.strokeStyle = '#2c3e50'; ctx.lineWidth = 2.5; ctx.stroke();
+            
+            ctx.fillStyle = bands[0]; ctx.fillRect(x + 10, y, 6, h);
+            ctx.fillStyle = bands[1]; ctx.fillRect(x + 20, y, 6, h);
+            ctx.fillStyle = bands[2]; ctx.fillRect(x + 30, y, 6, h);
+            ctx.fillStyle = bands[3]; ctx.fillRect(x + w - 14, y, 4, h);
+            
+            ctx.fillStyle = '#2c3e50'; ctx.font = 'bold 14px Arial'; ctx.textAlign = 'center'; ctx.fillText(label, x + w/2, y - 6);
+            ctx.fillStyle = '#c0392b'; ctx.font = 'bold 13px Arial'; ctx.fillText(val.toFixed(1)+'Ω', x + w/2, y + h + 16);
+        }
+
+        function distToSegment(px, py, x1, y1, x2, y2) {
+            let l2 = (x1 - x2)**2 + (y1 - y2)**2; if (l2 == 0) return { d: Math.hypot(px - x1, py - y1), x: x1, y: y1 };
+            let t = Math.max(0, Math.min(1, ((px - x1)*(x2 - x1) + (py - y1)*(y2 - y1)) / l2));
+            return { d: Math.hypot(px - (x1 + t*(x2 - x1)), py - (y1 + t*(y2 - y1))), x: x1 + t*(x2 - x1), y: y1 + t*(y2 - y1) };
+        }
+
+        function processProbes() {
+            if (!showMeters) {
+                ammeters.forEach(a => { a.active = false; a.readingI = 0; });
+                voltmeters.forEach(v => { v.active = false; v.red.active = false; v.black.active = false; v.readingV = 0; });
+                updateMeters(); return;
+            }
+
+            ammeters.forEach(a => {
+                let minA = 30; a.active = false;
+                segments.forEach(seg => {
+                    let res = distToSegment(a.x, a.y, seg.x1, seg.y1, seg.x2, seg.y2);
+                    if (res.d < minA) { minA = res.d; a.active = true; a.snapX = res.x; a.snapY = res.y; a.readingI = seg.i; }
+                });
+            });
+
+            voltmeters.forEach(v => {
+                let minR = 30; v.red.active = false;
+                segments.forEach(seg => {
+                    let res = distToSegment(v.red.x, v.red.y, seg.x1, seg.y1, seg.x2, seg.y2);
+                    if (res.d < minR) { minR = res.d; v.red.active = true; v.red.snapX = res.x; v.red.snapY = res.y; v.red.readingV = seg.v; }
+                });
+
+                let minB = 30; v.black.active = false;
+                segments.forEach(seg => {
+                    let res = distToSegment(v.black.x, v.black.y, seg.x1, seg.y1, seg.x2, seg.y2);
+                    if (res.d < minB) { minB = res.d; v.black.active = true; v.black.snapX = res.x; v.black.snapY = res.y; v.black.readingV = seg.v; }
+                });
+                v.active = v.red.active && v.black.active;
+                v.readingV = v.active ? Math.abs(v.red.readingV - v.black.readingV) : 0;
+            });
+            updateMeters();
+        }
+
+        function drawProbeWireAndHead(ctx, startX, startY, endX, endY, color) {
+            let cpX = (startX + endX) / 2; let cpY = Math.max(startY, endY) + 60; 
+            if (Math.abs(startX - endX) < 10) cpX += 40;
+            ctx.strokeStyle = color; ctx.lineWidth = 3; ctx.beginPath();
+            ctx.moveTo(startX, startY); ctx.quadraticCurveTo(cpX, cpY, endX, endY); ctx.stroke();
+            let dx = endX - cpX; let dy = endY - cpY; let angle = Math.atan2(dy, dx);
+            ctx.save(); ctx.translate(endX, endY); ctx.rotate(angle); 
+            ctx.fillStyle = '#bdc3c7'; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-12, -3); ctx.lineTo(-12, 3); ctx.fill();
+            ctx.fillStyle = color; ctx.beginPath(); ctx.roundRect(-30, -5, 18, 10, 3); ctx.fill();
+            ctx.restore();
+        }
+
+        function drawDSEAmmeter(ctx, probe) {
+            let drawX = probe.active && activeDragProbe !== probe ? probe.snapX : probe.x;
+            let drawY = probe.active && activeDragProbe !== probe ? probe.snapY : probe.y;
+            ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(drawX, drawY, probe.radius, 0, Math.PI*2); ctx.fill();
+            ctx.strokeStyle = (selectedAmmeter === probe) ? '#f1c40f' : '#2c3e50'; 
+            ctx.lineWidth = (selectedAmmeter === probe) ? 4 : 3; ctx.stroke();
+            ctx.fillStyle = '#e67e22'; ctx.font = 'bold 20px Arial'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('A', drawX, drawY);
+            ctx.fillStyle = 'rgba(44, 62, 80, 0.85)'; ctx.beginPath(); ctx.roundRect(drawX - 32, drawY - 50, 64, 22, 4); ctx.fill();
+            ctx.fillStyle = '#f1c40f'; ctx.font = 'bold 12px "JetBrains Mono"';
+            ctx.fillText(probe.active ? probe.readingI.toFixed(2) + ' A' : '---', drawX, drawY - 39);
+        }
+
+        function drawDSEVoltmeter(ctx, v) {
+            let pBase = v.base; let vX = pBase.x, vY = pBase.y;
+            let pR = v.red; let drawR_X = pR.active && activeDragProbe !== pR ? pR.snapX : pR.x; let drawR_Y = pR.active && activeDragProbe !== pR ? pR.snapY : pR.y;
+            drawProbeWireAndHead(ctx, vX - 15, vY + 15, drawR_X, drawR_Y, '#c0392b');
+            let pB = v.black; let drawB_X = pB.active && activeDragProbe !== pB ? pB.snapX : pB.x; let drawB_Y = pB.active && activeDragProbe !== pB ? pB.snapY : pB.y;
+            drawProbeWireAndHead(ctx, vX + 15, vY + 15, drawB_X, drawB_Y, '#2c3e50');
+
+            if(pR.active) { ctx.fillStyle = '#e74c3c'; ctx.beginPath(); ctx.arc(drawR_X, drawR_Y, 5, 0, Math.PI*2); ctx.fill(); }
+            if(pB.active) { ctx.fillStyle = '#34495e'; ctx.beginPath(); ctx.arc(drawB_X, drawB_Y, 5, 0, Math.PI*2); ctx.fill(); }
+
+            ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(vX, vY, pBase.radius, 0, Math.PI*2); ctx.fill();
+            ctx.strokeStyle = (selectedVoltmeter === v) ? '#f1c40f' : '#3498db'; 
+            ctx.lineWidth = (selectedVoltmeter === v) ? 5 : 4; ctx.stroke();
+            ctx.fillStyle = '#2c3e50'; ctx.font = 'bold 24px Arial'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('V', vX, vY);
+            ctx.fillStyle = '#c0392b'; ctx.beginPath(); ctx.arc(vX - 15, vY + 15, 4, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#2c3e50'; ctx.beginPath(); ctx.arc(vX + 15, vY + 15, 4, 0, Math.PI*2); ctx.fill();
+
+            ctx.fillStyle = 'rgba(44, 62, 80, 0.85)'; ctx.beginPath(); ctx.roundRect(vX - 35, vY - 60, 70, 24, 4); ctx.fill();
+            ctx.fillStyle = '#f1c40f'; ctx.font = 'bold 13px "JetBrains Mono"';
+            ctx.fillText(v.active ? v.readingV.toFixed(2) + ' V' : '---', vX, vY - 48);
+        }
+
+        function updateMeters() {
+            let sA = selectedAmmeter || ammeters[0];
+            if(sA) {
+                let iConnected = showMeters && sA.active;
+                drawLabMeter(ammeterCtx, 'A', sA.readingI, pickRange(sA.readingI, AMM_RANGES), iConnected);
+                document.getElementById('titleA').innerText = iConnected ? '當前選中：安培計 (測量中)' : '當前選中：安培計 (未連接)';
+                document.getElementById('ammeterCanvas').classList.toggle('meter-active', iConnected);
+            }
+            let sV = selectedVoltmeter || voltmeters[0];
+            if(sV) {
+                let vConnected = showMeters && sV.active;
+                drawLabMeter(voltmeterCtx, 'V', sV.readingV, pickRange(sV.readingV, VOLT_RANGES), vConnected);
+                document.getElementById('titleV').innerText = vConnected ? '當前選中：伏特計 ΔV (測量中)' : '當前選中：伏特計 ΔV (未連接)';
+                document.getElementById('voltmeterCanvas').classList.toggle('meter-active', vConnected);
+            }
+        }
+
+        function getLogicalMousePos(clientX, clientY) {
+            const rect = circCanvas.getBoundingClientRect();
+            return { x: (clientX - rect.left) * (LOGICAL_WIDTH / rect.width), y: (clientY - rect.top) * (LOGICAL_HEIGHT / rect.height) };
+        }
+
+        // 探針抓取 (安培/伏特探針)，兩種模式共用；抓到回傳 true
+        function tryGrabProbe(x, y) {
+            if (!showMeters) return false;
+            let hit = null;
+            for(let i = ammeters.length - 1; i >= 0; i--) {
+                let a = ammeters[i];
+                if (Math.hypot(x - a.x, y - a.y) < a.radius + 15) { hit = a; hit.type = 'A'; hit.parent = a; break; }
+            }
+            if (!hit) {
+                for(let i = voltmeters.length - 1; i >= 0; i--) {
+                    let v = voltmeters[i];
+                    if (Math.hypot(x - v.base.x, y - v.base.y) < v.base.radius + 15) { hit = v.base; hit.type = 'VBase'; hit.parent = v; break; }
+                    if (Math.hypot(x - v.red.x, y - v.red.y) < v.red.radius + 15) { hit = v.red; hit.type = 'VRed'; hit.parent = v; break; }
+                    if (Math.hypot(x - v.black.x, y - v.black.y) < v.black.radius + 15) { hit = v.black; hit.type = 'VBlack'; hit.parent = v; break; }
+                }
+            }
+            if (hit) {
+                hit.isDragging = true; activeDragProbe = hit;
+                if (hit.type === 'A') selectedAmmeter = hit.parent; else selectedVoltmeter = hit.parent;
+                updateMeters(); return true;
+            }
+            return false;
+        }
+
+        function handleDown(x, y) {
+            if (editor.enabled) { editorHandleDown(x, y); return; }
+
+            if (state.mode === 'mixed') {
+                for (let i = 0; i < state.resistors.length; i++) {
+                    let r = state.resistors[i];
+                    if (Math.abs(x - r.cx) < 35 && Math.abs(y - r.cy) < 35) {
+                        activeDragResistor = r; r.isDragging = true;
+                        updatePhysics();
+                        return;
+                    }
+                }
+            }
+            tryGrabProbe(x, y);
+        }
+
+        circCanvas.addEventListener('mousedown', (e) => { let p = getLogicalMousePos(e.clientX, e.clientY); handleDown(p.x, p.y); });
+        circCanvas.addEventListener('touchstart', (e) => { e.preventDefault(); let t = e.touches[0]; let p = getLogicalMousePos(t.clientX, t.clientY); handleDown(p.x, p.y); }, {passive: false});
+
+        function handleMove(x, y) {
+            // 探針拖曳兩模式共用，優先處理
+            if (activeDragProbe) {
+                activeDragProbe.x = Math.max(20, Math.min(LOGICAL_WIDTH - 20, x));
+                activeDragProbe.y = Math.max(20, Math.min(LOGICAL_HEIGHT - 20, y));
+                return;
+            }
+            if (editor.enabled) { editorHandleMove(x, y); return; }
+            if (activeDragResistor) {
+                activeDragResistor.cx = Math.max(40, Math.min(LOGICAL_WIDTH - 40, x));
+                activeDragResistor.cy = Math.max(40, Math.min(LOGICAL_HEIGHT - 40, y));
+            }
+        }
+
+        circCanvas.addEventListener('mousemove', (e) => { let p = getLogicalMousePos(e.clientX, e.clientY); handleMove(p.x, p.y); });
+        circCanvas.addEventListener('touchmove', (e) => { e.preventDefault(); let t = e.touches[0]; let p = getLogicalMousePos(t.clientX, t.clientY); handleMove(p.x, p.y); }, {passive: false});
+
+        function determineStageByPosition(x, y) {
+            if (x < 350) return (y < 225) ? 'pre' : 'post';
+            else if (x < 525) return 1;
+            else if (x < 675) return 2;
+            else return 3;
+        }
+
+        function handleUp() {
+            if (editor.enabled) {
+                editorHandleUp();
+            } else if (activeDragResistor) {
+                activeDragResistor.isDragging = false;
+                activeDragResistor.stage = determineStageByPosition(activeDragResistor.cx, activeDragResistor.cy);
+                let selectElem = document.getElementById(`stage-r${activeDragResistor.id}`);
+                if (selectElem) selectElem.value = activeDragResistor.stage;
+                activeDragResistor = null;
+                updatePhysics();
+            }
+            if(activeDragProbe) { activeDragProbe.isDragging = false; activeDragProbe = null; }
+        }
+        window.addEventListener('mouseup', handleUp); circCanvas.addEventListener('touchend', handleUp);
+
+        // 電動勢滑桿 (主面板 + 編輯器面板雙向同步)
+        function setEMF(v) {
+            v = parseFloat(v);
+            document.getElementById('voltageSlider').value = v;
+            document.getElementById('voltageSliderEd').value = v;
+            document.getElementById('v-label').innerText = v.toFixed(1) + ' V';
+            document.getElementById('v-label-ed').innerText = v.toFixed(1) + ' V';
+            updatePhysics();
+        }
+        document.getElementById('voltageSlider').addEventListener('input', e => setEMF(e.target.value));
+        document.getElementById('voltageSliderEd').addEventListener('input', e => setEMF(e.target.value));
+
+        // 電池內阻 r (主面板 + 編輯器面板雙向同步)
+        function setInternalR(v) {
+            v = parseFloat(v);
+            state.internalR = v;
+            document.getElementById('internalRSlider').value = v;
+            document.getElementById('internalRSliderEd').value = v;
+            document.getElementById('r-label').innerText = v.toFixed(1) + ' Ω';
+            document.getElementById('r-label-ed').innerText = v.toFixed(1) + ' Ω';
+            updatePhysics();
+        }
+        document.getElementById('internalRSlider').addEventListener('input', e => setInternalR(e.target.value));
+        document.getElementById('internalRSliderEd').addEventListener('input', e => setInternalR(e.target.value));
+
+        // 顯示功率標籤開關
+        document.getElementById('togglePowerBtn').addEventListener('click', e => {
+            showPower = !showPower;
+            e.target.innerText = showPower ? "🔥 隱藏功率" : "🔥 顯示功率";
+            e.target.style.opacity = showPower ? "0.7" : "1";
+        });
+
+        // 內阻表示法：理想電池 + 串聯電阻 (預設關閉)
+        document.getElementById('toggleExplicitRBtn').addEventListener('click', e => {
+            showInternalRExplicit = !showInternalRExplicit;
+            e.target.innerText = showInternalRExplicit ? "🔋 內阻併入電池" : "🔋 內阻顯示為電阻";
+            e.target.style.opacity = showInternalRExplicit ? "0.7" : "1";
+            updatePhysics();
+        });
+
+        // 更新讀數面板 (Req / Itotal / 端電壓 / 總功率)
+        function updateReadouts() {
+            document.getElementById('req-readout').innerText = (state.Req || 0).toFixed(2) + ' Ω';
+            document.getElementById('itotal-readout').innerText = (state.Itotal || 0).toFixed(2) + ' A';
+            document.getElementById('vterm-readout').innerText = (state.terminalV || 0).toFixed(2) + ' V';
+            document.getElementById('ptotal-readout').innerText = (state.Ptotal || 0).toFixed(2) + ' W';
+            checkChallenge();
+        }
+
+        // 編輯器工具列：選取工具
+        document.querySelectorAll('.tool-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                editor.tool = btn.dataset.tool;
+                document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('tool-active'));
+                btn.classList.add('tool-active');
+                editor.hoverComp = null;
+                editorUpdateCursor();
+            });
+        });
+
+        // 重設範例 / 清空
+        document.getElementById('editorResetBtn').addEventListener('click', () => { editorLoadTemplate(); updatePhysics(); });
+        document.getElementById('editorClearBtn').addEventListener('click', () => { editor.components = []; editor.nextId = 1; updatePhysics(); });
+
+        // 儲存 / 載入電路 (localStorage)
+        const CIRCUIT_KEY = 'physicsLabCircuit';
+        function editorSerialize() {
+            return editor.components.map(c => ({ id: c.id, type: c.type, x1: c.x1, y1: c.y1, x2: c.x2, y2: c.y2, value: c.value, r: c.r, closed: c.closed }));
+        }
+        document.getElementById('editorSaveBtn').addEventListener('click', () => {
+            if (!editor.enabled) { alert('請先切到「自由編輯電路」模式再儲存。'); return; }
+            localStorage.setItem(CIRCUIT_KEY, JSON.stringify({ components: editorSerialize(), V: state.V, r: state.internalR || 0 }));
+            alert('電路已儲存到此瀏覽器。');
+        });
+        document.getElementById('editorLoadBtn').addEventListener('click', () => {
+            let raw = localStorage.getItem(CIRCUIT_KEY);
+            if (!raw) { alert('沒有已儲存的電路。'); return; }
+            if (!editor.enabled) {
+                document.getElementById('circuitMode').value = 'editor';
+                document.getElementById('circuitMode').dispatchEvent(new Event('change'));
+            }
+            try {
+                let data = JSON.parse(raw);
+                editor.components = (data.components || []).map(c => Object.assign({ _elem: null, n1: 0, n2: 0, _cur: 0 }, c));
+                editor.nextId = Math.max(0, ...editor.components.map(c => c.id)) + 1;
+                editor.initialized = true;
+                if (data.r != null) setInternalR(data.r);
+                if (data.V != null) setEMF(data.V); else updatePhysics();
+            } catch (e) { alert('載入失敗：儲存資料毀損。'); }
+        });
+
+        // 鍵盤快捷：Esc 取消、Delete 刪除游標下元件
+        window.addEventListener('keydown', e => {
+            if (!editor.enabled) return;
+            if (e.key === 'Escape') { editor.placing = null; editor.moving = null; }
+            else if ((e.key === 'Delete' || e.key === 'Backspace') && editor.hoverComp) {
+                editor.components = editor.components.filter(k => k !== editor.hoverComp);
+                editor.hoverComp = null; updatePhysics();
+            }
+        });
+
+        // 雙擊元件修改數值 (電阻/燈泡阻值、電池電動勢)
+        circCanvas.addEventListener('dblclick', e => {
+            if (!editor.enabled) return;
+            let p = getLogicalMousePos(e.clientX, e.clientY);
+            let c = editorComponentAt(p.x, p.y);
+            if (!c || c.type === 'wire' || c.type === 'ammeter') return;
+            if (c.type === 'switch') { c.closed = !c.closed; updatePhysics(); return; }
+            let label = c.type === 'battery' ? '電動勢 (V)：' : '電阻 (Ω)：';
+            let val = prompt(label, c.value);
+            if (val !== null) { let n = parseFloat(val); if (!isNaN(n) && n > 0) { c.value = n; if (c.type === 'battery') setEMF(n); else updatePhysics(); } }
+        });
+
+        // ==========================================
+        // Phase 4：V-I 數據記錄 + 歐姆定律圖 + 挑戰模式
+        // ==========================================
+        let dataPoints = []; // { I, V }，V 取端電壓 (伏特計跨負載讀數)
+
+        function recordDataPoint() {
+            dataPoints.push({ I: state.Itotal || 0, V: state.terminalV != null ? state.terminalV : state.V });
+            drawVIGraph();
+        }
+        function clearData() { dataPoints = []; drawVIGraph(); }
+
+        // 最小平方擬合 V = a + b·I，回傳 {a, b}；點數不足或退化回傳 null
+        function fitLine(points) {
+            let n = points.length; if (n < 2) return null;
+            let sI = 0, sV = 0, sII = 0, sIV = 0;
+            points.forEach(p => { sI += p.I; sV += p.V; sII += p.I * p.I; sIV += p.I * p.V; });
+            let denom = n * sII - sI * sI; if (Math.abs(denom) < 1e-9) return null;
+            let b = (n * sIV - sI * sV) / denom;
+            return { b, a: (sV - b * sI) / n };
+        }
+
+        function exportCSV() {
+            if (!dataPoints.length) { alert('尚無數據可匯出，請先按「記錄 (V, I)」。'); return; }
+            let csv = 'I (A),V (V)\n' + dataPoints.map(p => `${p.I.toFixed(4)},${p.V.toFixed(4)}`).join('\n');
+            let blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+            let a = document.createElement('a');
+            a.href = URL.createObjectURL(blob); a.download = 'vi_data.csv';
+            document.body.appendChild(a); a.click(); a.remove();
+        }
+
+        function drawVIGraph() {
+            const cv = document.getElementById('viCanvas'); if (!cv) return;
+            const g = cv.getContext('2d'); const W = cv.width, H = cv.height;
+            g.clearRect(0, 0, W, H); g.fillStyle = '#fff'; g.fillRect(0, 0, W, H);
+            const m = { l: 64, r: 22, t: 20, b: 50 };
+            const x0 = m.l, y0 = H - m.b, x1 = W - m.r, y1 = m.t;
+            let Imax = Math.max(0.1, ...dataPoints.map(p => p.I)) * 1.15;
+            let Vmax = Math.max(0.1, ...dataPoints.map(p => p.V)) * 1.15;
+            const sx = i => x0 + (i / Imax) * (x1 - x0);
+            const sy = v => y0 - (v / Vmax) * (y0 - y1);
+            // 格線 + 刻度
+            g.font = '13px Arial';
+            for (let k = 0; k <= 5; k++) {
+                let i = Imax * k / 5, x = sx(i);
+                g.strokeStyle = '#eee'; g.lineWidth = 1; g.beginPath(); g.moveTo(x, y0); g.lineTo(x, y1); g.stroke();
+                g.fillStyle = '#2c3e50'; g.textAlign = 'center'; g.fillText(i.toFixed(2), x, y0 + 18);
+                let v = Vmax * k / 5, y = sy(v);
+                g.strokeStyle = '#eee'; g.beginPath(); g.moveTo(x0, y); g.lineTo(x1, y); g.stroke();
+                g.fillStyle = '#2c3e50'; g.textAlign = 'right'; g.fillText(v.toFixed(1), x0 - 8, y + 4);
+            }
+            // 軸
+            g.strokeStyle = '#2c3e50'; g.lineWidth = 1.8;
+            g.beginPath(); g.moveTo(x0, y1); g.lineTo(x0, y0); g.lineTo(x1, y0); g.stroke();
+            g.fillStyle = '#2c3e50'; g.font = 'bold 14px Arial'; g.textAlign = 'center';
+            g.fillText('電流 I / A', (x0 + x1) / 2, H - 8);
+            g.save(); g.translate(16, (y0 + y1) / 2); g.rotate(-Math.PI / 2); g.fillText('電壓 V / V', 0, 0); g.restore();
+            // 最佳擬合直線 (最小平方)
+            let fit = fitLine(dataPoints);
+            if (fit) {
+                let a = Math.abs(fit.a) < 0.005 ? 0 : fit.a, b = Math.abs(fit.b) < 0.005 ? 0 : fit.b;
+                {
+                    g.strokeStyle = '#2980b9'; g.lineWidth = 2.5;
+                    g.beginPath(); g.moveTo(sx(0), sy(a)); g.lineTo(sx(Imax), sy(a + b * Imax)); g.stroke();
+                    document.getElementById('vi-fit').innerHTML =
+                        `擬合：V = ${a.toFixed(2)} ${b >= 0 ? '+' : '−'} ${Math.abs(b).toFixed(2)}·I　|　斜率 = ${b.toFixed(2)} Ω，截距 = ${a.toFixed(2)} V`;
+                }
+            } else {
+                document.getElementById('vi-fit').innerText =
+                    dataPoints.length === 1 ? '已記錄 1 點，再記錄更多點以繪出直線' : '尚無數據點';
+            }
+            // 數據點
+            g.fillStyle = '#e74c3c';
+            dataPoints.forEach(p => { g.beginPath(); g.arc(sx(p.I), sy(p.V), 4.5, 0, Math.PI * 2); g.fill(); });
+        }
+
+        document.getElementById('recordPointBtn').addEventListener('click', recordDataPoint);
+        document.getElementById('clearDataBtn').addEventListener('click', clearData);
+        document.getElementById('exportCsvBtn').addEventListener('click', exportCSV);
+
+        // 挑戰模式：擺出指定的系統等效電阻
+        let challenge = { active: false, target: 0 };
+        function newChallenge() {
+            challenge.active = true;
+            challenge.target = 5 + Math.round(Math.random() * 45); // 5–50 Ω
+            document.getElementById('challenge-text').innerHTML =
+                `🎯 目標：調整電路，使「系統等效電阻 Req」= <b style="color:#61afef;">${challenge.target} Ω</b>（容差 ±5%）`;
+            checkChallenge();
+        }
+        function checkChallenge() {
+            if (!challenge.active) return;
+            let el = document.getElementById('challenge-status');
+            let tol = Math.max(0.5, challenge.target * 0.05);
+            let diff = Math.abs((state.Req || 0) - challenge.target);
+            if (diff <= tol) { el.innerHTML = `✅ 達成！目前 Req = ${(state.Req || 0).toFixed(2)} Ω`; el.style.color = '#98c379'; }
+            else { el.innerHTML = `目前 Req = ${(state.Req || 0).toFixed(2)} Ω（尚差 ${diff.toFixed(2)} Ω）`; el.style.color = '#e06c75'; }
+        }
+        document.getElementById('newChallengeBtn').addEventListener('click', newChallenge);
+
+        // ==========================================
+        // MNA 引擎驗證測試臺 (開啟 console 查看)
+        // 比對求解器輸出與解析值；誤差門檻 0.001。
+        // ==========================================
+        function testCircuitEngine() {
+            let pass = 0, fail = 0;
+            const approx = (a, b, t = 1e-3) => Math.abs(a - b) < t;
+            const check = (name, got, exp) => {
+                if (approx(got, exp)) { pass++; }
+                else { fail++; console.error(`✗ ${name}: 得到 ${got.toFixed(4)}，預期 ${exp.toFixed(4)}`); }
+            };
+            const batI = (nc, els) => { solveCircuit(nc, els); return Math.abs(els.find(e => e.isBattery).curr); };
+
+            // 測試 1：純串聯 10+20+20+10=60Ω, 12V → 0.2A
+            {
+                let els = [];
+                els.push({ type: 'V', a: 1, b: 0, E: 12, isBattery: true });
+                els.push({ type: 'R', a: 1, b: 2, R: 10 });
+                els.push({ type: 'R', a: 2, b: 3, R: 20 });
+                els.push({ type: 'R', a: 3, b: 4, R: 20 });
+                els.push({ type: 'R', a: 4, b: 0, R: 10 });
+                check('串聯總電流', batI(5, els), 0.2);
+            }
+            // 測試 2：純並聯 10‖20‖20 = 5Ω, 12V → 2.4A
+            {
+                let els = [];
+                els.push({ type: 'V', a: 1, b: 0, E: 12, isBattery: true });
+                els.push({ type: 'R', a: 1, b: 0, R: 10 });
+                els.push({ type: 'R', a: 1, b: 0, R: 20 });
+                els.push({ type: 'R', a: 1, b: 0, R: 20 });
+                check('並聯總電流', batI(2, els), 2.4);
+            }
+            // 測試 3：混合 (預設電路) pre10 + (20‖20) + post10 = 30Ω, 12V → 0.4A；支路 0.2A；pre 壓降 4V
+            {
+                let els = [];
+                els.push({ type: 'V', a: 1, b: 0, E: 12, isBattery: true });
+                let pre = { type: 'R', a: 1, b: 2, R: 10 };
+                let b1 = { type: 'R', a: 2, b: 3, R: 20 };
+                let b2 = { type: 'R', a: 2, b: 3, R: 20 };
+                let post = { type: 'R', a: 3, b: 0, R: 10 };
+                els.push(pre, b1, b2, post);
+                check('混合總電流', batI(4, els), 0.4);
+                check('混合 pre 壓降', Math.abs(pre.vDrop), 4);
+                check('混合支路電流', Math.abs(b1.curr), 0.2);
+            }
+            // 測試 4：電池內阻 EMF12, r=2, 外阻 10 → I=1A, 端電壓 10V
+            {
+                let els = [];
+                addBattery(els, 0, 1, 12, 2, () => 3); // 內部節點固定用 3
+                els.push({ type: 'R', a: 1, b: 0, R: 10 });
+                check('內阻總電流', batI(4, els), 1.0);
+            }
+            // 測試 5：編輯器完整管線 (節點抽取→組裝→求解→導線分流)，預設模板應同混合電路
+            {
+                state.V = 12; editorLoadTemplate();
+                let sol = editorSolve();
+                let bat = editor.components.find(c => c.type === 'battery');
+                check('編輯器總電流', Math.abs(editorThrough(bat)), 0.4);
+                let branch = editor.components.find(c => c.type === 'resistor' && c.value === 20);
+                check('編輯器支路電流', Math.abs(editorThrough(branch)), 0.2);
+                let pre = editor.components.find(c => c.type === 'resistor' && c.value === 10 && c.y1 === 100);
+                check('編輯器 pre 壓降', Math.abs(pre._elem.vDrop), 4);
+                // 導線分流：分流前主幹導線 0.4A，支路頂部導線 0.2A
+                let mainWire = editor.components.find(c => c.type === 'wire' && c.x1 === 250 && c.x2 === 400);
+                check('編輯器主幹導線電流', Math.abs(mainWire._cur), 0.4);
+                editor.components = []; editor.initialized = false; // 還原，避免影響正常啟動
+            }
+            // 測試 6：T 形接點 — 電阻兩端各接在導線中段，應正確接通 (12V / 10Ω = 1.2A)
+            {
+                state.V = 12; editor.components = []; editor.nextId = 1;
+                editorAddComponent('battery', 0, 100, 0, 300);
+                editorAddComponent('wire', 0, 100, 200, 100);   // 上導線
+                editorAddComponent('wire', 0, 300, 200, 300);   // 下導線
+                let r = editorAddComponent('resistor', 100, 100, 100, 300); r.value = 10; // 兩端落在導線中段
+                let sol = editorSolve();
+                check('T形接點總電流', Math.abs(editorThrough(editor.components[0])), 1.2);
+                editor.components = []; editor.initialized = false;
+            }
+            // 測試 7：重疊覆蓋 — 同位置 (含反向) 的舊元件應被新元件取代
+            {
+                editor.components = []; editor.nextId = 1;
+                editorAddComponent('resistor', 100, 100, 300, 100);
+                let w = editorAddComponent('wire', 300, 100, 100, 100); // 反向、同位置
+                editorRemoveOverlaps(w);
+                check('重疊覆蓋後元件數', editor.components.length, 1);
+                editor.components = []; editor.initialized = false;
+            }
+            // 測試 8：電阻壓在較長導線中段 → 導線被切斷、電阻串接 (不被短路)
+            {
+                state.V = 12; editor.components = []; editor.nextId = 1;
+                editorAddComponent('battery', 100, 100, 100, 300);
+                editorAddComponent('wire', 100, 100, 400, 100); // 上方長導線
+                editorAddComponent('wire', 400, 100, 400, 300);
+                editorAddComponent('wire', 400, 300, 100, 300);
+                let r = editorAddComponent('resistor', 200, 100, 300, 100); r.value = 10; // 壓在上方導線中段
+                editorSplitWiresAround(r);
+                let sol = editorSolve();
+                check('壓線後總電流', Math.abs(editorThrough(editor.components[0])), 1.2);
+                check('壓線後電阻壓降', Math.abs(r._elem.vDrop), 12); // 其餘皆導線 → 全部電壓落在電阻
+                editor.components = []; editor.initialized = false;
+            }
+            // 測試 9：電池內阻 EMF12 r=2 外阻10 → I=1A、端電壓10V、外部功率10W
+            {
+                state.V = 12; state.internalR = 2; editor.components = []; editor.nextId = 1;
+                editorAddComponent('battery', 100, 100, 100, 300);
+                editorAddComponent('wire', 100, 100, 300, 100);
+                let r = editorAddComponent('resistor', 300, 100, 300, 300); r.value = 10;
+                editorAddComponent('wire', 300, 300, 100, 300);
+                editorUpdatePhysics();
+                check('內阻-總電流', state.Itotal, 1.0);
+                check('內阻-端電壓', state.terminalV, 10.0);
+                check('內阻-總功率', state.Ptotal, 10.0);
+                editor.components = []; editor.initialized = false; state.internalR = 0;
+            }
+            // 測試 10：顯式內阻 — 內部節點電位=EMF(12V)、正極端=端電壓(10V)
+            {
+                state.V = 12; editor.components = []; editor.nextId = 1;
+                let bat = editorAddComponent('battery', 100, 100, 100, 300); bat.value = 12; bat.r = 2;
+                editorAddComponent('wire', 100, 100, 300, 100);
+                let r = editorAddComponent('resistor', 300, 100, 300, 300); r.value = 10;
+                editorAddComponent('wire', 300, 300, 100, 300);
+                let sol = editorSolve();
+                check('顯式-內部節點=EMF', sol.V[bat._midNode], 12);
+                check('顯式-正極端=端電壓', sol.V[bat.n1], 10);
+                editor.components = []; editor.initialized = false;
+            }
+            // 測試 11：V-I 最小平方擬合 (歐姆 V=2I→斜率2；內阻 V=12-2I→斜率-2、截距12)
+            {
+                check('擬合-歐姆斜率', fitLine([{ I: 1, V: 2 }, { I: 2, V: 4 }, { I: 3, V: 6 }]).b, 2);
+                let f = fitLine([{ I: 1, V: 10 }, { I: 2, V: 8 }, { I: 3, V: 6 }]);
+                check('擬合-內阻斜率', f.b, -2);
+                check('擬合-EMF截距', f.a, 12);
+            }
+            // 測試 12：儀錶自動換檔
+            {
+                check('安培換檔-0.3A', pickRange(0.3, AMM_RANGES), 0.5);
+                check('安培換檔-7A', pickRange(7, AMM_RANGES), 10);
+                check('伏特換檔-12V', pickRange(12, VOLT_RANGES), 25);
+            }
+            // 測試 13：電路序列化 → 還原 → 解算一致 (儲存/載入)
+            {
+                state.V = 12; editorLoadTemplate();
+                let saved = editorSerialize();
+                editor.components = saved.map(c => Object.assign({ _elem: null, n1: 0, n2: 0, _cur: 0 }, c));
+                editorSolve();
+                check('序列化還原-總電流', Math.abs(editorThrough(editor.components[0])), 0.4);
+                editor.components = []; editor.initialized = false;
+            }
+            console.log(`%c[MNA 引擎測試] 通過 ${pass} / ${pass + fail}`,
+                fail ? 'color:#e06c75;font-weight:bold' : 'color:#98c379;font-weight:bold');
+            document.documentElement.setAttribute('data-mna-test', `pass=${pass} fail=${fail}`);
+        }
+        testCircuitEngine();
+
+        // 啟動實驗室
+        renderResistorList(); updatePhysics(); drawVIGraph(); renderCircuitLoop();
     </script>
 </body>
 </html>
