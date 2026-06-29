@@ -1,0 +1,1161 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>電功率與亮度 挑戰賽 - DSE 專業虛擬實驗室</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; background-color: #e0e0e0; color: #ecf0f1; touch-action: none; }
+
+        #canvas-container { position: absolute; top: 0; left: 0; width: 65%; height: 100vh; background: #11151c; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 15px; box-sizing: border-box; }
+        #ui-panel { position: absolute; top: 0; right: 0; width: 35%; height: 100vh; background-color: #1e2128; border-left: 1px solid #2c313c; padding: 20px; box-sizing: border-box; display: flex; flex-direction: column; overflow-y: auto; box-shadow: -10px 0 30px rgba(0,0,0,0.2); z-index: 10; }
+        #ui-panel::-webkit-scrollbar { width: 8px; }
+        #ui-panel::-webkit-scrollbar-thumb { background: #3e4451; border-radius: 4px; }
+
+        .panel-title { color: #61afef; font-size: 1.3rem; margin: 0 0 4px 0; font-weight: 700; }
+        .panel-sub { color: #8a93a3; font-size: 0.82rem; margin: 0 0 14px 0; line-height: 1.4; }
+
+        #simCanvas { width: 100%; flex: 1 1 auto; min-height: 0; background: radial-gradient(circle at 50% 40%, #1b2330, #0c0f14); border-radius: 15px; box-shadow: inset 0 0 30px rgba(0,0,0,0.6); cursor: default; touch-action: none; }
+
+        .seg { display: flex; gap: 6px; margin-bottom: 14px; }
+        .seg button { flex: 1; padding: 9px 4px; border: 1px solid #3e4451; background: #1e2128; color: #abb2bf; border-radius: 8px; cursor: pointer; font-weight: 700; font-size: 0.85rem; transition: 0.15s; }
+        .seg button:hover { border-color: #61afef; }
+        .seg button.active { background: #61afef; color: #1e2128; border-color: #61afef; box-shadow: 0 0 10px rgba(97,175,239,0.4); }
+
+        .control-group { background: #282c34; padding: 12px; border-radius: 12px; margin-bottom: 12px; border: 1px solid #3e4451; flex-shrink: 0; }
+        .group-title { font-weight: 700; font-size: 0.95rem; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+        label { display: block; margin-bottom: 6px; font-weight: 500; font-size: 0.88rem; color: #abb2bf; }
+        select, input[type="range"], input[type="number"] { width: 100%; padding: 7px; border-radius: 6px; border: 1px solid #3e4451; background: #1e2128; color: #61afef; font-size: 0.95rem; cursor: pointer; outline: none; box-sizing: border-box; }
+        select:focus, input:focus { border-color: #61afef; }
+        .row-inline { display: flex; gap: 8px; align-items: center; }
+        .row-inline input[type="range"] { flex: 1; }
+        .row-inline .num { width: 64px; flex: none; }
+        .hidden { display: none !important; }
+        .calc-line { font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; color: #98c379; margin-top: 8px; background: rgba(0,0,0,0.2); padding: 6px 8px; border-radius: 6px; }
+        .hint { font-size: 0.78rem; color: #8a93a3; line-height: 1.45; margin: 0 0 8px; }
+
+        input[type=range] { -webkit-appearance: none; background: transparent; padding: 0; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 18px; width: 18px; border-radius: 50%; background: #61afef; cursor: pointer; margin-top: -7px; box-shadow: 0 0 8px rgba(97,175,239,0.5); }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: #3e4451; border-radius: 2px; }
+
+        .btn { padding: 8px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.85rem; transition: 0.2s opacity; text-align: center; }
+        .btn:hover { opacity: 0.85; }
+        .btn-add { background: #98c379; color: #1e2128; }
+        .btn-clear-m { background: #7f8c8d; color: #fff; }
+        .btn-row { display: flex; gap: 8px; margin-top: 8px; }
+        .btn-row .btn { flex: 1; }
+
+        /* 工具列 */
+        .tool-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 8px; }
+        .tool-btn { background: #3e4451; color: #abb2bf; border: none; border-radius: 6px; padding: 8px 4px; font-size: 0.82rem; font-weight: 700; cursor: pointer; }
+        .tool-btn:hover { opacity: 0.85; }
+        .tool-btn.tool-active { background: #61afef; color: #1e2128; box-shadow: 0 0 10px rgba(97,175,239,0.4); }
+        #lampPicker { font-size: 0.82rem; color: #abb2bf; margin: 8px 0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+        .chip { --c: #61afef; background: #1e2128; color: var(--c); border: 1px solid var(--c); border-radius: 50%; width: 30px; height: 30px; font-weight: 800; cursor: pointer; }
+        .chip.chip-active { background: var(--c); color: #1e2128; }
+
+        /* 燈泡卡片 */
+        .bulb-card { background: #282c34; padding: 10px 12px; border-radius: 10px; margin-bottom: 10px; border: 1px solid #3e4451; border-left: 4px solid #61afef; }
+        .bulb-card .bc-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+        .bulb-card .bc-dot { width: 14px; height: 14px; border-radius: 50%; box-shadow: 0 0 6px currentColor; }
+        .bulb-card .bc-id { font-weight: 800; font-size: 0.95rem; }
+        .bulb-card .bc-rm { margin-left: auto; background: #e06c75; color: #1e2128; border: none; border-radius: 6px; width: 26px; height: 26px; cursor: pointer; font-weight: bold; }
+        .bulb-card .bc-rm:disabled { opacity: 0.25; cursor: not-allowed; }
+
+        /* 預測挑戰 */
+        .pred-q { margin-bottom: 10px; }
+        .pred-q .q-text { font-size: 0.88rem; color: #abb2bf; margin-bottom: 6px; font-weight: 600; }
+        .choice-row { display: flex; gap: 6px; }
+        .choice-btn { flex: 1; padding: 7px 4px; border: 1px solid #3e4451; border-radius: 6px; background: #1e2128; color: #abb2bf; cursor: pointer; font-size: 0.82rem; font-weight: 600; transition: 0.15s; }
+        .choice-btn.sel { background: #61afef; color: #1e2128; border-color: #61afef; }
+        .choice-btn.correct { background: #98c379; color: #1e2128; border-color: #98c379; }
+        .choice-btn.wrong { background: #e06c75; color: #1e2128; border-color: #e06c75; }
+        .pred-result { font-size: 0.84rem; line-height: 1.5; margin-top: 8px; padding: 10px; border-radius: 8px; display: none; }
+        .pred-result.show { display: block; }
+        .pred-result.ok { background: rgba(152,195,121,0.12); color: #98c379; border-left: 4px solid #98c379; }
+        .pred-result.no { background: rgba(224,108,117,0.12); color: #e06c75; border-left: 4px solid #e06c75; }
+
+        /* 數據面板 */
+        .data-circuit { margin-bottom: 12px; }
+        .data-circuit h4 { margin: 0 0 6px 0; font-size: 0.9rem; color: #61afef; }
+        table.data-table { width: 100%; border-collapse: collapse; font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; }
+        table.data-table th { color: #5c6370; font-weight: 700; padding: 4px 3px; text-align: right; border-bottom: 1px solid #3e4451; }
+        table.data-table th:first-child { text-align: left; }
+        table.data-table td { padding: 4px 3px; text-align: right; color: #98c379; }
+        table.data-table td:first-child { text-align: left; color: #abb2bf; font-weight: 600; }
+        .bright-tag { font-size: 0.72rem; color: #f1c40f; }
+
+        /* 能量條 */
+        .energy-block { margin-bottom: 10px; }
+        .energy-block .e-label { font-size: 0.82rem; color: #abb2bf; margin-bottom: 4px; display: flex; justify-content: space-between; }
+        .energy-bar { height: 22px; width: 100%; background: #1e2128; border-radius: 6px; overflow: hidden; display: flex; border: 1px solid #3e4451; }
+        .energy-seg { height: 100%; display: flex; align-items: center; justify-content: center; font-size: 0.68rem; color: #fff; font-weight: 700; white-space: nowrap; overflow: hidden; }
+        .conserve-note { font-family: 'JetBrains Mono', monospace; font-size: 0.76rem; color: #98c379; margin-top: 6px; }
+
+        .theory-box { background: rgba(97, 175, 239, 0.1); color: #61afef; padding: 12px; border-radius: 10px; font-size: 0.84rem; line-height: 1.6; border-left: 4px solid #61afef; flex-shrink: 0; margin-bottom: 12px; }
+        .theory-box b { color: #98c379; }
+        .katex { color: inherit; }
+        .note-box { background: rgba(241,196,15,0.08); color: #d4a017; font-size: 0.76rem; line-height: 1.4; padding: 8px 10px; border-radius: 8px; border-left: 3px solid #f1c40f; margin-bottom: 12px; }
+
+        #home-btn { position: fixed; bottom: 16px; left: 16px; z-index: 99999; background: rgba(30, 41, 59, 0.85); backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 10px; padding: 8px 14px; font-size: 13px; font-weight: bold; color: #fff; text-decoration: none; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25); transition: background 0.2s, transform 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+        #home-btn:hover { background: rgba(30, 41, 59, 0.95); transform: translateY(-2px); }
+
+        @media (max-width: 820px) {
+            body { overflow-y: auto; height: auto; }
+            #canvas-container { position: static; width: 100%; height: auto; padding: 10px; }
+            #simCanvas { height: 56vh; flex: none; }
+            #ui-panel { position: static; width: 100%; height: auto; border-left: none; border-top: 2px solid #2c313c; box-shadow: none; overflow-y: visible; }
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container">
+        <canvas id="simCanvas"></canvas>
+    </div>
+
+    <div id="ui-panel">
+        <h2 class="panel-title">⚡ 電功率與亮度 挑戰賽</h2>
+        <p class="panel-sub">同一對燈泡，並聯與串聯下誰較亮？亮度由<strong>實際消耗功率</strong>決定，並非燈泡上標示的額定功率。</p>
+
+        <!-- 顯示模式 -->
+        <div class="seg" id="viewSeg">
+            <button data-view="series">串聯</button>
+            <button data-view="parallel">並聯</button>
+            <button data-view="compare" class="active">對比</button>
+            <button data-view="custom">自訂</button>
+        </div>
+
+        <!-- 燈泡卡片（動態） -->
+        <div id="bulbList"></div>
+
+        <!-- 自訂電路（自由編輯器） -->
+        <div class="control-group hidden" id="customControls">
+            <div class="group-title">🧩 自訂電路（自由編輯）</div>
+            <p class="hint">選工具 → 在格點上按住拖拉放置。相鄰端點落在同一格點即自動接通；用「選取」可移動元件或點開關切換通斷。電池電動勢由下方「供應電壓」控制。</p>
+            <div class="tool-grid" id="toolGrid">
+                <button data-tool="select" class="tool-btn tool-active">↖ 選取</button>
+                <button data-tool="wire" class="tool-btn">／ 導線</button>
+                <button data-tool="battery" class="tool-btn">🔋 電池</button>
+                <button data-tool="lamp" class="tool-btn">💡 燈泡</button>
+                <button data-tool="switch" class="tool-btn">⏻ 開關</button>
+                <button data-tool="delete" class="tool-btn">🗑 刪除</button>
+            </div>
+            <div id="lampPicker">放置燈泡：<span id="lampChips"></span></div>
+            <div class="btn-row">
+                <button class="btn btn-add" id="addBulb">➕ 新增燈泡</button>
+                <button class="btn btn-clear-m" id="loadTemplate">📋 範本</button>
+                <button class="btn btn-clear-m" id="clearEditor">🗑 清空</button>
+            </div>
+        </div>
+
+        <!-- 電源設定 -->
+        <div class="control-group">
+            <div class="group-title">🔋 電源設定</div>
+            <label>供應電壓 <span data-tex="V_s"></span> (V)</label>
+            <div class="row-inline">
+                <input type="range" id="vs" min="0" max="250" step="1" value="220">
+                <input type="number" class="num" id="vsnum" min="0" max="400" value="220">
+            </div>
+            <label style="margin-top:8px;">電池內阻 <span data-tex="r"></span> (Ω)</label>
+            <div class="row-inline">
+                <input type="range" id="rint" min="0" max="50" step="1" value="0">
+                <input type="number" class="num" id="rintnum" min="0" max="200" value="0">
+            </div>
+        </div>
+
+        <!-- 預測挑戰 -->
+        <div class="control-group" id="predGroup">
+            <div class="group-title" style="color:#f1c40f;">🎯 預測挑戰</div>
+            <div class="pred-q" data-q="parallel">
+                <div class="q-text">① 並聯時哪顆燈泡較亮？</div>
+                <div class="choice-row">
+                    <button class="choice-btn" data-q="parallel" data-v="A">A 較亮</button>
+                    <button class="choice-btn" data-q="parallel" data-v="tie">一樣亮</button>
+                    <button class="choice-btn" data-q="parallel" data-v="B">B 較亮</button>
+                </div>
+            </div>
+            <div class="pred-q" data-q="series">
+                <div class="q-text">② 串聯時哪顆燈泡較亮？</div>
+                <div class="choice-row">
+                    <button class="choice-btn" data-q="series" data-v="A">A 較亮</button>
+                    <button class="choice-btn" data-q="series" data-v="tie">一樣亮</button>
+                    <button class="choice-btn" data-q="series" data-v="B">B 較亮</button>
+                </div>
+            </div>
+            <div class="btn-row">
+                <button class="btn btn-add" id="submitPred">提交答案</button>
+                <button class="btn btn-clear-m" id="resetPred">重新挑戰</button>
+            </div>
+            <div class="pred-result" id="predResult"></div>
+        </div>
+
+        <!-- 即時數據 -->
+        <div class="control-group">
+            <div class="group-title">📊 即時數據</div>
+            <div id="dataArea"></div>
+        </div>
+
+        <!-- 能量守恆 -->
+        <div class="control-group">
+            <div class="group-title">🔥 能量轉換與守恆</div>
+            <p class="hint">電能 → 光能 + 熱能。電池輸出總功率 = 各燈泡消耗功率之和。</p>
+            <div id="energyArea"></div>
+        </div>
+
+        <!-- 公式提示 -->
+        <div class="theory-box" id="theoryBox"></div>
+
+        <div class="note-box">📌 假設：本模擬器將燈泡電阻視為定值（<span data-tex="R = V_{rated}^2 / P_{rated}"></span>）。真實燈泡為非歐姆元件，電阻隨溫度上升，此處為 DSE 分析慣例之簡化模型。</div>
+    </div>
+
+    <a id="home-btn" href="../../../index.html">&#127968; &#20027;&#38913;</a>
+
+    <script>
+    /* ============================================================
+       KaTeX 工具（含降級 fallback）
+       ============================================================ */
+    function ktx(el, texStr, display) {
+        if (!el) return;
+        if (window.katex) { try { katex.render(texStr, el, { throwOnError: false, displayMode: !!display }); return; } catch (e) {} }
+        el.textContent = texStr;
+    }
+    function tex(s, display) {
+        if (window.katex) { try { return katex.renderToString(s, { throwOnError: false, displayMode: !!display }); } catch (e) {} }
+        return s;
+    }
+    function renderTexIn(root) { root.querySelectorAll('[data-tex]').forEach(el => ktx(el, el.getAttribute('data-tex'))); }
+
+    /* ============================================================
+       MNA 求解器（取自 series-parallel-connection-sim.html）
+       ============================================================ */
+    function solveLinearSystem(A, b) {
+        const n = b.length;
+        if (n === 0) return [];
+        let M = A.map((row, i) => row.slice().concat([b[i]]));
+        for (let col = 0; col < n; col++) {
+            let piv = col;
+            for (let r = col + 1; r < n; r++) if (Math.abs(M[r][col]) > Math.abs(M[piv][col])) piv = r;
+            if (Math.abs(M[piv][col]) < 1e-12) return null;
+            [M[col], M[piv]] = [M[piv], M[col]];
+            for (let r = 0; r < n; r++) {
+                if (r === col) continue;
+                let f = M[r][col] / M[col][col];
+                if (f === 0) continue;
+                for (let c = col; c <= n; c++) M[r][c] -= f * M[col][c];
+            }
+        }
+        let x = new Array(n);
+        for (let i = 0; i < n; i++) x[i] = M[i][n] / M[i][i];
+        return x;
+    }
+    function solveCircuit(nodeCount, elements) {
+        const n = nodeCount - 1;
+        const sources = elements.filter(e => e.type === 'V');
+        const m = sources.length;
+        const size = n + m;
+        if (size === 0) return { V: [0] };
+        const A = Array.from({ length: size }, () => new Array(size).fill(0));
+        const b = new Array(size).fill(0);
+        const gmin = 1e-9;
+        for (let i = 1; i < nodeCount; i++) A[i - 1][i - 1] += gmin;
+        elements.forEach(e => {
+            if (e.type !== 'R') return;
+            let g = 1 / e.R, a = e.a, c = e.b;
+            if (a !== 0) A[a - 1][a - 1] += g;
+            if (c !== 0) A[c - 1][c - 1] += g;
+            if (a !== 0 && c !== 0) { A[a - 1][c - 1] -= g; A[c - 1][a - 1] -= g; }
+        });
+        sources.forEach((e, k) => {
+            let row = n + k, p = e.a, q = e.b;
+            if (p !== 0) { A[p - 1][row] += 1; A[row][p - 1] += 1; }
+            if (q !== 0) { A[q - 1][row] -= 1; A[row][q - 1] -= 1; }
+            b[row] = e.E;
+        });
+        let x = solveLinearSystem(A, b);
+        if (!x) return null;
+        let V = new Array(nodeCount).fill(0);
+        for (let i = 1; i < nodeCount; i++) V[i] = x[i - 1];
+        elements.forEach(e => { if (e.type === 'R') { e.vDrop = V[e.a] - V[e.b]; e.curr = e.vDrop / e.R; } });
+        sources.forEach((e, k) => { e.curr = x[n + k]; });
+        return { V };
+    }
+    // 電池：EMF + 內阻 r（r>0 時以隱藏內部節點串聯電阻 r 模擬）
+    function addBattery(elements, neg, pos, emf, r, newNode) {
+        if (r > 1e-9) {
+            let mid = newNode();
+            elements.push({ type: 'V', a: mid, b: neg, E: emf, isBattery: true });
+            elements.push({ type: 'R', a: pos, b: mid, R: r });
+        } else {
+            elements.push({ type: 'V', a: pos, b: neg, E: emf, isBattery: true });
+        }
+    }
+
+    /* ============================================================
+       狀態
+       ============================================================ */
+    const COLORS = ['#e67e22', '#3498db', '#9b59b6', '#16a085', '#e74c3c', '#f39c12', '#1abc9c', '#e84393'];
+    const PRESETS = [['220,60', '220 V, 60 W'], ['220,40', '220 V, 40 W'], ['220,100', '220 V, 100 W'], ['110,60', '110 V, 60 W'], ['12,24', '12 V, 24 W'], ['6,3', '6 V, 3 W']];
+
+    const state = {
+        bulbs: [
+            { id: 'A', Vr: 220, Pr: 60, color: COLORS[0] },
+            { id: 'B', Vr: 220, Pr: 40, color: COLORS[1] }
+        ],
+        Vs: 220,
+        rInt: 0,
+        view: 'compare',
+        prediction: { parallel: null, series: null, submitted: false }
+    };
+
+    const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+    const bulbR = (b) => (b.Vr * b.Vr) / Math.max(b.Pr, 1e-6);
+    const bulbById = (id) => state.bulbs.find(b => b.id === id);
+
+    /* ============================================================
+       物理：並聯 / 串聯
+       ============================================================ */
+    function buildParallel(Ra, Rb, Vs, r) {
+        let elems, nc, eA, eB, eBat;
+        if (r > 0) {
+            eBat = { type: 'V', a: 2, b: 0, E: Vs };
+            eA = { type: 'R', a: 1, b: 0, R: Ra }; eB = { type: 'R', a: 1, b: 0, R: Rb };
+            elems = [eBat, { type: 'R', a: 2, b: 1, R: r }, eA, eB]; nc = 3;
+        } else {
+            eBat = { type: 'V', a: 1, b: 0, E: Vs };
+            eA = { type: 'R', a: 1, b: 0, R: Ra }; eB = { type: 'R', a: 1, b: 0, R: Rb };
+            elems = [eBat, eA, eB]; nc = 2;
+        }
+        solveCircuit(nc, elems);
+        return { eA, eB, eBat };
+    }
+    function buildSeries(Ra, Rb, Vs, r) {
+        let elems, nc, eA, eB, eBat;
+        eA = { type: 'R', a: 1, b: 2, R: Ra }; eB = { type: 'R', a: 2, b: 0, R: Rb };
+        if (r > 0) { eBat = { type: 'V', a: 3, b: 0, E: Vs }; elems = [eBat, { type: 'R', a: 3, b: 1, R: r }, eA, eB]; nc = 4; }
+        else { eBat = { type: 'V', a: 1, b: 0, E: Vs }; elems = [eBat, eA, eB]; nc = 3; }
+        solveCircuit(nc, elems);
+        return { eA, eB, eBat };
+    }
+    function bulbStats(e) { const I = Math.abs(e.curr), V = Math.abs(e.vDrop); return { R: e.R, V, I, P: I * I * e.R }; }
+    function brighter(pA, pB) { if (Math.abs(pA - pB) < 1e-6) return 'tie'; return pA > pB ? 'A' : 'B'; }
+
+    /* ============================================================
+       自由式編輯器（自訂電路）—— 移植自 series-parallel-connection-sim.html
+       座標單位 = CSS 像素；格點 = GRID。燈泡參照燈泡定義 (Vr,Pr → R)。
+       ============================================================ */
+    const GRID = 50;
+    const editor = {
+        tool: 'select',           // select | wire | battery | lamp | switch | delete
+        components: [],
+        nextId: 1,
+        placing: null, moving: null, moveDX: 0, moveDY: 0,
+        hoverPt: null, hoverComp: null,
+        activeBulb: 'A'
+    };
+    const PLACEMENT_TOOLS = ['wire', 'battery', 'lamp', 'switch'];
+    const eSnap = v => Math.round(v / GRID) * GRID;
+
+    function pointOnSegment(p, a, b) {
+        let dx = b.x - a.x, dy = b.y - a.y, L2 = dx * dx + dy * dy;
+        if (L2 === 0) return false;
+        let t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / L2;
+        if (t <= 0.01 || t >= 0.99) return false;
+        return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy)) < 1;
+    }
+    function editorPtOnSeg(p, a, b) {
+        let dx = b.x - a.x, dy = b.y - a.y, L2 = dx * dx + dy * dy;
+        if (L2 === 0) return false;
+        let t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / L2;
+        if (t < -0.001 || t > 1.001) return false;
+        return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy)) < 1;
+    }
+    function distToSegment(px, py, x1, y1, x2, y2) {
+        const dx = x2 - x1, dy = y2 - y1, L2 = dx * dx + dy * dy;
+        let t = L2 ? ((px - x1) * dx + (py - y1) * dy) / L2 : 0; t = clamp(t, 0, 1);
+        return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
+    }
+    function editorSnapPoint(x, y) {
+        let best = null, bestD = GRID * 0.6;
+        for (const c of editor.components) {
+            for (const [px, py] of [[c.x1, c.y1], [c.x2, c.y2]]) {
+                let d = Math.hypot(x - px, y - py);
+                if (d < bestD) { bestD = d; best = { x: px, y: py }; }
+            }
+        }
+        return best || { x: eSnap(x), y: eSnap(y) };
+    }
+    function editorSameSpan(a, b) {
+        return (a.x1 === b.x1 && a.y1 === b.y1 && a.x2 === b.x2 && a.y2 === b.y2) ||
+               (a.x1 === b.x2 && a.y1 === b.y2 && a.x2 === b.x1 && a.y2 === b.y1);
+    }
+    function editorRemoveOverlaps(keep) {
+        editor.components = editor.components.filter(c => c === keep || !editorSameSpan(c, keep));
+    }
+    function editorSplitWiresAround(c) {
+        if (c.type === 'wire') return;
+        const param = (p, a, b) => ((p.x - a.x) * (b.x - a.x) + (p.y - a.y) * (b.y - a.y)) / (((b.x - a.x) ** 2) + ((b.y - a.y) ** 2));
+        const remove = [], add = [];
+        editor.components.forEach(w => {
+            if (w === c || w.type !== 'wire') return;
+            let a = { x: w.x1, y: w.y1 }, b = { x: w.x2, y: w.y2 };
+            let p = { x: c.x1, y: c.y1 }, q = { x: c.x2, y: c.y2 };
+            if (editorPtOnSeg(p, a, b) && editorPtOnSeg(q, a, b)) {
+                remove.push(w);
+                let near = param(p, a, b) <= param(q, a, b) ? p : q;
+                let far = near === p ? q : p;
+                if (Math.hypot(a.x - near.x, a.y - near.y) > 0.5) add.push([a, near]);
+                if (Math.hypot(far.x - b.x, far.y - b.y) > 0.5) add.push([far, b]);
+            }
+        });
+        if (remove.length) {
+            editor.components = editor.components.filter(k => !remove.includes(k));
+            add.forEach(([s, e]) => editorAddComponent('wire', s.x, s.y, e.x, e.y));
+        }
+    }
+    function editorConnectsAt(x, y) {
+        for (const c of editor.components) {
+            if (Math.hypot(c.x1 - x, c.y1 - y) < 1 || Math.hypot(c.x2 - x, c.y2 - y) < 1) return true;
+        }
+        for (const c of editor.components) {
+            if (c.type === 'wire' && pointOnSegment({ x, y }, { x: c.x1, y: c.y1 }, { x: c.x2, y: c.y2 })) return true;
+        }
+        return false;
+    }
+    function editorAddComponent(type, x1, y1, x2, y2) {
+        const c = { id: editor.nextId++, type, x1, y1, x2, y2, closed: true, bulbId: (type === 'lamp' ? editor.activeBulb : null), _elem: null, n1: 0, n2: 0, _cur: 0 };
+        editor.components.push(c);
+        return c;
+    }
+    function editorLoadTemplate() {
+        editor.components = []; editor.nextId = 1;
+        const W = (a, b, c, d) => editorAddComponent('wire', a, b, c, d);
+        const ox = eSnap(cssW * 0.18), top = eSnap(cssH * 0.30), bot = eSnap(cssH * 0.66);
+        const xA = eSnap(cssW * 0.46), xB = eSnap(cssW * 0.70);
+        editorAddComponent('battery', ox, top, ox, bot); // p1(+)=上, p2(-)=下
+        W(ox, top, xA, top); W(xA, top, xB, top);
+        W(ox, bot, xA, bot); W(xA, bot, xB, bot);
+        const la = editorAddComponent('lamp', xA, top, xA, bot); la.bulbId = 'A';
+        const lb = editorAddComponent('lamp', xB, top, xB, bot); lb.bulbId = state.bulbs[1] ? 'B' : 'A';
+    }
+
+    // 由幾何抽取電氣節點 (union-find)
+    function editorExtractNodes() {
+        const ptIndex = new Map(); const pts = [];
+        const getPt = (x, y) => { let k = x + ',' + y; if (!ptIndex.has(k)) { ptIndex.set(k, pts.length); pts.push({ x, y }); } return ptIndex.get(k); };
+        editor.components.forEach(c => { c.p1 = getPt(c.x1, c.y1); c.p2 = getPt(c.x2, c.y2); });
+        const parent = pts.map((_, i) => i);
+        const find = a => { while (parent[a] !== a) { parent[a] = parent[parent[a]]; a = parent[a]; } return a; };
+        const union = (a, b) => { parent[find(a)] = find(b); };
+        editor.components.forEach(c => { if (c.type === 'wire') union(c.p1, c.p2); });
+        editor.components.forEach(w => {
+            if (w.type !== 'wire') return;
+            for (let i = 0; i < pts.length; i++) {
+                if (i === w.p1 || i === w.p2) continue;
+                if (pointOnSegment(pts[i], pts[w.p1], pts[w.p2])) union(i, w.p1);
+            }
+        });
+        const rootNode = new Map(); let nc = 0;
+        const bat = editor.components.find(c => c.type === 'battery');
+        if (bat) { rootNode.set(find(bat.p2), 0); nc = 1; }   // 電池負極 = ground
+        for (let i = 0; i < pts.length; i++) { let r = find(i); if (!rootNode.has(r)) rootNode.set(r, nc++); }
+        editor.components.forEach(c => { c.n1 = rootNode.get(find(c.p1)); c.n2 = rootNode.get(find(c.p2)); });
+        return { nodeCount: nc, pts };
+    }
+    const editorThrough = c => (c._elem ? c._elem.curr : 0) || 0;
+
+    function editorSolve() {
+        const ext = editorExtractNodes();
+        let nodeCount = ext.nodeCount;
+        const newNode = () => nodeCount++;
+        const elements = [];
+        editor.components.forEach(c => {
+            c._elem = null;
+            if (c.type === 'lamp') {
+                const b = bulbById(c.bulbId) || state.bulbs[0];
+                c._elem = { type: 'R', a: c.n1, b: c.n2, R: Math.max(bulbR(b), 1e-3) };
+                elements.push(c._elem);
+            } else if (c.type === 'battery') {
+                let idx = elements.length;
+                addBattery(elements, c.n2, c.n1, state.Vs, state.rInt || 0, newNode);
+                c._elem = elements.slice(idx).find(e => e.isBattery);
+            } else if (c.type === 'switch' && c.closed) {
+                c._elem = { type: 'V', a: c.n1, b: c.n2, E: 0 }; elements.push(c._elem);
+            }
+        });
+        let sol = (nodeCount > 0 && elements.length) ? solveCircuit(nodeCount, elements) : null;
+        if (!sol) sol = { V: new Array(Math.max(nodeCount, 1)).fill(0) };
+        editorComputeWireCurrents(sol, ext.pts);
+        return sol;
+    }
+    function editorComputeWireCurrents(sol, pts) {
+        const wires = editor.components.filter(c => c.type === 'wire');
+        wires.forEach(w => w._cur = null);
+        const inj = new Array(pts.length).fill(0);
+        editor.components.forEach(c => {
+            if (c.type === 'wire') return;
+            let It = editorThrough(c) || 0;
+            inj[c.p1] -= It; inj[c.p2] += It;
+        });
+        const adj = pts.map(() => []);
+        wires.forEach(w => { adj[w.p1].push(w); adj[w.p2].push(w); });
+        const acc = inj.slice();
+        let changed = true, guard = 0;
+        while (changed && guard++ < pts.length + 5) {
+            changed = false;
+            for (let p = 0; p < pts.length; p++) {
+                let unres = adj[p].filter(w => w._cur === null);
+                if (unres.length === 1) {
+                    let w = unres[0], I = acc[p];
+                    w._cur = (w.p1 === p) ? I : -I;
+                    let other = (w.p1 === p) ? w.p2 : w.p1;
+                    acc[other] += I; acc[p] = 0;
+                    changed = true;
+                }
+            }
+        }
+        wires.forEach(w => { if (w._cur === null) w._cur = 0; });
+    }
+
+    /* ============================================================
+       整體求解
+       ============================================================ */
+    let sim = null;
+    function recompute() {
+        const A = state.bulbs[0], B = state.bulbs[1];
+        const Ra = bulbR(A), Rb = bulbR(B);
+        const par = buildParallel(Ra, Rb, state.Vs, state.rInt);
+        const ser = buildSeries(Ra, Rb, state.Vs, state.rInt);
+        sim = {
+            Ra, Rb,
+            par: { A: bulbStats(par.eA), B: bulbStats(par.eB), Ibat: Math.abs(par.eBat.curr) },
+            ser: { A: bulbStats(ser.eA), B: bulbStats(ser.eB), Ibat: Math.abs(ser.eBat.curr) }
+        };
+        sim.par.bright = brighter(sim.par.A.P, sim.par.B.P);
+        sim.ser.bright = brighter(sim.ser.A.P, sim.ser.B.P);
+        sim.Pnorm = Math.max(...state.bulbs.map(b => b.Pr), 1e-6);
+        // 自訂（編輯器）
+        editorSolve();
+        const lampStats = editor.components.filter(c => c.type === 'lamp').map(c => {
+            const b = bulbById(c.bulbId) || state.bulbs[0];
+            const I = Math.abs(editorThrough(c)), R = c._elem ? c._elem.R : bulbR(b);
+            return { color: b.color, bulbId: b.id, R, I, V: I * R, P: I * I * R };
+        });
+        const bat = editor.components.find(c => c.type === 'battery');
+        sim.custom = { lampStats, Ibat: bat ? Math.abs(editorThrough(bat)) : 0, Ptot: lampStats.reduce((a, s) => a + s.P, 0) };
+    }
+
+    /* ============================================================
+       繪圖
+       ============================================================ */
+    const canvas = document.getElementById('simCanvas');
+    const ctx = canvas.getContext('2d');
+    let cssW = 0, cssH = 0;
+    const LIGHT_WIRE = '#9aa7b2', PARTICLE = '#ffe14d', TXT = '#cfd8dc';
+
+    function resize() {
+        const dpr = window.devicePixelRatio || 1;
+        const rect = canvas.getBoundingClientRect();
+        cssW = rect.width; cssH = rect.height;
+        canvas.width = Math.round(cssW * dpr);
+        canvas.height = Math.round(cssH * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    window.addEventListener('resize', resize);
+
+    const glowOf = (P) => clamp(Math.pow(P / sim.Pnorm, 0.45), 0, 1);
+    const pctOf = (P) => Math.round(clamp(P / sim.Pnorm, 0, 1) * 100);
+
+    function drawLamp(glow, R, tint) {
+        if (glow > 0.02) {
+            let halo = ctx.createRadialGradient(0, 0, 2, 0, 0, R * 3.6);
+            halo.addColorStop(0, `rgba(255,238,170,${0.85 * glow})`);
+            halo.addColorStop(0.4, `rgba(255,224,130,${0.5 * glow})`);
+            halo.addColorStop(1, 'rgba(255,224,130,0)');
+            ctx.fillStyle = halo;
+            ctx.beginPath(); ctx.arc(0, 0, R * 3.6, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2);
+        ctx.fillStyle = glow > 0.02
+            ? `rgba(255,${235 - Math.round(15 * glow)},${165 + Math.round(70 * glow)},${0.25 + 0.6 * glow})`
+            : 'rgba(120,130,140,0.30)';
+        ctx.fill();
+        ctx.strokeStyle = glow > 0.02 ? '#cdd6df' : '#56606b'; ctx.lineWidth = 2.5; ctx.stroke();
+
+        ctx.strokeStyle = '#7f8c8d'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+        const px = R * 0.4;
+        ctx.beginPath(); ctx.moveTo(-px, R - 2); ctx.lineTo(-px, -1); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(px, R - 2); ctx.lineTo(px, -1); ctx.stroke();
+
+        let filColor = glow < 0.02 ? '#454d57'
+            : `rgb(255,${Math.round(90 + 165 * glow)},${Math.round(20 + 210 * glow * glow)})`;
+        ctx.strokeStyle = filColor; ctx.lineWidth = 2.2;
+        if (glow > 0.15) { ctx.shadowBlur = 22 * glow; ctx.shadowColor = filColor; }
+        const loops = 4, x0 = -px, x1 = px, step = (x1 - x0) / loops;
+        ctx.beginPath(); ctx.moveTo(x0, -1);
+        for (let k = 0; k < loops; k++) { let xa = x0 + step * k, xb = x0 + step * (k + 1); ctx.quadraticCurveTo((xa + xb) / 2, -R * 0.65, xb, -1); }
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#95a5a6'; ctx.beginPath(); ctx.roundRect(-px, R - 4, px * 2, 6, 2); ctx.fill();
+    }
+
+    // 沿元件軸 (置中、呼叫者已 translate/rotate) 畫電池符號：長板(+)在 -x、短板(-)在 +x
+    function drawBatterySymbol() {
+        ctx.strokeStyle = LIGHT_WIRE;
+        ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-5, -15); ctx.lineTo(-5, 15); ctx.stroke();
+        ctx.lineWidth = 8; ctx.beginPath(); ctx.moveTo(6, -9); ctx.lineTo(6, 9); ctx.stroke();
+    }
+
+    // 直立式電池（並聯/串聯固定電路用）
+    function drawBatteryVertical(x, y) {
+        ctx.save(); ctx.translate(x, y); ctx.rotate(-Math.PI / 2); drawBatterySymbol(); ctx.restore();
+    }
+
+    function label(text, x, y, color, size, align) {
+        ctx.fillStyle = color || TXT;
+        ctx.font = `${size || 13}px 'Segoe UI', sans-serif`;
+        ctx.textAlign = align || 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(text, x, y);
+    }
+
+    function drawWire(pts, current, phase) {
+        ctx.strokeStyle = LIGHT_WIRE; ctx.lineWidth = 3.5; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
+        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+        ctx.stroke();
+        if (Math.abs(current) < 1e-4) return;
+        let segLens = [], total = 0;
+        for (let i = 1; i < pts.length; i++) { let d = Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y); segLens.push(d); total += d; }
+        const spacing = 26, dir = current >= 0 ? 1 : -1;
+        let off = ((phase * Math.min(Math.abs(current) * 60 + 12, 90)) % spacing + spacing) % spacing;
+        ctx.fillStyle = PARTICLE;
+        for (let d = off; d < total; d += spacing) {
+            let dd = dir > 0 ? d : (total - d), acc = 0, px = pts[0].x, py = pts[0].y;
+            for (let i = 0; i < segLens.length; i++) {
+                if (dd <= acc + segLens[i]) { let t = (dd - acc) / segLens[i]; px = pts[i].x + (pts[i + 1].x - pts[i].x) * t; py = pts[i].y + (pts[i + 1].y - pts[i].y) * t; break; }
+                acc += segLens[i];
+            }
+            ctx.beginPath(); ctx.arc(px, py, 3.5, 0, Math.PI * 2); ctx.fill();
+        }
+    }
+
+    function drawBulbAt(cx, cy, b, stat, R, showRating) {
+        ctx.save(); ctx.translate(cx, cy); drawLamp(glowOf(stat.P), R, b.color); ctx.restore();
+        label(b.id, cx, cy - R - 12, b.color, R * 0.7 + 4);
+        if (showRating) label(`${b.Vr}V·${b.Pr}W`, cx, cy + R + 12, TXT, 11);
+        label(`亮度 ${pctOf(stat.P)}%`, cx, cy + R + (showRating ? 26 : 14), '#ffe14d', 12);
+    }
+
+    function brightnessCaption(rx, ry, rw, statObj) {
+        const a = statObj.A.P, bb = statObj.B.P, win = statObj.bright;
+        let txt;
+        if (win === 'tie') txt = '兩燈一樣亮';
+        else { const ratio = Math.max(a, bb) / Math.max(Math.min(a, bb), 1e-6); txt = `${win} 較亮（亮度比 ≈ ${ratio.toFixed(2)}×）`; }
+        label(txt, rx + rw / 2, ry, '#1abc9c', 15);
+    }
+
+    function drawParallelCircuit(rx, ry, rw, rh, phase, R) {
+        const A = state.bulbs[0], B = state.bulbs[1];
+        const left = rx + rw * 0.20;
+        const top = ry + rh * 0.26, bot = ry + rh * 0.74;
+        const xA = rx + rw * 0.50, xB = rx + rw * 0.76;
+        const batY = (top + bot) / 2, midY = (top + bot) / 2;
+        const Ia = sim.par.A.I, Ib = sim.par.B.I, It = sim.par.Ibat;
+        drawWire([{ x: left, y: batY }, { x: left, y: top }, { x: xA, y: top }], It, phase);
+        drawWire([{ x: xA, y: top }, { x: xB, y: top }], Ib, phase);
+        drawWire([{ x: xB, y: bot }, { x: xA, y: bot }], Ib, phase);
+        drawWire([{ x: xA, y: bot }, { x: left, y: bot }, { x: left, y: batY }], It, phase);
+        drawWire([{ x: xA, y: top }, { x: xA, y: bot }], Ia, phase);
+        drawWire([{ x: xB, y: top }, { x: xB, y: bot }], Ib, phase);
+        drawBatteryVertical(left, batY);
+        drawBulbAt(xA, midY, A, sim.par.A, R, true);
+        drawBulbAt(xB, midY, B, sim.par.B, R, true);
+        brightnessCaption(rx, ry + rh * 0.97, rw, sim.par);
+    }
+
+    function drawSeriesCircuit(rx, ry, rw, rh, phase, R) {
+        const A = state.bulbs[0], B = state.bulbs[1];
+        const left = rx + rw * 0.16, right = rx + rw * 0.84;
+        const top = ry + rh * 0.30, bot = ry + rh * 0.72;
+        const batY = (top + bot) / 2;
+        const xA = rx + rw * 0.42, xB = rx + rw * 0.64;
+        const I = sim.ser.A.I;
+        drawWire([{ x: left, y: batY }, { x: left, y: top }, { x: xA, y: top }], I, phase);
+        drawWire([{ x: xA, y: top }, { x: xB, y: top }], I, phase);
+        drawWire([{ x: xB, y: top }, { x: right, y: top }, { x: right, y: bot }, { x: left, y: bot }, { x: left, y: batY }], I, phase);
+        drawBatteryVertical(left, batY);
+        drawBulbAt(xA, top, A, sim.ser.A, R, true);
+        drawBulbAt(xB, top, B, sim.ser.B, R, true);
+        brightnessCaption(rx, ry + rh * 0.97, rw, sim.ser);
+    }
+
+    /* ----- 自由式編輯器繪製 ----- */
+    function editorDrawGrid() {
+        ctx.save(); ctx.strokeStyle = 'rgba(154,167,178,0.08)'; ctx.lineWidth = 1;
+        for (let x = 0; x <= cssW; x += GRID) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, cssH); ctx.stroke(); }
+        for (let y = 0; y <= cssH; y += GRID) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(cssW, y); ctx.stroke(); }
+        ctx.restore();
+    }
+    function editorLabel(c, mx, my) {
+        if (c.type === 'battery') {
+            label(`${state.Vs.toFixed(0)}V`, mx, my - 26, LIGHT_WIRE, 12);
+            if (state.rInt > 0) label(`r=${state.rInt}Ω`, mx, my + 26, '#c39be0', 11);
+        } else if (c.type === 'lamp') {
+            const b = bulbById(c.bulbId) || state.bulbs[0];
+            const I = Math.abs(editorThrough(c)), R = c._elem ? c._elem.R : bulbR(b), P = I * I * R;
+            label(b.id, mx, my - 26, b.color, 14);
+            label(`亮度 ${pctOf(P)}%`, mx, my + 26, '#ffe14d', 11);
+        } else if (c.type === 'switch') {
+            label(c.closed ? 'ON' : 'OFF', mx, my - 24, c.closed ? '#27ae60' : '#e06c75', 12);
+        }
+    }
+    function drawEditorComp(c, phase) {
+        const dx = c.x2 - c.x1, dy = c.y2 - c.y1, L = Math.hypot(dx, dy) || 1, ux = dx / L, uy = dy / L;
+        const mx = (c.x1 + c.x2) / 2, my = (c.y1 + c.y2) / 2, ang = Math.atan2(dy, dx);
+        const I = editorThrough(c);
+        if (c.type === 'wire') { drawWire([{ x: c.x1, y: c.y1 }, { x: c.x2, y: c.y2 }], c._cur || 0, phase); }
+        else if (c.type === 'switch' && !c.closed) {
+            const g = Math.min(16, L / 3);
+            drawWire([{ x: c.x1, y: c.y1 }, { x: mx - ux * g, y: my - uy * g }], 0, phase);
+            drawWire([{ x: mx + ux * g, y: my + uy * g }, { x: c.x2, y: c.y2 }], 0, phase);
+            ctx.save(); ctx.translate(mx, my); ctx.rotate(ang);
+            ctx.fillStyle = LIGHT_WIRE; ctx.beginPath(); ctx.arc(-g, 0, 3.5, 0, 7); ctx.fill(); ctx.beginPath(); ctx.arc(g, 0, 3.5, 0, 7); ctx.fill();
+            ctx.strokeStyle = '#e06c75'; ctx.lineWidth = 3.5; ctx.beginPath(); ctx.moveTo(-g, 0); ctx.lineTo(g - 3, -14); ctx.stroke();
+            ctx.restore();
+        } else {
+            const halfBody = Math.min(20, L / 2 - 2);
+            const bs = { x: mx - ux * halfBody, y: my - uy * halfBody }, be = { x: mx + ux * halfBody, y: my + uy * halfBody };
+            drawWire([{ x: c.x1, y: c.y1 }, bs], I, phase);
+            drawWire([be, { x: c.x2, y: c.y2 }], I, phase);
+            ctx.save(); ctx.translate(mx, my);
+            if (c.type === 'battery') { ctx.rotate(ang); drawBatterySymbol(); }
+            else if (c.type === 'lamp') {
+                const b = bulbById(c.bulbId) || state.bulbs[0];
+                const Im = Math.abs(I), P = Im * Im * (c._elem ? c._elem.R : bulbR(b));
+                drawLamp(glowOf(P), Math.min(18, halfBody), b.color);
+            } else if (c.type === 'switch') {
+                ctx.rotate(ang);
+                ctx.fillStyle = LIGHT_WIRE; ctx.beginPath(); ctx.arc(-halfBody * 0.7, 0, 3.5, 0, 7); ctx.fill(); ctx.beginPath(); ctx.arc(halfBody * 0.7, 0, 3.5, 0, 7); ctx.fill();
+                ctx.strokeStyle = '#27ae60'; ctx.lineWidth = 3.5; ctx.beginPath(); ctx.moveTo(-halfBody * 0.7, 0); ctx.lineTo(halfBody * 0.7, 0); ctx.stroke();
+            }
+            ctx.restore();
+        }
+        if (c.type !== 'wire') editorLabel(c, mx, my);
+        if (editor.moving === c || editor.hoverComp === c) {
+            ctx.save(); ctx.strokeStyle = (editor.tool === 'delete') ? '#e06c75' : '#61afef'; ctx.lineWidth = 2; ctx.setLineDash([4, 3]);
+            ctx.beginPath(); ctx.moveTo(c.x1, c.y1); ctx.lineTo(c.x2, c.y2); ctx.stroke(); ctx.restore();
+        }
+    }
+    function drawGhost() {
+        if (!editor.placing) return;
+        const p = editor.placing;
+        ctx.save(); ctx.strokeStyle = '#61afef'; ctx.lineWidth = 3; ctx.setLineDash([6, 4]);
+        ctx.beginPath(); ctx.moveTo(p.x1, p.y1); ctx.lineTo(p.x2, p.y2); ctx.stroke(); ctx.restore();
+        [[p.x1, p.y1], [p.x2, p.y2]].forEach(([px, py]) => {
+            ctx.fillStyle = editorConnectsAt(px, py) ? '#2ecc71' : '#61afef';
+            ctx.beginPath(); ctx.arc(px, py, 4, 0, Math.PI * 2); ctx.fill();
+        });
+    }
+    function drawHover() {
+        if (editor.placing || !editor.hoverPt || !PLACEMENT_TOOLS.includes(editor.tool)) return;
+        const connects = editorConnectsAt(editor.hoverPt.x, editor.hoverPt.y);
+        const col = connects ? '#2ecc71' : '#61afef';
+        ctx.save(); ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.setLineDash([3, 3]);
+        ctx.beginPath(); ctx.arc(editor.hoverPt.x, editor.hoverPt.y, 8, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+        ctx.fillStyle = col; ctx.beginPath(); ctx.arc(editor.hoverPt.x, editor.hoverPt.y, 3, 0, Math.PI * 2); ctx.fill();
+    }
+    function drawEditor(phase) {
+        editorDrawGrid();
+        if (editor.components.length === 0) label('選擇工具並在格點放置元件，或按「📋 範本」', cssW / 2, cssH / 2, 'rgba(207,216,223,0.6)', 15);
+        editor.components.forEach(c => drawEditorComp(c, phase));
+        const cnt = new Map();
+        editor.components.forEach(c => { [[c.x1, c.y1], [c.x2, c.y2]].forEach(([x, y]) => { const k = x + ',' + y; cnt.set(k, (cnt.get(k) || 0) + 1); }); });
+        cnt.forEach((n, k) => { if (n >= 3) { const [x, y] = k.split(',').map(Number); ctx.fillStyle = LIGHT_WIRE; ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill(); } });
+        drawGhost(); drawHover();
+    }
+
+    let startT = performance.now();
+    function frame(now) {
+        const phase = (now - startT) / 1000;
+        ctx.clearRect(0, 0, cssW, cssH);
+        if (!sim) { requestAnimationFrame(frame); return; }
+        if (state.view === 'compare') {
+            const halfW = cssW / 2, titleY = 22;
+            label('並聯 Parallel', halfW * 0.5, titleY, TXT, 17);
+            label('串聯 Series', halfW + halfW * 0.5, titleY, TXT, 17);
+            ctx.strokeStyle = 'rgba(154,167,178,0.18)'; ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.moveTo(halfW, 40); ctx.lineTo(halfW, cssH - 12); ctx.stroke();
+            const cTop = 40, cH = cssH - 52;
+            drawParallelCircuit(0, cTop, halfW, cH, phase, 20);
+            drawSeriesCircuit(halfW, cTop, halfW, cH, phase, 20);
+        } else if (state.view === 'parallel') {
+            label('並聯 Parallel', cssW / 2, 24, TXT, 19);
+            drawParallelCircuit(0, 44, cssW, cssH - 56, phase, 34);
+        } else if (state.view === 'series') {
+            label('串聯 Series', cssW / 2, 24, TXT, 19);
+            drawSeriesCircuit(0, 44, cssW, cssH - 56, phase, 34);
+        } else if (state.view === 'custom') {
+            drawEditor(phase);
+        }
+        requestAnimationFrame(frame);
+    }
+
+    /* ============================================================
+       面板更新
+       ============================================================ */
+    const fmt = (v, d) => Number(v).toFixed(d === undefined ? 2 : d);
+    function tableHTML(title, rows) {
+        const head = `<thead><tr><th>燈泡</th><th>${tex('R\\,(\\Omega)')}</th><th>${tex('V')}</th><th>${tex('I')}</th><th>${tex('P_{actual}')}</th></tr></thead>`;
+        return `<div class="data-circuit"><h4>${title}</h4><table class="data-table">${head}<tbody>${rows}</tbody></table></div>`;
+    }
+    function rowHTML(b, s, isBright) {
+        return `<tr><td style="color:${b.color}">${b.id}${isBright ? ' <span class="bright-tag">✦亮</span>' : ''}</td>
+            <td>${fmt(s.R, 1)}</td><td>${fmt(s.V)}</td><td>${fmt(s.I, 3)}</td><td>${fmt(s.P, 2)}</td></tr>`;
+    }
+    function buildDataPanel() {
+        const area = document.getElementById('dataArea');
+        const A = state.bulbs[0], B = state.bulbs[1];
+        let html = '';
+        if (state.view === 'parallel' || state.view === 'compare')
+            html += tableHTML('並聯 Parallel', rowHTML(A, sim.par.A, sim.par.bright === 'A') + rowHTML(B, sim.par.B, sim.par.bright === 'B'));
+        if (state.view === 'series' || state.view === 'compare')
+            html += tableHTML('串聯 Series', rowHTML(A, sim.ser.A, sim.ser.bright === 'A') + rowHTML(B, sim.ser.B, sim.ser.bright === 'B'));
+        if (state.view === 'custom') {
+            if (sim.custom.lampStats.length === 0) html += '<p class="hint">尚未放置燈泡。用「💡 燈泡」工具在格點放置。</p>';
+            else {
+                const maxP = Math.max(...sim.custom.lampStats.map(s => s.P), 1e-9);
+                const rows = sim.custom.lampStats.map((s, i) => rowHTML({ id: `${s.bulbId}#${i + 1}`, color: s.color }, s, s.P >= maxP - 1e-6 && s.P > 0)).join('');
+                html += tableHTML('自訂電路', rows);
+            }
+        }
+        area.innerHTML = html;
+    }
+    function energyBlockHTML(title, parts, Ptot) {
+        const segs = parts.map(p => {
+            const w = Ptot > 0 ? (p.P / Ptot * 100) : 0;
+            return `<div class="energy-seg" style="width:${w}%;background:${p.color};">${p.label} ${fmt(p.P, 1)}W</div>`;
+        }).join('');
+        const sumExpr = parts.length ? parts.map(p => fmt(p.P)).join(' + ') : '0';
+        return `<div class="energy-block"><div class="e-label"><span>${title}</span><span>${tex('P_{total}')} = ${fmt(Ptot)} W</span></div>
+            <div class="energy-bar">${segs}</div>
+            <div class="conserve-note">${sumExpr} = ${fmt(Ptot)} W ✓</div></div>`;
+    }
+    function buildEnergyPanel() {
+        const area = document.getElementById('energyArea');
+        const A = state.bulbs[0], B = state.bulbs[1];
+        let html = '';
+        if (state.view === 'parallel' || state.view === 'compare')
+            html += energyBlockHTML('並聯', [{ label: A.id, P: sim.par.A.P, color: A.color }, { label: B.id, P: sim.par.B.P, color: B.color }], sim.par.A.P + sim.par.B.P);
+        if (state.view === 'series' || state.view === 'compare')
+            html += energyBlockHTML('串聯', [{ label: A.id, P: sim.ser.A.P, color: A.color }, { label: B.id, P: sim.ser.B.P, color: B.color }], sim.ser.A.P + sim.ser.B.P);
+        if (state.view === 'custom') {
+            if (sim.custom.lampStats.length === 0) html += '<p class="hint">尚未放置燈泡。</p>';
+            else html += energyBlockHTML('自訂', sim.custom.lampStats.map((s, i) => ({ label: `${s.bulbId}#${i + 1}`, P: s.P, color: s.color })), sim.custom.Ptot);
+        }
+        area.innerHTML = html;
+    }
+    function buildTheory() {
+        const tb = document.getElementById('theoryBox');
+        const bn = (w) => w === 'tie' ? '兩燈一樣亮' : w + ' 較亮';
+        tb.innerHTML = `
+            <div style="margin-bottom:8px;"><b>並聯（電壓相同）</b>：用 ${tex('P = \\dfrac{V^2}{R}')}，電阻小者較亮。
+            目前 ${tex('R_A=' + fmt(sim.Ra, 0) + '\\,\\Omega')}、${tex('R_B=' + fmt(sim.Rb, 0) + '\\,\\Omega')} → <b>${bn(sim.par.bright)}</b>。</div>
+            <div><b>串聯（電流相同）</b>：用 ${tex('P = I^2 R')}，電阻大者較亮。 → <b>${bn(sim.ser.bright)}</b>。</div>
+            <div style="margin-top:8px;color:#8a93a3;font-size:0.8rem;">💡 同一對燈泡，並聯與串聯時「較亮者」往往相反——這正是 DSE 常見的反直覺考點。</div>`;
+    }
+    function updateAll() {
+        recompute();
+        renderBulbCalcs();
+        buildDataPanel();
+        buildEnergyPanel();
+        buildTheory();
+        refreshPredictionUI();
+    }
+
+    /* ============================================================
+       燈泡卡片（動態）
+       ============================================================ */
+    const bulbList = document.getElementById('bulbList');
+    const calcEls = {};
+    function presetOptionsHTML(b) {
+        const cur = `${b.Vr},${b.Pr}`;
+        let match = PRESETS.some(p => p[0] === cur);
+        let opts = PRESETS.map(p => `<option value="${p[0]}" ${p[0] === cur ? 'selected' : ''}>${p[1]}</option>`).join('');
+        opts += `<option value="custom" ${match ? '' : 'selected'}>自訂…</option>`;
+        return opts;
+    }
+    function updateOneCalc(b) { ktx(calcEls[b.id], `R=\\frac{V^2}{P}=\\frac{${b.Vr}^2}{${b.Pr}}=${fmt(bulbR(b), 1)}\\,\\Omega`); }
+    function renderBulbCalcs() { state.bulbs.forEach(updateOneCalc); }
+    function addBulbCard(b) {
+        const isFixed = (b.id === 'A' || b.id === 'B');
+        const card = document.createElement('div');
+        card.className = 'bulb-card'; card.dataset.id = b.id; card.style.borderLeftColor = b.color;
+        card.innerHTML = `
+            <div class="bc-head">
+                <span class="bc-dot" style="background:${b.color};color:${b.color}"></span>
+                <span class="bc-id" style="color:${b.color}">燈泡 ${b.id}</span>
+                <button class="bc-rm" ${isFixed ? 'disabled title="A、B 為固定燈泡"' : ''}>✕</button>
+            </div>
+            <select class="bc-preset">${presetOptionsHTML(b)}</select>
+            <div class="bc-custom hidden">
+                <label>額定電壓 <span data-tex="V_{rated}"></span> (V)</label>
+                <div class="row-inline"><input type="range" class="bc-vr" min="6" max="250" step="1" value="${b.Vr}"><input type="number" class="num bc-vrn" min="1" max="400" value="${b.Vr}"></div>
+                <label>額定功率 <span data-tex="P_{rated}"></span> (W)</label>
+                <div class="row-inline"><input type="range" class="bc-pr" min="1" max="150" step="1" value="${b.Pr}"><input type="number" class="num bc-prn" min="1" max="500" value="${b.Pr}"></div>
+            </div>
+            <div class="calc-line bc-calc"></div>`;
+        bulbList.appendChild(card);
+        calcEls[b.id] = card.querySelector('.bc-calc');
+        renderTexIn(card);
+        const preset = card.querySelector('.bc-preset'), custom = card.querySelector('.bc-custom');
+        const vr = card.querySelector('.bc-vr'), vrn = card.querySelector('.bc-vrn');
+        const pr = card.querySelector('.bc-pr'), prn = card.querySelector('.bc-prn');
+        if (preset.value === 'custom') custom.classList.remove('hidden');
+        function applyCustom() {
+            b.Vr = clamp(+vr.value, 1, 400); b.Pr = clamp(+pr.value, 1, 500);
+            vrn.value = vr.value; prn.value = pr.value;
+            resetPrediction(); updateOneCalc(b); updateAll();
+        }
+        preset.addEventListener('change', () => {
+            if (preset.value === 'custom') { custom.classList.remove('hidden'); vr.value = b.Vr; vrn.value = b.Vr; pr.value = b.Pr; prn.value = b.Pr; }
+            else { custom.classList.add('hidden'); const [v, p] = preset.value.split(',').map(Number); b.Vr = v; b.Pr = p; resetPrediction(); updateAll(); }
+        });
+        vr.addEventListener('input', applyCustom);
+        pr.addEventListener('input', applyCustom);
+        vrn.addEventListener('input', () => { vr.value = vrn.value; applyCustom(); });
+        prn.addEventListener('input', () => { pr.value = prn.value; applyCustom(); });
+        card.querySelector('.bc-rm').addEventListener('click', () => { if (!isFixed) removeBulb(b.id); });
+    }
+    function renderAllBulbCards() { bulbList.innerHTML = ''; for (const k in calcEls) delete calcEls[k]; state.bulbs.forEach(addBulbCard); }
+
+    const lampChips = document.getElementById('lampChips');
+    function renderLampPicker() {
+        lampChips.innerHTML = state.bulbs.map(b => `<button class="chip ${b.id === editor.activeBulb ? 'chip-active' : ''}" data-id="${b.id}" style="--c:${b.color}">${b.id}</button>`).join('');
+        lampChips.querySelectorAll('.chip').forEach(ch => ch.addEventListener('click', () => {
+            editor.activeBulb = ch.dataset.id; editor.tool = 'lamp';
+            document.querySelectorAll('#toolGrid button').forEach(x => x.classList.toggle('tool-active', x.dataset.tool === 'lamp'));
+            editorUpdateCursor(); renderLampPicker();
+        }));
+    }
+    function addBulb() {
+        const used = new Set(state.bulbs.map(b => b.id));
+        let code = 67; while (used.has(String.fromCharCode(code))) code++;
+        const id = String.fromCharCode(code);
+        const b = { id, Vr: 220, Pr: 100, color: COLORS[state.bulbs.length % COLORS.length] };
+        state.bulbs.push(b); addBulbCard(b); renderLampPicker(); updateAll();
+    }
+    function removeBulb(id) {
+        state.bulbs = state.bulbs.filter(b => b.id !== id);
+        editor.components = editor.components.filter(c => !(c.type === 'lamp' && c.bulbId === id));
+        if (editor.activeBulb === id) editor.activeBulb = state.bulbs[0].id;
+        const card = bulbList.querySelector(`.bulb-card[data-id="${id}"]`); if (card) card.remove();
+        delete calcEls[id]; renderLampPicker(); updateAll();
+    }
+
+    /* ============================================================
+       顯示模式
+       ============================================================ */
+    function editorUpdateCursor() {
+        if (state.view !== 'custom') { canvas.style.cursor = 'default'; return; }
+        canvas.style.cursor = editor.tool === 'select' ? 'grab' : editor.tool === 'delete' ? 'pointer' : 'crosshair';
+    }
+    function setView(v) {
+        state.view = v;
+        document.querySelectorAll('#viewSeg button').forEach(btn => btn.classList.toggle('active', btn.dataset.view === v));
+        document.getElementById('customControls').classList.toggle('hidden', v !== 'custom');
+        document.getElementById('predGroup').classList.toggle('hidden', v === 'custom');
+        if (v === 'custom' && editor.components.length === 0) editorLoadTemplate();
+        editorUpdateCursor();
+        updateAll();
+    }
+    document.querySelectorAll('#viewSeg button').forEach(btn => btn.addEventListener('click', () => setView(btn.dataset.view)));
+    document.querySelectorAll('#toolGrid button').forEach(btn => btn.addEventListener('click', () => {
+        editor.tool = btn.dataset.tool;
+        document.querySelectorAll('#toolGrid button').forEach(x => x.classList.toggle('tool-active', x === btn));
+        editorUpdateCursor();
+    }));
+    document.getElementById('loadTemplate').addEventListener('click', () => { editorLoadTemplate(); updateAll(); });
+    document.getElementById('clearEditor').addEventListener('click', () => { editor.components = []; editor.nextId = 1; updateAll(); });
+    document.getElementById('addBulb').addEventListener('click', addBulb);
+
+    /* ============================================================
+       電源輸入
+       ============================================================ */
+    const vs = document.getElementById('vs'), vsnum = document.getElementById('vsnum');
+    const rint = document.getElementById('rint'), rintnum = document.getElementById('rintnum');
+    function applyVs() { state.Vs = clamp(+vs.value, 0, 400); vsnum.value = vs.value; resetPrediction(); updateAll(); }
+    function applyR() { state.rInt = clamp(+rint.value, 0, 200); rintnum.value = rint.value; resetPrediction(); updateAll(); }
+    vs.addEventListener('input', applyVs);
+    vsnum.addEventListener('input', () => { vs.value = vsnum.value; applyVs(); });
+    rint.addEventListener('input', applyR);
+    rintnum.addEventListener('input', () => { rint.value = rintnum.value; applyR(); });
+
+    /* ============================================================
+       畫布互動（自訂模式 = 編輯器）
+       ============================================================ */
+    function canvasPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        const t = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]);
+        const cx = t ? t.clientX : e.clientX, cy = t ? t.clientY : e.clientY;
+        return { x: cx - rect.left, y: cy - rect.top };
+    }
+    function editorComponentAt(x, y) {
+        for (let i = editor.components.length - 1; i >= 0; i--) {
+            const c = editor.components[i];
+            if (distToSegment(x, y, c.x1, c.y1, c.x2, c.y2) < 14) return c;
+        }
+        return null;
+    }
+    function editorHandleDown(x, y) {
+        const snap = editorSnapPoint(x, y);
+        if (editor.tool === 'select') {
+            const c = editorComponentAt(x, y);
+            if (c) {
+                if (c.type === 'switch') { c.closed = !c.closed; updateAll(); return; }
+                editor.moving = c; editor.moveDX = x - (c.x1 + c.x2) / 2; editor.moveDY = y - (c.y1 + c.y2) / 2;
+            }
+            return;
+        }
+        if (editor.tool === 'delete') {
+            const c = editorComponentAt(x, y);
+            if (c) { editor.components = editor.components.filter(k => k !== c); updateAll(); }
+            return;
+        }
+        editor.placing = { type: editor.tool, x1: snap.x, y1: snap.y, x2: snap.x, y2: snap.y };
+    }
+    function editorHandleMove(x, y) {
+        editor.hoverPt = editorSnapPoint(x, y);
+        editor.hoverComp = (editor.tool === 'select' || editor.tool === 'delete') ? editorComponentAt(x, y) : null;
+        if (editor.moving) {
+            const c = editor.moving;
+            const cx = eSnap(x - editor.moveDX), cy = eSnap(y - editor.moveDY);
+            const ox = cx - (c.x1 + c.x2) / 2, oy = cy - (c.y1 + c.y2) / 2;
+            c.x1 += ox; c.y1 += oy; c.x2 += ox; c.y2 += oy; updateAll(); return;
+        }
+        if (editor.placing) { const s = editorSnapPoint(x, y); editor.placing.x2 = s.x; editor.placing.y2 = s.y; }
+    }
+    function editorHandleUp() {
+        if (editor.moving) { const m = editor.moving; editor.moving = null; editorSplitWiresAround(m); editorRemoveOverlaps(m); updateAll(); }
+        if (editor.placing) {
+            const p = editor.placing; editor.placing = null;
+            const len = Math.hypot(p.x2 - p.x1, p.y2 - p.y1);
+            if (len < GRID * 0.5) {
+                if (p.type === 'wire') return;
+                p.x2 = (p.x1 + GRID * 2 <= cssW - 10) ? p.x1 + GRID * 2 : p.x1 - GRID * 2; p.y2 = p.y1;
+            }
+            const c = editorAddComponent(p.type, p.x1, p.y1, p.x2, p.y2);
+            editorSplitWiresAround(c); editorRemoveOverlaps(c); updateAll();
+        }
+    }
+    canvas.addEventListener('pointerdown', e => { if (state.view !== 'custom') return; editorHandleDown(canvasPos(e).x, canvasPos(e).y); e.preventDefault(); });
+    canvas.addEventListener('pointermove', e => { if (state.view !== 'custom') return; const p = canvasPos(e); editorHandleMove(p.x, p.y); if (editor.moving || editor.placing) e.preventDefault(); });
+    window.addEventListener('pointerup', () => { if (state.view !== 'custom') return; editorHandleUp(); });
+
+    /* ============================================================
+       預測挑戰
+       ============================================================ */
+    function resetPrediction() { state.prediction = { parallel: null, series: null, submitted: false }; }
+    function refreshPredictionUI() {
+        document.querySelectorAll('.choice-btn').forEach(btn => {
+            btn.classList.remove('sel', 'correct', 'wrong');
+            const q = btn.dataset.q, v = btn.dataset.v;
+            if (state.prediction[q] === v) btn.classList.add('sel');
+            if (state.prediction.submitted) {
+                const ans = sim[q === 'parallel' ? 'par' : 'ser'].bright;
+                if (v === ans) btn.classList.add('correct');
+                else if (state.prediction[q] === v) btn.classList.add('wrong');
+            }
+        });
+        if (!state.prediction.submitted) document.getElementById('predResult').classList.remove('show');
+    }
+    document.querySelectorAll('.choice-btn').forEach(btn => {
+        btn.addEventListener('click', () => { if (state.prediction.submitted) return; state.prediction[btn.dataset.q] = btn.dataset.v; refreshPredictionUI(); });
+    });
+    document.getElementById('submitPred').addEventListener('click', () => {
+        const p = state.prediction, res = document.getElementById('predResult');
+        if (!p.parallel || !p.series) { res.className = 'pred-result show no'; res.innerHTML = '請先為兩條問題各選一個答案。'; return; }
+        p.submitted = true;
+        const ansP = sim.par.bright, ansS = sim.ser.bright;
+        const okP = p.parallel === ansP, okS = p.series === ansS;
+        const t = (w) => w === 'tie' ? '兩燈一樣亮' : `${w} 較亮`;
+        res.className = 'pred-result show ' + (okP && okS ? 'ok' : 'no');
+        res.innerHTML = `
+            <div>並聯：你選「${t(p.parallel)}」，正解「${t(ansP)}」 ${okP ? '✅' : '❌'}<br>
+            <span style="opacity:0.85">電壓相同 → ${tex('P=\\frac{V^2}{R}')}，電阻小者（額定功率大者）較亮。</span></div>
+            <div style="margin-top:6px;">串聯：你選「${t(p.series)}」，正解「${t(ansS)}」 ${okS ? '✅' : '❌'}<br>
+            <span style="opacity:0.85">電流相同 → ${tex('P=I^2R')}，電阻大者（額定功率小者）較亮。</span></div>
+            ${(okP && okS) ? '<div style="margin-top:6px;font-weight:700;">🎉 全對！你已掌握公式選擇。</div>'
+                : '<div style="margin-top:6px;">再想想：同一對燈泡，串聯與並聯的「較亮者」常常相反。</div>'}`;
+        refreshPredictionUI();
+    });
+    document.getElementById('resetPred').addEventListener('click', () => { resetPrediction(); document.getElementById('predResult').classList.remove('show'); refreshPredictionUI(); });
+
+    /* ============================================================
+       初始化
+       ============================================================ */
+    function init() {
+        renderTexIn(document);
+        renderAllBulbCards();
+        renderLampPicker();
+        resize();
+        setView('compare');
+        requestAnimationFrame(frame);
+    }
+    init();
+    window.addEventListener('load', () => { renderTexIn(document); updateAll(); });
+
+    /* ============================================================
+       自驗測試（主控台）
+       ============================================================ */
+    (function selfTest() {
+        const approx = (a, b, t) => Math.abs(a - b) <= (t || 0.01) * Math.max(1, Math.abs(b));
+        const st = (e) => { const I = Math.abs(e.curr); return { I, P: I * I * e.R }; };
+        const Ra = 220 * 220 / 60, Rb = 220 * 220 / 40;
+
+        const par = buildParallel(Ra, Rb, 220, 0), pa = st(par.eA), pb = st(par.eB);
+        console.assert(approx(pa.P, 60) && approx(pb.P, 40), '並聯 A≈60W、B≈40W');
+        console.assert(pa.P > pb.P, '並聯 60W(A) 較亮');
+        const ser = buildSeries(Ra, Rb, 220, 0), ta = st(ser.eA), tb = st(ser.eB);
+        console.assert(approx(ta.I, tb.I), '串聯兩燈電流相同');
+        console.assert(tb.P > ta.P, '串聯 40W(B) 較亮（反直覺）');
+        console.assert(approx(pa.P + pb.P, 220 * Math.abs(par.eBat.curr)), '並聯能量守恆');
+        console.assert(approx(ta.P + tb.P, 220 * Math.abs(ser.eBat.curr)), '串聯能量守恆');
+
+        // 編輯器：暫存當前電路 → 測純並聯 / 純串聯 → 還原
+        const save = editor.components, saveId = editor.nextId;
+        const mk = (type, x1, y1, x2, y2, bulbId) => ({ id: 0, type, x1, y1, x2, y2, closed: true, bulbId: bulbId || null, _elem: null, n1: 0, n2: 0, _cur: 0 });
+        const lampP = (cs, id) => { const c = cs.find(k => k.type === 'lamp' && k.bulbId === id); return st(c._elem); };
+
+        // 純並聯：電池 + A、B 各跨兩 rail
+        editor.components = [
+            mk('battery', 100, 100, 100, 300),
+            mk('wire', 100, 100, 300, 100), mk('wire', 100, 300, 300, 300),
+            mk('lamp', 300, 100, 300, 300, 'A'),
+            mk('wire', 300, 100, 500, 100), mk('wire', 300, 300, 500, 300),
+            mk('lamp', 500, 100, 500, 300, 'B')
+        ];
+        editorSolve();
+        console.assert(approx(lampP(editor.components, 'A').P, 60) && approx(lampP(editor.components, 'B').P, 40), '編輯器純並聯 = 並聯公式');
+
+        // 純串聯：電池 → A → B → 回路
+        editor.components = [
+            mk('battery', 100, 100, 100, 300),
+            mk('wire', 100, 100, 200, 100),
+            mk('lamp', 200, 100, 400, 100, 'A'),
+            mk('lamp', 400, 100, 600, 100, 'B'),
+            mk('wire', 600, 100, 600, 300), mk('wire', 600, 300, 100, 300)
+        ];
+        editorSolve();
+        const sa = lampP(editor.components, 'A'), sb = lampP(editor.components, 'B');
+        console.assert(approx(sa.I, sb.I), '編輯器純串聯：兩燈電流相同');
+        console.assert(sb.P > sa.P, '編輯器純串聯：40W(B) 較亮');
+        const bat = editor.components.find(c => c.type === 'battery');
+        console.assert(approx(sa.P + sb.P, 220 * Math.abs(editorThrough(bat))), '編輯器串聯能量守恆');
+
+        editor.components = save; editor.nextId = saveId; // 還原
+        console.log('%c電功率與亮度模擬器：自驗測試完成（如無紅色 assert 即全部通過）', 'color:#16a085;font-weight:bold');
+    })();
+    </script>
+</body>
+</html>

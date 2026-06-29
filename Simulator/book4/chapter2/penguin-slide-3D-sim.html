@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>企鵝滑梯：電勢能轉換類比實驗室</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+
+    <style>
+        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; background-color: #ebf4fa; color: #ffffff; }
+
+        #canvas-container { position: absolute; top: 0; left: 0; width: 65%; height: 100vh; overflow: hidden; transition: width 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); }
+        #canvas-container canvas#scene-canvas { width: 100% !important; height: 100% !important; display: block; outline: none; }
+
+        #ui-panel {
+            position: absolute; top: 0; right: 0; width: 35%; height: 100vh;
+            background-color: #0d1117; border-left: 1px solid #1a2332; padding: 25px; box-sizing: border-box;
+            display: flex; flex-direction: column; overflow-y: auto; box-shadow: -10px 0 40px rgba(0,0,0,0.8); z-index: 10;
+            transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        body.panel-collapsed #ui-panel { transform: translateX(100%); }
+        body.panel-collapsed #canvas-container { width: 100%; }
+
+        #toggle-panel-btn {
+            position: absolute; top: 20px; right: calc(35% + 20px); z-index: 100;
+            background: #161b22; color: #00ccff; border: 2px solid #00ccff;
+            padding: 10px 18px; border-radius: 8px; font-weight: bold; font-size: 0.95rem;
+            cursor: pointer; box-shadow: 0 4px 20px rgba(0,204,255,0.4);
+            transition: right 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), background 0.2s, color 0.2s;
+            display: flex; align-items: center; gap: 8px;
+        }
+        #toggle-panel-btn:hover { background: #00ccff; color: #0d1117; }
+        body.panel-collapsed #toggle-panel-btn { right: 20px; background: #ffcc00; color: #0d1117; border-color: #ffcc00; box-shadow: 0 4px 20px rgba(255,204,0,0.4); }
+
+        h2 { color: #00ccff; margin-top: 0; font-size: 1.5rem; border-bottom: 2px solid #1f2937; padding-bottom: 10px; text-shadow: 0 0 10px rgba(0,204,255,0.5); }
+        h3 { color: #ffcc00; font-size: 1.05rem; margin: 6px 0 12px; }
+        .control-group { background: #161b22; padding: 18px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #1f2937; border-left: 4px solid #00ccff; }
+        .analogy-group { border-left-color: #ffcc00; }
+        label { display: flex; justify-content: space-between; margin-bottom: 8px; font-weight: bold; font-size: 0.95rem; color: #c9d1d9; align-items: center;}
+        input[type="range"] { width: 100%; margin-bottom: 15px; -webkit-appearance: none; background: transparent; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 20px; width: 20px; border-radius: 50%; background: #00ccff; cursor: pointer; margin-top: -7px; box-shadow: 0 0 15px rgba(0,204,255,0.8); }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 6px; cursor: pointer; background: #30363d; border-radius: 3px; }
+        input[type=range].r-slider::-webkit-slider-thumb { background: #ffcc00; box-shadow: 0 0 15px rgba(255,204,0,0.8); }
+        .btn-group { display: flex; justify-content: space-between; margin-bottom: 15px; gap: 8px;}
+        .btn { flex: 1; background: #21262d; color: #ffffff; border: 1px solid #30363d; padding: 10px; cursor: pointer; border-radius: 5px; font-weight: bold; transition: all 0.2s; font-size: 0.85rem;}
+        .btn:hover { background: #30363d; }
+        .btn.active { background: #00ccff; color: #0d1117; border-color: #00ccff; box-shadow: 0 0 15px rgba(0, 204, 255, 0.6); }
+        .btn-small { flex: none; width: 40px; padding: 5px 0; font-size: 1.2rem; }
+
+        #mode-controls .btn.active { background: #ff8a3d; color: #0d1117; border-color: #ff8a3d; box-shadow: 0 0 15px rgba(255,138,61,0.6); }
+        #speed-controls .btn.active { background: #ffcc00; color: #0d1117; border-color: #ffcc00; box-shadow: 0 0 15px rgba(255, 204, 0, 0.6); }
+
+        .load-row { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+        .load-row .swatch { width: 14px; height: 14px; border-radius: 50%; flex: none; box-shadow: 0 0 8px currentColor; }
+        .load-row input[type="range"] { margin-bottom: 0; }
+
+        .meter-readout { display: flex; justify-content: space-between; background: #0d1117; padding: 12px; border: 1px solid #30363d; border-radius: 10px; font-family: 'JetBrains Mono', Courier, monospace; font-size: 1.05rem; color: #39ff14; margin-bottom: 8px; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); }
+        .readout-box { display: flex; flex-direction: column; align-items: center; width: 48%; }
+        .readout-label { font-size: 0.75rem; color: #8b949e; margin-bottom: 5px; font-weight: bold; text-align: center;}
+        .load-meters { display: flex; flex-direction: column; gap: 6px; }
+        .load-meter { display: flex; justify-content: space-between; align-items: center; background: #0d1117; padding: 8px 12px; border: 1px solid #30363d; border-radius: 8px; font-family: 'JetBrains Mono', Courier, monospace; font-size: 0.88rem; }
+        .load-meter .lm-name { display: flex; align-items: center; gap: 8px; color: #c9d1d9; }
+        .load-meter .lm-name .swatch { width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 8px currentColor; }
+
+        .probe-group { border-left-color: #39ff14; }
+        .probe-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 0.9rem; color: #c9d1d9; font-weight: bold; }
+        .probe-row select { flex: 1; background: #0d1117; color: #fff; border: 1px solid #30363d; border-radius: 6px; padding: 6px; font-size: 0.85rem; }
+        .dot { width: 14px; height: 14px; border-radius: 50%; flex: none; }
+        .dot.red { background: #ff2a55; box-shadow: 0 0 8px #ff2a55; }
+        .dot.black { background: #111; border: 1px solid #888; }
+        .note { font-size: 0.8rem; color: #8b949e; line-height: 1.6; margin-top: 6px; }
+
+        .theory-box { background: rgba(255, 204, 0, 0.15); color: #ffcc00; padding: 15px; border-radius: 10px; font-size: 0.9rem; line-height: 1.7; border: 1px solid rgba(255, 204, 0, 0.5); margin-top: 10px; text-shadow: 0 0 5px rgba(255,204,0,0.2);}
+        .highlight { color: #00ccff; font-weight: bold; text-shadow: 0 0 8px rgba(0,204,255,0.6); }
+        .overlay-text { position: absolute; top: 15px; left: 15px; color: #ffffff; pointer-events: none; background: rgba(13, 17, 23, 0.9); padding: 15px; border-radius: 8px; border: 1px solid #30363d; font-size: 0.9rem; z-index: 5; line-height: 1.6; box-shadow: 0 4px 20px rgba(0,0,0,0.4); max-width: 360px; }
+
+        #potential-graph {
+            position: absolute; right: 15px; bottom: 15px; z-index: 6;
+            background: rgba(13, 17, 23, 0.88); border: 1px solid #30363d; border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 768px) {
+            body { overflow-y: auto; }
+            #canvas-container { position: relative; width: 100% !important; height: 70vw; min-height: 280px; max-height: 70vh; }
+            #ui-panel {
+                position: relative; width: 100% !important; height: auto; transform: none !important;
+                box-shadow: none; border-left: none; border-top: 2px solid #1a2332; max-height: none; overflow-y: visible;
+            }
+            #toggle-panel-btn { display: none; }
+            .overlay-text { font-size: 0.72rem; padding: 8px; max-width: 60vw; }
+            #potential-graph { right: 8px; bottom: 8px; }
+        }
+        @media (min-width: 769px) and (max-width: 1024px) {
+            #canvas-container { width: 55% !important; }
+            #ui-panel { width: 45% !important; }
+            #toggle-panel-btn { right: calc(45% + 15px); }
+            body:not(.panel-collapsed) #toggle-panel-btn { right: calc(45% + 15px); }
+        }
+    </style>
+    <!-- sim3d-load-guard: three.js 載入失敗提示 -->
+    <script>
+      window.addEventListener('DOMContentLoaded', function () {
+        if (typeof THREE === 'undefined' || typeof THREE.OrbitControls === 'undefined') {
+          var o = document.createElement('div');
+          o.id = 'sim3d-load-error';
+          o.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;background:#0f172a;color:#fff;font-family:system-ui,\'Noto Sans HK\',sans-serif;font-size:18px;line-height:1.7';
+          o.innerHTML = '⚠️ 無法載入 3D 元件（three.js）<br>請檢查網路連線後重新整理頁面。';
+          document.body.appendChild(o);
+        }
+      });
+    </script>
+</head>
+<body>
+
+    <button id="toggle-panel-btn">👁️ 隱藏控制面板</button>
+
+    <div id="canvas-container">
+        <div class="overlay-text">
+            <strong>🐧 視覺對應指南：</strong><br>
+            🛗 <span style="color:#00ccff">電梯 = 電池</span>：抬升企鵝（電荷），賦予電勢能（電壓 ε）。<br>
+            🎢 <span style="color:#ffcc00">滑梯 = 負荷（燈泡）</span>：企鵝滑下損失高度（電壓降 ΔV），轉化為光與熱；越陡＝功率越大＝越亮。<br>
+            📏 <span style="color:#39ff14">左側電勢標尺</span>：每個高度＝一個「電勢 V」（相對負極 0V）。<br>
+            🔌 用<strong>電壓表探針</strong>選兩點：看各點電勢，及兩點之差「電勢差 ΔV」。
+        </div>
+        <canvas id="scene-canvas"></canvas>
+        <canvas id="potential-graph" width="370" height="230"></canvas>
+    </div>
+
+    <div id="ui-panel">
+        <h2>🐧 企鵝滑梯實驗室</h2>
+
+        <div class="btn-group" id="mode-controls">
+            <button class="btn active" data-mode="series">串聯 (Series)</button>
+            <button class="btn" data-mode="parallel">並聯 (Parallel)</button>
+        </div>
+
+        <div class="control-group">
+            <label><span>🛗 電池電壓 ε（電梯高度）</span> <span id="val-emf" class="highlight">12.0 V</span></label>
+            <input type="range" id="slider-emf" min="2" max="24" step="0.5" value="12">
+
+            <label style="color:#ffcc00; border-top:1px solid #30363d; padding-top:12px;">
+                <span>🎢 滑梯（負荷）數量</span>
+                <span id="val-count" style="color:#ffcc00;">2 段</span>
+            </label>
+            <div class="btn-group" style="margin-bottom:0;">
+                <button class="btn btn-small" id="btn-remove">−</button>
+                <span style="flex:1; text-align:center; align-self:center; color:#8b949e; font-size:0.8rem;">加減負荷 (1–4)</span>
+                <button class="btn btn-small" id="btn-add">+</button>
+            </div>
+        </div>
+
+        <div class="control-group analogy-group">
+            <h3>🔧 各滑梯陡度（電阻 R）</h3>
+            <div id="load-sliders"></div>
+        </div>
+
+        <div class="control-group probe-group">
+            <h3 style="color:#39ff14;">🔌 電壓表（電勢 vs 電勢差）</h3>
+            <div class="probe-row"><span class="dot red"></span>紅筆 V₊ <select id="sel-red"></select></div>
+            <div class="probe-row"><span class="dot black"></span>黑筆 V₋ <select id="sel-black"></select></div>
+            <div class="meter-readout" style="color:#39ff14;">
+                <div class="readout-box"><span class="readout-label">紅筆電勢 V₊</span><span id="v-red">– V</span></div>
+                <div class="readout-box"><span class="readout-label">黑筆電勢 V₋</span><span id="v-black">– V</span></div>
+            </div>
+            <div class="meter-readout" style="color:#ffcc00;">
+                <div class="readout-box" style="width:100%;"><span class="readout-label">電勢差 ΔV = V₊ − V₋（＝電壓表讀數）</span><span id="v-diff" style="font-size:1.3rem;">– V</span></div>
+            </div>
+            <div class="note">「電勢」需指定參考點（負極 = 0V）才有意義；「電勢差」是兩點電勢之差，無論把 0V 設在哪裡都不變。</div>
+        </div>
+
+        <div class="control-group" style="padding-bottom: 10px;">
+            <label style="color: #00ccff; border-bottom: 1px solid #30363d; padding-bottom: 5px; margin-bottom: 12px;">⏱️ 動畫速度</label>
+            <div class="btn-group" id="speed-controls" style="margin-bottom: 12px;">
+                <button class="btn" data-speed="0.5">0.5x</button>
+                <button class="btn active" data-speed="1">1.0x</button>
+                <button class="btn" data-speed="2">2.0x</button>
+            </div>
+            <div class="btn-group" style="margin-bottom:0;">
+                <button class="btn" id="btn-pause">⏸ 暫停</button>
+                <button class="btn" id="btn-reset">↺ 重置</button>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <h3>📊 即時數據</h3>
+            <div class="meter-readout">
+                <div class="readout-box"><span class="readout-label">電源 ε</span><span id="m-emf" style="color:#00ccff;">12.00 V</span></div>
+                <div class="readout-box"><span class="readout-label">總電流 I</span><span id="m-current" style="color:#ff2a55;">0.00 A</span></div>
+            </div>
+            <div class="load-meters" id="load-meters"></div>
+        </div>
+
+        <div class="theory-box" id="theory-box"></div>
+    </div>
+
+<script>
+// ════════════════════════════════════════════════════════════════
+//  企鵝滑梯：電勢能轉換類比模擬器（串/並聯 + 電壓表探針）
+// ════════════════════════════════════════════════════════════════
+(function () {
+    if (typeof THREE === 'undefined' || typeof THREE.OrbitControls === 'undefined') return;
+
+    const LOAD_COLORS = [0xff5e5e, 0xffcc00, 0x39ff14, 0x00ccff];
+    const LOAD_COLORS_CSS = ['#ff5e5e', '#ffcc00', '#39ff14', '#00ccff'];
+
+    const P = {
+        emf: 12,
+        R: [3, 5],
+        mode: 'series',     // 'series' | 'parallel'
+        I: 0,               // 總電流
+        Vdrop: [],          // 各負荷電壓降
+        power: [],          // 各負荷功率
+        branchI: [],        // 各支路電流（並聯用）
+        speed: 1,
+        paused: false,
+        probeRedIdx: 0,     // 紅筆節點索引
+        probeBlackIdx: 999  // 黑筆（999 = 永遠取最後＝負極，直到使用者手動選）
+    };
+
+    const GEO = { baseY: -20, topY: 0, elevatorX: -34, topZ: 0, runLength: 60, unitVperWorld: 1.6 };
+
+    // ── Three.js ──
+    const container = document.getElementById('canvas-container');
+    const sceneCanvas = document.getElementById('scene-canvas');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xbfe3f5);
+    scene.fog = new THREE.Fog(0xbfe3f5, 140, 300);
+
+    const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+    camera.position.set(20, 32, 100);
+
+    const renderer = new THREE.WebGLRenderer({ canvas: sceneCanvas, antialias: true });
+    renderer.setSize(container.clientWidth, container.clientHeight, false);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.target.set(0, -2, 0);
+    controls.minDistance = 40;
+    controls.maxDistance = 220;
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.75));
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.85);
+    dirLight.position.set(-30, 60, 40);
+    dirLight.castShadow = true;
+    dirLight.shadow.mapSize.set(1024, 1024);
+    dirLight.shadow.camera.left = -90; dirLight.shadow.camera.right = 90;
+    dirLight.shadow.camera.top = 90; dirLight.shadow.camera.bottom = -90;
+    scene.add(dirLight);
+
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(500, 500), new THREE.MeshStandardMaterial({ color: 0xa9d6ec, roughness: 1 }));
+    ground.rotation.x = -Math.PI / 2; ground.position.y = GEO.baseY - 4; ground.receiveShadow = true;
+    scene.add(ground);
+
+    const trackGroup = new THREE.Group(); scene.add(trackGroup);
+    const probeGroup = new THREE.Group(); scene.add(probeGroup);
+
+    let elevatorCar = null;
+    let branches = [];          // [{segments,totalLen,current}]
+    let bulbs = [];             // [{grp,glass,light,halo,color,panelMat,loadIdx}]
+    let measureNodes = [];      // [{label,V,pos}]
+    const penguins = [];        // [{group,branchId,dist}]
+    const NUM_PENGUINS = 18;
+
+    const matMetal = new THREE.MeshStandardMaterial({ color: 0x4a5568, metalness: 0.6, roughness: 0.4 });
+    const matWire  = new THREE.MeshStandardMaterial({ color: 0x7f8c9b, metalness: 0.5, roughness: 0.5 });
+    matMetal.userData.shared = true; matWire.userData.shared = true;
+
+    const el = id => document.getElementById(id);
+    const clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
+    const vec = (x, y, z) => ({ x, y, z });
+    const dist3 = (a, b) => Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);
+    const heightToV = y => clamp((y - GEO.baseY) / GEO.unitVperWorld, 0, P.emf);
+
+    // ── 工具：清空 group（保留共用材質）──
+    function disposeGroup(g) {
+        g.traverse(o => {
+            if (o.geometry) o.geometry.dispose();
+            if (o.material) {
+                const ms = Array.isArray(o.material) ? o.material : [o.material];
+                ms.forEach(m => { if (m.map) m.map.dispose(); if (!m.userData || !m.userData.shared) m.dispose(); });
+            }
+        });
+        while (g.children.length) g.remove(g.children[0]);
+    }
+
+    // ── 圓柱連兩點（軌道）──
+    function tube(a, b, radius, material) {
+        const len = dist3(a, b) || 0.001;
+        const mesh = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, len, 12), material);
+        mesh.castShadow = true;
+        const dir = new THREE.Vector3(b.x - a.x, b.y - a.y, b.z - a.z).normalize();
+        mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+        mesh.position.set((a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2);
+        return mesh;
+    }
+
+    // ── 滑梯面板（傾斜板，回傳材質供發光）──
+    function slidePanel(a, b, color) {
+        const len = dist3(a, b);
+        const mat = new THREE.MeshStandardMaterial({ color: color, emissive: color, emissiveIntensity: 0, metalness: 0.3, roughness: 0.5, transparent: true, opacity: 0.85 });
+        const mesh = new THREE.Mesh(new THREE.BoxGeometry(len, 0.6, 5), mat);
+        mesh.castShadow = true; mesh.receiveShadow = true;
+        const dir = new THREE.Vector3(b.x - a.x, b.y - a.y, b.z - a.z).normalize();
+        mesh.quaternion.setFromUnitVectors(new THREE.Vector3(1, 0, 0), dir);
+        mesh.position.set((a.x + b.x) / 2, (a.y + b.y) / 2 - 0.8, (a.z + b.z) / 2);
+        trackGroup.add(mesh);
+        return mat;
+    }
+
+    function platform(a, b) {
+        const plat = new THREE.Mesh(new THREE.BoxGeometry(Math.max(dist3(a, b), 0.5), 0.4, 5.4),
+            new THREE.MeshStandardMaterial({ color: 0x90a4ae, roughness: 0.8 }));
+        plat.position.set((a.x + b.x) / 2, (a.y + b.y) / 2 - 0.8, (a.z + b.z) / 2);
+        plat.receiveShadow = true; plat.castShadow = true;
+        trackGroup.add(plat);
+    }
+
+    // ── 文字 sprite（電勢標尺/探針標籤）──
+    function makeLabelSprite(text, color) {
+        const c = document.createElement('canvas'); c.width = 160; c.height = 64;
+        const x = c.getContext('2d');
+        x.font = 'bold 44px "Segoe UI", sans-serif'; x.fillStyle = color || '#fff';
+        x.textAlign = 'center'; x.textBaseline = 'middle';
+        x.fillText(text, 80, 34);
+        const tex = new THREE.CanvasTexture(c);
+        const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }));
+        sp.scale.set(9, 3.6, 1);
+        return sp;
+    }
+
+    function makePenguin() {
+        const g = new THREE.Group();
+        const body = new THREE.Mesh(new THREE.SphereGeometry(1, 14, 14), new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.6 }));
+        body.scale.set(0.95, 1.5, 0.85); body.castShadow = true; g.add(body);
+        const belly = new THREE.Mesh(new THREE.SphereGeometry(0.72, 12, 12), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.7 }));
+        belly.position.set(0, -0.1, 0.45); belly.scale.set(1, 1.25, 0.6); g.add(belly);
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.62, 12, 12), new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.6 }));
+        head.position.set(0, 1.5, 0); g.add(head);
+        const beak = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.6, 8), new THREE.MeshStandardMaterial({ color: 0xff9f1c, roughness: 0.5 }));
+        beak.position.set(0, 1.45, 0.6); beak.rotation.x = Math.PI / 2; g.add(beak);
+        for (const sx of [-0.22, 0.22]) {
+            const eye = new THREE.Mesh(new THREE.SphereGeometry(0.1, 6, 6), new THREE.MeshStandardMaterial({ color: 0x000000 }));
+            eye.position.set(sx, 1.65, 0.5); g.add(eye);
+        }
+        g.scale.set(1.1, 1.1, 1.1);
+        return g;
+    }
+
+    function makeBulb(pos, color) {
+        const grp = new THREE.Group();
+        grp.position.set(pos.x, pos.y, pos.z);
+        const glass = new THREE.Mesh(new THREE.SphereGeometry(1.7, 16, 16),
+            new THREE.MeshStandardMaterial({ color: color, emissive: color, emissiveIntensity: 0.4, transparent: true, opacity: 0.85, roughness: 0.2 }));
+        glass.position.y = 2.4; grp.add(glass);
+        const base = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 1, 12), matMetal);
+        base.position.y = 0.5; grp.add(base);
+        const light = new THREE.PointLight(color, 0, 40, 2); light.position.y = 2.4; grp.add(light);
+        const halo = new THREE.Mesh(new THREE.SphereGeometry(3, 16, 16), new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0 }));
+        halo.position.y = 2.4; grp.add(halo);
+        trackGroup.add(grp);
+        return { grp, glass, light, halo, color };
+    }
+
+    // ── 電梯（電池）──
+    function buildElevator(ex, baseY, topY, z) {
+        for (const dz of [-3, 3]) {
+            trackGroup.add(tube(vec(ex - 2, baseY, z + dz), vec(ex - 2, topY + 3, z + dz), 0.35, matMetal));
+            trackGroup.add(tube(vec(ex + 2, baseY, z + dz), vec(ex + 2, topY + 3, z + dz), 0.35, matMetal));
+        }
+        const beam = new THREE.Mesh(new THREE.BoxGeometry(6, 1, 8), matMetal);
+        beam.position.set(ex, topY + 3, z); beam.castShadow = true; trackGroup.add(beam);
+        elevatorCar = new THREE.Mesh(new THREE.BoxGeometry(5, 4, 6),
+            new THREE.MeshStandardMaterial({ color: 0x00ccff, emissive: 0x004a66, metalness: 0.4, roughness: 0.3, transparent: true, opacity: 0.55 }));
+        elevatorCar.castShadow = true; elevatorCar.position.set(ex, baseY + 2, z); trackGroup.add(elevatorCar);
+        const plus = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.5, 0.5), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+        plus.position.set(ex, topY + 5, z); trackGroup.add(plus);
+        const plus2 = new THREE.Mesh(new THREE.BoxGeometry(0.5, 2.4, 0.5), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+        plus2.position.set(ex, topY + 5, z); trackGroup.add(plus2);
+    }
+
+    // ── 電勢標尺（隨場景旋轉，高度→電勢）──
+    function buildRuler(ex, baseY, topY, z) {
+        const rx = ex - 10;
+        trackGroup.add(tube(vec(rx, baseY, z), vec(rx, topY, z), 0.22, matMetal));
+        const ticks = 4;
+        for (let i = 0; i <= ticks; i++) {
+            const v = P.emf * i / ticks;
+            const y = baseY + (topY - baseY) * i / ticks;
+            const t = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.18, 0.18), new THREE.MeshBasicMaterial({ color: 0x39ff14 }));
+            t.position.set(rx - 1.2, y, z); trackGroup.add(t);
+            const lab = makeLabelSprite(v.toFixed(0) + 'V', '#39ff14');
+            lab.position.set(rx - 6, y, z); trackGroup.add(lab);
+        }
+        const title = makeLabelSprite('電勢', '#39ff14'); title.scale.set(11, 4.4, 1);
+        title.position.set(rx - 6, topY + 6, z); trackGroup.add(title);
+        const ref = makeLabelSprite('0V 參考', '#39ff14'); ref.scale.set(12, 4, 1);
+        ref.position.set(rx - 6, baseY - 4, z); trackGroup.add(ref);
+    }
+
+    // ── 由折點建立 branch ──
+    function makeBranch(points, current) {
+        const segs = []; let tot = 0;
+        for (let i = 0; i < points.length - 1; i++) {
+            const a = points[i], b = points[i + 1], len = dist3(a, b);
+            segs.push({ a, b, len, start: tot }); tot += len;
+        }
+        return { segments: segs, totalLen: tot, current: current };
+    }
+    function posOnBranch(br, d) {
+        const T = br.totalLen; d = ((d % T) + T) % T;
+        for (const s of br.segments) {
+            if (d >= s.start && d <= s.start + s.len) {
+                const t = s.len ? (d - s.start) / s.len : 0;
+                return { x: s.a.x + (s.b.x - s.a.x) * t, y: s.a.y + (s.b.y - s.a.y) * t, z: s.a.z + (s.b.z - s.a.z) * t };
+            }
+        }
+        const L = br.segments[br.segments.length - 1];
+        return { x: L.b.x, y: L.b.y, z: L.b.z };
+    }
+
+    // ── 串聯幾何 ──
+    function buildSeries(topY, baseY, ex, z) {
+        const n = P.R.length;
+        const startX = ex + 8;
+        const dropTotal = topY - baseY;
+        const sumV = P.Vdrop.reduce((a, b) => a + b, 0) || 1;
+        const platCount = n + 1;
+        const platLen = GEO.runLength / (platCount * 1.6);
+        const slideHLen = (GEO.runLength - platLen * platCount) / n;
+
+        let cx = startX, cy = topY;
+        const pts = [vec(cx, cy, z)];
+        measureNodes.push({ label: '正極（電梯頂）', V: P.emf, pos: vec(startX, topY, z) });
+        for (let k = 0; k < n; k++) {
+            cx += platLen; pts.push(vec(cx, cy, z));
+            const ax = cx, ay = cy;
+            cy -= dropTotal * (P.Vdrop[k] / sumV); cx += slideHLen;
+            pts.push(vec(cx, cy, z));
+            const mat = slidePanel(vec(ax, ay, z), vec(cx, cy, z), LOAD_COLORS[k % 4]);
+            const b = makeBulb(vec((ax + cx) / 2, (ay + cy) / 2, z + 3.6), LOAD_COLORS[k % 4]);
+            b.panelMat = mat; b.loadIdx = k; bulbs.push(b);
+            const Vnode = P.emf - P.Vdrop.slice(0, k + 1).reduce((a, x) => a + x, 0);
+            measureNodes.push({ label: (k === n - 1 ? '負極（電梯底 0V）' : `負荷 ${k + 1} 之後`), V: Math.max(0, Vnode), pos: vec(cx, cy, z) });
+        }
+        cx += platLen; pts.push(vec(cx, cy, z));
+        const rightX = cx, bottomY = cy;
+
+        for (let i = 0; i < pts.length - 1; i++) {
+            trackGroup.add(tube(pts[i], pts[i + 1], 0.45, matWire));
+            if (Math.abs(pts[i].y - pts[i + 1].y) < 0.01) platform(pts[i], pts[i + 1]);
+        }
+        const backZ = z - 14;
+        trackGroup.add(tube(vec(ex, topY, z), vec(startX, topY, z), 0.4, matWire));
+        trackGroup.add(tube(vec(rightX, bottomY, z), vec(rightX, bottomY, backZ), 0.4, matWire));
+        trackGroup.add(tube(vec(rightX, bottomY, backZ), vec(ex, bottomY, backZ), 0.4, matWire));
+        trackGroup.add(tube(vec(ex, bottomY, backZ), vec(ex, baseY, z), 0.4, matWire));
+
+        const loop = [vec(ex, baseY, z), vec(ex, topY, z)];
+        pts.forEach(p => loop.push(vec(p.x, p.y, p.z)));
+        loop.push(vec(rightX, bottomY, backZ), vec(ex, bottomY, backZ), vec(ex, baseY, z));
+        branches.push(makeBranch(loop, P.I));
+    }
+
+    // ── 並聯幾何 ──
+    function buildParallel(topY, baseY, ex, z) {
+        const n = P.R.length;
+        const startX = ex + 8;
+        const slideTopX = startX + 6, slideBotX = slideTopX + 32, mergeX = slideBotX + 6;
+        const laneSpacing = 12;
+        trackGroup.add(tube(vec(ex, topY, z), vec(startX, topY, z), 0.45, matWire)); // 頂部匯流
+        trackGroup.add(tube(vec(mergeX, baseY, z), vec(ex, baseY, z), 0.45, matWire)); // 底部匯流
+
+        measureNodes.push({ label: '正極（頂部匯流 ε）', V: P.emf, pos: vec(startX, topY, z) });
+        for (let k = 0; k < n; k++) {
+            const zk = (k - (n - 1) / 2) * laneSpacing;
+            const pTop = vec(slideTopX, topY, zk), pBot = vec(slideBotX, baseY, zk);
+            trackGroup.add(tube(vec(startX, topY, z), pTop, 0.4, matWire));
+            const mat = slidePanel(pTop, pBot, LOAD_COLORS[k % 4]);
+            trackGroup.add(tube(pBot, vec(mergeX, baseY, zk), 0.4, matWire));
+            trackGroup.add(tube(vec(mergeX, baseY, zk), vec(mergeX, baseY, z), 0.4, matWire));
+            const mid = vec((slideTopX + slideBotX) / 2, (topY + baseY) / 2, zk + 3.6);
+            const b = makeBulb(mid, LOAD_COLORS[k % 4]); b.panelMat = mat; b.loadIdx = k; bulbs.push(b);
+            measureNodes.push({ label: `支路 ${k + 1} 中點`, V: P.emf / 2, pos: vec((slideTopX + slideBotX) / 2, (topY + baseY) / 2, zk) });
+
+            const loop = [vec(ex, baseY, z), vec(ex, topY, z), vec(startX, topY, z),
+                pTop, pBot, vec(mergeX, baseY, zk), vec(mergeX, baseY, z), vec(ex, baseY, z)];
+            branches.push(makeBranch(loop, P.branchI[k]));
+        }
+        measureNodes.push({ label: '負極（底部匯流 0V）', V: 0, pos: vec(ex, baseY, z) });
+    }
+
+    // ── 重建場景 ──
+    function buildTrack() {
+        disposeGroup(trackGroup);
+        bulbs = []; branches = []; measureNodes = [];
+        const { topY, baseY, elevatorX: ex, topZ: z } = GEO;
+        buildElevator(ex, baseY, topY, z);
+        buildRuler(ex, baseY, topY, z);
+        if (P.mode === 'series') buildSeries(topY, baseY, ex, z);
+        else buildParallel(topY, baseY, ex, z);
+        assignPenguins();
+        rebuildProbeOptions();
+        updateProbes();
+    }
+
+    // ── 企鵝分配 ──
+    function allocCounts() {
+        const nB = branches.length;
+        if (P.mode === 'series' || nB <= 1) return [NUM_PENGUINS];
+        const sum = P.branchI.reduce((a, b) => a + b, 0) || 1;
+        const raw = P.branchI.map(i => NUM_PENGUINS * i / sum);
+        const counts = raw.map(x => Math.floor(x));
+        let used = counts.reduce((a, b) => a + b, 0);
+        const order = raw.map((x, i) => ({ i, f: x - Math.floor(x) })).sort((a, b) => b.f - a.f);
+        let p = 0;
+        while (used < NUM_PENGUINS) { counts[order[p % nB].i]++; used++; p++; }
+        for (let i = 0; i < nB; i++) if (counts[i] === 0) {
+            const mx = counts.indexOf(Math.max(...counts));
+            if (counts[mx] > 1) { counts[mx]--; counts[i]++; }
+        }
+        return counts;
+    }
+    function assignPenguins() {
+        while (penguins.length < NUM_PENGUINS) {
+            const g = makePenguin(); scene.add(g); penguins.push({ group: g, branchId: 0, dist: 0 });
+        }
+        const counts = allocCounts();
+        let pi = 0;
+        for (let b = 0; b < branches.length; b++) {
+            const c = counts[b] || 0;
+            for (let j = 0; j < c && pi < penguins.length; j++) {
+                penguins[pi].branchId = b;
+                penguins[pi].dist = branches[b].totalLen * j / Math.max(c, 1);
+                pi++;
+            }
+        }
+        for (; pi < penguins.length; pi++) { penguins[pi].branchId = 0; penguins[pi].dist = branches[0].totalLen * Math.random(); }
+    }
+
+    // ════════════════════════════════════════════════════════════
+    //  物理
+    // ════════════════════════════════════════════════════════════
+    function updatePhysics() {
+        const n = P.R.length;
+        if (P.mode === 'series') {
+            const sumR = P.R.reduce((a, b) => a + b, 0) || 1;
+            P.I = P.emf / sumR;
+            P.Vdrop = P.R.map(r => P.I * r);
+            P.power = P.R.map(r => P.I * P.I * r);
+            P.branchI = P.R.map(() => P.I);
+        } else {
+            P.Vdrop = P.R.map(() => P.emf);
+            P.branchI = P.R.map(r => P.emf / r);
+            P.power = P.R.map(r => P.emf * P.emf / r);
+            P.I = P.branchI.reduce((a, b) => a + b, 0);
+        }
+        GEO.topY = GEO.baseY + P.emf * GEO.unitVperWorld;
+        updateReadouts();
+        buildTrack();
+        updateVoltmeter();
+        drawPotentialGraph();
+    }
+
+    // ════════════════════════════════════════════════════════════
+    //  控制面板 DOM
+    // ════════════════════════════════════════════════════════════
+    function buildLoadSliders() {
+        const wrap = el('load-sliders'); wrap.innerHTML = '';
+        P.R.forEach((r, k) => {
+            const row = document.createElement('div'); row.className = 'load-row';
+            row.innerHTML = `
+                <span class="swatch" style="color:${LOAD_COLORS_CSS[k % 4]};background:${LOAD_COLORS_CSS[k % 4]}"></span>
+                <input type="range" class="r-slider" data-idx="${k}" min="1" max="12" step="0.5" value="${r}" style="flex:1;">
+                <span style="width:54px;text-align:right;font-family:'JetBrains Mono',monospace;color:${LOAD_COLORS_CSS[k % 4]}" id="rval-${k}">${r.toFixed(1)}Ω</span>`;
+            wrap.appendChild(row);
+        });
+        wrap.querySelectorAll('input.r-slider').forEach(inp => {
+            inp.addEventListener('input', e => {
+                const k = +e.target.dataset.idx; P.R[k] = +e.target.value;
+                el('rval-' + k).textContent = P.R[k].toFixed(1) + 'Ω';
+                updatePhysics();
+            });
+        });
+    }
+
+    function updateReadouts() {
+        el('val-emf').textContent = P.emf.toFixed(1) + ' V';
+        el('m-emf').textContent = P.emf.toFixed(2) + ' V';
+        el('m-current').textContent = P.I.toFixed(2) + ' A';
+        el('val-count').textContent = P.R.length + (P.mode === 'series' ? ' 段' : ' 條');
+        const lm = el('load-meters'); lm.innerHTML = '';
+        P.R.forEach((r, k) => {
+            const d = document.createElement('div'); d.className = 'load-meter';
+            const extra = P.mode === 'series' ? '' : ` · I=${P.branchI[k].toFixed(2)}A`;
+            d.innerHTML = `
+                <span class="lm-name"><span class="swatch" style="color:${LOAD_COLORS_CSS[k % 4]};background:${LOAD_COLORS_CSS[k % 4]}"></span>${P.mode === 'series' ? '滑梯' : '支路'} ${k + 1}（${r.toFixed(1)}Ω）</span>
+                <span style="color:${LOAD_COLORS_CSS[k % 4]}">ΔV=${P.Vdrop[k].toFixed(2)}V · P=${P.power[k].toFixed(2)}W${extra}</span>`;
+            lm.appendChild(d);
+        });
+        el('theory-box').innerHTML = P.mode === 'series'
+            ? '<strong>串聯：</strong>同一條路，電流 I 處處相同。各滑梯越陡＝電壓降 ΔV 越大＝功率 <span class="highlight">P=I²R</span> 越大＝越亮。全部落差相加＝被電梯抬升的高度：<span class="highlight">ε = ΣΔV</span>。'
+            : '<strong>並聯：</strong>每條支路都直接從頂（ε）滑到底（0），所以<strong>各支路電壓相同 = ε</strong>（滑梯一樣陡）。但電阻越小的支路企鵝越多、流得越快（電流大）、燈泡越亮：<span class="highlight">I = Σ(ε/Rₖ)</span>。';
+    }
+
+    // ════════════════════════════════════════════════════════════
+    //  電壓表探針
+    // ════════════════════════════════════════════════════════════
+    function rebuildProbeOptions() {
+        const fill = (sel, idx) => {
+            sel.innerHTML = '';
+            measureNodes.forEach((nd, i) => {
+                const o = document.createElement('option');
+                o.value = i; o.textContent = `${nd.label} — ${nd.V.toFixed(1)}V`;
+                sel.appendChild(o);
+            });
+            sel.value = Math.min(idx, measureNodes.length - 1);
+        };
+        fill(el('sel-red'), P.probeRedIdx);
+        fill(el('sel-black'), P.probeBlackIdx);
+    }
+    function updateVoltmeter() {
+        if (!measureNodes.length) return;
+        const ri = Math.min(P.probeRedIdx, measureNodes.length - 1);
+        const bi = Math.min(P.probeBlackIdx, measureNodes.length - 1);
+        const r = measureNodes[ri], b = measureNodes[bi];
+        el('v-red').textContent = r.V.toFixed(2) + ' V';
+        el('v-black').textContent = b.V.toFixed(2) + ' V';
+        el('v-diff').textContent = (r.V - b.V).toFixed(2) + ' V';
+    }
+    function updateProbes() {
+        while (probeGroup.children.length) {
+            const c = probeGroup.children.pop();
+            if (c.geometry) c.geometry.dispose();
+            if (c.material) { if (c.material.map) c.material.map.dispose(); c.material.dispose(); }
+        }
+        if (!measureNodes.length) return;
+        const defs = [
+            { idx: Math.min(P.probeRedIdx, measureNodes.length - 1), col: 0xff2a55, lab: 'V₊', txt: '#ff9bb3' },
+            { idx: Math.min(P.probeBlackIdx, measureNodes.length - 1), col: 0x111111, lab: 'V₋', txt: '#e6edf3' }
+        ];
+        defs.forEach(d => {
+            const node = measureNodes[d.idx];
+            const ball = new THREE.Mesh(new THREE.SphereGeometry(1.1, 12, 12), new THREE.MeshBasicMaterial({ color: d.col }));
+            ball.position.set(node.pos.x, node.pos.y + 3, node.pos.z); probeGroup.add(ball);
+            const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 3, 8), new THREE.MeshBasicMaterial({ color: d.col }));
+            stick.position.set(node.pos.x, node.pos.y + 1.5, node.pos.z); probeGroup.add(stick);
+            const lab = makeLabelSprite(d.lab, d.txt);
+            lab.position.set(node.pos.x, node.pos.y + 6, node.pos.z); probeGroup.add(lab);
+        });
+    }
+
+    // ════════════════════════════════════════════════════════════
+    //  電勢梯級圖（自繪 canvas）
+    // ════════════════════════════════════════════════════════════
+    const pg = el('potential-graph'), pgx = pg.getContext('2d');
+    let cursorFrac = 0, cursorV = 0;
+
+    function drawPotentialGraph() {
+        const W = pg.width, H = pg.height;
+        const padL = 42, padR = 16, padT = 26, padB = 30;
+        const plotW = W - padL - padR, plotH = H - padT - padB;
+        pgx.clearRect(0, 0, W, H);
+
+        pgx.fillStyle = '#00ccff'; pgx.font = 'bold 13px "Segoe UI", sans-serif'; pgx.textAlign = 'left';
+        pgx.fillText('電勢圖  V（電勢）vs 迴路位置', padL - 8, 16);
+
+        const vMax = Math.max(P.emf, 1);
+        const yOf = v => padT + plotH - (v / vMax) * plotH;
+        const xOf = f => padL + f * plotW;
+
+        pgx.strokeStyle = '#5c6370'; pgx.lineWidth = 1;
+        pgx.beginPath(); pgx.moveTo(padL, padT); pgx.lineTo(padL, padT + plotH); pgx.lineTo(padL + plotW, padT + plotH); pgx.stroke();
+        pgx.fillStyle = '#8b949e'; pgx.font = '10px monospace'; pgx.textAlign = 'right';
+        for (let i = 0; i <= 2; i++) {
+            const v = vMax * i / 2, y = yOf(v);
+            pgx.fillText(v.toFixed(1), padL - 5, y + 3);
+            pgx.strokeStyle = 'rgba(92,99,112,0.35)';
+            pgx.beginPath(); pgx.moveTo(padL, y); pgx.lineTo(padL + plotW, y); pgx.stroke();
+        }
+        pgx.textAlign = 'left'; pgx.fillStyle = '#8b949e'; pgx.fillText('V', 8, padT + 4);
+
+        // 各支路曲線（由幾何高度取樣）
+        const M = 90;
+        branches.forEach((br, bi) => {
+            pgx.strokeStyle = P.mode === 'series' ? '#39ff14' : LOAD_COLORS_CSS[bi % 4];
+            pgx.lineWidth = P.mode === 'series' ? 2.5 : 2;
+            pgx.beginPath();
+            for (let i = 0; i <= M; i++) {
+                const d = br.totalLen * i / M;
+                const p = posOnBranch(br, d);
+                const x = xOf(i / M), y = yOf(heightToV(p.y)) + (P.mode === 'parallel' ? bi * 1.5 : 0);
+                i === 0 ? pgx.moveTo(x, y) : pgx.lineTo(x, y);
+            }
+            pgx.stroke();
+        });
+
+        // 探針：以水平虛線標出兩點「電勢」，並標示「電勢差」
+        if (measureNodes.length) {
+            const rV = measureNodes[Math.min(P.probeRedIdx, measureNodes.length - 1)].V;
+            const bV = measureNodes[Math.min(P.probeBlackIdx, measureNodes.length - 1)].V;
+            const drawLevel = (v, col) => {
+                pgx.strokeStyle = col; pgx.lineWidth = 1.5; pgx.setLineDash([5, 4]);
+                pgx.beginPath(); pgx.moveTo(padL, yOf(v)); pgx.lineTo(padL + plotW, yOf(v)); pgx.stroke();
+                pgx.setLineDash([]);
+            };
+            drawLevel(rV, '#ff2a55'); drawLevel(bV, '#e6edf3');
+            // ΔV 括號
+            const bx = padL + plotW - 16;
+            pgx.strokeStyle = '#ffcc00'; pgx.lineWidth = 2;
+            pgx.beginPath(); pgx.moveTo(bx, yOf(rV)); pgx.lineTo(bx, yOf(bV)); pgx.stroke();
+            pgx.fillStyle = '#ffcc00'; pgx.font = 'bold 11px monospace'; pgx.textAlign = 'right';
+            pgx.fillText('ΔV=' + (rV - bV).toFixed(1) + 'V', bx - 4, (yOf(rV) + yOf(bV)) / 2 + 4);
+            pgx.textAlign = 'left';
+        }
+
+        // 焦點企鵝游標
+        const cx = xOf(cursorFrac), cyy = yOf(cursorV);
+        pgx.fillStyle = '#ffffff'; pgx.beginPath(); pgx.arc(cx, cyy, 5, 0, Math.PI * 2); pgx.fill();
+        pgx.strokeStyle = '#ffcc00'; pgx.lineWidth = 2; pgx.beginPath(); pgx.arc(cx, cyy, 5, 0, Math.PI * 2); pgx.stroke();
+
+        pgx.fillStyle = '#8b949e'; pgx.font = '9px "Segoe UI",sans-serif'; pgx.textAlign = 'center';
+        pgx.fillText('電梯↑', xOf(0.1), padT + plotH + 13);
+        pgx.fillText(P.mode === 'series' ? '負荷（滑梯）↓' : '支路滑梯↓', xOf(0.5), padT + plotH + 13);
+        pgx.fillText('回程', xOf(0.9), padT + plotH + 13);
+        pgx.textAlign = 'left';
+    }
+
+    // ════════════════════════════════════════════════════════════
+    //  動畫
+    // ════════════════════════════════════════════════════════════
+    const clock = new THREE.Clock();
+    function animate() {
+        requestAnimationFrame(animate);
+        const dt = Math.min(clock.getDelta(), 0.05);
+        controls.update();
+
+        if (!P.paused && branches.length) {
+            for (const pn of penguins) {
+                const br = branches[pn.branchId]; if (!br) continue;
+                const spd = (5 + (br.current || 0) * 4) * P.speed;
+                pn.dist = (pn.dist + spd * dt) % br.totalLen;
+                const p = posOnBranch(br, pn.dist);
+                pn.group.position.set(p.x, p.y + 1.8, p.z);
+            }
+            const fb = branches[penguins[0].branchId] || branches[0];
+            cursorFrac = (penguins[0].dist / fb.totalLen);
+            cursorV = heightToV(posOnBranch(fb, penguins[0].dist).y);
+            drawPotentialGraph();
+        }
+
+        const pmax = Math.max(...P.power, 0.01);
+        bulbs.forEach((b, k) => {
+            const intensity = (P.power[b.loadIdx] || 0) / pmax;
+            const pulse = 0.85 + 0.15 * Math.sin(performance.now() * 0.006 + k);
+            b.light.intensity = intensity * 3 * pulse;
+            b.glass.material.emissiveIntensity = 0.3 + intensity * 1.3 * pulse;
+            b.halo.material.opacity = 0.12 * intensity * pulse;
+            if (b.panelMat) b.panelMat.emissiveIntensity = 0.05 + intensity * 0.9 * pulse;
+        });
+
+        if (elevatorCar) {
+            const t = (performance.now() * 0.0004 * P.speed) % 1;
+            const tri = t < 0.5 ? t * 2 : (1 - t) * 2;
+            elevatorCar.position.y = GEO.baseY + 2 + tri * (GEO.topY - GEO.baseY - 2);
+        }
+        renderer.render(scene, camera);
+    }
+
+    // ════════════════════════════════════════════════════════════
+    //  事件
+    // ════════════════════════════════════════════════════════════
+    el('slider-emf').addEventListener('input', e => { P.emf = +e.target.value; updatePhysics(); });
+    el('btn-add').addEventListener('click', () => { if (P.R.length >= 4) return; P.R.push(4); buildLoadSliders(); updatePhysics(); });
+    el('btn-remove').addEventListener('click', () => { if (P.R.length <= 1) return; P.R.pop(); buildLoadSliders(); updatePhysics(); });
+
+    document.querySelectorAll('#mode-controls .btn').forEach(b => {
+        b.addEventListener('click', () => {
+            if (P.mode === b.dataset.mode) return;
+            document.querySelectorAll('#mode-controls .btn').forEach(x => x.classList.remove('active'));
+            b.classList.add('active'); P.mode = b.dataset.mode;
+            updatePhysics();
+        });
+    });
+    document.querySelectorAll('#speed-controls .btn').forEach(b => {
+        b.addEventListener('click', () => {
+            document.querySelectorAll('#speed-controls .btn').forEach(x => x.classList.remove('active'));
+            b.classList.add('active'); P.speed = +b.dataset.speed;
+        });
+    });
+    el('sel-red').addEventListener('change', e => { P.probeRedIdx = +e.target.value; updateVoltmeter(); updateProbes(); drawPotentialGraph(); });
+    el('sel-black').addEventListener('change', e => { P.probeBlackIdx = +e.target.value; updateVoltmeter(); updateProbes(); drawPotentialGraph(); });
+
+    el('btn-pause').addEventListener('click', e => {
+        P.paused = !P.paused;
+        e.target.textContent = P.paused ? '▶ 繼續' : '⏸ 暫停';
+        e.target.classList.toggle('active', P.paused);
+    });
+    el('btn-reset').addEventListener('click', () => {
+        P.emf = 12; P.R = [3, 5]; P.mode = 'series'; P.speed = 1; P.paused = false;
+        P.probeRedIdx = 0; P.probeBlackIdx = 999;
+        el('slider-emf').value = 12;
+        el('btn-pause').textContent = '⏸ 暫停'; el('btn-pause').classList.remove('active');
+        document.querySelectorAll('#mode-controls .btn').forEach(x => x.classList.toggle('active', x.dataset.mode === 'series'));
+        document.querySelectorAll('#speed-controls .btn').forEach(x => x.classList.toggle('active', x.dataset.speed === '1'));
+        buildLoadSliders(); updatePhysics();
+    });
+
+    el('toggle-panel-btn').addEventListener('click', () => {
+        document.body.classList.toggle('panel-collapsed');
+        const collapsed = document.body.classList.contains('panel-collapsed');
+        el('toggle-panel-btn').textContent = collapsed ? '⚙️ 顯示控制面板' : '👁️ 隱藏控制面板';
+        setTimeout(onResize, 420);
+    });
+
+    function onResize() {
+        const w = container.clientWidth, h = container.clientHeight;
+        camera.aspect = w / h; camera.updateProjectionMatrix();
+        renderer.setSize(w, h, false);
+        drawPotentialGraph();
+    }
+    window.addEventListener('resize', onResize);
+
+    // ── 啟動 ──
+    buildLoadSliders();
+    updatePhysics();
+    onResize();
+    animate();
+})();
+</script>
+</body>
+</html>

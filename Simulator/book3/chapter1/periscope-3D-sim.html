@@ -2,6 +2,7 @@
 <html lang="zh-HK">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HKDSE 潛望鏡光學與虛像解析 (完美無縫與真實多重反射版)</title>
     <style>
         body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #95a5a6; }
@@ -184,6 +185,21 @@
 
     <div id="canvas-container"></div>
 
+    <!-- sim3d-load-guard: three.js 模組載入失敗提示 -->
+    <script>
+      window.__sim3dOK = false;
+      window.addEventListener('load', function () {
+        setTimeout(function () {
+          if (window.__sim3dOK || document.getElementById('sim3d-load-error')) return;
+          var o = document.createElement('div');
+          o.id = 'sim3d-load-error';
+          o.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;background:#0f172a;color:#fff;font-family:system-ui,\'Noto Sans HK\',sans-serif;font-size:18px;line-height:1.7';
+          o.innerHTML = '⚠️ 無法載入 3D 元件（three.js）<br>請檢查網路連線後重新整理頁面。';
+          document.body.appendChild(o);
+        }, 6000);
+      });
+    </script>
+
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -217,6 +233,8 @@
         renderer.setPixelRatio(window.devicePixelRatio);
         renderer.setSize(window.innerWidth, window.innerHeight);
         container.appendChild(renderer.domElement);
+        window.__sim3dOK = true;
+        (function(){ var e = document.getElementById('sim3d-load-error'); if (e) e.remove(); })();
 
         const controls = new OrbitControls(camera, renderer.domElement);
         

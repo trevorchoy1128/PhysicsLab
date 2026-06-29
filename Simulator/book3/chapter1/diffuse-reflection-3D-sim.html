@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Three.js 尖沙咀海旁風格天際線</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <style>
         body { margin: 0; overflow: hidden; background-color: #7fb5e3; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -98,6 +98,18 @@
             }
         }
     </style>
+    <!-- sim3d-load-guard: three.js 載入失敗提示 -->
+    <script>
+      window.addEventListener('DOMContentLoaded', function () {
+        if (typeof THREE === 'undefined' || typeof THREE.OrbitControls === 'undefined') {
+          var o = document.createElement('div');
+          o.id = 'sim3d-load-error';
+          o.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;background:#0f172a;color:#fff;font-family:system-ui,\'Noto Sans HK\',sans-serif;font-size:18px;line-height:1.7';
+          o.innerHTML = '⚠️ 無法載入 3D 元件（three.js）<br>請檢查網路連線後重新整理頁面。';
+          document.body.appendChild(o);
+        }
+      });
+    </script>
 </head>
 <body>
 

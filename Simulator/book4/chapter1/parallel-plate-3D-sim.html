@@ -239,6 +239,21 @@
         </div>
     </div>
 
+    <!-- sim3d-load-guard: three.js 模組載入失敗提示 -->
+    <script>
+      window.__sim3dOK = false;
+      window.addEventListener('load', function () {
+        setTimeout(function () {
+          if (window.__sim3dOK || document.getElementById('sim3d-load-error')) return;
+          var o = document.createElement('div');
+          o.id = 'sim3d-load-error';
+          o.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;background:#0f172a;color:#fff;font-family:system-ui,\'Noto Sans HK\',sans-serif;font-size:18px;line-height:1.7';
+          o.innerHTML = '⚠️ 無法載入 3D 元件（three.js）<br>請檢查網路連線後重新整理頁面。';
+          document.body.appendChild(o);
+        }, 6000);
+      });
+    </script>
+
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -259,6 +274,8 @@
         renderer.setSize(canvasContainer.clientWidth, window.innerHeight);
         renderer.setPixelRatio(window.devicePixelRatio);
         canvasContainer.appendChild(renderer.domElement);
+        window.__sim3dOK = true;
+        (function(){ var e = document.getElementById('sim3d-load-error'); if (e) e.remove(); })();
 
         // --- 相機系統 ---
         const aspect = canvasContainer.clientWidth / window.innerHeight;

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>電力物流學：貨櫃車與超市類比實驗室 (極致流暢鮮豔版)</title>
     
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
 
@@ -79,6 +79,18 @@
             body:not(.panel-collapsed) #toggle-panel-btn { right: calc(45% + 15px); }
         }
     </style>
+    <!-- sim3d-load-guard: three.js 載入失敗提示 -->
+    <script>
+      window.addEventListener('DOMContentLoaded', function () {
+        if (typeof THREE === 'undefined' || typeof THREE.OrbitControls === 'undefined') {
+          var o = document.createElement('div');
+          o.id = 'sim3d-load-error';
+          o.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;background:#0f172a;color:#fff;font-family:system-ui,\'Noto Sans HK\',sans-serif;font-size:18px;line-height:1.7';
+          o.innerHTML = '⚠️ 無法載入 3D 元件（three.js）<br>請檢查網路連線後重新整理頁面。';
+          document.body.appendChild(o);
+        }
+      });
+    </script>
 </head>
 <body>
 
@@ -299,6 +311,9 @@
             sprite.scale.set(7.5, 1.2, 1); return sprite;
         }
 
+        // 將物件定位後回傳物件本身（修正：避免誤把 position.copy() 回傳的 Vector3 傳入 .add()）
+        function placeAt(obj, vec) { obj.position.copy(vec); return obj; }
+
         function addDualFlowLabel(posLeft, posRight, val, leftName, rightName) {
             const lblLeft = createFlowLabel(`📍${leftName}: ${val.toFixed(2)} C/s`, '#ff2a55');
             lblLeft.position.copy(posLeft); lblLeft.visible = showChargeFlow;
@@ -408,15 +423,15 @@
             const batTop = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.6, 16), new THREE.MeshLambertMaterial({color: 0xcccccc}));
             batTop.position.set(0, 2.4, 0); batMesh.add(batTop);
             
-            circuitGroup.add(createTextSprite("電源", "#ff3333", 0.9).position.copy(p(0, 5.5, -14)));
-            circuitGroup.add(createDigitalLabel(`ε = ${P.emf.toFixed(1)} V`, "#ff3333").position.copy(p(-3.5, 2, -14)));
+            circuitGroup.add(placeAt(createTextSprite("電源", "#ff3333", 0.9), p(0, 5.5, -14)));
+            circuitGroup.add(placeAt(createDigitalLabel(`ε = ${P.emf.toFixed(1)} V`, "#ff3333"), p(-3.5, 2, -14)));
 
             // 讓導線帶有更亮的金屬光澤感
             const wireMat = new THREE.MeshLambertMaterial({color: 0x5588aa}); 
             function addResistorObj(pos, label) {
                 // 更純粹閃亮的黃金電阻
                 const r = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 3, 16), new THREE.MeshLambertMaterial({color: 0xffd700})); r.rotation.z = Math.PI/2; r.position.copy(pos); circuitGroup.add(r);
-                circuitGroup.add(createTextSprite(label, "#ffcc00", 0.8).position.copy(pos).add(new THREE.Vector3(0, 1.5, 0)));
+                circuitGroup.add(placeAt(createTextSprite(label, "#ffcc00", 0.8), pos.clone().add(new THREE.Vector3(0, 1.5, 0))));
             }
 
             let s_x = []; 
@@ -441,10 +456,10 @@
                 drawWireSegment([ p(0,0,-14), p(xLimit,0,-14), p(xLimit,0,6), p(-xLimit,0,6), p(-xLimit,0,-14), p(0,0,-14) ], wireMat);
                 s_x.forEach((x, i) => {
                     addResistorObj(p(x, 0, 6), `R${i+1}`);
-                    circuitGroup.add(createDigitalLabel(`V${i+1} = ${P.v[i].toFixed(1)} V`, "#ffcc00").position.copy(p(x, 3.5, 6)));
+                    circuitGroup.add(placeAt(createDigitalLabel(`V${i+1} = ${P.v[i].toFixed(1)} V`, "#ffcc00"), p(x, 3.5, 6)));
                 });
-                
-                circuitGroup.add(createDigitalLabel(`I = ${P.iTotal.toFixed(2)} A`, "#00ccff").position.copy(p(4, 1.5, -14)));
+
+                circuitGroup.add(placeAt(createDigitalLabel(`I = ${P.iTotal.toFixed(2)} A`, "#00ccff"), p(4, 1.5, -14)));
                 addDualFlowLabel(p(14, 1.5, -14), rp(14, 1.5, -14), P.iTotal, "出發總電荷", "出發總車流");
             } else {
                 drawWireSegment([ p(0,0,-14), p(xLimit,0,-14), p(xLimit,0,-2) ], wireMat); 
@@ -456,21 +471,21 @@
                     activeElements.circuitPaths.push({ pts: ptsA, weight: P.i[i] / P.iTotal });
                     drawWireSegment([ p(xLimit,0,z), p(-xLimit,0,z) ], wireMat); 
                     addResistorObj(p(0, 0, z), `R${i+1}`);
-                    circuitGroup.add(createDigitalLabel(`V${i+1} = ${P.v[i].toFixed(1)} V`, "#ffcc00").position.copy(p(0, 3.5, z)));
+                    circuitGroup.add(placeAt(createDigitalLabel(`V${i+1} = ${P.v[i].toFixed(1)} V`, "#ffcc00"), p(0, 3.5, z)));
                     addDualFlowLabel(p(8, 1.5, z), rp(8, 1.5, z), P.i[i], `支路${i+1}電荷`, `支路${i+1}車流`);
                 });
-                circuitGroup.add(createDigitalLabel(`I總 = ${P.iTotal.toFixed(2)} A`, "#00ccff").position.copy(p(4, 1.5, -14)));
+                circuitGroup.add(placeAt(createDigitalLabel(`I總 = ${P.iTotal.toFixed(2)} A`, "#00ccff"), p(4, 1.5, -14)));
                 addDualFlowLabel(p(14, 1.5, -14), rp(14, 1.5, -14), P.iTotal, "主幹總電荷", "主幹總車流");
             }
 
             const logCenter = new THREE.Mesh(new THREE.BoxGeometry(10, 6, 4), warehouseMats);
             logCenter.position.copy(rp(0, 3, -17)); analogyGroup.add(logCenter);
-            analogyGroup.add(createTextSprite("🏭 電源 (物流貨倉)", "#00ccff").position.copy(logCenter.position).add(new THREE.Vector3(0, 4.5, 0)));
+            analogyGroup.add(placeAt(createTextSprite("🏭 電源 (物流貨倉)", "#00ccff"), logCenter.position.clone().add(new THREE.Vector3(0, 4.5, 0))));
 
             function addSupermarket(pos, label) {
                 const sm = new THREE.Mesh(new THREE.BoxGeometry(6, 4, 3), supermarketMats);
                 sm.position.copy(pos); sm.position.y = 2; analogyGroup.add(sm);
-                analogyGroup.add(createTextSprite(label, "#ffaa00").position.copy(pos).add(new THREE.Vector3(0, 4.5, 0)));
+                analogyGroup.add(placeAt(createTextSprite(label, "#ffaa00"), pos.clone().add(new THREE.Vector3(0, 4.5, 0))));
             }
 
             if (isSeries) {
