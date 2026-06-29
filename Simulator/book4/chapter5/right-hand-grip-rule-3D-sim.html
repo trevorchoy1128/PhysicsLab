@@ -234,21 +234,24 @@
             </div>
         </div>
 
-        <div class="card">
-            <div class="card-header">👁️ 空間視角 & 標籤</div>
+        <div class="card" id="guide-card">
+            <div class="card-header">🎓 引導教學</div>
             <div class="card-body">
-                <div class="dir-btn-group" style="margin-bottom:12px;">
+                <div class="info-box" id="guide-text" style="min-height:64px;">按「下一步」開始，跟著步驟學會右手定則。</div>
+                <div class="dir-btn-group" style="margin-top:10px;">
+                    <button class="dir-btn" id="guide-prev" onclick="guideStep(-1)">← 上一步</button>
+                    <button class="dir-btn" id="guide-next" onclick="guideStep(1)">下一步 →</button>
+                </div>
+                <button class="dir-btn" style="width:100%; margin-top:6px;" onclick="guideReset()">↺ 重新開始</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">👁️ 空間視角</div>
+            <div class="card-body">
+                <div class="dir-btn-group">
                     <button class="dir-btn active" id="view-3d" onclick="setView('3d')">🧊 3D 立體</button>
                     <button class="dir-btn"        id="view-2d" onclick="setView('2d')">📐 2D 平面</button>
-                </div>
-                
-                <div class="toggle-row" id="pole-label-toggle" onclick="togglePoleLabels()" style="display:none;">
-                    <div class="toggle-track" id="pole-label-track"><div class="toggle-thumb"></div></div>
-                    <span>顯示磁極標籤 (N, S)</span>
-                </div>
-                <div class="toggle-row" id="current-label-toggle" onclick="toggleCurrentLabels()" style="display:none;">
-                    <div class="toggle-track" id="current-label-track"><div class="toggle-thumb"></div></div>
-                    <span>顯示電流標籤 (I)</span>
                 </div>
             </div>
         </div>
@@ -266,13 +269,6 @@
                     <div class="dir-btn-group">
                         <button class="dir-btn active" id="wire-view-front" onclick="setWire2DView('front')">🔍 正視圖 (縱切)</button>
                         <button class="dir-btn"        id="wire-view-top"   onclick="setWire2DView('top')">🔍 俯視圖 (橫截)</button>
-                    </div>
-                </div>
-
-                <div style="margin-top:12px;">
-                    <div class="toggle-row" id="single-ring-toggle" onclick="toggleSingleRing()">
-                        <div class="toggle-track" id="single-ring-track"><div class="toggle-thumb"></div></div>
-                        <span>單圈模式（聚焦單一磁場圈）</span>
                     </div>
                 </div>
             </div>
@@ -298,29 +294,38 @@
         </div>
 
         <div class="card">
-            <div class="card-header">✨ 顯示效果</div>
+            <div class="card-header">👀 顯示項目</div>
             <div class="card-body">
-                <div class="dir-btn-group">
-                    <button class="dir-btn active" id="disp-anim" onclick="setDisplay('anim')">▶ 動態流動</button>
-                    <button class="dir-btn"        id="disp-static" onclick="setDisplay('static')">⏸ 靜態向量</button>
+                <div class="toggle-row" id="hand-toggle" onclick="toggleHand()">
+                    <div class="toggle-track on" id="hand-track"><div class="toggle-thumb"></div></div>
+                    <span>顯示右手模型 ✋</span>
+                </div>
+                <div class="toggle-row" id="pole-label-toggle" onclick="togglePoleLabels()" style="display:none;">
+                    <div class="toggle-track" id="pole-label-track"><div class="toggle-thumb"></div></div>
+                    <span>顯示磁極標籤 (N, S)</span>
+                </div>
+                <div class="toggle-row" id="current-label-toggle" onclick="toggleCurrentLabels()" style="display:none;">
+                    <div class="toggle-track" id="current-label-track"><div class="toggle-thumb"></div></div>
+                    <span>顯示電流標籤 (I)</span>
                 </div>
             </div>
         </div>
 
         <div class="card">
-            <div class="card-header">📖 法則說明</div>
-            <div class="card-body">
-                <div class="info-box" id="rule-info-wire">
-                    <div class="rule-title">✋ 直導線右手定則</div>
-                    <div class="step"><div class="step-num">1</div><div>用<span class="hl-current">右手</span>握住導線</div></div>
-                    <div class="step"><div class="step-num">2</div><div><span class="hl-current">拇指</span>指向<span class="hl-current">電流方向</span></div></div>
-                    <div class="step"><div class="step-num">3</div><div><span class="hl-field">四指彎曲方向</span>即為<span class="hl-field">磁場環繞方向</span></div></div>
+            <div class="card-header" id="adv-header" onclick="toggleAdvanced()" style="cursor:pointer; justify-content:space-between;">
+                <span>⚙️ 進階設定</span><span id="adv-chevron">▸</span>
+            </div>
+            <div class="card-body panel-hidden" id="adv-body">
+                <div class="mode-label">磁力線顯示效果</div>
+                <div class="dir-btn-group">
+                    <button class="dir-btn active" id="disp-anim" onclick="setDisplay('anim')">▶ 動態流動</button>
+                    <button class="dir-btn"        id="disp-static" onclick="setDisplay('static')">⏸ 靜態向量</button>
                 </div>
-                <div class="info-box" id="rule-info-sol" style="display:none;">
-                    <div class="rule-title">✋ 螺線管右手定則</div>
-                    <div class="step"><div class="step-num">1</div><div>用<span class="hl-current">右手</span>握住螺線管</div></div>
-                    <div class="step"><div class="step-num">2</div><div><span class="hl-current">四指彎曲方向</span>與<span class="hl-current">電流方向</span>相同</div></div>
-                    <div class="step"><div class="step-num">3</div><div><span class="hl-north">拇指所指</span>為<span class="hl-north">N 極方向</span></div></div>
+                <div style="margin-top:12px;">
+                    <div class="toggle-row" id="single-ring-toggle" onclick="toggleSingleRing()" style="margin-bottom:0;">
+                        <div class="toggle-track" id="single-ring-track"><div class="toggle-thumb"></div></div>
+                        <span>單圈模式（聚焦單一磁場圈）</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -476,7 +481,12 @@ var is2DMode          = false;
 var showPoleLabels    = false;   
 var showCurrentLabels = false;   
 var singleRing        = false;
-var solFieldCount     = 4;       
+var solFieldCount     = 4;
+var showHand          = true;    // 是否顯示 3D 右手模型
+var handCurl          = 1;       // 目標彎曲量 (0=張開, 1=完全握)
+var handCurlCurrent   = 1;       // 目前實際彎曲量 (animate 緩動用)
+var handFingers       = [];      // 四指 joint 參考
+var fieldHidden       = false;   // 引導教學暫時隱藏磁場 (聚焦電流/手)
 
 var wrap = document.getElementById('canvas-wrap');
 var scene = new THREE.Scene(); scene.background = new THREE.Color(0xe2e6eb);
@@ -513,7 +523,8 @@ var solCoil2DGroup     = new THREE.Group(); solGroup.add(solCoil2DGroup);
 var solFieldGroup      = new THREE.Group(); solGroup.add(solFieldGroup);
 var poleLabelGroup     = new THREE.Group(); scene.add(poleLabelGroup);    
 var currentLabelGroup  = new THREE.Group(); scene.add(currentLabelGroup); 
-var tangentGroup       = new THREE.Group(); scene.add(tangentGroup); 
+var tangentGroup       = new THREE.Group(); scene.add(tangentGroup);
+var handGroup          = new THREE.Group(); scene.add(handGroup);
 
 var ringParticles = [];
 var solFieldParticles = [];
@@ -635,7 +646,9 @@ function buildSolenoid() {
     var ptCount = turns * 72; var coilPts = [];
     for (var i = 0; i <= ptCount; i++) {
         var t = i / ptCount, ang = t * turns * Math.PI * 2; 
-        coilPts.push(new THREE.Vector3(-halfL + t * length, -radius * Math.cos(ang), radius * Math.sin(ang) * (cw ? -1 : 1)));
+        // z 一律 -1：使 ccw 線圈電流環繞為右旋 (與 N 在 +X、右手模型、2D 標記一致)；
+        // cw 因電流沿 -t 流動 (見下方 if(cw) negate)，仍為正確的左旋。
+        coilPts.push(new THREE.Vector3(-halfL + t * length, -radius * Math.cos(ang), radius * Math.sin(ang) * -1));
     }
     var coilCurve = new THREE.CatmullRomCurve3(coilPts);
     var coilMesh = new THREE.Mesh(new THREE.TubeGeometry(coilCurve, ptCount, 0.085, 10, false), new THREE.MeshStandardMaterial({ color: 0xc86020, roughness: 0.3, metalness: 0.85 }));
@@ -732,6 +745,175 @@ function buildSolenoid() {
     }
 }
 
+// ── 3D 右手模型 ──
+// Local frame 約定 (右手座標)：
+//   +Y = 手指伸直方向 (指根 → 指尖)
+//   +X = 拇指方向
+//   +Z = 手掌朝向 (掌心法線)；對右手而言 X̂ × Ŷ = +Ẑ
+// 不變量：拇指 = local +X；四指繞 +X 軸以右手螺旋彎曲 (+Y→+Z→−Y…)，即右手定則本身。
+// CURL_SIGN = +1 為真正的右手；若視覺方向相反可一行翻轉。
+var CURL_SIGN = 1;
+
+// 手掌尺寸 (buildHand 與 updateHandOrientation 共用)
+var PALM_W = 1.6, PALM_H = 1.8, PALM_D = 0.5;
+// 握點：被握物 (導線/線圈軸) 在 local frame 中通過的位置 (四指環繞中心)。
+// 用於把手平移到讓導線/線圈剛好穿過拳心。視覺上可微調。
+var GRIP_LOCAL = new THREE.Vector3(0, PALM_H + 0.35, 0.55); // 由 buildHand 自動算出覆蓋
+// 沿被握物軸的 roll 角 (可調)：直導線讓手背朝預設鏡頭；螺線管維持原本可接受角度。
+var WIRE_ROLL = Math.PI * 0.8;
+var SOL_ROLL  = Math.PI / 6;
+
+// 圓角骨節：往指尖收細的 cylinder + 基部較大球(指節凸起) + 頂端小球；
+// 各 mesh 沿 z 壓扁 (FINGER_FLAT) → 橫切面為橢圓 (真手指寬>厚)，去除「圓柱感」。
+// 壓扁只施於葉節點 mesh，避免父群組非均勻縮放對已旋轉子節點造成 shear。
+var FINGER_FLAT = 0.82;
+function makeBone(L, rad, mat) {
+    var g = new THREE.Group();
+    var radTop = rad * 0.78;
+    var cyl = new THREE.Mesh(new THREE.CylinderGeometry(radTop, rad, L, 14), mat);
+    cyl.position.y = L / 2; cyl.scale.z = FINGER_FLAT;
+    g.add(cyl);
+    var capTop = new THREE.Mesh(new THREE.SphereGeometry(radTop, 12, 10), mat);
+    capTop.position.y = L; capTop.scale.z = FINGER_FLAT;
+    g.add(capTop);
+    var capBot = new THREE.Mesh(new THREE.SphereGeometry(rad * 1.12, 12, 10), mat); // 指節凸起
+    capBot.scale.z = FINGER_FLAT;
+    g.add(capBot);
+    return g; // pivot 在 y=0
+}
+
+// 三節手指：近節 → 中節 → 遠節 巢狀 (近節帶動遠節)
+function makeFinger(lengths, rad, mat) {
+    var prox = makeBone(lengths[0], rad, mat);
+    var mid  = makeBone(lengths[1], rad * 0.82, mat); // 往指尖逐節收細
+    mid.position.y = lengths[0];
+    prox.add(mid);
+    var dist = makeBone(lengths[2], rad * 0.68, mat);
+    dist.position.y = lengths[1];
+    mid.add(dist);
+    prox.userData.joints = { prox: prox, mid: mid, dist: dist };
+    return prox;
+}
+
+function buildHand() {
+    clearGroup(handGroup);
+    handFingers = [];
+
+    var skinMat = new THREE.MeshStandardMaterial({ color: 0xe8b48c, roughness: 0.7, metalness: 0.0 });
+    var nailMat = new THREE.MeshStandardMaterial({ color: 0xd99a72, roughness: 0.6, metalness: 0.0 });
+
+    // 手掌：以 Shape 畫上寬下窄、四角圓潤的輪廓，再 Extrude + bevel 成圓潤帶倒角的掌體
+    var palmW = PALM_W, palmH = PALM_H, palmD = PALM_D;
+    var topHalf = palmW / 2;            // 指根較寬
+    var botHalf = palmW / 2 * 0.72;     // 腕部較窄
+    var cr = 0.32;                       // 圓角半徑
+    var shape = new THREE.Shape();
+    // 4 條直邊 + 4 個二次貝茲圓角 (y: 0=腕, palmH=指根；上寬下窄)
+    shape.moveTo(-botHalf, cr);
+    shape.lineTo(-topHalf, palmH - cr);                              // 左斜邊
+    shape.quadraticCurveTo(-topHalf, palmH, -topHalf + cr, palmH);   // 左上圓角
+    shape.lineTo(topHalf - cr, palmH);                              // 指根邊
+    shape.quadraticCurveTo(topHalf, palmH, topHalf, palmH - cr);     // 右上圓角
+    shape.lineTo(botHalf, cr);                                      // 右斜邊
+    shape.quadraticCurveTo(botHalf, 0, botHalf - cr, 0);            // 右下圓角
+    shape.lineTo(-botHalf + cr, 0);                                 // 腕邊
+    shape.quadraticCurveTo(-botHalf, 0, -botHalf, cr);             // 左下圓角
+
+    var palmGeo = new THREE.ExtrudeGeometry(shape, {
+        depth: palmD * 0.6, bevelEnabled: true,
+        bevelThickness: palmD * 0.2, bevelSize: 0.12, bevelSegments: 3, curveSegments: 8
+    });
+    palmGeo.computeBoundingBox(); // 厚度 (含 bevel) 沿 z 精準置中
+    palmGeo.translate(0, 0, -(palmGeo.boundingBox.min.z + palmGeo.boundingBox.max.z) / 2);
+    var palm = new THREE.Mesh(palmGeo, skinMat);
+    handGroup.add(palm); // 腕在 y=0、掌頂在 y=palmH
+
+    // 短前臂 stub (沿 -Y) 增加「手」的辨識度
+    var forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.65, 1.4, 16), skinMat);
+    forearm.position.set(0, -0.7, 0); handGroup.add(forearm);
+
+    // 四指：index/middle/ring/pinky；沿 X 略展開，掛在掌頂 (+Y 邊)
+    // 指長：中指 ≈ 手掌長 (PALM_H=1.8) 才合乎比例 (原本過長)
+    var fingersDef = [
+        { name: 'index',  L: [0.68, 0.54, 0.41], rad: 0.22, x:  0.55, y: palmH,        splay: -0.12 },
+        { name: 'middle', L: [0.75, 0.61, 0.48], rad: 0.23, x:  0.18, y: palmH + 0.05, splay: -0.04 },
+        { name: 'ring',   L: [0.68, 0.58, 0.44], rad: 0.22, x: -0.18, y: palmH,        splay:  0.04 },
+        { name: 'pinky',  L: [0.58, 0.44, 0.34], rad: 0.19, x: -0.55, y: palmH - 0.08, splay:  0.12 }
+    ];
+    var fingerTips = [];
+    fingersDef.forEach(function(fd) {
+        var finger = makeFinger(fd.L, fd.rad, skinMat);
+        finger.position.set(fd.x, fd.y, 0);
+        finger.rotation.z = fd.splay; // 略微展開
+        // 指甲 (遠節頂端薄片)
+        var nail = new THREE.Mesh(new THREE.SphereGeometry(fd.rad * 0.55, 8, 6), nailMat);
+        nail.position.y = fd.L[2];
+        finger.userData.joints.dist.add(nail);
+        handGroup.add(finger);
+        handFingers.push(finger);
+        fingerTips.push(nail);
+    });
+
+    // 拇指：2 節，掛在 +X 側近腕處，靜態指向 +X (不參與 curl)
+    var thumb = makeFinger([0.9, 0.7, 0.5], 0.26, skinMat);
+    thumb.position.set(palmW / 2 - 0.05, 0.5, 0.1);
+    thumb.rotation.z = -Math.PI / 2 + 0.22; // 躺向 +X、略上揚 (較貼近自然伸直)
+    thumb.rotation.y = 0.05;               // 幾乎不甩出手掌平面
+    // 拇指中節幾乎伸直，僅留極小自然彎
+    thumb.userData.joints.mid.rotation.x = -0.05;
+    handGroup.add(thumb);
+
+    // 自動計算握點 = 四指環繞圈中心：取每指 4 點 (指根、mid 關節、dist 關節、指尖)
+    // 於完全握 (curl=1) 時的質心，落在四指環繞圈內部，讓導線/線圈軸穿過拳心。
+    setHandCurl(1);
+    handGroup.updateMatrixWorld(true);
+    var sum = new THREE.Vector3(), wp = new THREE.Vector3(), nPts = 0;
+    handFingers.forEach(function(f, i) {
+        var j = f.userData.joints;
+        [f, j.mid, j.dist, fingerTips[i]].forEach(function(o) {
+            o.getWorldPosition(wp); sum.add(wp); nPts++;
+        });
+    });
+    sum.multiplyScalar(1 / nPts);
+    GRIP_LOCAL.copy(handGroup.worldToLocal(sum));
+
+    setHandCurl(handCurlCurrent);
+}
+
+// 0 = 張開, 1 = 完全握；四指三 joint 依 MCP>PIP>DIP 分配
+function setHandCurl(amount) {
+    var a = THREE.MathUtils.clamp(amount, 0, 1);
+    handFingers.forEach(function(f) {
+        var j = f.userData.joints;
+        j.prox.rotation.x = CURL_SIGN * a * (Math.PI * 0.55);
+        j.mid.rotation.x  = CURL_SIGN * a * (Math.PI * 0.55);
+        j.dist.rotation.x = CURL_SIGN * a * (Math.PI * 0.40);
+    });
+}
+
+// 對齊拇指 (= local +X) 至目標軸，即同時對齊四指彎曲方向 (右手特性)；
+// 再平移使握點 (GRIP_LOCAL) 落在導線/線圈軸 (世界原點)，讓手「握住」該物。
+function updateHandOrientation() {
+    var localX = new THREE.Vector3(1, 0, 0);
+    var target = new THREE.Vector3();
+    if (currentMode === 'wire') {
+        target.set(0, wireDir === 'up' ? 1 : -1, 0);
+        handGroup.scale.setScalar(0.85);
+    } else {
+        target.set(solDir === 'ccw' ? 1 : -1, 0, 0);
+        handGroup.scale.setScalar(1.5);
+    }
+    var q = new THREE.Quaternion().setFromUnitVectors(localX, target);
+    handGroup.quaternion.copy(q);
+    // 沿目標軸 (世界軸) roll，讓手背朝向鏡頭、握口較易讀；
+    // 必須用 rotateOnWorldAxis：rotateOnAxis 是繞本地軸，會在已旋轉時偏掉。
+    handGroup.rotateOnWorldAxis(target, currentMode === 'wire' ? WIRE_ROLL : SOL_ROLL);
+
+    // 平移：使握點對齊世界原點 (導線沿 Y、線圈沿 X 皆通過原點)
+    var grip = GRIP_LOCAL.clone().multiplyScalar(handGroup.scale.x).applyQuaternion(handGroup.quaternion);
+    handGroup.position.set(-grip.x, -grip.y, -grip.z);
+}
+
 // ── 點擊互動：射線與切線繪製系統 ──
 var raycaster = new THREE.Raycaster();
 var mouse = new THREE.Vector2();
@@ -777,7 +959,8 @@ function showTangent(worldP, hitObj) {
         var radVec = worldP.clone().sub(center);
         radVec.y = 0; radVec.normalize();
         var yAxis = new THREE.Vector3(0, dirMult, 0);
-        tangentDir.crossVectors(radVec, yAxis).normalize();
+        // B 方向 = 電流方向 × 徑向 (Î × r̂)，與 2D ⊙/⊗ 標記一致
+        tangentDir.crossVectors(yAxis, radVec).normalize();
     } 
     else if(hitObj.userData.type === 'solenoid') {
         var curve = hitObj.userData.curve;
@@ -849,7 +1032,17 @@ function refreshSceneVisibility() {
             }
         });
     }
+    // 引導教學：暫時隱藏磁場，讓學生先聚焦電流與手
+    if (fieldHidden) {
+        ringGroup.visible = false;
+        mark2DGroup.visible = false;
+        solFieldGroup.visible = false;
+    }
+
     updateWireCenterSprite();
+
+    handGroup.visible = showHand && !is2DMode; // 手是 3D 輔助，2D 切面下隱藏
+    if (showHand) updateHandOrientation();
 }
 
 function updateBadge() {
@@ -870,17 +1063,16 @@ window.setMode = function(mode) {
     document.getElementById('btn-solenoid').classList.toggle('active', mode === 'solenoid');
     document.getElementById('wire-controls').style.display  = mode === 'wire' ? '' : 'none';
     document.getElementById('sol-controls').style.display   = mode === 'solenoid' ? '' : 'none';
-    document.getElementById('rule-info-wire').style.display = mode === 'wire' ? '' : 'none';
-    document.getElementById('rule-info-sol').style.display  = mode === 'solenoid' ? '' : 'none';
     document.getElementById('wire-2d-view-controls').style.display = (is2DMode && mode === 'wire') ? '' : 'none';
-    
+
     document.getElementById('pole-label-toggle').style.display = mode === 'wire' ? 'none' : 'flex';
     document.getElementById('current-label-toggle').style.display = mode === 'wire' ? 'none' : 'flex';
-    
-    clearGroup(tangentGroup); 
-    controls.target.set(0, 0, 0); 
+
+    clearGroup(tangentGroup);
+    controls.target.set(0, 0, 0);
 
     if (mode === 'wire') buildWire(); else buildSolenoid();
+    exitGuide(); renderGuideText();
     updateBadge(); refreshSceneVisibility();
 };
 
@@ -943,6 +1135,13 @@ window.toggleSingleRing = function() {
     buildWire(); refreshSceneVisibility();
 };
 
+window.toggleHand = function() {
+    showHand = !showHand;
+    document.getElementById('hand-track').classList.toggle('on', showHand);
+    if (showHand) { handCurlCurrent = handCurl; }
+    refreshSceneVisibility();
+};
+
 window.togglePoleLabels = function() {
     showPoleLabels = !showPoleLabels;
     document.getElementById('pole-label-track').classList.toggle('on', showPoleLabels);
@@ -952,6 +1151,72 @@ window.togglePoleLabels = function() {
 window.toggleCurrentLabels = function() {
     showCurrentLabels = !showCurrentLabels;
     document.getElementById('current-label-track').classList.toggle('on', showCurrentLabels);
+    refreshSceneVisibility();
+};
+
+// ── 進階設定摺疊 ──
+window.toggleAdvanced = function() {
+    var body = document.getElementById('adv-body');
+    var chev = document.getElementById('adv-chevron');
+    body.classList.toggle('panel-hidden');
+    chev.textContent = body.classList.contains('panel-hidden') ? '▸' : '▾';
+};
+
+// ── 逐步引導教學 ──
+var guideIdx = -1; // -1 = 尚未開始
+var guideScripts = {
+    wire: [
+        { text:'<b>觀察電流方向</b>：紅色箭頭沿導線指出<span class="hl-current">電流</span>方向。先記住它指向哪邊。',
+          action:function(){ showHand = false; fieldHidden = true; } },
+        { text:'把<span class="hl-current">右手</span>攤開放到導線旁，讓<b>拇指指向電流方向</b>（手掌先保持張開）。',
+          action:function(){ showHand = true; handCurl = 0; handCurlCurrent = 0; fieldHidden = true; } },
+        { text:'<span class="hl-field">四指彎曲</span>，環繞導線——四指彎曲的方向就是<span class="hl-field">磁場環繞方向</span>。',
+          action:function(){ showHand = true; handCurl = 1; fieldHidden = true; } },
+        { text:'藍色<span class="hl-field">磁力線</span>出現了：它正沿著你四指彎曲的方向環繞導線。完成！',
+          action:function(){ showHand = true; handCurl = 1; fieldHidden = false; } }
+    ],
+    solenoid: [
+        { text:'<b>觀察電流方向</b>：紅色箭頭顯示<span class="hl-current">電流</span>在線圈上的繞行方向。',
+          action:function(){ showHand = false; fieldHidden = true; } },
+        { text:'把<span class="hl-current">右手</span>攤開放到線圈旁，讓<b>四指彎曲方向與電流相同</b>（手掌先保持張開）。',
+          action:function(){ showHand = true; handCurl = 0; handCurlCurrent = 0; fieldHidden = true; } },
+        { text:'四指順著電流彎曲，<span class="hl-north">拇指所指方向</span>即為<span class="hl-north">N 極</span>。',
+          action:function(){ showHand = true; handCurl = 1; fieldHidden = true; showPoleLabels = true; document.getElementById('pole-label-track').classList.add('on'); } },
+        { text:'藍色<span class="hl-field">磁力線</span>從 N 極穿出、繞回 S 極，貫穿線圈內部。完成！',
+          action:function(){ showHand = true; handCurl = 1; fieldHidden = false; } }
+    ]
+};
+
+function renderGuideText() {
+    var script = guideScripts[currentMode];
+    var el = document.getElementById('guide-text');
+    if (guideIdx < 0) {
+        el.innerHTML = (currentMode === 'wire' ? '直導線' : '螺線管') + '右手定則：按「下一步」開始逐步學習。';
+    } else {
+        el.innerHTML = '<b>步驟 ' + (guideIdx + 1) + ' / ' + script.length + '</b><br>' + script[guideIdx].text;
+    }
+}
+
+function exitGuide() {
+    guideIdx = -1;
+    fieldHidden = false;
+    showHand = true;
+    handCurl = 1;
+    document.getElementById('hand-track').classList.add('on');
+}
+
+window.guideStep = function(delta) {
+    var script = guideScripts[currentMode];
+    if (is2DMode) window.setView('3d'); // 引導需在 3D 才看得到手
+    guideIdx = THREE.MathUtils.clamp(guideIdx + delta, 0, script.length - 1);
+    script[guideIdx].action();
+    renderGuideText();
+    refreshSceneVisibility();
+};
+
+window.guideReset = function() {
+    exitGuide();
+    renderGuideText();
     refreshSceneVisibility();
 };
 
@@ -990,15 +1255,21 @@ document.getElementById('pole-label-toggle').style.display = 'none';
 document.getElementById('current-label-toggle').style.display = 'none'; 
 
 // ── 初始化啟動與動畫迴圈 ──
-buildWire(); buildSolenoid(); updateBadge(); refreshSceneVisibility(); loadQuiz();
+buildWire(); buildSolenoid(); buildHand(); updateHandOrientation(); updateBadge(); refreshSceneVisibility(); loadQuiz(); renderGuideText();
 
 var clock = new THREE.Clock();
 var axisZ = new THREE.Vector3(0, 0, 1); 
 
 function animate() {
     requestAnimationFrame(animate);
-    var dt = clock.getDelta(); 
-    controls.update(); 
+    var dt = clock.getDelta();
+    controls.update();
+
+    // 右手彎曲緩動
+    if (showHand && handFingers.length) {
+        handCurlCurrent = THREE.MathUtils.lerp(handCurlCurrent, handCurl, 0.1);
+        setHandCurl(handCurlCurrent);
+    }
 
     if (!is2DMode) {
         if (currentMode === 'wire') {
@@ -1029,7 +1300,8 @@ function animate() {
     var spd = displayMode === 'anim' ? 1.0 : 0.0;
     
     if (currentMode === 'wire') {
-        var rotSign = wireDir === 'up' ? 1 : -1;
+        // 電流向上時，由上往下看磁場為逆時針 (符合右手定則與 2D ⊙/⊗ 標記)
+        var rotSign = wireDir === 'up' ? -1 : 1;
         ringParticles.forEach(function(p) {
             if(spd > 0) p.angle += dt * spd * p.speed * rotSign;
             p.mesh.position.set(Math.cos(p.angle) * p.r, p.yPos, Math.sin(p.angle) * p.r);
