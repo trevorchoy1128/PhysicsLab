@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<!-- =====================================================================
+     PhysicsLab 模擬器起始模板 — assets/templates/sim-template.html
+     =====================================================================
+     ⚠ 本檔是「未來新模擬器」的起始範本，永遠不會被 index 連結。
+
+     ◆ 使用說明 ◆
+     1) 複製本檔到 Simulator/bookX/chapterY/你的模擬器.html。
+        本模板預設以 Simulator 深度（三層）引用共用資源；
+        若放到其他深度，請按下表調整所有共用資源路徑前綴：
+            index.html（根目錄）        → assets/...
+            Formula List/bookX/         → ../../assets/...
+            Simulator/bookX/chapterY/   → ../../../assets/...
+     2) 全文搜尋「TODO」逐一補完：<title>、字典、公式、物理與場景邏輯。
+     3) 2D 模擬器變體：刪除 three.js CDN 兩行，把 sim3d.js 換成
+        canvas2d.js，頁尾邏輯改用 PhysLab.canvas2d 對應 API
+        （#view3d 可改名 #view2d，並同步更新程式中的 id）。
+     4) 不需要數學排版時可整段刪除 MathJax 區塊；需要時保留
+        （注意：window.MathJax 設定必須在 loader <script> 之前）。
+     5) 語言切換 #lang-btn 與主頁 #home-btn 由共用 JS 自動注入
+        '#topbar .tb-actions'，請勿手寫。
+     ===================================================================== -->
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TODO</title>
+
+<!-- ═══════════ CDN 外部資源 ═══════════ -->
+<!-- MathJax（公式排版，選用）：設定必須放在 loader 之前；版本固定 3.2.2 -->
+<script>
+window.MathJax = {
+    tex: { inlineMath: [['\\(', '\\)']], displayMath: [['$$', '$$']] }
+};
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-mml-chtml.js"></script>
+
+<!-- three.js（僅 3D 頁需要）：2D 頁請刪除下列兩行並改用 canvas2d.js -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+<!-- ═══════════ 共用資源（載入順序固定，不可 defer/async） ═══════════
+     深度對照：index=assets/ · Formula List=../../assets/ · Simulator=../../../assets/
+     載入順序：core.js（必須最先）→ i18n.js → quiz.js → sim3d.js
+     2D 頁面：把 sim3d.js 換成 canvas2d.js -->
+<link rel="stylesheet" href="../../../assets/css/tokens.css">
+<link rel="stylesheet" href="../../../assets/css/labgray.css">
+<script src="../../../assets/js/core.js"></script>
+<script src="../../../assets/js/i18n.js"></script>
+<script src="../../../assets/js/quiz.js"></script>
+<script src="../../../assets/js/sim3d.js"></script>
+
+<style>
+    /* ── 頁面獨有 CSS（目標 <80 行） ──
+       只放本頁特有樣式（特殊讀數、示意圖配色等）；
+       通用樣式一律使用 assets/css/labgray.css，發現重複請上移到共用檔。 */
+    /* TODO */
+</style>
+</head>
+<body>
+
+<!-- ═══════════ 頂欄 ═══════════ -->
+<div id="topbar">
+    <div style="display:flex;align-items:center;gap:16px;">
+        <button type="button" class="panel-toggle-btn" id="btn-toggle-left"><span>☰</span> 控制</button>
+        <div class="title-block">
+            <h1 data-i18n="topbar.title">TODO 標題</h1>
+            <p data-i18n="topbar.subtitle">HKDSE Physics · Book X · Chapter Y</p>
+        </div>
+    </div>
+    <div class="tb-actions">
+        <!-- 語言切換 #lang-btn（i18n.js）與 🏠 主頁 #home-btn（core.js）會自動注入此容器 -->
+        <button type="button" class="panel-toggle-btn" id="btn-toggle-right"><span>📖</span> 資訊</button>
+    </div>
+</div>
+
+<div id="main">
+
+    <!-- ═══════════ 左側控制面板 ═══════════ -->
+    <div id="left-panel">
+        <div class="card">
+            <div class="card-header">⚙️ TODO 卡片標題<span class="chevron">▾</span></div>
+            <div class="card-body">
+
+                <!-- 滑桿列範例（頁尾以 PhysLab.ui.bindSlider 接線） -->
+                <div class="slider-row">
+                    <div class="slider-head"><label>TODO 參數名稱</label><span class="val" id="val-speed">1.0 ×</span></div>
+                    <input type="range" id="sld-speed" min="0.2" max="3" step="0.1" value="1">
+                </div>
+
+                <!-- 開關列範例（頁尾以 click 切換 .toggle-track 的 on 類別） -->
+                <div class="toggle-row" id="row-field">
+                    <div class="toggle-track on" id="opt-field"><div class="toggle-thumb"></div></div>
+                    <span>TODO 顯示選項名稱</span>
+                </div>
+
+                <!-- 模式按鈕群範例（TODO：頁尾綁定 click → 切換 .active 並套用模式） -->
+                <div class="dir-btn-group">
+                    <button type="button" class="dir-btn active" id="mode-a">TODO 模式 A</button>
+                    <button type="button" class="dir-btn" id="mode-b">TODO 模式 B</button>
+                </div>
+
+            </div>
+        </div>
+        <!-- TODO：視需要複製更多 .card（收合行為由 core.js 事件委派自動處理） -->
+    </div>
+
+    <!-- ═══════════ 中央 3D 視圖 ═══════════ -->
+    <div id="canvas-wrap">
+        <div id="view3d">
+            <div id="status-badge">TODO 即時讀數 <b id="sb-value">0.00</b></div>
+            <div id="hint" data-i18n="status.hint">🖱️ 左鍵旋轉視角 · 滾輪縮放</div>
+        </div>
+    </div>
+
+    <!-- ═══════════ 右側資訊面板 ═══════════ -->
+    <div id="right-panel">
+
+        <div class="formula-box">
+            <h4>⚡ TODO 公式標題</h4>
+            <!-- TODO：換成本頁公式（保留 MathJax 區塊時，雙錢號包住的 TeX 會自動排版） -->
+            <div class="formula">$$ \varepsilon = N B A \omega \sin(\omega t) $$</div>
+            <div class="formula-desc">TODO：各符號說明。</div>
+        </div>
+
+        <div class="guide-box">
+            <h4>📘 逐步引導</h4>
+            <div id="guide-text"></div>
+            <div id="guide-step-no"></div>
+            <div class="guide-nav">
+                <button type="button" onclick="PhysLab.guide.go(-1)">← 上一步</button>
+                <button type="button" onclick="PhysLab.guide.go(1)">下一步 →</button>
+            </div>
+        </div>
+
+        <div class="quiz-box">
+            <h4>📝 概念測驗</h4>
+            <div class="quiz-q" id="quiz-q"></div>
+            <div class="quiz-options" id="quiz-options"></div>
+            <div id="quiz-feedback"></div>
+            <button type="button" id="quiz-next" onclick="PhysLab.quiz.next()">下一題 →</button>
+        </div>
+
+    </div>
+</div>
+
+<!-- ═══════════ 頁面字典（zh 必填；en 缺字自動回退 zh） ═══════════ -->
+<script>
+PhysLab.i18n.register({
+    zh: {
+        'topbar.title': 'TODO 標題',
+        'topbar.subtitle': 'HKDSE Physics · Book X · Chapter Y',
+        'guide.steps': [
+            '步驟 1：TODO — 介紹本模擬器的目的與基本操作。',
+            '步驟 2：TODO — 引導學生調整參數並觀察現象。'
+        ],
+        'quiz.bank': [
+            {
+                q: 'TODO 題目：本模擬器演示的核心概念是？',
+                opts: ['TODO 選項 A', 'TODO 選項 B', 'TODO 選項 C', 'TODO 選項 D'],
+                ans: 0,
+                exp: 'TODO 解釋：說明為何該選項正確。'
+            }
+        ],
+        'status.hint': '🖱️ 左鍵旋轉視角 · 滾輪縮放'
+    },
+    en: {
+        /* TODO：翻譯完成後填入（key 與 zh 完全相同；缺字會自動回退 zh） */
+    }
+});
+</script>
+
+<!-- ═══════════ 頁面邏輯 ═══════════ -->
+<script>
+PhysLab.sim3d.ready(function () {
+    // 建立 3D 場景。ctx = { scene, camera, renderer, controls, clock,
+    //                       setView(name), onResize(cb), resize(), start(tick), stop() }
+    var ctx = PhysLab.sim3d.create(document.getElementById('view3d'), {
+        views: { default: { pos: [7, 5, 11], tgt: [0, 0, 0] } }
+    });
+
+    /* TODO：在 ctx.scene 建立幾何物件、燈光、輔助箭頭等 */
+
+    // 滑桿範例：回呼回傳的字串會寫入 #val-speed；回傳 undefined 則自行處理顯示
+    PhysLab.ui.bindSlider('sld-speed', 'val-speed', function (v) {
+        /* TODO：把 v 套用到模擬參數 */
+        return v.toFixed(1) + ' ×';
+    });
+
+    // 開關列範例
+    document.getElementById('row-field').addEventListener('click', function () {
+        document.getElementById('opt-field').classList.toggle('on');
+        /* TODO：切換場景物件可見性 */
+    });
+
+    /* TODO：模式按鈕群 — 綁定 #mode-a / #mode-b click → 切換 .active 並套用模式 */
+
+    // 若頁面加入 .step-btn[data-target][data-dir] 長按步進按鈕，此行會自動綁定
+    PhysLab.ui.bindSteppers();
+
+    // 面板開關（切換後重算畫布尺寸）
+    PhysLab.ui.bindPanelToggle('btn-toggle-left', 'left-panel', ctx.resize);
+    PhysLab.ui.bindPanelToggle('btn-toggle-right', 'right-panel', ctx.resize);
+
+    // 逐步引導與概念測驗（內容存於 i18n 字典，切換語言會自動重繪）
+    PhysLab.guide.init({ stepsKey: 'guide.steps' });
+    PhysLab.quiz.init({ bankKey: 'quiz.bank' });
+
+    // 語言切換後：重建 data-i18n 涵蓋不到的內容（如 canvas sprite 文字）
+    PhysLab.i18n.onChange(function () {
+        /* TODO: rebuild sprite labels */
+    });
+
+    // 主迴圈（dt = 每幀時間差，秒）
+    ctx.start(function (dt) {
+        /* TODO physics */
+    });
+});
+</script>
+</body>
+</html>
