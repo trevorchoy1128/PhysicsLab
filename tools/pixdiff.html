@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PixDiff — 像素比對</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; margin: 0; }
+  body { font: 14px/1.5 system-ui, "Microsoft JhengHei", sans-serif; background: #16181d; color: #d7dae0; padding: 24px; }
+  h1 { font-size: 18px; margin-bottom: 4px; }
+  p.hint { color: #8a919e; margin-bottom: 16px; }
+  .row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+  .drop { flex: 1; min-width: 260px; min-height: 170px; border: 2px dashed #3a3f4a; border-radius: 10px;
+          display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+          cursor: pointer; padding: 12px; text-align: center; }
+  .drop.over { border-color: #6ea8fe; background: #1d2129; }
+  .drop img { max-width: 100%; max-height: 140px; border-radius: 4px; }
+  .drop .meta { color: #8a919e; font-size: 12px; word-break: break-all; }
+  .controls { display: flex; gap: 14px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+  input[type=number] { width: 80px; background: #1d2129; color: inherit; border: 1px solid #3a3f4a; border-radius: 6px; padding: 6px 8px; }
+  button { background: #2b5cab; color: #fff; border: 0; border-radius: 6px; padding: 8px 22px; font-size: 14px; cursor: pointer; }
+  button:disabled { background: #3a3f4a; color: #8a919e; cursor: not-allowed; }
+  #result { margin-bottom: 12px; min-height: 24px; }
+  .badge { display: inline-block; padding: 2px 12px; border-radius: 999px; font-weight: 700; margin-left: 8px; }
+  .pass { background: #1d4a2a; color: #7fdc9a; }
+  .fail { background: #55222a; color: #ff9aa5; }
+  .error { color: #ff9aa5; }
+  canvas { max-width: 100%; border: 1px solid #3a3f4a; border-radius: 6px; display: none; }
+</style>
+</head>
+<body>
+<h1>PixDiff 像素比對</h1>
+<p class="hint">選擇或拖入兩張同尺寸 PNG（如 snap.mjs 產出的重構前後截圖）。紅色 = 差異像素，灰色 = 相同區域。可直接以 file:// 開啟使用。</p>
+<div class="row">
+  <div class="drop" id="dropA"></div>
+  <div class="drop" id="dropB"></div>
+</div>
+<div class="controls">
+  <label>各通道閾值 (0–255)：<input type="number" id="thr" value="16" min="0" max="255"></label>
+  <button id="cmp" disabled>比對</button>
+</div>
+<div id="result"></div>
+<canvas id="diff"></canvas>
+<script>
+'use strict';
+const imgs = { A: null, B: null };
+
+// 建立一個可點擊 / 拖放的載入區
+function makeZone(id, key, label) {
+  const zone = document.getElementById(id);
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = 'image/*'; input.hidden = true;
+  const title = Object.assign(document.createElement('div'), { textContent: label });
+  const meta = Object.assign(document.createElement('div'), { className: 'meta', textContent: '點擊選擇或拖放圖片' });
+  const preview = document.createElement('img');
+  zone.append(title, meta, preview, input);
+  const load = (file) => {
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    const im = new Image();
+    im.onload = () => {
+      imgs[key] = im;
+      preview.src = url;
+      meta.textContent = file.name + ' — ' + im.naturalWidth + '×' + im.naturalHeight;
+      document.getElementById('cmp').disabled = !(imgs.A && imgs.B);
+    };
+    im.src = url;
+  };
+  zone.addEventListener('click', () => input.click());
+  input.addEventListener('change', () => load(input.files[0]));
+  zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('over'));
+  zone.addEventListener('drop', (e) => { e.preventDefault(); zone.classList.remove('over'); load(e.dataTransfer.files[0]); });
+}
+makeZone('dropA', 'A', '圖 A（重構前）');
+makeZone('dropB', 'B', '圖 B（重構後）');
+
+// 把圖畫到離螢幕 canvas 取得像素資料
+function pixels(img) {
+  const c = document.createElement('canvas');
+  c.width = img.naturalWidth; c.height = img.naturalHeight;
+  const ctx = c.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(img, 0, 0);
+  return ctx.getImageData(0, 0, c.width, c.height);
+}
+
+document.getElementById('cmp').addEventListener('click', () => {
+  const result = document.getElementById('result');
+  const canvas = document.getElementById('diff');
+  const a = imgs.A, b = imgs.B;
+  if (a.naturalWidth !== b.naturalWidth || a.naturalHeight !== b.naturalHeight) {
+    canvas.style.display = 'none';
+    result.innerHTML = '<span class="error">尺寸不一致：A 為 ' + a.naturalWidth + '×' + a.naturalHeight +
+      '，B 為 ' + b.naturalWidth + '×' + b.naturalHeight + '，無法比對。</span>';
+    return;
+  }
+  const thr = Math.max(0, Math.min(255, Number(document.getElementById('thr').value) || 0));
+  const da = pixels(a), db = pixels(b);
+  const w = da.width, h = da.height, total = w * h;
+  const out = new ImageData(w, h);
+  let diff = 0;
+  for (let i = 0; i < da.data.length; i += 4) {
+    const d0 = Math.abs(da.data[i] - db.data[i]);
+    const d1 = Math.abs(da.data[i + 1] - db.data[i + 1]);
+    const d2 = Math.abs(da.data[i + 2] - db.data[i + 2]);
+    const d3 = Math.abs(da.data[i + 3] - db.data[i + 3]);
+    if (Math.max(d0, d1, d2, d3) > thr) { // 任一通道差異超過閾值 → 視為不同
+      diff++;
+      out.data[i] = 255; out.data[i + 1] = 32; out.data[i + 2] = 32; out.data[i + 3] = 255;
+    } else { // 相同 → 灰階底圖，30% 不透明度
+      const g = 0.299 * da.data[i] + 0.587 * da.data[i + 1] + 0.114 * da.data[i + 2];
+      out.data[i] = out.data[i + 1] = out.data[i + 2] = g; out.data[i + 3] = 77;
+    }
+  }
+  canvas.width = w; canvas.height = h;
+  canvas.getContext('2d').putImageData(out, 0, 0);
+  canvas.style.display = 'block';
+  const pct = (diff / total) * 100;
+  const pass = pct <= 2; // 差異 ≤ 2% 視為通過
+  result.innerHTML = '總像素 ' + total.toLocaleString() + '；差異像素 ' + diff.toLocaleString() +
+    '；差異率 ' + pct.toFixed(3) + '%' +
+    '<span class="badge ' + (pass ? 'pass' : 'fail') + '">' + (pass ? 'PASS' : 'FAIL') + '</span>';
+});
+</script>
+</body>
+</html>
