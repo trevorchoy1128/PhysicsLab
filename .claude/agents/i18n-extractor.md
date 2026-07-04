@@ -27,14 +27,19 @@ PhysLab.i18n.register({
 - 依賴共用嘅 `assets/js/i18n.js`（命名空間 `window.PhysLab`）。如果目標頁仲未引入共用資產，先確認 `assets/js/i18n.js` 存在同其 API（用 Read 睇），再喺頁面 head 加 classic `<script src>`（相對路徑，注意頁面喺 `Simulator/bookN/chapterM/` 深度係 `../../../assets/...`）
 - HTML 靜態文字：按 i18n.js 實際提供嘅機制標記（如 `data-i18n="key"` 屬性）；JS 動態字串：改用 `PhysLab.i18n.t('key')`（以 i18n.js 實際 API 為準）
 
-## Key 命名規則（全站統一）
+## Key 命名規則（全站統一，重構計劃已拍板嘅點記法）
 
-- `ui.*` — 通用控制（`ui.play`、`ui.pause`、`ui.reset`、`ui.speed`）
-- `label.*` — 物理量標籤（`label.voltage`、`label.frequency`）
-- `title.*` — 頁面/區塊標題
-- `desc.*` — 說明文字、教學提示
-- `unit.*` — 單位文字（如需要）
-- 同一概念全站用同一 key（播放掣一律 `ui.play`），方便日後統一翻譯
+- 格式：`區.項[.子項]`，跟試點頁（bar-magnetic、faraday-lenz）現成用法
+- `topbar.*` — 頂欄（`topbar.title`）
+- `panel.*.header` / `panel.*.*` — 左右面板卡片
+- `status.*` — 狀態徽章（`status.idle`）
+- `guide.steps` — 導覽步進器（陣列）
+- `quiz.bank` — 題庫（陣列 `{q,opts,ans,exp}`，解說欄位統一叫 `exp`）
+- `label3d.*` — 3D sprite 標籤（`label3d.poleN`）
+- `canvas.*` — canvas 繪製文字（`canvas.emfLegend`）
+- 同一概念全站用同一 key，方便日後統一翻譯；動手前先 Grep 試點頁現有 key 跟住用
+
+**分工註明**：Wave 遷移中嘅頁面應該直接用 labgray-migrator（字典抽取係佢配方第⑤步，一次過連版面做埋）；本 agent 留返畀「只抽字典、唔做版面遷移」嘅單獨場景。
 
 ## 鐵律
 
