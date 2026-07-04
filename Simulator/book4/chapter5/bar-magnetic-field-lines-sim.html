@@ -1,67 +1,72 @@
-﻿<!DOCTYPE html>
-<html lang="zh-HK">
+<!DOCTYPE html>
+<html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HKDSE 物理 - 3D 完美對稱與精準中和點模擬器</title>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="../../../assets/js/core.js"></script>
+    <script src="../../../assets/js/i18n.js"></script>
+    <script src="../../../assets/js/quiz.js"></script>
+    <script src="../../../assets/js/sim3d.js"></script>
+    <link rel="stylesheet" href="../../../assets/css/tokens.css">
+    <link rel="stylesheet" href="../../../assets/css/labgray.css">
     <style>
-        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc; color: #333; }
+        /* ==============================================================
+           本頁為「全螢幕畫布＋浮動面板」版式（非 Lab Gray 三欄 chrome），
+           以下第一段為共用樣式中和，其餘為頁面專屬樣式。
+           ============================================================== */
+
+        /* 中和 labgray §1 body（flex 三欄版式）與 tokens 全域 reset：
+           維持原版全螢幕畫布 body 的計算值 */
+        body {
+            margin: 0; overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8fafc; color: #333;
+            display: block; min-height: auto; flex-direction: row;
+            box-sizing: content-box;
+        }
+        /* 中和 tokens 的 * { box-sizing: border-box }：原版面板以 content-box
+           排版（內容寬 340px ＋ 25px×2 內距 ＋ 1px×2 邊框 ＝ 總寬 392px）。
+           面板內的 select / button 本來就是 UA 預設 border-box，不受影響。 */
+        #ui-panel { box-sizing: content-box; }
+        /* 畫布容器尺寸：PhysLab.sim3d.create 依容器大小建立 renderer
+           （原版直接用 window.innerWidth / innerHeight） */
+        #canvas-container { width: 100vw; height: 100vh; }
+
         #ui-panel {
             position: absolute; top: 20px; left: 20px; background: rgba(255, 255, 255, 0.95);
-            padding: 20px 25px; border-radius: 12px; border: 1px solid #cbd5e1;
+            padding: 20px 25px; border-radius: 12px; border: 1px solid var(--pl-border);
             box-shadow: 0 8px 30px rgba(0,0,0,0.12); width: 340px; z-index: 100; backdrop-filter: blur(10px);
             max-height: 90vh; overflow-y: auto;
         }
-        h2 { margin: 0 0 15px 0; font-size: 19px; color: #0f172a; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; }
+        h2 { margin: 0 0 15px 0; font-size: 19px; color: #0f172a; border-bottom: 2px solid var(--pl-border-soft); padding-bottom: 10px; }
         .control-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 6px; font-size: 13px; color: #475569; font-weight: bold; }
+        label { display: block; margin-bottom: 6px; font-size: 13px; color: var(--pl-text-dim); font-weight: bold; }
         select {
-            width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #cbd5e1;
-            background: #fff; color: #1e293b; font-size: 13px; cursor: pointer; transition: all 0.2s;
+            width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--pl-border);
+            background: #fff; color: var(--pl-text-strong); font-size: 13px; cursor: pointer; transition: all 0.2s;
         }
-        select:hover { border-color: #3b82f6; }
+        select:hover { border-color: var(--pl-blue); }
         .checkbox-label {
             display: flex; align-items: center; font-size: 13px; color: #dc2626; cursor: pointer; font-weight: bold;
         }
-        .checkbox-label input { width: auto; margin-right: 8px; cursor: pointer; }
+        /* margin 前三值補回被 tokens reset 歸零的 UA 預設（3px 3px 3px 4px），
+           右值為原版的 margin-right: 8px */
+        .checkbox-label input { width: auto; margin: 3px 8px 3px 4px; cursor: pointer; }
         button {
             width: 100%; padding: 10px; border-radius: 6px; border: none;
             background-color: #2563eb; color: white; font-weight: bold; font-size: 14px;
             cursor: pointer; transition: 0.3s; margin-top: 5px; box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
         }
         button:hover { background-color: #1d4ed8; transform: translateY(-1px); }
-        .instructions { font-size: 12px; color: #64748b; line-height: 1.6; margin-top: 15px; padding-top: 12px; border-top: 1px dashed #cbd5e1; }
+        .instructions { font-size: 12px; color: var(--pl-text-faint); line-height: 1.6; margin-top: 15px; padding-top: 12px; border-top: 1px dashed var(--pl-border); }
         .instructions span { color: #dc2626; font-weight: bold; }
-        .tip { background: #eff6ff; border-left: 4px solid #3b82f6; padding: 10px; margin-top: 10px; font-size: 12px; color: #1e40af; border-radius: 0 4px 4px 0;}
-    
-    /* Home button */
-    #home-btn {
-        position: fixed;
-        bottom: 16px;
-        left: 16px;
-        z-index: 99999;
-        background: rgba(30,41,59,0.85);
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-        border: 1px solid rgba(255,255,255,0.3);
-        border-radius: 10px;
-        padding: 8px 14px;
-        font-size: 13px;
-        font-weight: bold;
-        color: #fff;
-        text-decoration: none;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.25);
-        transition: background 0.2s, transform 0.2s;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-    #home-btn:hover {
-        background: rgba(30,41,59,0.95);
-        transform: translateY(-2px);
-    }
+        .tip { background: #eff6ff; border-left: 4px solid var(--pl-blue); padding: 10px; margin-top: 10px; font-size: 12px; color: #1e40af; border-radius: 0 4px 4px 0;}
 
-        /* -- Responsive (Mobile / Tablet) -- */
+        /* -- Responsive (Mobile / Tablet) --
+           本頁浮動面板的自有斷點（非 labgray 三欄 chrome 的 1180/860） */
         @media (max-width: 768px) {
             #ui-panel, .ui-panel {
                 width: calc(100vw - 20px) !important;
@@ -89,71 +94,57 @@
             }
         }
     </style>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <!-- sim3d-load-guard: three.js 載入失敗提示 -->
-    <script>
-      window.addEventListener('DOMContentLoaded', function () {
-        if (typeof THREE === 'undefined' || typeof THREE.OrbitControls === 'undefined') {
-          var o = document.createElement('div');
-          o.id = 'sim3d-load-error';
-          o.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;background:#0f172a;color:#fff;font-family:system-ui,\'Noto Sans HK\',sans-serif;font-size:18px;line-height:1.7';
-          o.innerHTML = '⚠️ 無法載入 3D 元件（three.js）<br>請檢查網路連線後重新整理頁面。';
-          document.body.appendChild(o);
-        }
-      });
-    </script>
 </head>
 <body>
 
     <div id="ui-panel">
-        <h2>3D 教科書標準磁場模擬器</h2>
-        
+        <h2 data-i18n="panel.main.header">3D 教科書標準磁場模擬器</h2>
+
         <div class="control-group">
-            <label>磁鐵排列模式：</label>
+            <label data-i18n="panel.main.mode">磁鐵排列模式：</label>
             <select id="modeSelect">
-                <option value="single" selected>單一磁鐵 (左S - 右N)</option>
-                <option value="repel">同極相斥 (N - N)</option>
-                <option value="attract">異極相吸 (N - S)</option>
+                <option value="single" selected data-i18n="panel.main.modeSingle">單一磁鐵 (左S - 右N)</option>
+                <option value="repel" data-i18n="panel.main.modeRepel">同極相斥 (N - N)</option>
+                <option value="attract" data-i18n="panel.main.modeAttract">異極相吸 (N - S)</option>
             </select>
         </div>
 
         <div class="control-group" id="neutralControl" style="display: none;">
             <label class="checkbox-label">
-                <input type="checkbox" id="neutralToggle"> 顯示精準中和點標記
+                <input type="checkbox" id="neutralToggle"> <span data-i18n="panel.main.neutralToggle">顯示精準中和點標記</span>
             </label>
         </div>
 
         <div class="control-group">
-            <label>發射方向 (平面數量)：</label>
+            <label data-i18n="panel.main.linesDir">發射方向 (平面數量)：</label>
             <select id="linesDirectionSelect">
-                <option value="2" selected>2 條 (完美重現教科書 2D 截面)</option>
-                <option value="4">4 條 (十字雙平面)</option>
-                <option value="8">8 條 (標準 3D 包覆)</option>
-                <option value="16">16 條</option>
+                <option value="2" selected data-i18n="panel.main.dir2">2 條 (完美重現教科書 2D 截面)</option>
+                <option value="4" data-i18n="panel.main.dir4">4 條 (十字雙平面)</option>
+                <option value="8" data-i18n="panel.main.dir8">8 條 (標準 3D 包覆)</option>
+                <option value="16" data-i18n="panel.main.dir16">16 條</option>
             </select>
         </div>
 
         <div class="control-group">
-            <label>磁場線密度 (每極數量)：</label>
+            <label data-i18n="panel.main.density">磁場線密度 (每極數量)：</label>
             <select id="densitySelect">
-                <option value="2">2 條 (極簡)</option>
-                <option value="4">4 條</option>
-                <option value="6">6 條</option>
-                <option value="8">8 條</option>
-                <option value="10" selected>10 條 (標準)</option>
-                <option value="20">20 條 (密集)</option>
-                <option value="30">30 條 (鐵粉效果)</option>
+                <option value="2" data-i18n="panel.main.den2">2 條 (極簡)</option>
+                <option value="4" data-i18n="panel.main.den4">4 條</option>
+                <option value="6" data-i18n="panel.main.den6">6 條</option>
+                <option value="8" data-i18n="panel.main.den8">8 條</option>
+                <option value="10" selected data-i18n="panel.main.den10">10 條 (標準)</option>
+                <option value="20" data-i18n="panel.main.den20">20 條 (密集)</option>
+                <option value="30" data-i18n="panel.main.den30">30 條 (鐵粉效果)</option>
             </select>
         </div>
 
-        <button id="compassBtn">打開 2D 平面指南針</button>
+        <button id="compassBtn" data-i18n="panel.main.compassOpen">打開 2D 平面指南針</button>
 
-        <div class="tip">
+        <div class="tip" data-i18n-html="panel.main.tip">
             💡 <b>精準標記：</b><br>中和點現在改用幾何正中心的<b>實心圓點</b>標示，確保標示位置100%符合 $\vec{B} = 0$ 的絕對座標點。
         </div>
 
-        <div class="instructions">
+        <div class="instructions" data-i18n-html="panel.main.instructions">
             <b>操作指南：</b><br>
             • 滑鼠 <span>左鍵拖曳背景</span> 旋轉 3D 視角。<br>
             • 滑鼠 <span>點擊指南針</span> 可無縫自由拖曳。<br>
@@ -164,63 +155,101 @@
     <div id="canvas-container"></div>
 
 <script>
+    /* ── 頁面字典：學生可見字串集中於此（en 暫缺 → 自動回退 zh） ── */
+    PhysLab.i18n.register({
+        zh: {
+            'panel.main.header': '3D 教科書標準磁場模擬器',
+            'panel.main.mode': '磁鐵排列模式：',
+            'panel.main.modeSingle': '單一磁鐵 (左S - 右N)',
+            'panel.main.modeRepel': '同極相斥 (N - N)',
+            'panel.main.modeAttract': '異極相吸 (N - S)',
+            'panel.main.neutralToggle': '顯示精準中和點標記',
+            'panel.main.linesDir': '發射方向 (平面數量)：',
+            'panel.main.dir2': '2 條 (完美重現教科書 2D 截面)',
+            'panel.main.dir4': '4 條 (十字雙平面)',
+            'panel.main.dir8': '8 條 (標準 3D 包覆)',
+            'panel.main.dir16': '16 條',
+            'panel.main.density': '磁場線密度 (每極數量)：',
+            'panel.main.den2': '2 條 (極簡)',
+            'panel.main.den4': '4 條',
+            'panel.main.den6': '6 條',
+            'panel.main.den8': '8 條',
+            'panel.main.den10': '10 條 (標準)',
+            'panel.main.den20': '20 條 (密集)',
+            'panel.main.den30': '30 條 (鐵粉效果)',
+            'panel.main.compassOpen': '打開 2D 平面指南針',
+            'panel.main.compassClose': '關閉指南針',
+            'panel.main.tip': '💡 <b>精準標記：</b><br>中和點現在改用幾何正中心的<b>實心圓點</b>標示，確保標示位置100%符合 $\\vec{B} = 0$ 的絕對座標點。',
+            'panel.main.instructions': '<b>操作指南：</b><br>• 滑鼠 <span>左鍵拖曳背景</span> 旋轉 3D 視角。<br>• 滑鼠 <span>點擊指南針</span> 可無縫自由拖曳。<br>* 橘色箭頭指示磁場由 N 極流向 S 極。',
+            'label3d.neutral': '中和點'
+        },
+        en: {}
+    });
+</script>
+<script>
+    let sim = null; // PhysLab.sim3d.create() 場景上下文
     let scene, camera, renderer, orbitControls;
-    let magnetsData = []; 
-    let magnetsGroup = new THREE.Group();
-    let fieldLinesGroup = new THREE.Group();
-    let neutralMarker = null; 
-    
+    let magnetsData = [];
+    let magnetsGroup, fieldLinesGroup;
+    let neutralMarker = null;
+
     // 指南針與拖曳系統
     let compass;
     let isCompassActive = false;
     let isDragging = false;
-    const raycaster = new THREE.Raycaster();
-    const mouse = new THREE.Vector2();
-    const dragPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
-    
+    let raycaster, mouse, dragPlane;
+
     // 物理比例設定
-    const MAG_LEN = 8.0; 
-    const MAG_WID = 1.4; 
-    const POLE_DIST = (MAG_LEN / 2) * 0.85; 
+    const MAG_LEN = 8.0;
+    const MAG_WID = 1.4;
+    const POLE_DIST = (MAG_LEN / 2) * 0.85;
 
     function init() {
         const container = document.getElementById('canvas-container');
-        
-        scene = new THREE.Scene();
-        scene.background = new THREE.Color(0xf8fafc); 
+
+        // 本頁原版場景值（與共用預設不同者全部顯式傳入）：
+        //   背景 0xf8fafc（非 0xe2e6eb）、fov 45（非 42）、far 1000（非 200）、
+        //   相機 (0,0,48) → (0,0,0)、damping 0.05（非 0.07）、無網格
+        sim = PhysLab.sim3d.create(container, {
+            background: 0xf8fafc,
+            fov: 45, near: 0.1, far: 1000,
+            views: { default: { pos: [0, 0, 48], tgt: [0, 0, 0] } },
+            controls: { damping: 0.05 },
+            lights: false,
+            grid: false
+        });
+        scene = sim.scene;
+        camera = sim.camera;
+        renderer = sim.renderer;
+        orbitControls = sim.controls;
+
+        // 原版光源：Ambient 0.85 ＋ 單一主光 0.5 @ (5,15,20)（無補光 → fill:0）
+        PhysLab.sim3d.addLabLights(scene, { ambient: 0.85, key: 0.5, keyPos: [5, 15, 20], fill: 0 });
+        // 原版不封頂 devicePixelRatio（create 預設封頂 2）；resize 讓新比例生效
+        renderer.setPixelRatio(window.devicePixelRatio);
+        sim.resize();
+
+        magnetsGroup = new THREE.Group();
+        fieldLinesGroup = new THREE.Group();
         scene.add(magnetsGroup);
         scene.add(fieldLinesGroup);
 
-        camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(0, 0, 48); 
-
-        renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(window.devicePixelRatio);
-        container.appendChild(renderer.domElement);
-
-        scene.add(new THREE.AmbientLight(0xffffff, 0.85));
-        const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
-        dirLight.position.set(5, 15, 20);
-        scene.add(dirLight);
-
-        orbitControls = new THREE.OrbitControls(camera, renderer.domElement);
-        orbitControls.enableDamping = true;
-        orbitControls.dampingFactor = 0.05;
+        raycaster = new THREE.Raycaster();
+        mouse = new THREE.Vector2();
+        dragPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
 
         createCompass();
 
         window.addEventListener('pointerdown', onPointerDown);
         window.addEventListener('pointermove', onPointerMove);
         window.addEventListener('pointerup', onPointerUp);
-        window.addEventListener('resize', onWindowResize);
 
         document.getElementById('modeSelect').addEventListener('change', (e) => {
             const mode = e.target.value;
             document.getElementById('neutralControl').style.display = mode === 'repel' ? 'block' : 'none';
             buildScene(mode);
         });
-        
+
         document.getElementById('neutralToggle').addEventListener('change', (e) => {
             if (neutralMarker) neutralMarker.visible = e.target.checked;
         });
@@ -230,8 +259,9 @@
         document.getElementById('compassBtn').addEventListener('click', toggleCompass);
 
         // 初始載入
+        updateCompassBtn();
         buildScene(document.getElementById('modeSelect').value);
-        animate();
+        sim.start(tick);
     }
 
     function onPointerDown(event) {
@@ -239,7 +269,7 @@
         mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
         mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
         raycaster.setFromCamera(mouse, camera);
-        
+
         const intersects = raycaster.intersectObject(compass, true);
         if (intersects.length > 0) {
             isDragging = true;
@@ -252,10 +282,10 @@
         mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
         mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
         raycaster.setFromCamera(mouse, camera);
-        
+
         const targetPoint = new THREE.Vector3();
         raycaster.ray.intersectPlane(dragPlane, targetPoint);
-        
+
         if (targetPoint) {
             compass.position.copy(targetPoint);
         }
@@ -263,13 +293,13 @@
 
     function onPointerUp(event) {
         isDragging = false;
-        orbitControls.enabled = true; 
+        orbitControls.enabled = true;
     }
 
     function createTextMaterial(text, bgColor) {
         const canvas = document.createElement('canvas');
-        canvas.width = 512; 
-        canvas.height = 180; 
+        canvas.width = 512;
+        canvas.height = 180;
         const ctx = canvas.getContext('2d');
         ctx.fillStyle = bgColor;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -277,7 +307,7 @@
         ctx.font = 'bold 110px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(text, 256, 96); 
+        ctx.fillText(text, 256, 96);
         return new THREE.MeshPhongMaterial({ map: new THREE.CanvasTexture(canvas) });
     }
 
@@ -286,11 +316,11 @@
         while(magnetsGroup.children.length > 0){ magnetsGroup.remove(magnetsGroup.children[0]); }
         if (neutralMarker) { scene.remove(neutralMarker); neutralMarker = null; }
 
-        const colorN = '#ef4444'; 
+        const colorN = '#ef4444';
         const colorS = '#3b82f6';
 
-        const matN_text = createTextMaterial('N', colorN); 
-        const matS_text = createTextMaterial('S', colorS); 
+        const matN_text = createTextMaterial('N', colorN);
+        const matS_text = createTextMaterial('S', colorS);
         const matN_color = new THREE.MeshPhongMaterial({ color: colorN });
         const matS_color = new THREE.MeshPhongMaterial({ color: colorS });
 
@@ -300,7 +330,7 @@
         function addBarMagnet(centerX, centerY, centerZ, nDirectionX) {
             const group = new THREE.Group();
             const geo = new THREE.BoxGeometry(MAG_LEN/2, MAG_WID, MAG_WID);
-            
+
             const meshN = new THREE.Mesh(geo, materialsN);
             meshN.position.x = nDirectionX > 0 ? MAG_LEN/4 : -MAG_LEN/4;
             const meshS = new THREE.Mesh(geo, materialsS);
@@ -311,27 +341,27 @@
             group.position.set(centerX, centerY, centerZ);
             magnetsGroup.add(group);
 
-            magnetsData.push({ 
+            magnetsData.push({
                 posCenter: new THREE.Vector3(centerX, centerY, centerZ),
-                posN: new THREE.Vector3(centerX + nDirectionX * POLE_DIST, centerY, centerZ), 
+                posN: new THREE.Vector3(centerX + nDirectionX * POLE_DIST, centerY, centerZ),
                 posS: new THREE.Vector3(centerX - nDirectionX * POLE_DIST, centerY, centerZ),
                 nDir: new THREE.Vector3(nDirectionX, 0, 0)
             });
         }
 
-        const offset = 6.5; 
+        const offset = 6.5;
         if (mode === 'single') {
             addBarMagnet(0, 0, 0, 1);
         } else if (mode === 'repel') {
-            addBarMagnet(-offset, 0, 0, 1);   
-            addBarMagnet(offset, 0, 0, -1);   
-            
+            addBarMagnet(-offset, 0, 0, 1);
+            addBarMagnet(offset, 0, 0, -1);
+
             // ★ 全新的精準圓形中和點標記 ★
             const canvas = document.createElement('canvas');
-            canvas.width = 256; 
+            canvas.width = 256;
             canvas.height = 256;
             const ctx = canvas.getContext('2d');
-            
+
             // 繪製正中央的實心紅點 (帶有白邊以增加對比)
             ctx.beginPath();
             ctx.arc(128, 128, 28, 0, Math.PI * 2);
@@ -346,21 +376,21 @@
             ctx.font = 'bold 36px Arial';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'top';
-            ctx.fillText('中和點', 128, 175);
-            
+            ctx.fillText(PhysLab.i18n.t('label3d.neutral'), 128, 175);
+
             const tex = new THREE.CanvasTexture(canvas);
             const mat = new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true });
             neutralMarker = new THREE.Sprite(mat);
-            
+
             // 將 Sprite 設為正方形，這樣 (128,128) 剛好對應 3D 空間的 (0,0,0)
             neutralMarker.scale.set(4, 4, 1);
-            neutralMarker.position.set(0, 0, 0); 
+            neutralMarker.position.set(0, 0, 0);
             neutralMarker.visible = document.getElementById('neutralToggle').checked;
             scene.add(neutralMarker);
-            
+
         } else if (mode === 'attract') {
-            addBarMagnet(-offset, 0, 0, 1);   
-            addBarMagnet(offset, 0, 0, 1);    
+            addBarMagnet(-offset, 0, 0, 1);
+            addBarMagnet(offset, 0, 0, 1);
         }
 
         generateFieldLines();
@@ -372,7 +402,7 @@
             let rN = new THREE.Vector3().subVectors(pos, m.posN);
             let distSqN = rN.lengthSq();
             if (distSqN > 0.05) B.add(rN.normalize().multiplyScalar(1 / distSqN));
-            
+
             let rS = new THREE.Vector3().subVectors(pos, m.posS);
             let distSqS = rS.lengthSq();
             if (distSqS > 0.05) B.add(rS.normalize().multiplyScalar(-1 / distSqS));
@@ -383,18 +413,18 @@
     function traceLine(startPos, stepSign) {
         let points = [startPos.clone()];
         let pos = startPos.clone();
-        let h = 0.15; 
+        let h = 0.15;
         let closed = false;
-        let maxSteps = 2500; 
-        
+        let maxSteps = 2500;
+
         let isRepelMode = document.getElementById('modeSelect').value === 'repel';
         let startSideX = startPos.x > 0 ? 1 : -1;
 
         for (let step = 0; step < maxSteps; step++) {
             let B1 = getMagneticField(pos);
             let bMag1 = B1.length();
-            
-            if (bMag1 < 0.02) break; 
+
+            if (bMag1 < 0.02) break;
             if (isRepelMode && pos.length() < 1.2) break;
 
             let k1 = B1.multiplyScalar((h * stepSign) / bMag1);
@@ -428,14 +458,14 @@
                 }
             }
 
-            if (pos.length() > 60) break; 
+            if (pos.length() > 60) break;
 
             if (step > 5) {
                 let hit = false;
                 for (let m of magnetsData) {
                     let toCenter = new THREE.Vector3().subVectors(pos, m.posCenter);
-                    let xProj = toCenter.dot(m.nDir); 
-                    let radialDist = Math.sqrt(Math.max(0, toCenter.lengthSq() - xProj * xProj)); 
+                    let xProj = toCenter.dot(m.nDir);
+                    let radialDist = Math.sqrt(Math.max(0, toCenter.lengthSq() - xProj * xProj));
 
                     if (Math.abs(xProj) <= (MAG_LEN / 2) && radialDist <= (MAG_WID / 2) + 0.1) {
                         hit = true;
@@ -451,35 +481,35 @@
 
     function generateFieldLines() {
         while(fieldLinesGroup.children.length > 0) { fieldLinesGroup.remove(fieldLinesGroup.children[0]); }
-        
-        const tubeMat = new THREE.MeshPhongMaterial({ color: 0x475569, shininess: 30 }); 
-        const arrowMat = new THREE.MeshPhongMaterial({ color: 0xf97316 }); 
+
+        const tubeMat = new THREE.MeshPhongMaterial({ color: 0x475569, shininess: 30 });
+        const arrowMat = new THREE.MeshPhongMaterial({ color: 0xf97316 });
 
         const numDirections = parseInt(document.getElementById('linesDirectionSelect').value);
         const density = parseInt(document.getElementById('densitySelect').value);
         let isRepelMode = document.getElementById('modeSelect').value === 'repel';
-        
+
         const totalLinesIndex = numDirections * density * magnetsData.length;
-        
+
         let tubeRadius = 0.035;
         if (totalLinesIndex > 60) tubeRadius = 0.025;
         if (totalLinesIndex > 200) tubeRadius = 0.015;
 
         // 動態箭頭間距與大小縮放
-        let arrowSpacing = 20; 
+        let arrowSpacing = 20;
         let arrowScale = 1.0;
-        
+
         if (totalLinesIndex > 32) { arrowSpacing = 35; arrowScale = 0.85; }
         if (totalLinesIndex > 80) { arrowSpacing = 60; arrowScale = 0.7; }
         if (totalLinesIndex > 200) { arrowSpacing = 100; arrowScale = 0.5; }
-        if (totalLinesIndex > 400) { arrowSpacing = 160; arrowScale = 0.4; } 
+        if (totalLinesIndex > 400) { arrowSpacing = 160; arrowScale = 0.4; }
 
         let allCurves = [];
 
         function drawCurve(pointsArray) {
             if (pointsArray.length < 5) return;
             const curve = new THREE.CatmullRomCurve3(pointsArray);
-            
+
             const tubeGeo = new THREE.TubeGeometry(curve, 150, tubeRadius, 8, false);
             const tube = new THREE.Mesh(tubeGeo, tubeMat);
             fieldLinesGroup.add(tube);
@@ -493,16 +523,16 @@
                 let up = new THREE.Vector3(0, 1, 0);
                 let right = new THREE.Vector3(0, 0, 1);
                 let radialDir = up.clone().multiplyScalar(Math.cos(angle)).add(right.clone().multiplyScalar(Math.sin(angle)));
-                
-                let maxDistAlongSide = (MAG_LEN / 2) * 0.85; 
+
+                let maxDistAlongSide = (MAG_LEN / 2) * 0.85;
                 let endFaceDist = MAG_WID / 2;
                 let totalPath = endFaceDist + maxDistAlongSide;
 
                 for (let j = 0; j < density; j++) {
-                    let frac = j / (density - 1); 
+                    let frac = j / (density - 1);
                     let s = Math.pow(frac, 0.9) * totalPath;
 
-                    if (isRepelMode && s < 0.2) continue; 
+                    if (isRepelMode && s < 0.2) continue;
 
                     let x_offset, radial_offset;
 
@@ -524,9 +554,9 @@
                         .add(m.nDir.clone().multiplyScalar(-x_offset))
                         .add(radialDir.clone().multiplyScalar(radial_offset));
                     let resS = traceLine(startS, -1);
-                    
+
                     if (!resS.closed) {
-                        resS.points.reverse(); 
+                        resS.points.reverse();
                         drawCurve(resS.points);
                     }
                 }
@@ -535,11 +565,11 @@
 
         // 限制箭頭總數 (最大 32 個)
         let potentialArrows = [];
-        
+
         for(let curve of allCurves) {
             let arcLength = curve.getLength();
-            let numArrows = Math.floor(arcLength / 25); 
-            if (numArrows < 1 && arcLength > 5) numArrows = 1; 
+            let numArrows = Math.floor(arcLength / 25);
+            if (numArrows < 1 && arcLength > 5) numArrows = 1;
 
             for (let j = 1; j <= numArrows; j++) {
                 potentialArrows.push({ curve: curve, fraction: j / (numArrows + 1) });
@@ -564,12 +594,12 @@
     function addArrowToCurve(curve, fraction, material, scale) {
         const point = curve.getPointAt(fraction);
         const tangent = curve.getTangentAt(fraction);
-        
+
         const radius = 0.35 * scale;
         const height = 1.2 * scale;
         const arrowGeo = new THREE.ConeGeometry(radius, height, 12);
-        arrowGeo.translate(0, -height / 2, 0); 
-        
+        arrowGeo.translate(0, -height / 2, 0);
+
         const arrow = new THREE.Mesh(arrowGeo, material);
         arrow.position.copy(point);
         const axis = new THREE.Vector3(0, 1, 0);
@@ -579,7 +609,7 @@
 
     function createCompass() {
         compass = new THREE.Group();
-        
+
         const coneN = new THREE.Mesh(new THREE.ConeGeometry(0.3, 1.8, 16), new THREE.MeshPhongMaterial({ color: 0xef4444 }));
         coneN.rotation.z = -Math.PI / 2;
         coneN.position.x = 0.9;
@@ -589,7 +619,7 @@
         coneS.position.x = -0.9;
 
         const base = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 1.8, 0.1, 32), new THREE.MeshPhongMaterial({ color: 0x94a3b8, transparent: true, opacity: 0.7 }));
-        base.rotation.x = Math.PI / 2; 
+        base.rotation.x = Math.PI / 2;
 
         const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.3, 16), new THREE.MeshPhongMaterial({ color: 0x475569 }));
         pin.rotation.x = Math.PI / 2;
@@ -599,9 +629,15 @@
         compass.add(base);
         compass.add(pin);
 
-        compass.position.set(0, 8, 0); 
+        compass.position.set(0, 8, 0);
         compass.visible = false;
         scene.add(compass);
+    }
+
+    /* 依指南針狀態更新按鈕文字（語言切換時亦由 onChange 呼叫） */
+    function updateCompassBtn() {
+        const btn = document.getElementById('compassBtn');
+        btn.innerText = PhysLab.i18n.t(isCompassActive ? 'panel.main.compassClose' : 'panel.main.compassOpen');
     }
 
     function toggleCompass() {
@@ -610,55 +646,48 @@
         const btn = document.getElementById('compassBtn');
 
         if (isCompassActive) {
-            compass.position.set(0, 8, 0); 
-            btn.innerText = "關閉指南針";
+            compass.position.set(0, 8, 0);
             btn.style.backgroundColor = "#dc2626";
-            
+
             if(document.getElementById('linesDirectionSelect').value !== "2") {
                 document.getElementById('linesDirectionSelect').value = "2";
                 generateFieldLines();
             }
-            
-            camera.position.set(0, 0, 48);
-            camera.lookAt(0, 0, 0);
-            orbitControls.target.set(0, 0, 0);
-            orbitControls.update();
-            
+
+            sim.setView('default');
+
         } else {
             isDragging = false;
-            orbitControls.enabled = true; 
-            btn.innerText = "打開 2D 平面指南針";
+            orbitControls.enabled = true;
             btn.style.backgroundColor = "#2563eb";
         }
+        updateCompassBtn();
     }
 
-    function onWindowResize() {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-    }
-
-    function animate() {
-        requestAnimationFrame(animate);
-        orbitControls.update();
-
+    /* 每幀回呼：controls.update 與 renderer.render 由 sim.start 處理 */
+    function tick() {
         if (isCompassActive && compass && magnetsData.length > 0) {
-            compass.position.z = 0; 
-            
+            compass.position.z = 0;
+
             const B = getMagneticField(compass.position);
             const bMag = B.lengthSq();
-            
+
             if (bMag > 1e-4) {
                 const targetQuaternion = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1, 0, 0), B.normalize());
-                compass.quaternion.slerp(targetQuaternion, 0.25); 
+                compass.quaternion.slerp(targetQuaternion, 0.25);
             }
         }
-        
-        renderer.render(scene, camera);
     }
 
-    window.onload = init;
+    /* 語言切換：重建場景（中和點貼圖文字）＋ 更新指南針按鈕文字；
+       靜態 data-i18n 文字由 i18n.applyTo 自動處理 */
+    PhysLab.i18n.onChange(function () {
+        if (!sim) return;
+        buildScene(document.getElementById('modeSelect').value);
+        updateCompassBtn();
+    });
+
+    PhysLab.sim3d.ready(init);
 </script>
-    <a id="home-btn" href="../../../index.html">&#127968; &#20027;&#38913;</a>
 </body>
 </html>
