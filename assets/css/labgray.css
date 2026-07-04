@@ -1,0 +1,278 @@
+/* ============================================================================
+   PhysicsLab — assets/css/labgray.css
+   ----------------------------------------------------------------------------
+   「實驗室灰 Lab Gray」模擬器 chrome。
+   逐字提取自 canonical 來源：Simulator/book4/chapter7/
+   AC-DC-generator-3D-sim.html 的 <style> 區塊（下稱 AC-DC；行號以該檔
+   現行版本為準）。色值／字體以 tokens.css 的 var(--pl-*) 取代，且僅限
+   token 值與原字面值逐 byte 相同者 — 計算值與原檔完全一致。
+   圓角與陰影 token（--pl-radius*、--pl-shadow-*）僅供新頁面使用；
+   本檔依「僅替換色值／字體」原則保留其字面值。
+   規則順序與規則內屬性順序均沿用 AC-DC，不重排。
+
+   ▌來源行號對照（AC-DC <style> 區塊）
+     §1  body ............................ 21-28
+     §2  #topbar／.panel-toggle-btn ...... 30-50
+     §3  版面 #main／面板／畫布 .......... 52-58, 153-155, 217-221
+     §4  .card 系列／.mode-label ......... 60-74
+     §5  .dir-btn 系列 ................... 76-87
+     §6  滑桿 ............................ 90-108
+     §7  開關 toggle ..................... 110-129
+     §8  動作按鈕 ........................ 131-135, 140-141
+     §9  .info-box／.formula／readout .... 145, 222-228, 235
+     §10 .guide-box／.quiz-box ........... 237-256
+     §11 浮動膠囊 #status-badge／#hint ... 183-191, 208-215
+     §12 .hl-* 物理高亮（跨檔聯集） ...... 146-151 ＋他檔（見各行註）
+     §13 #lang-btn（僅註解） ............. —
+     §14 響應式 @media ................... 258-262
+     附錄 extended chrome（非 AC-DC 來源；≥2 個 canonical 檔共有）
+   ============================================================================ */
+
+/* ── §1 body（AC-DC 21-28） ── */
+body {
+    font-family: var(--pl-font);
+    background: var(--pl-bg);
+    color: var(--pl-text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ── §2 頂欄（AC-DC 30-50）
+   深色按鈕的 #334155／#475569／#64748b 為深 chrome 專用灰，無同語意
+   token（byte 相同的 --pl-text* 屬文字語意），依規則保留字面值。 ── */
+#topbar {
+    background: var(--pl-topbar);
+    border-bottom: 1px solid var(--pl-topbar-edge);
+    padding: 10px 20px;
+    display: flex; align-items: center; justify-content: space-between;
+    flex-shrink: 0;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+#topbar .title-block h1 { font-size: 1.2rem; font-weight: 700; color: var(--pl-text-inv); letter-spacing: 0.03em; }
+#topbar .title-block p  { font-size: 0.75rem; color: var(--pl-text-mute); margin-top: 2px; }
+#topbar .tb-actions { display: flex; align-items: center; gap: 8px; }
+
+.panel-toggle-btn {
+    background: #334155; border: 1px solid #475569; border-radius: 6px;
+    color: var(--pl-text-inv); padding: 7px 12px; font-size: 0.8rem; font-weight: 600;
+    cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 6px;
+}
+.panel-toggle-btn:hover { background: #475569; border-color: #64748b; }
+.panel-toggle-btn.inactive { background: var(--pl-topbar-edge); color: var(--pl-text-faint); border-color: var(--pl-topbar); }
+
+.panel-hidden { display: none !important; }
+
+/* ── §3 版面（AC-DC 52-58, 153-155, 217-221；依 AC-DC 檔內順序）
+   #right-panel 寬度以 AC-DC 的 278px 為準（各 canonical 檔略有出入：
+   eddy=278／faraday=272／flemings=268／right-hand=260，詳見交付報告）。 ── */
+#main { display: flex; flex: 1; min-height: 0; overflow: hidden; }
+
+#left-panel {
+    width: 300px; flex-shrink: 0; background: var(--pl-panel);
+    border-right: 1px solid var(--pl-border); display: flex;
+    flex-direction: column; overflow-y: auto; padding: 14px 12px; gap: 12px;
+}
+
+#canvas-wrap { flex: 1; position: relative; min-width: 0; background: var(--pl-bg); overflow: hidden; display: flex; }
+#view3d { flex: 1; position: relative; min-width: 0; }
+#view3d canvas { display: block; outline: none; }
+
+#right-panel {
+    width: 278px; flex-shrink: 0; background: var(--pl-panel);
+    border-left: 1px solid var(--pl-border); display: flex;
+    flex-direction: column; padding: 14px 12px; gap: 12px; overflow-y: auto;
+}
+
+/* ── §4 卡片（AC-DC 60-74）
+   注意：AC-DC 的 .card-header 具摺疊互動（cursor:pointer、:hover、
+   .chevron、.collapsed）；其餘四個 canonical 檔為靜態標頭（無 cursor／
+   :hover）。本檔依規格出貨 AC-DC 版 — 非摺疊頁面如需與原樣逐 pixel
+   一致，須在頁內覆寫（詳見交付報告）。 ── */
+.card { background: var(--pl-card); border: 1px solid var(--pl-border); border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+.card-header {
+    background: var(--pl-card-head);
+    padding: 8px 13px; font-size: 0.75rem; font-weight: 700;
+    color: var(--pl-text-dim); text-transform: uppercase; letter-spacing: 0.1em;
+    display: flex; align-items: center; gap: 7px; cursor: pointer;
+    user-select: none;
+}
+.card-header:hover { background: var(--pl-card-head-hover); }
+.card-header .chevron { margin-left: auto; font-size: 0.7rem; transition: transform 0.2s; color: var(--pl-text-faint); }
+.card.collapsed .card-header .chevron { transform: rotate(-90deg); }
+.card.collapsed .card-body { display: none; }
+.card-body { padding: 11px 13px; }
+
+.mode-label { font-size: 0.68rem; color: var(--pl-text-faint); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 7px; margin-top: 4px; }
+
+/* ── §5 方向鈕（AC-DC 76-87）
+   :hover 的 border-color:#94a3b8 與 --pl-text-mute 值同但語意屬文字，
+   依規則保留字面值。 ── */
+.dir-btn-group { display: flex; gap: 6px; flex-wrap: wrap; }
+.dir-btn {
+    flex: 1; min-width: 58px; padding: 8px 5px; border-radius: 8px;
+    border: 1px solid var(--pl-border); background: var(--pl-inset);
+    color: var(--pl-text-dim); font-size: 0.74rem; font-weight: 600;
+    cursor: pointer; transition: all 0.2s; text-align: center;
+}
+.dir-btn:hover { border-color: #94a3b8; color: var(--pl-text-strong); background: var(--pl-panel); }
+.dir-btn.active {
+    border-color: var(--pl-accent); background: var(--pl-accent-bg);
+    color: var(--pl-accent-deep); box-shadow: 0 0 0 1px var(--pl-accent);
+}
+
+/* ── §6 滑桿（AC-DC 90-108）（軌道底 #cbd5e1 與邊框同灰，沿用 --pl-border） ── */
+.slider-row { margin-bottom: 13px; }
+.slider-row:last-child { margin-bottom: 0; }
+.slider-row.disabled { opacity: 0.4; pointer-events: none; }
+.slider-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px; }
+.slider-head label { font-size: 0.74rem; color: var(--pl-text-dim); font-weight: 600; }
+.slider-head .val { font-size: 0.78rem; color: var(--pl-accent-deep); font-weight: 700; font-variant-numeric: tabular-nums; }
+input[type=range] {
+    -webkit-appearance: none; appearance: none; width: 100%; height: 5px;
+    background: var(--pl-border); border-radius: 3px; outline: none; cursor: pointer;
+}
+input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none; width: 16px; height: 16px;
+    border-radius: 50%; background: var(--pl-blue); border: 2px solid #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3); cursor: pointer;
+}
+input[type=range]::-moz-range-thumb {
+    width: 16px; height: 16px; border-radius: 50%; background: var(--pl-blue);
+    border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.3); cursor: pointer;
+}
+
+/* ── §7 開關（AC-DC 110-129） ── */
+.toggle-row {
+    display: flex; align-items: center; gap: 9px; padding: 7px 12px;
+    background: var(--pl-card); border: 1px solid var(--pl-border); border-radius: 8px;
+    cursor: pointer; transition: background 0.2s; user-select: none;
+    margin-bottom: 6px;
+}
+.toggle-row:last-child { margin-bottom: 0; }
+.toggle-row:hover { background: var(--pl-inset); }
+.toggle-track {
+    width: 32px; height: 18px; border-radius: 9px; background: var(--pl-border);
+    position: relative; transition: background 0.2s; flex-shrink: 0;
+}
+.toggle-track.on { background: var(--pl-blue); }
+.toggle-thumb {
+    width: 14px; height: 14px; border-radius: 50%; background: #fff;
+    position: absolute; top: 2px; left: 2px; transition: left 0.2s;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+.toggle-track.on .toggle-thumb { left: 16px; }
+.toggle-row span { font-size: 0.73rem; color: var(--pl-text-dim); font-weight: 500; }
+
+/* ── §8 動作按鈕（AC-DC 131-135, 140-141）
+   依「≥2 個 canonical 檔才收錄」規則：僅 .btn-reset 符合（AC-DC／
+   faraday／eddy 三檔逐字相同）。.btn-play/.paused、.btn-step（僅 AC-DC）、
+   .btn-release（僅 faraday）、.btn-go/.btn-pause（僅 eddy）屬單頁規則，
+   留在各頁（綠色／琥珀色宣告值其實跨檔相同，僅 class 名不同 — 見報告）。 ── */
+.action-row { display: flex; gap: 6px; }
+.action-btn {
+    flex: 1; padding: 9px 6px; border-radius: 8px; border: 1px solid var(--pl-border);
+    font-size: 0.78rem; font-weight: 700; cursor: pointer; transition: all 0.2s; text-align: center;
+}
+.btn-reset { background: var(--pl-panel); color: var(--pl-text-dim); }
+.btn-reset:hover { background: var(--pl-card-head); }
+
+/* ── §9 資訊盒／公式盒／讀數格（AC-DC 145, 222-228, 235）
+   .formula 的文字色 #0f172a 屬文字語意（唯一同值 token --pl-topbar-edge
+   為 surface 語意），依規則保留字面值。.rc-* 讀數配色屬單頁規則，不收錄。 ── */
+.info-box { background: var(--pl-inset); border: 1px solid var(--pl-border-soft); border-radius: 8px; padding: 11px 12px; font-size: 0.76rem; line-height: 1.75; color: var(--pl-text-dim); }
+
+.formula-box { background: var(--pl-card); border: 1px solid var(--pl-border); border-radius: 10px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+.formula-box h4 { font-size: 0.7rem; color: var(--pl-text-dim); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 9px; }
+.formula { background: var(--pl-inset); border-radius: 6px; padding: 4px 10px; color: #0f172a; margin-bottom: 7px; border: 1px solid var(--pl-border-soft); overflow-x: auto; font-size: 1.0rem; text-align: center; }
+.formula-desc { font-size: 0.71rem; color: var(--pl-text-faint); line-height: 1.8; }
+.formula-desc span { color: var(--pl-text); font-weight: 600; }
+.readout-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+.readout-cell { padding: 6px 8px; border-radius: 7px; font-size: 0.82rem; font-weight: 700; text-align: center; font-variant-numeric: tabular-nums; border: 1px solid; }
+.readout-cell small { display: block; font-size: 0.6rem; font-weight: 600; opacity: 0.75; letter-spacing: 0.05em; }
+
+/* ── §10 導覽盒／測驗盒（AC-DC 237-256） ── */
+.guide-box { background: var(--pl-card); border: 1px solid var(--pl-border); border-radius: 10px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+.guide-box h4 { font-size: 0.7rem; color: var(--pl-accent); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 9px; }
+#guide-text { font-size: 0.78rem; color: var(--pl-text-strong); line-height: 1.65; min-height: 62px; }
+#guide-text b { color: var(--pl-accent-deep); }
+.guide-nav { display: flex; gap: 6px; margin-top: 9px; }
+.guide-nav button { flex: 1; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--pl-border); background: var(--pl-panel); color: var(--pl-text-dim); font-size: 0.74rem; cursor: pointer; font-weight: 600; }
+.guide-nav button:hover { background: var(--pl-card-head); }
+#guide-step-no { font-size: 0.68rem; color: var(--pl-text-mute); margin-top: 6px; text-align: right; }
+
+.quiz-box { background: var(--pl-card); border: 1px solid var(--pl-border); border-radius: 10px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+.quiz-box h4 { font-size: 0.7rem; color: var(--pl-accent); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 9px; }
+.quiz-q { font-size: 0.78rem; color: var(--pl-text-strong); line-height: 1.65; margin-bottom: 10px; font-weight: 500; }
+.quiz-options { display: flex; flex-direction: column; gap: 5px; }
+.quiz-opt { padding: 7px 10px; border-radius: 7px; border: 1px solid var(--pl-border); background: var(--pl-inset); color: var(--pl-text-dim); font-size: 0.76rem; cursor: pointer; transition: all 0.2s; }
+.quiz-opt:hover { border-color: #94a3b8; background: var(--pl-panel); color: var(--pl-text-strong); }
+.quiz-opt.correct { border-color: var(--pl-ok-border); background: var(--pl-ok-bg); color: var(--pl-ok-text); }
+.quiz-opt.wrong   { border-color: var(--pl-bad); background: var(--pl-bad-bg); color: var(--pl-bad-text); }
+#quiz-feedback { font-size: 0.73rem; margin-top: 8px; min-height: 18px; line-height: 1.55; color: var(--pl-text-dim); }
+#quiz-next { margin-top: 8px; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--pl-border); background: var(--pl-panel); color: var(--pl-text-dim); font-size: 0.74rem; cursor: pointer; display: none; width: 100%; font-weight: 600; }
+#quiz-next:hover { background: var(--pl-card-head); }
+
+/* ── §11 浮動膠囊（AC-DC 183-191, 208-215） ── */
+#status-badge {
+    position: absolute; top: 14px; left: 14px;
+    background: rgba(255,255,255,0.92); border: 1px solid var(--pl-border);
+    border-radius: 22px; padding: 7px 18px; font-size: 0.82rem;
+    font-weight: 600; color: var(--pl-text-strong); backdrop-filter: blur(8px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    white-space: nowrap; pointer-events: none; z-index: 10;
+}
+#status-badge b { color: var(--pl-accent-deep); font-variant-numeric: tabular-nums; }
+#hint {
+    position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+    background: rgba(255,255,255,0.85); border: 1px solid var(--pl-border);
+    border-radius: 18px; padding: 6px 18px; font-size: 0.75rem;
+    color: var(--pl-text-dim); backdrop-filter: blur(4px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    pointer-events: none; white-space: nowrap; z-index: 10;
+}
+
+/* ── §12 .hl-* 物理量高亮 — 5 個 canonical 檔之聯集（值以 AC-DC 為準；
+   AC-DC 146-151，其餘來源見各行註）。.hl-current／.hl-field 各檔值不一
+   （詳見報告），此處出貨 AC-DC 版。.hl-emf／.hl-force 綠與 .hl-field
+   同值（#16a34a），採 --pl-phys-field。 ── */
+.hl-emf     { color: var(--pl-phys-field); font-weight: 700; }   /* AC-DC／faraday／eddy（#16a34a） */
+.hl-current { color: var(--pl-phys-current); font-weight: 700; } /* AC-DC=#ca8a04（faraday/eddy/flemings=#dc2626、right-hand=#ea580c） */
+.hl-field   { color: var(--pl-phys-field); font-weight: 700; }   /* AC-DC=#16a34a（faraday/eddy/flemings=#2563eb、right-hand=#0284c7） */
+.hl-v       { color: var(--pl-phys-v); font-weight: 700; }       /* 僅 AC-DC */
+.hl-n       { color: var(--pl-phys-n); font-weight: 700; }       /* AC-DC／faraday／eddy */
+.hl-s       { color: var(--pl-phys-s); font-weight: 700; }       /* AC-DC／faraday／eddy */
+.hl-north   { color: var(--pl-phys-n); font-weight: 700; }       /* 僅 right-hand-grip（#dc2626） */
+.hl-heat    { color: #ea580c; font-weight: 700; }                /* 僅 eddy-current；無對應 token */
+.hl-force   { color: var(--pl-phys-field); font-weight: 700; }   /* 僅 flemings（#16a34a，與 field 綠同值） */
+
+/* ── §13 #lang-btn ──
+   語言切換按鈕直接沿用 .panel-toggle-btn class（置於 .tb-actions 內），
+   無需新增規則；保留空規則作為錨點。 ── */
+#lang-btn { }
+
+/* ── §14 響應式（AC-DC 258-262；照抄）
+   斷點約定：1180px 收起右欄／860px 直向堆疊（見 tokens.css 註解）。
+   其餘 canonical 檔斷點略異（faraday/eddy/flemings=1100/820、
+   right-hand=960），本檔依規格出貨 AC-DC 版 — 詳見報告。
+   #scope-wrap 為 AC-DC 頁面專屬浮動波形視窗；因「照抄」原則保留於此，
+   對無此元素之頁面無任何影響。 ── */
+@media (max-width: 1180px) { #right-panel { display: none; } }
+@media (max-width: 860px) {
+    #canvas-wrap { flex-direction: column; }
+    #scope-wrap { width: 100%; max-width: none; height: 42%; min-width: 0; border-left: none; border-top: 1px solid var(--pl-border); align-self: stretch; }
+}
+
+/* ============================================================================
+   附錄：extended chrome（非 AC-DC 來源）
+   AC-DC 沒有、但 ≥2 個 canonical 檔逐字共有的量測視窗（#view2d）共用件。
+   各檔互異的部分（#view2d-wrap 本體、#view2d-head、#view2d-close）
+   屬單頁樣式，留在各頁，不在此收錄 — 詳見報告。
+   ============================================================================ */
+/* 來源：faraday 154／eddy 157／flemings 140（三檔逐字相同） */
+#view2d-wrap.panel-hidden { display: none !important; }
+/* 來源：faraday 166-167／flemings 142-143（兩檔逐字相同） */
+#view2d-tools { display: flex; gap: 5px; padding: 6px 8px; background: var(--pl-panel); border-bottom: 1px solid var(--pl-border-soft); }
+#view2d-tools .dir-btn { padding: 5px 4px; font-size: 0.68rem; }
+/* 來源：eddy 169／flemings 144（兩檔逐字相同；faraday 168 版另有 min-height:0，留在該頁） */
+#view2d { flex: 1; width: 100%; display: block; }

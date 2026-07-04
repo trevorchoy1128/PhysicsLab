@@ -1,0 +1,157 @@
+/* ============================================================================
+   PhysicsLab — assets/css/tokens.css
+   ----------------------------------------------------------------------------
+   共用設計 tokens（「實驗室灰 Lab Gray」主題）＋ 全站通用小元件。
+
+   ▌用途
+   集中定義全站共用的顏色／字體／圓角／陰影變數，供 labgray.css 與各頁引用。
+   所有數值逐字對照 canonical 來源（Simulator/book4/chapter7/
+   AC-DC-generator-3D-sim.html 的 <style> 區塊）驗證，計算值與原檔完全一致。
+   本檔是「提取」而非「重新設計」— 不得在此發明新視覺語彙。
+
+   ▌命名規則（--pl- 前綴）
+   一律使用 --pl-<名稱>；pl = PhysicsLab。語意分組：
+     表面 surface（bg / panel / card / card-head / inset / topbar…）、
+     邊框 border、文字 text、強調 accent、狀態（ok / bad / warn）、
+     物理量高亮 phys-*、字體 font、圓角 radius、陰影 shadow。
+   新增 token 前必須先確認 canonical 檔已存在該字面值。
+
+   ▌斷點約定（media query 無法使用 CSS 變數，以下為「文件化約定」）
+     - max-width: 1180px → 模擬器收起右欄（#right-panel 隱藏）
+     - max-width:  860px → 模擬器畫布直向堆疊（浮動視窗轉為橫幅）
+     - max-width:  600px → 文件頁（公式頁）改為單欄
+   各頁 media query 請直接寫上述字面值，並與本註解保持同步。
+   ============================================================================ */
+
+:root {
+    /* -- 表面 surface -- */
+    --pl-bg: #e2e6eb;              /* 頁面底／畫布底（body、#canvas-wrap） */
+    --pl-panel: #f1f5f9;           /* 側欄底（#left-panel、#right-panel） */
+    --pl-card: #ffffff;            /* 卡片底（.card 系列） */
+    --pl-card-head: #e2e8f0;       /* 卡片標頭底（.card-header） */
+    --pl-card-head-hover: #dbe3ec; /* 卡片標頭 hover 底 */
+    --pl-inset: #f8fafc;           /* 內凹淺底（.info-box、.formula、淺色按鈕底） */
+    --pl-topbar: #1e293b;          /* 頂欄底 */
+    --pl-topbar-edge: #0f172a;     /* 頂欄下緣線／最深 chrome */
+
+    /* -- 邊框 border -- */
+    --pl-border: #cbd5e1;          /* 主要邊框灰 */
+    --pl-border-soft: #e2e8f0;     /* 次要（更淺）邊框灰 */
+
+    /* -- 文字 text -- */
+    --pl-text: #334155;            /* 內文 */
+    --pl-text-strong: #1e293b;     /* 強調內文 */
+    --pl-text-dim: #475569;        /* 次要內文（標頭、標籤） */
+    --pl-text-faint: #64748b;      /* 更淡（說明文字） */
+    --pl-text-mute: #94a3b8;       /* 最淡（輔助資訊） */
+    --pl-text-inv: #f8fafc;        /* 深底上的反白文字 */
+
+    /* -- 強調 accent -- */
+    --pl-accent: #0284c7;          /* 主強調（active 邊框、盒標題） */
+    --pl-accent-deep: #0369a1;     /* 深強調（active 文字、數值） */
+    --pl-accent-bg: #f0f9ff;       /* 強調底 */
+    --pl-blue: #3b82f6;            /* 控制元件藍（滑桿拇指、開關軌道） */
+
+    /* -- 狀態 status -- */
+    --pl-ok: #16a34a;
+    --pl-ok-border: #22c55e;
+    --pl-ok-bg: #f0fdf4;
+    --pl-ok-text: #166534;
+    --pl-bad: #ef4444;
+    --pl-bad-bg: #fef2f2;
+    --pl-bad-text: #991b1b;
+    --pl-warn: #f59e0b;
+    --pl-warn-deep: #d97706;
+
+    /* -- 物理量高亮 physics highlight（對應 .hl-*；以 AC-DC 值為準） -- */
+    --pl-phys-field: #16a34a;      /* 磁場 B（AC-DC 的 .hl-field） */
+    --pl-phys-current: #ca8a04;    /* 電流 I（AC-DC 的 .hl-current） */
+    --pl-phys-v: #0891b2;          /* 速度 v */
+    --pl-phys-n: #dc2626;          /* N 極 */
+    --pl-phys-s: #2563eb;          /* S 極 */
+
+    /* -- 字體 font -- */
+    --pl-font: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+
+    /* -- 圓角 radius -- */
+    --pl-radius: 10px;
+    --pl-radius-sm: 8px;
+    --pl-radius-xs: 6px;
+
+    /* -- 陰影 shadow -- */
+    --pl-shadow-card: 0 1px 3px rgba(0,0,0,0.05);
+    --pl-shadow-float: 0 8px 26px rgba(0,0,0,0.18);
+}
+
+/* ── 通用 reset（與 5 個 canonical 模擬器逐字一致；
+      公式頁原為 *, *::before, *::after 變體，見交付報告） ── */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── 中英雙語顯示規則（逐字取自 Formula List/book4/chapter5-formula.html） ── */
+span.lang-zh { display: inline; }
+div.lang-zh { display: block; }
+span.lang-en { display: none; }
+div.lang-en { display: none; }
+
+body.en-mode span.lang-zh, body.en-mode div.lang-zh { display: none !important; }
+body.en-mode span.lang-en { display: inline !important; }
+body.en-mode div.lang-en { display: block !important; }
+
+/* ── #home-btn 主頁鈕：兩種型態 ──
+   基本型＝頂欄內嵌錨點，逐字取自 AC-DC-generator（<style> 264-270 行）。
+   #home-btn.pl-floating＝左下浮動型，逐字取自 chapter5-formula.html 的
+   #home-btn（174-198 行）。注意順序：.pl-floating 規則必須排在
+   #home-btn:hover 之後 — 浮動鈕 hover 時兩者同時生效（specificity 皆
+   0-1-1），靠「後者勝」讓 border／背景維持公式頁原樣，計算值才逐 pixel
+   一致。 ── */
+#home-btn {
+    background: #334155; border: 1px solid #475569; border-radius: 6px;
+    padding: 7px 12px; font-size: 0.8rem; font-weight: 600;
+    color: #f8fafc; text-decoration: none;
+    transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px;
+}
+#home-btn:hover { background: #475569; border-color: #64748b; }
+
+#home-btn.pl-floating {
+    position: fixed;
+    bottom: 16px;
+    left: 16px;
+    z-index: 99999;
+    background: rgba(30,41,59,0.85);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 10px;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: bold;
+    color: #fff;
+    text-decoration: none;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+    transition: background 0.2s, transform 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+#home-btn.pl-floating:hover {
+    background: rgba(30,41,59,0.95);
+    transform: translateY(-2px);
+}
+
+/* ── #pl-blocker：three.js 載入失敗全螢幕遮罩 ──
+   取代原本 JS 注入的 #sim3d-load-error（style.cssText：position:fixed;
+   inset:0;z-index:99999;display:flex;align-items:center;justify-content:
+   center;text-align:center;padding:24px;background:#0f172a;color:#fff;
+   font-size:18px;line-height:1.7）。依規格改動兩處：加 flex-direction:
+   column（原為單一子元素、置中觀感不變）；font-family 改用 var(--pl-font)
+   （原 cssText 為 system-ui,sans-serif）。canonical 錯誤訊息不含連結，
+   故不需 #pl-blocker a 規則。 ── */
+#pl-blocker {
+    position: fixed; inset: 0; z-index: 99999;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 24px;
+    background: #0f172a; color: #fff;
+    font-family: var(--pl-font);
+    font-size: 18px; line-height: 1.7;
+}
+#pl-blocker[hidden] { display: none; }
