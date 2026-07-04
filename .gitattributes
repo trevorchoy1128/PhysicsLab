@@ -1,0 +1,12 @@
+* text=auto
+*.html text
+*.css  text
+*.js   text
+*.mjs  text
+*.md   text
+*.txt  text
+*.json text
+*.svg  text
+*.png  binary
+*.jpg  binary
+*.ico  binary
