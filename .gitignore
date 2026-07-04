@@ -1,2 +1,3 @@
-# Claude Code 本地工具狀態 (計劃 / 記憶 / 設定)，不納入版本控制
-.claude/
+# Claude Code 本地工具狀態 (設定等)，不納入版本控制；但 subagent 定義入庫（main 與 worktree 共用）
+.claude/*
+!.claude/agents/
