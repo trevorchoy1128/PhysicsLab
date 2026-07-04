@@ -1,0 +1,1590 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>線圈進出均勻磁場 — 動生電動勢與楞次定律 3D 互動模擬器 | 實驗室專業版</title>
+    <script>
+        window.MathJax = {
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']] },
+            chtml: { displayAlign: 'center' },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script>
+        // Three.js 載入守衛
+        window.addEventListener('DOMContentLoaded', function () {
+            if (typeof THREE === 'undefined' || typeof THREE.OrbitControls === 'undefined') {
+                var o = document.createElement('div');
+                o.id = 'sim3d-load-error';
+                o.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;background:#0f172a;color:#fff;font-family:system-ui,sans-serif;font-size:18px;line-height:1.7';
+                o.innerHTML = '⚠️ 無法載入 3D 元件（three.js）<br>請檢查網路連線後重新整理頁面。';
+                document.body.appendChild(o);
+            }
+        });
+    </script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        /* --- 實驗室灰 (Lab Gray) 主題（沿用 Book 4 系列模擬器） --- */
+        body {
+            font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+            background: #e2e6eb; color: #334155; height: 100vh;
+            display: flex; flex-direction: column; overflow: hidden;
+        }
+
+        #topbar {
+            background: #1e293b; border-bottom: 1px solid #0f172a;
+            padding: 10px 20px; display: flex; align-items: center; justify-content: space-between;
+            flex-shrink: 0; box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        #topbar .title-block h1 { font-size: 1.15rem; font-weight: 700; color: #f8fafc; letter-spacing: 0.02em; }
+        #topbar .title-block p  { font-size: 0.72rem; color: #94a3b8; margin-top: 2px; }
+
+        .panel-toggle-btn {
+            background: #334155; border: 1px solid #475569; border-radius: 6px;
+            color: #f8fafc; padding: 7px 12px; font-size: 0.8rem; font-weight: 600;
+            cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 6px;
+        }
+        .panel-toggle-btn:hover { background: #475569; border-color: #64748b; }
+        .panel-toggle-btn.inactive { background: #0f172a; color: #64748b; border-color: #1e293b; }
+        .panel-hidden { display: none !important; }
+
+        #main { display: flex; flex: 1; min-height: 0; overflow: hidden; }
+
+        #left-panel {
+            width: 300px; flex-shrink: 0; background: #f1f5f9;
+            border-right: 1px solid #cbd5e1; display: flex; flex-direction: column;
+            overflow-y: auto; padding: 14px 12px; gap: 12px;
+        }
+        #right-panel {
+            width: 300px; flex-shrink: 0; background: #f1f5f9;
+            border-left: 1px solid #cbd5e1; display: flex; flex-direction: column;
+            padding: 14px 12px; gap: 12px; overflow-y: auto;
+        }
+
+        /* 面板為固定高度的 flex 欄：子項不得收縮，內容過長時由面板本身捲動 */
+        #left-panel > *, #right-panel > * { flex-shrink: 0; }
+
+        .card { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .card-header {
+            background: #e2e8f0; padding: 8px 13px; font-size: 0.75rem; font-weight: 700;
+            color: #475569; text-transform: uppercase; letter-spacing: 0.08em;
+            display: flex; align-items: center; gap: 7px;
+            cursor: pointer; user-select: none;
+        }
+        .card-header:hover { background: #dbe2ea; }
+        .card-header .chev { margin-left: auto; font-size: 0.68rem; color: #64748b; transition: transform 0.2s; }
+        .card.collapsed .card-body { display: none; }
+        .card.collapsed .chev { transform: rotate(-90deg); }
+        .card-body { padding: 11px 13px; }
+        .mode-label { font-size: 0.68rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 7px; margin-top: 4px; }
+
+        .dir-btn-group { display: flex; gap: 6px; flex-wrap: wrap; }
+        .dir-btn {
+            flex: 1; min-width: 58px; padding: 8px 5px; border-radius: 8px;
+            border: 1px solid #cbd5e1; background: #f8fafc; color: #475569;
+            font-size: 0.74rem; font-weight: 600; cursor: pointer; transition: all 0.2s; text-align: center;
+        }
+        .dir-btn:hover { border-color: #94a3b8; color: #1e293b; background: #f1f5f9; }
+        .dir-btn.active { border-color: #0284c7; background: #f0f9ff; color: #0369a1; box-shadow: 0 0 0 1px #0284c7; }
+
+        .slider-row { margin-bottom: 13px; }
+        .slider-row:last-child { margin-bottom: 0; }
+        .slider-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px; }
+        .slider-head label { font-size: 0.74rem; color: #475569; font-weight: 600; }
+        .slider-head .val { font-size: 0.78rem; color: #0369a1; font-weight: 700; font-variant-numeric: tabular-nums; }
+        input[type=range] {
+            -webkit-appearance: none; appearance: none; width: 100%; height: 5px;
+            background: #cbd5e1; border-radius: 3px; outline: none; cursor: pointer;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none; width: 16px; height: 16px;
+            border-radius: 50%; background: #3b82f6; border: 2px solid #fff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3); cursor: pointer;
+        }
+        input[type=range]::-moz-range-thumb {
+            width: 16px; height: 16px; border-radius: 50%; background: #3b82f6;
+            border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.3); cursor: pointer;
+        }
+
+        .toggle-row {
+            display: flex; align-items: center; gap: 9px; padding: 7px 12px;
+            background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px;
+            cursor: pointer; transition: background 0.2s; user-select: none; margin-bottom: 6px;
+        }
+        .toggle-row:last-child { margin-bottom: 0; }
+        .toggle-row:hover { background: #f8fafc; }
+        .toggle-track { width: 32px; height: 18px; border-radius: 9px; background: #cbd5e1; position: relative; transition: background 0.2s; flex-shrink: 0; }
+        .toggle-track.on { background: #3b82f6; }
+        .toggle-thumb { width: 14px; height: 14px; border-radius: 50%; background: #fff; position: absolute; top: 2px; left: 2px; transition: left 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+        .toggle-track.on .toggle-thumb { left: 16px; }
+        .toggle-row span { font-size: 0.73rem; color: #475569; font-weight: 500; }
+
+        .btn-row { display: flex; gap: 6px; }
+        .ctrl-btn {
+            flex: 1; padding: 8px 4px; border-radius: 8px; border: 1px solid #cbd5e1;
+            background: #f8fafc; color: #475569; font-size: 0.76rem; font-weight: 600;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .ctrl-btn:hover { border-color: #94a3b8; background: #f1f5f9; color: #1e293b; }
+        .ctrl-btn:disabled { opacity: 0.45; cursor: default; }
+        .ctrl-btn:disabled:hover { border-color: #cbd5e1; background: #f8fafc; color: #475569; }
+        .ctrl-btn.primary { background: #0284c7; border-color: #0369a1; color: #fff; }
+        .ctrl-btn.primary:hover { background: #0369a1; }
+
+        .info-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 11px 12px; font-size: 0.75rem; line-height: 1.75; color: #475569; }
+        .hl-force { color: #16a34a; font-weight: 700; }
+        .hl-field { color: #2563eb; font-weight: 700; }
+        .hl-vel   { color: #ca8a04; font-weight: 700; }
+        .hl-cur   { color: #dc2626; font-weight: 700; }
+
+        #canvas-wrap { flex: 1; position: relative; min-width: 0; background: #e2e6eb; overflow: hidden; display: flex; }
+        #view3d { flex: 1; position: relative; min-width: 0; }
+        #view3d canvas { display: block; outline: none; }
+
+        #view2d-wrap {
+            position: absolute; right: 14px; bottom: 14px; z-index: 20;
+            width: 340px; height: 250px; border: 1px solid #cbd5e1; border-radius: 10px;
+            background: rgba(248,250,252,0.96); backdrop-filter: blur(6px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.18); display: flex; flex-direction: column; overflow: hidden;
+        }
+        #view2d-wrap.panel-hidden { display: none !important; }
+        #view2d-head {
+            padding: 7px 12px; font-size: 0.72rem; font-weight: 700; color: #475569;
+            background: #eef2f7; border-bottom: 1px solid #e2e8f0;
+            text-transform: uppercase; letter-spacing: 0.05em;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        #view2d-close { border: none; background: transparent; color: #64748b; cursor: pointer; font-size: 0.9rem; line-height: 1; padding: 2px 4px; border-radius: 5px; }
+        #view2d-close:hover { background: #dbe2ea; color: #1e293b; }
+        #view2d { flex: 1; width: 100%; display: block; min-height: 0; }
+
+        #status-badge {
+            position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+            background: rgba(255,255,255,0.92); border: 1px solid #cbd5e1; border-radius: 22px;
+            padding: 7px 20px; font-size: 0.85rem; font-weight: 700; color: #1e293b;
+            backdrop-filter: blur(8px); box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            white-space: nowrap; pointer-events: none; z-index: 10;
+        }
+        #status-badge .stage { color: #0369a1; }
+        #status-badge.flash { border-color: #0284c7; box-shadow: 0 0 0 4px rgba(2,132,199,0.25), 0 4px 12px rgba(0,0,0,0.08); transition: box-shadow 0.2s; }
+        #hint {
+            position: absolute; bottom: 14px; left: 18px;
+            background: rgba(255,255,255,0.85); border: 1px solid #cbd5e1; border-radius: 18px;
+            padding: 6px 16px; font-size: 0.74rem; color: #475569; backdrop-filter: blur(4px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05); pointer-events: none; white-space: nowrap; z-index: 10;
+        }
+
+        .formula-box { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .formula-box h4 { font-size: 0.7rem; color: #475569; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 9px; display: flex; align-items: center; }
+        .zoom-btn {
+            margin-left: auto; border: 1px solid #cbd5e1; background: #f8fafc; color: #475569;
+            border-radius: 6px; padding: 2px 8px; font-size: 0.68rem; font-weight: 600; cursor: pointer; transition: all 0.2s;
+        }
+        .zoom-btn:hover { border-color: #0284c7; color: #0369a1; background: #f0f9ff; }
+
+        /* 放大版 Φ–ε–I 圖（覆蓋於 3D 畫面上，可拖動） */
+        #chart-big-wrap {
+            position: absolute; left: 50%; top: 50px; transform: translateX(-50%); z-index: 30;
+            width: min(780px, 74%); height: min(460px, 64%);
+            border: 1px solid #cbd5e1; border-radius: 10px;
+            background: rgba(248,250,252,0.97); backdrop-filter: blur(6px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.22); display: flex; flex-direction: column; overflow: hidden;
+        }
+        #chart-big-wrap.panel-hidden { display: none !important; }
+        #chart-big-head {
+            padding: 8px 14px; font-size: 0.78rem; font-weight: 700; color: #475569;
+            background: #eef2f7; border-bottom: 1px solid #e2e8f0;
+            text-transform: uppercase; letter-spacing: 0.05em;
+            display: flex; align-items: center; justify-content: space-between; cursor: move;
+        }
+        #chart-big-close { border: none; background: transparent; color: #64748b; cursor: pointer; font-size: 1rem; line-height: 1; padding: 2px 5px; border-radius: 5px; }
+        #chart-big-close:hover { background: #dbe2ea; color: #1e293b; }
+        #chart-big { flex: 1; width: 100%; min-height: 0; display: block; }
+        #chart-big-foot { padding: 5px 14px; font-size: 0.72rem; color: #64748b; background: #eef2f7; border-top: 1px solid #e2e8f0; display: flex; gap: 14px; flex-wrap: wrap; }
+        #chart-big-foot b { font-weight: 700; }
+        .formula { background: #f8fafc; border-radius: 6px; padding: 4px 10px; color: #0f172a; margin-bottom: 6px; border: 1px solid #e2e8f0; overflow-x: auto; font-size: 0.98rem; }
+        .readout-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+        .readout { padding: 7px 8px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 7px; text-align: center; }
+        .readout .rk { font-size: 0.63rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; display: block; }
+        .readout .rv { font-size: 0.92rem; font-weight: 700; color: #0f172a; font-variant-numeric: tabular-nums; }
+
+        /* 楞次三步推理 */
+        .lenz-step { display: flex; gap: 9px; align-items: flex-start; padding: 7px 9px; border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc; margin-bottom: 6px; }
+        .lenz-step:last-child { margin-bottom: 0; }
+        .lenz-step .ln { flex-shrink: 0; width: 20px; height: 20px; border-radius: 50%; background: #0284c7; color: #fff; font-size: 0.68rem; font-weight: 700; display: flex; align-items: center; justify-content: center; margin-top: 2px; }
+        .lenz-step .lt { font-size: 0.63rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; }
+        .lenz-step .lv { font-size: 0.78rem; color: #1e293b; font-weight: 500; line-height: 1.55; }
+        .lenz-step .lv .sym { font-size: 0.9rem; font-weight: 700; }
+        .lenz-step.idle { opacity: 0.55; }
+
+        #chart, #galv { width: 100%; display: block; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; }
+        #chart { height: 170px; cursor: zoom-in; }
+        #galv { height: 120px; }
+        .chart-legend { font-size: 0.68rem; color: #64748b; margin-top: 6px; display: flex; gap: 12px; flex-wrap: wrap; }
+        .chart-legend b { font-weight: 700; }
+
+        .ebar-wrap { margin-top: 4px; }
+        .ebar-track { height: 16px; border-radius: 8px; background: #e2e8f0; overflow: hidden; display: flex; }
+        .ebar-ke { background: #ca8a04; height: 100%; transition: width 0.1s; }
+        .ebar-heat { background: #dc2626; height: 100%; transition: width 0.1s; }
+        .ebar-lab { font-size: 0.66rem; color: #64748b; margin-top: 5px; display: flex; justify-content: space-between; }
+
+        .quiz-box { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .quiz-box h4 { font-size: 0.7rem; color: #0284c7; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 9px; }
+        .quiz-q { font-size: 0.78rem; color: #1e293b; line-height: 1.6; margin-bottom: 10px; font-weight: 500; }
+        .quiz-options { display: flex; flex-direction: column; gap: 5px; }
+        .quiz-opt { padding: 7px 10px; border-radius: 7px; border: 1px solid #cbd5e1; background: #f8fafc; color: #475569; font-size: 0.76rem; cursor: pointer; transition: all 0.2s; text-align: left; }
+        .quiz-opt:hover { border-color: #94a3b8; background: #f1f5f9; color: #1e293b; }
+        .quiz-opt.correct { border-color: #22c55e; background: #f0fdf4; color: #166534; }
+        .quiz-opt.wrong { border-color: #ef4444; background: #fef2f2; color: #991b1b; }
+        #quiz-feedback { font-size: 0.73rem; margin-top: 8px; min-height: 18px; line-height: 1.55; color: #475569; }
+        #quiz-next { margin-top: 8px; padding: 6px 12px; border-radius: 6px; border: 1px solid #cbd5e1; background: #f1f5f9; color: #475569; font-size: 0.74rem; cursor: pointer; display: none; width: 100%; font-weight: 600; }
+        #quiz-next:hover { background: #e2e8f0; }
+
+        @media (max-width: 1180px) { #right-panel { display: none; } }
+        @media (max-width: 860px) {
+            #left-panel { position: absolute; z-index: 40; height: 100%; box-shadow: 4px 0 16px rgba(0,0,0,0.15); }
+            #view2d-wrap { width: min(340px, 88vw); height: min(250px, 42vh); right: 10px; bottom: 10px; }
+        }
+
+        #home-btn {
+            position: fixed; bottom: 16px; right: 16px; z-index: 99999;
+            background: rgba(30,41,59,0.85); backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.3); border-radius: 10px; padding: 8px 14px;
+            font-size: 13px; font-weight: bold; color: #fff; text-decoration: none;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.25); transition: background 0.2s, transform 0.2s;
+            display: inline-flex; align-items: center; gap: 6px;
+        }
+        #home-btn:hover { background: rgba(30,41,59,0.95); transform: translateY(-2px); }
+    </style>
+</head>
+<body>
+
+<div id="topbar">
+    <div style="display: flex; align-items: center; gap: 16px;">
+        <button class="panel-toggle-btn" id="btn-toggle-left" onclick="toggleLeftPanel()"><span>☰</span> 控制</button>
+        <div class="title-block">
+            <h1>🧲 線圈進出均勻磁場 3D 模擬器</h1>
+            <p>HKDSE Physics · Book 4 · 電磁感應 · 動生電動勢 ε = NBLv · 楞次定律</p>
+        </div>
+    </div>
+    <button class="panel-toggle-btn" id="btn-toggle-right" onclick="toggleRightPanel()"><span>📖</span> 資訊</button>
+</div>
+
+<div id="main">
+    <!-- ============ 左欄控制 ============ -->
+    <div id="left-panel">
+        <div class="card">
+            <div class="card-header">▶️ 動畫控制</div>
+            <div class="card-body">
+                <div class="btn-row" style="margin-bottom:10px;">
+                    <button class="ctrl-btn primary" id="btn-play" onclick="togglePlay()">⏸ 暫停</button>
+                    <button class="ctrl-btn" onclick="resetSim()">↺ 重置</button>
+                </div>
+                <div class="btn-row" style="margin-bottom:12px;">
+                    <button class="ctrl-btn" onclick="jumpStage('enter')">↦ 進入</button>
+                    <button class="ctrl-btn" onclick="jumpStage('inside')">▣ 內部</button>
+                    <button class="ctrl-btn" onclick="jumpStage('exit')">↤ 離開</button>
+                </div>
+                <div class="toggle-row" onclick="toggleAutoPause()" style="margin-bottom:12px;"><div class="toggle-track" id="tg-autopause"><div class="toggle-thumb"></div></div><span>⏸ 關鍵時刻自動暫停</span></div>
+                <div class="slider-row">
+                    <div class="slider-head"><label>模擬速度</label><span class="val" id="val-simspeed">1.0×</span></div>
+                    <input type="range" id="sld-simspeed" min="0.15" max="2.5" step="0.05" value="1.0">
+                </div>
+            </div>
+        </div>
+
+        <div class="card collapsed">
+            <div class="card-header">🎛️ 運動模型</div>
+            <div class="card-body">
+                <div class="dir-btn-group">
+                    <button class="dir-btn active" id="motion-constant" onclick="setMotion('constant')">➡ 固定等速 v</button>
+                    <button class="dir-btn" id="motion-free" onclick="setMotion('free')">🖐 放手（受阻力）</button>
+                </div>
+                <div class="info-box" style="margin-top:9px;" id="motion-note">
+                    <b>等速模式：</b>線圈以設定 v 勻速通過，圖形乾淨、便於分析 <span class="hl-vel">ε = NBLv</span>。
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">🧭 磁場方向</div>
+            <div class="card-body">
+                <div class="dir-btn-group">
+                    <button class="dir-btn active" id="bdir-in" onclick="setBInto(true)">⊗ 射入頁內</button>
+                    <button class="dir-btn" id="bdir-out" onclick="setBInto(false)">⊙ 射出頁外</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">⭕ 線圈形狀</div>
+            <div class="card-body">
+                <div class="dir-btn-group">
+                    <button class="dir-btn active" id="shape-rect" onclick="setShape('rect')">▭ 矩形</button>
+                    <button class="dir-btn" id="shape-circle" onclick="setShape('circle')">⬭ 圓形</button>
+                    <button class="dir-btn" id="shape-triangle" onclick="setShape('triangle')">△ 三角形</button>
+                </div>
+                <div class="info-box" style="margin-top:9px;" id="shape-note"><b>矩形：</b>切割長度恆為 L，進入時 ε 恆定，ε–t 圖是<b>方波</b>。</div>
+            </div>
+        </div>
+
+        <div class="card collapsed">
+            <div class="card-header">⚙️ 參數設定</div>
+            <div class="card-body">
+                <div class="slider-row">
+                    <div class="slider-head"><label>磁場強度 B</label><span class="val" id="val-B">4.0</span></div>
+                    <input type="range" id="sld-B" min="1" max="8" step="0.5" value="4">
+                </div>
+                <div class="slider-row">
+                    <div class="slider-head"><label>速度 v</label><span class="val" id="val-v">3.0</span></div>
+                    <input type="range" id="sld-v" min="1" max="6" step="0.5" value="3">
+                </div>
+                <div class="slider-row">
+                    <div class="slider-head"><label>線圈高 L（垂直邊）</label><span class="val" id="val-L">3.0</span></div>
+                    <input type="range" id="sld-L" min="1.5" max="4.5" step="0.5" value="3">
+                </div>
+                <div class="slider-row">
+                    <div class="slider-head"><label>線圈寬 w</label><span class="val" id="val-w">4.0</span></div>
+                    <input type="range" id="sld-w" min="2" max="6" step="0.5" value="4">
+                </div>
+                <div class="slider-row">
+                    <div class="slider-head"><label>匝數 N</label><span class="val" id="val-N">1</span></div>
+                    <input type="range" id="sld-N" min="1" max="5" step="1" value="1">
+                </div>
+                <div class="slider-row">
+                    <div class="slider-head"><label>電阻 R</label><span class="val" id="val-R">2.0</span></div>
+                    <input type="range" id="sld-R" min="0.5" max="5" step="0.5" value="2">
+                </div>
+                <div class="slider-row" id="row-mass">
+                    <div class="slider-head"><label>質量 m（放手模式）</label><span class="val" id="val-m">2.0</span></div>
+                    <input type="range" id="sld-m" min="0.5" max="5" step="0.5" value="2">
+                </div>
+            </div>
+        </div>
+
+        <div class="card collapsed">
+            <div class="card-header">👁️ 顯示選項</div>
+            <div class="card-body">
+                <div class="toggle-row" onclick="toggleOpt('vectors')"><div class="toggle-track on" id="tg-vectors"><div class="toggle-thumb"></div></div><span>向量（v · F · I）</span></div>
+                <div class="toggle-row" onclick="toggleOpt('current')"><div class="toggle-track on" id="tg-current"><div class="toggle-thumb"></div></div><span>感應電流動畫</span></div>
+                <div class="toggle-row" onclick="toggleOpt('field')"><div class="toggle-track on" id="tg-field"><div class="toggle-thumb"></div></div><span>磁場標記（× / ·）</span></div>
+                <div class="toggle-row" onclick="toggleOpt('labels')"><div class="toggle-track on" id="tg-labels"><div class="toggle-thumb"></div></div><span>P Q R S 標籤</span></div>
+                <div class="toggle-row" onclick="toggleOpt('lenz')"><div class="toggle-track on" id="tg-lenz"><div class="toggle-thumb"></div></div><span>楞次對抗標記（感應場 + 轉向）</span></div>
+                <div class="toggle-row" onclick="toggleOpt('flux')"><div class="toggle-track on" id="tg-flux"><div class="toggle-thumb"></div></div><span>磁通量重疊區高亮</span></div>
+                <div class="toggle-row" onclick="toggleOpt('view2d')"><div class="toggle-track" id="tg-view2d"><div class="toggle-thumb"></div></div><span>2D 課本示意圖（可拖動）</span></div>
+            </div>
+        </div>
+
+        <div class="card collapsed">
+            <div class="card-header">🎥 視角與匯出</div>
+            <div class="card-body">
+                <div class="btn-row" style="margin-bottom:6px;">
+                    <button class="ctrl-btn" onclick="frontView()">📖 課本正視角</button>
+                    <button class="ctrl-btn" onclick="isoView()">🧊 立體視角</button>
+                </div>
+                <div class="btn-row">
+                    <button class="ctrl-btn" onclick="snapshot()">📸 截圖存檔</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ 中央畫布 ============ -->
+    <div id="canvas-wrap">
+        <div id="view3d">
+            <div id="status-badge">狀態：<span class="stage" id="stage-text">尚未進入磁場</span></div>
+            <div id="hint">🖱 左鍵旋轉 · 右鍵平移 · 滾輪縮放</div>
+        </div>
+        <div id="view2d-wrap" class="panel-hidden">
+            <div id="view2d-head" title="拖曳可移動視窗"><span>⠿ 2D 課本示意圖（可拖動）</span><button id="view2d-close" onclick="toggleOpt('view2d')" title="關閉">✕</button></div>
+            <canvas id="view2d"></canvas>
+        </div>
+        <div id="chart-big-wrap" class="panel-hidden">
+            <div id="chart-big-head" title="拖曳可移動視窗"><span>⠿ Φ – ε – I 對時間圖（放大）</span><button id="chart-big-close" onclick="toggleBigChart()" title="關閉">✕</button></div>
+            <canvas id="chart-big"></canvas>
+            <div id="chart-big-foot">
+                <span><b style="color:#2563eb;">■</b> Φ 磁通量 = <b id="bigv-phi" style="color:#2563eb;">0.0</b></span>
+                <span><b style="color:#16a34a;">■</b> ε 電動勢 = <b id="bigv-emf" style="color:#16a34a;">0.0</b></span>
+                <span><b style="color:#dc2626;">■</b> I 電流 = <b id="bigv-cur" style="color:#dc2626;">0.0</b></span>
+                <span style="margin-left:auto;">背景色帶：<b style="color:#16a34a;">進入中</b> · <b style="color:#2563eb;">完全內部</b> · <b style="color:#dc2626;">離開中</b></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ 右欄資訊 ============ -->
+    <div id="right-panel">
+        <div class="formula-box">
+            <h4>📊 公式與即時數值</h4>
+            <div class="formula">$\varepsilon = -N\dfrac{d\Phi}{dt} = N B L v$</div>
+            <div class="formula">$\Phi = N B L x_{\text{重疊}}\quad,\quad I = \dfrac{\varepsilon}{R}$</div>
+            <div class="formula">$F = N B I L\ \ (\text{阻礙運動})$</div>
+            <div class="readout-grid">
+                <div class="readout"><span class="rk">磁通量 Φ</span><span class="rv" id="ro-phi">0.0</span></div>
+                <div class="readout"><span class="rk">電動勢 ε</span><span class="rv" id="ro-emf">0.0</span></div>
+                <div class="readout"><span class="rk">電流 I</span><span class="rv" id="ro-cur">0.0</span></div>
+                <div class="readout"><span class="rk">阻力 F</span><span class="rv" id="ro-force">0.0</span></div>
+            </div>
+        </div>
+
+        <div class="formula-box" id="lenz-box">
+            <h4>🧭 楞次定律三步推理</h4>
+            <div class="lenz-step" id="lenz-step-1"><span class="ln">①</span><div><div class="lt">Change 變化</div><div class="lv" id="lenz-change">磁通量不變</div></div></div>
+            <div class="lenz-step" id="lenz-step-2"><span class="ln">②</span><div><div class="lt">Oppose 對抗</div><div class="lv" id="lenz-oppose">無需對抗</div></div></div>
+            <div class="lenz-step" id="lenz-step-3"><span class="ln">③</span><div><div class="lt">Induce 感應電流</div><div class="lv" id="lenz-induce">無電流（ε = 0）</div></div></div>
+        </div>
+
+        <div class="formula-box" id="tour-box">
+            <h4>📚 教學導覽</h4>
+            <div class="info-box" id="tour-text" style="min-height:76px;"></div>
+            <div class="btn-row" style="margin-top:8px;">
+                <button class="ctrl-btn" id="tour-prev" onclick="tourPrev()">← 上一步</button>
+                <button class="ctrl-btn primary" id="tour-next" onclick="tourNext()">下一步 →</button>
+            </div>
+        </div>
+
+        <div class="formula-box">
+            <h4>📈 Φ – ε – I 對時間圖 <button class="zoom-btn" onclick="toggleBigChart()" title="放大到主畫面，方便投影講解">⛶ 放大</button></h4>
+            <canvas id="chart" title="點擊放大" onclick="toggleBigChart()"></canvas>
+            <div class="chart-legend">
+                <span><b style="color:#2563eb;">■</b> Φ 磁通量</span>
+                <span><b style="color:#16a34a;">■</b> ε 電動勢</span>
+                <span><b style="color:#dc2626;">■</b> I 電流</span>
+            </div>
+            <div class="chart-legend" style="margin-top:3px;">
+                <span>背景色帶：<b style="color:#16a34a;">進入中</b> · <b style="color:#2563eb;">完全內部</b> · <b style="color:#dc2626;">離開中</b></span>
+            </div>
+        </div>
+
+        <div class="formula-box">
+            <h4>🎯 檢流計 Galvanometer</h4>
+            <canvas id="galv"></canvas>
+        </div>
+
+        <div class="formula-box" id="energy-box">
+            <h4>⚡ 能量轉換（放手模式）</h4>
+            <div class="ebar-wrap">
+                <div class="ebar-track">
+                    <div class="ebar-ke" id="ebar-ke" style="width:100%"></div>
+                    <div class="ebar-heat" id="ebar-heat" style="width:0%"></div>
+                </div>
+                <div class="ebar-lab"><span style="color:#ca8a04;">動能 KE</span><span style="color:#dc2626;">已耗散熱能 I²R</span></div>
+            </div>
+            <div class="info-box" style="margin-top:9px;">線圈的<span class="hl-vel">動能</span>經感應電流在電阻上以 <span class="hl-cur">I²R</span> 發熱耗散 —— 這正是楞次定律「阻力做負功」的能量來源。</div>
+        </div>
+
+        <div class="quiz-box">
+            <h4>🧠 小測驗</h4>
+            <div class="quiz-q" id="quiz-q"></div>
+            <div class="quiz-options" id="quiz-options"></div>
+            <div id="quiz-feedback"></div>
+            <button id="quiz-next" onclick="nextQuiz()">下一題 →</button>
+        </div>
+    </div>
+</div>
+
+<a id="home-btn" href="../../../index.html">🏠 主頁</a>
+
+<script>
+'use strict';
+
+/* =========================================================================
+   單一物理真值來源 (single source of truth) — 採無因次教學單位
+   幾何：線圈位於 XY 平面，運動沿 +X；磁場沿 ±Z（入頁 = −Z）。
+   ========================================================================= */
+var FIELD_L = -5, FIELD_R = 5;      // 磁場區 X 範圍
+var FIELD_YH = 5;                    // 磁場區半高（Y）
+var MARGIN = 2.2;                    // 線圈進出磁場外的緩衝
+var DIR = 1;                         // 運動方向：+1 = 線圈由左向右進入磁場、再從右側離開
+var FREE_DRAG = 0.012;              // 放手模式阻力對加速度的縮放（教學單位下避免過度阻尼）
+
+var state = {
+    playing: true, simSpeed: 1.0, motion: 'constant',
+    B: 4, v: 3, L: 3, w: 4, N: 1, R: 2, m: 2,
+    bInto: true,                     // true = 入頁 (−Z)
+    coilX: 0, vel: 3, done: false, autoPause: false, shape: 'rect',
+    v0: 3,                           // 放手模式初速（記錄以算能量比例）
+    heat: 0,                         // 累積耗散能量
+    show: { vectors: true, current: true, field: true, labels: true, lenz: true, flux: true, view2d: false }
+};
+// 線圈由左側（磁場外）出發，向右（+X）進入並穿過磁場，從右側離開
+function startX() { return FIELD_L - state.w / 2 - MARGIN; }
+function endX()   { return FIELD_R + state.w / 2 + MARGIN; }
+state.coilX = startX();
+
+/* 顏色慣例（沿用 Book 4 系列） */
+var COL_F = 0x16a34a, COL_B = 0x2563eb, COL_V = 0xca8a04, COL_I = 0xdc2626, COL_COIL = 0xc86a2c;
+
+/* =========================================================================
+   THREE.js 場景
+   ========================================================================= */
+var view3d = document.getElementById('view3d');
+var scene = new THREE.Scene();
+scene.background = new THREE.Color(0xe2e6eb);
+
+var camera = new THREE.PerspectiveCamera(42, 1, 0.1, 400);
+var renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+view3d.appendChild(renderer.domElement);
+
+var controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.target.set(0, 0, 0);
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.85));
+var dl = new THREE.DirectionalLight(0xffffff, 0.55);
+dl.position.set(6, 10, 12);
+scene.add(dl);
+
+// 依視窗寬高比計算距離，確保整個行程（線圈起點→磁場→終點）與磁場區完整入鏡
+var cameraTouched = false;   // 用戶手動操作過鏡頭後，resize/改參數不再自動重置視角
+function fitDistance() {
+    var halfW = Math.max(Math.abs(startX()) , Math.abs(endX())) + state.w / 2 + 1;
+    var halfH = Math.max(FIELD_YH, state.L / 2) + 1.4;
+    var tanV = Math.tan(camera.fov * Math.PI / 360);
+    var aspect = camera.aspect > 0 ? camera.aspect : 1.6;
+    return Math.max(halfW / (tanV * aspect), halfH / tanV) * 1.06;
+}
+var lastViewFn = null;
+function frontView() { camera.position.set(0, 0.5, fitDistance()); controls.target.set(0, 0, 0); controls.update(); cameraTouched = false; lastViewFn = frontView; }
+function isoView()   { var d = fitDistance(); camera.position.set(d * 0.5, d * 0.42, d * 0.82); controls.target.set(0, 0, 0); controls.update(); cameraTouched = false; lastViewFn = isoView; }
+function refitView() { if (!cameraTouched && lastViewFn) lastViewFn(); }
+controls.addEventListener('start', function () { cameraTouched = true; });
+frontView();
+
+/* ---------- 文字精靈標籤（依文字量測，避免裁切） ---------- */
+function makeLabel(text, color, scale) {
+    scale = scale || 1;
+    var c = document.createElement('canvas');
+    var ctx = c.getContext('2d');
+    var font = 'bold 72px Segoe UI, Arial';
+    ctx.font = font;
+    var w = Math.ceil(ctx.measureText(text).width) + 28, h = 100;
+    c.width = w; c.height = h;
+    ctx = c.getContext('2d'); ctx.font = font;
+    ctx.fillStyle = color; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(text, w / 2, h / 2);
+    var spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthTest: false, depthWrite: false }));
+    spr.scale.set(scale * (w / h), scale, 1);
+    spr.renderOrder = 999;
+    return spr;
+}
+
+/* ---------- 磁場標記貼圖（× 入頁 / · 出頁） ---------- */
+function markTexture(sym, color, ring) {
+    var c = document.createElement('canvas'); c.width = 64; c.height = 64;
+    var x = c.getContext('2d');
+    x.lineCap = 'round';
+    x.beginPath(); x.arc(32, 32, 26, 0, Math.PI * 2); x.strokeStyle = ring || 'rgba(234,88,12,0.35)'; x.lineWidth = 2; x.stroke();
+    x.strokeStyle = color; x.fillStyle = color; x.lineWidth = 6;
+    if (sym === 'cross') {
+        x.beginPath(); x.moveTo(20, 20); x.lineTo(44, 44); x.moveTo(44, 20); x.lineTo(20, 44); x.stroke();
+    } else {
+        x.beginPath(); x.arc(32, 32, 8, 0, Math.PI * 2); x.fill();
+    }
+    return new THREE.CanvasTexture(c);
+}
+var texCross = markTexture('cross', '#ea580c');
+var texDot   = markTexture('dot', '#ea580c');
+// 感應電流產生的場（楞次對抗標記）— 藍色，與外磁場的橙色區別
+var texCrossInd = markTexture('cross', '#2563eb', 'rgba(37,99,235,0.4)');
+var texDotInd   = markTexture('dot', '#2563eb', 'rgba(37,99,235,0.4)');
+
+/* ---------- 磁場區（半透明面 + 虛線框 + × 標記格） ---------- */
+var fieldGroup = new THREE.Group(); scene.add(fieldGroup);
+var fieldPlane = new THREE.Mesh(
+    new THREE.PlaneGeometry(FIELD_R - FIELD_L, 2 * FIELD_YH),
+    new THREE.MeshBasicMaterial({ color: 0xfde4cf, transparent: true, opacity: 0.30, side: THREE.DoubleSide })
+);
+fieldPlane.position.set((FIELD_L + FIELD_R) / 2, 0, -0.2);
+fieldGroup.add(fieldPlane);
+var fieldEdge = new THREE.LineSegments(
+    new THREE.EdgesGeometry(new THREE.PlaneGeometry(FIELD_R - FIELD_L, 2 * FIELD_YH)),
+    new THREE.LineDashedMaterial({ color: 0xea580c, dashSize: 0.35, gapSize: 0.25 })
+);
+fieldEdge.position.copy(fieldPlane.position);
+fieldEdge.computeLineDistances();
+fieldGroup.add(fieldEdge);
+
+var markGroup = new THREE.Group(); fieldGroup.add(markGroup);
+function buildMarks() {
+    while (markGroup.children.length) {
+        var mk = markGroup.children[0];
+        markGroup.remove(mk);
+        if (mk.material) mk.material.dispose();   // 貼圖 texCross/texDot 共用，不 dispose
+    }
+    var tex = state.bInto ? texCross : texDot;
+    for (var mx = FIELD_L + 0.9; mx <= FIELD_R - 0.4; mx += 1.6) {
+        for (var my = -FIELD_YH + 0.8; my <= FIELD_YH - 0.4; my += 1.6) {
+            var sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false, depthWrite: false }));
+            sp.position.set(mx, my, -0.15); sp.scale.set(0.55, 0.55, 1);
+            markGroup.add(sp);
+        }
+    }
+}
+buildMarks();
+var fieldLabel = makeLabel('B 場', '#c2410c', 0.85); fieldLabel.position.set(FIELD_R - 0.6, FIELD_YH + 0.6, 0); fieldGroup.add(fieldLabel);
+
+/* ---------- 磁通量重疊區高亮（線圈形狀 ∩ 磁場，用剪裁平面裁出重疊區） ---------- */
+renderer.localClippingEnabled = true;
+var fluxMesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(1, 1),   // 幾何在 buildCoil 依形狀重建
+    new THREE.MeshBasicMaterial({
+        color: 0x3b82f6, transparent: true, opacity: 0.28, side: THREE.DoubleSide, depthWrite: false,
+        clippingPlanes: [
+            new THREE.Plane(new THREE.Vector3(1, 0, 0), -FIELD_L),   // 只保留 x ≥ FIELD_L
+            new THREE.Plane(new THREE.Vector3(-1, 0, 0), FIELD_R)    // 只保留 x ≤ FIELD_R
+        ]
+    })
+);
+fluxMesh.position.set(0, 0, -0.05);
+fluxMesh.visible = false;
+scene.add(fluxMesh);
+// 依目前形狀產生外框（同時給 fluxMesh 與 2D 視圖使用概念）
+function shapeOutline() {
+    var hw = state.w / 2, hL = state.L / 2;
+    var sh = new THREE.Shape();
+    if (state.shape === 'circle') {
+        sh.absellipse(0, 0, hw, hL, 0, Math.PI * 2, false, 0);
+    } else if (state.shape === 'triangle') {
+        sh.moveTo(-hw, -hL); sh.lineTo(hw, 0); sh.lineTo(-hw, hL); sh.closePath();
+    } else {
+        sh.moveTo(-hw, -hL); sh.lineTo(hw, -hL); sh.lineTo(hw, hL); sh.lineTo(-hw, hL); sh.closePath();
+    }
+    return sh;
+}
+
+/* ---------- 線圈（矩形，四邊 + 角標籤 + 電流點） ---------- */
+var coilGroup = new THREE.Group(); scene.add(coilGroup);
+var coilMat = new THREE.MeshStandardMaterial({ color: COL_COIL, metalness: 0.7, roughness: 0.3 });
+var cornerLabels = {};
+var currentDots = [];
+var NDOTS = 28;
+
+// 三角形頂點（逆時針）：底邊垂直在左、尖端向右 — 與 chordH 的定義一致
+function triVerts() {
+    var hw = state.w / 2, hL = state.L / 2;
+    return [[-hw, -hL], [hw, 0], [-hw, hL]];
+}
+
+function buildCoil() {
+    // 清除舊幾何（sprite 標籤的專屬貼圖與材質一併釋放；共用的 coilMat 保留）
+    while (coilGroup.children.length) {
+        var ch = coilGroup.children.pop();
+        if (ch.geometry) ch.geometry.dispose();
+        if (ch.isSprite && ch.material) {
+            if (ch.material.map) ch.material.map.dispose();
+            ch.material.dispose();
+        } else if (ch.material && ch.material !== coilMat) {
+            ch.material.dispose();   // 電流點材質（每次 buildCoil 新建）
+        }
+    }
+    currentDots = [];
+    cornerLabels = {};
+    var hw = state.w / 2, hL = state.L / 2, rad = 0.09;
+
+    // 連接兩點的圓柱（任意方向的直邊）
+    function barBetween(a, b) {
+        var len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+        var m = new THREE.Mesh(new THREE.CylinderGeometry(rad, rad, len, 16), coilMat);
+        m.position.set((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, 0);
+        m.rotation.z = Math.atan2(b[1] - a[1], b[0] - a[0]) - Math.PI / 2;   // 圓柱預設沿 Y 軸
+        coilGroup.add(m);
+    }
+
+    if (state.shape === 'circle') {
+        var curve = new THREE.EllipseCurve(0, 0, hw, hL, 0, Math.PI * 2, false, 0);
+        var pts2 = curve.getPoints(96), pts3 = [];
+        for (var pi = 0; pi < pts2.length; pi++) pts3.push(new THREE.Vector3(pts2[pi].x, pts2[pi].y, 0));
+        var path = new THREE.CatmullRomCurve3(pts3, true);
+        coilGroup.add(new THREE.Mesh(new THREE.TubeGeometry(path, 128, rad, 10, true), coilMat));
+    } else if (state.shape === 'triangle') {
+        var V = triVerts();
+        for (var e = 0; e < 3; e++) barBetween(V[e], V[(e + 1) % 3]);
+        // 頂點標籤：P 左上、Q 右尖端、R 左下
+        cornerLabels = { P: makeLabel('P', '#1e293b', 0.7), Q: makeLabel('Q', '#1e293b', 0.7), R: makeLabel('R', '#1e293b', 0.7) };
+        cornerLabels.P.position.set(-hw - 0.4, hL + 0.35, 0);
+        cornerLabels.Q.position.set(hw + 0.45, 0, 0);
+        cornerLabels.R.position.set(-hw - 0.4, -hL - 0.35, 0);
+    } else {
+        barBetween([-hw, -hL], [hw, -hL]); barBetween([hw, -hL], [hw, hL]);
+        barBetween([hw, hL], [-hw, hL]); barBetween([-hw, hL], [-hw, -hL]);
+        // 角標籤：P 左上, Q 右上, R 右下, S 左下（對應課本）
+        cornerLabels = {
+            P: makeLabel('P', '#1e293b', 0.7), Q: makeLabel('Q', '#1e293b', 0.7),
+            R: makeLabel('R', '#1e293b', 0.7), S: makeLabel('S', '#1e293b', 0.7)
+        };
+        cornerLabels.P.position.set(-hw - 0.45, hL + 0.35, 0);
+        cornerLabels.Q.position.set(hw + 0.45, hL + 0.35, 0);
+        cornerLabels.R.position.set(hw + 0.45, -hL - 0.35, 0);
+        cornerLabels.S.position.set(-hw - 0.45, -hL - 0.35, 0);
+    }
+    for (var k in cornerLabels) coilGroup.add(cornerLabels[k]);
+
+    // 電流指示點
+    var dotGeo = new THREE.SphereGeometry(0.11, 12, 12);
+    var dotMat = new THREE.MeshBasicMaterial({ color: COL_I });
+    for (var i = 0; i < NDOTS; i++) {
+        var d = new THREE.Mesh(dotGeo, dotMat);
+        coilGroup.add(d); currentDots.push(d);
+    }
+
+    // 磁通量高亮幾何隨形狀重建
+    fluxMesh.geometry.dispose();
+    fluxMesh.geometry = new THREE.ShapeGeometry(shapeOutline(), 48);
+
+    applyShow();
+}
+
+// 沿線圈周長取點（t ∈ [0,1)，逆時針 = 正電流方向）
+function shapePoint(t) {
+    var hw = state.w / 2, hL = state.L / 2;
+    t = ((t % 1) + 1) % 1;
+    if (state.shape === 'circle') {
+        var th = t * Math.PI * 2;
+        return [hw * Math.cos(th), hL * Math.sin(th), 0];
+    }
+    if (state.shape === 'triangle') {
+        var V = triVerts(), lens = [], per = 0, e2;
+        for (e2 = 0; e2 < 3; e2++) { lens.push(Math.hypot(V[(e2 + 1) % 3][0] - V[e2][0], V[(e2 + 1) % 3][1] - V[e2][1])); per += lens[e2]; }
+        var d2 = t * per;
+        for (e2 = 0; e2 < 3; e2++) {
+            if (d2 <= lens[e2]) {
+                var f = d2 / lens[e2], A = V[e2], B = V[(e2 + 1) % 3];
+                return [A[0] + (B[0] - A[0]) * f, A[1] + (B[1] - A[1]) * f, 0];
+            }
+            d2 -= lens[e2];
+        }
+        return [V[0][0], V[0][1], 0];
+    }
+    // 矩形：右邊上行→頂邊左行→左邊下行→底邊右行
+    var per4 = 2 * (state.w + state.L);
+    var d = t * per4;
+    if (d < state.L) return [hw, -hL + d, 0];
+    d -= state.L;
+    if (d < state.w) return [hw - d, hL, 0];
+    d -= state.w;
+    if (d < state.L) return [-hw, hL - d, 0];
+    d -= state.L;
+    return [-hw + d, -hL, 0];
+}
+
+/* ---------- 向量箭頭 ---------- */
+var velArrow = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 0, 0), 2, COL_V, 0.5, 0.3);
+var forceArrow = new THREE.ArrowHelper(new THREE.Vector3(-1, 0, 0), new THREE.Vector3(0, 0, 0), 1.5, COL_F, 0.5, 0.3);   // 阻力恆逆運動方向
+scene.add(velArrow); scene.add(forceArrow);
+var velLabel = makeLabel('v', '#a16207', 0.7); scene.add(velLabel);
+var forceLabel = makeLabel('F', '#15803d', 0.7); scene.add(forceLabel);
+
+/* ---------- 楞次對抗標記：線圈內感應場符號（藍）+ 電流轉向指示 ---------- */
+var indGroup = new THREE.Group(); scene.add(indGroup);
+var indMarks = [];
+for (var im = 0; im < 5; im++) {
+    var isp = new THREE.Sprite(new THREE.SpriteMaterial({ map: texDotInd, transparent: true, depthTest: false, depthWrite: false }));
+    isp.scale.set(0.5, 0.5, 1);
+    indGroup.add(isp); indMarks.push(isp);
+}
+var indSignCache = 0;   // 快取 I 符號，僅在轉向時換貼圖
+var ccwLabel = makeLabel('↺ 逆時針', '#dc2626', 0.8); scene.add(ccwLabel);
+var cwLabel  = makeLabel('↻ 順時針', '#dc2626', 0.8); scene.add(cwLabel);
+ccwLabel.visible = false; cwLabel.visible = false;
+
+/* =========================================================================
+   物理計算
+   ========================================================================= */
+// 形狀在局部座標 ξ（相對線圈中心，沿運動方向）處的垂直弦長
+// 矩形：恆為 L；圓（橢圓）：L·√(1−(2ξ/w)²)；三角形：底邊在左（高 L）、尖端向右，線性遞減
+function chordH(xi) {
+    var hw = state.w / 2;
+    if (xi < -hw || xi > hw) return 0;
+    if (state.shape === 'circle') { var u = xi / hw; return state.L * Math.sqrt(Math.max(0, 1 - u * u)); }
+    if (state.shape === 'triangle') return state.L * (hw - xi) / (2 * hw);
+    return state.L;
+}
+// 線圈 ∩ 磁場 的重疊面積（chordH 的解析積分，逐形狀精確）
+function overlapArea() {
+    var hw = state.w / 2;
+    var a = Math.max(FIELD_L - state.coilX, -hw), b = Math.min(FIELD_R - state.coilX, hw);
+    if (b - a <= 1e-9) return 0;
+    if (state.shape === 'circle') {
+        // ∫L√(1−(ξ/hw)²)dξ = L·hw·(u√(1−u²)+asin u)/2
+        var F = function (u) { u = Math.max(-1, Math.min(1, u)); return (u * Math.sqrt(1 - u * u) + Math.asin(u)) / 2; };
+        return state.L * hw * (F(b / hw) - F(a / hw));
+    }
+    if (state.shape === 'triangle') {
+        // ∫L(hw−ξ)/(2hw)dξ
+        var G = function (x) { return hw * x - x * x / 2; };
+        return state.L / (2 * hw) * (G(b) - G(a));
+    }
+    return state.L * (b - a);
+}
+// dA/d(coilX) = 左邊界弦長 − 右邊界弦長（只有磁場邊界上的弦在「切割」磁力線）
+function dAdX() { return chordH(FIELD_L - state.coilX) - chordH(FIELD_R - state.coilX); }
+// 切割發生的位置（供力箭頭/電流箭頭定位）：矩形用場內的垂直邊，其他形狀用磁場邊界
+function activeEdgeX() {
+    if (state.shape === 'rect') {
+        var le = state.coilX - state.w / 2;
+        return (le > FIELD_L && le < FIELD_R) ? le : state.coilX + state.w / 2;
+    }
+    return chordH(FIELD_L - state.coilX) > 0 ? FIELD_L : FIELD_R;
+}
+
+function stageName() {
+    var ov = overlapArea();
+    if (ov <= 1e-6) return state.coilX < FIELD_L ? 'before' : 'after';
+    var d = dAdX();
+    if (Math.abs(d) < 1e-6) return 'inside';             // 沒有弦在切割 → 完全內部
+    var dPhiSign = d * DIR;                              // 重疊面積隨時間變化的符號（+ = 進入）
+    return dPhiSign > 0 ? 'enter' : 'exit';
+}
+function physics() {
+    var v = state.vel;                                  // 速率（恆 ≥ 0；方向由 DIR 決定）
+    var sgn = state.bInto ? 1 : -1;                     // 出頁時電流方向整體翻轉
+    var dAdt = dAdX() * DIR * v;                        // dA/dt，+ = 進入（入頁磁通增加）
+    var emf = state.N * state.B * dAdt * sgn;           // ε = −dΦ/dt（正 = 逆時針電流）；矩形時 = NBLv
+    var I = emf / state.R;
+    var F = state.N * state.B * Math.abs(I) * Math.abs(dAdX());  // 阻力 = NBI×切割長度（矩形 = NBIL）
+    var phi = state.N * state.B * overlapArea();
+    return { emf: emf, I: I, F: F, phi: phi };
+}
+
+/* =========================================================================
+   歷史資料（圖表）
+   ========================================================================= */
+var HIST_MAX = 240;
+var histFlux = [], histEmf = [], histCur = [], histStage = [];
+function pushHist(p) {
+    histFlux.push(p.phi); histEmf.push(p.emf); histCur.push(p.I); histStage.push(stageName());
+    if (histFlux.length > HIST_MAX) { histFlux.shift(); histEmf.shift(); histCur.shift(); histStage.shift(); }
+}
+function clearHist() { histFlux = []; histEmf = []; histCur = []; histStage = []; }
+
+/* =========================================================================
+   顯示套用 / 面板
+   ========================================================================= */
+function applyShow() {
+    velArrow.visible = state.show.vectors;
+    forceArrow.visible = state.show.vectors;
+    velLabel.visible = state.show.vectors;
+    forceLabel.visible = state.show.vectors;
+    for (var i = 0; i < currentDots.length; i++) currentDots[i].visible = state.show.current;
+    markGroup.visible = state.show.field;
+    fieldPlane.visible = state.show.field;
+    for (var k in cornerLabels) cornerLabels[k].visible = state.show.labels;
+    document.getElementById('view2d-wrap').classList.toggle('panel-hidden', !state.show.view2d);
+    if (state.show.view2d) setTimeout(resize2D, 0);   // 顯示時重新量測畫布尺寸
+}
+window.toggleOpt = function (key) {
+    state.show[key] = !state.show[key];
+    var tg = document.getElementById('tg-' + key);
+    if (tg) tg.classList.toggle('on', state.show[key]);
+    applyShow();
+};
+window.toggleLeftPanel = function () {
+    document.getElementById('left-panel').classList.toggle('panel-hidden');
+    document.getElementById('btn-toggle-left').classList.toggle('inactive');
+    setTimeout(onResize, 60);
+};
+window.toggleRightPanel = function () {
+    document.getElementById('right-panel').classList.toggle('panel-hidden');
+    document.getElementById('btn-toggle-right').classList.toggle('inactive');
+    setTimeout(onResize, 60);
+};
+
+/* =========================================================================
+   控制項
+   ========================================================================= */
+var prevStage = 'before';    // 供「關鍵時刻自動暫停」偵測階段轉變
+window.toggleAutoPause = function () {
+    state.autoPause = !state.autoPause;
+    document.getElementById('tg-autopause').classList.toggle('on', state.autoPause);
+};
+function flashBadge() {
+    var b = document.getElementById('status-badge');
+    b.classList.add('flash');
+    setTimeout(function () { b.classList.remove('flash'); }, 1000);
+}
+window.togglePlay = function () {
+    if (state.done) { resetSim(); return; }   // 重播：resetSim 已設為播放狀態
+    state.playing = !state.playing;
+    document.getElementById('btn-play').textContent = state.playing ? '⏸ 暫停' : '▶ 播放';
+};
+window.resetSim = function () {
+    state.coilX = startX();
+    state.vel = state.v; state.v0 = state.v; state.heat = 0;
+    state.done = false; state.playing = true;
+    document.getElementById('btn-play').textContent = '⏸ 暫停';
+    prevStage = stageName();
+    clearHist();
+};
+window.jumpStage = function (which) {
+    // 線圈向右運動：前緣為右邊
+    if (which === 'enter') state.coilX = FIELD_L - state.w / 2 + 0.2;      // 右邊（前緣）剛入場
+    else if (which === 'inside') state.coilX = (FIELD_L + FIELD_R) / 2;    // 完全內部（需 w<場寬）
+    else if (which === 'exit') state.coilX = FIELD_R - state.w / 2 + 0.2;  // 右邊已出場、左邊仍在場內
+    state.vel = state.v; state.done = false;
+    state.playing = true;
+    document.getElementById('btn-play').textContent = '⏸ 暫停';
+    prevStage = stageName();
+    clearHist();
+};
+window.setMotion = function (mode) {
+    state.motion = mode;
+    document.getElementById('motion-constant').classList.toggle('active', mode === 'constant');
+    document.getElementById('motion-free').classList.toggle('active', mode === 'free');
+    document.getElementById('motion-note').innerHTML = (mode === 'constant')
+        ? '<b>等速模式：</b>線圈以設定 v 勻速通過，圖形乾淨、便於分析 <span class="hl-vel">ε = NBLv</span>。'
+        : '<b>放手模式：</b>給定初速後，感應阻力 <span class="hl-force">F = NBIL</span> 使線圈減速，動能轉為 I²R 熱能。';
+    document.getElementById('energy-box').style.display = (mode === 'free') ? '' : 'none';
+    document.getElementById('row-mass').style.opacity = (mode === 'free') ? '1' : '0.45';
+    resetSim();
+};
+var SHAPE_NOTES = {
+    rect: '<b>矩形：</b>切割長度恆為 L，進入時 ε 恆定，ε–t 圖是<b>方波</b>。',
+    circle: '<b>圓形：</b>切割弦長隨位置變化（中間最長），ε–t 圖變成<b>圓滑曲線</b> — 對比矩形的方波！',
+    triangle: '<b>三角形：</b>尖端先進入，切割長度<b>線性增加</b>，ε–t 圖是<b>斜坡</b>；離開時底邊一次過出場。'
+};
+window.setShape = function (shape) {
+    state.shape = shape;
+    document.getElementById('shape-rect').classList.toggle('active', shape === 'rect');
+    document.getElementById('shape-circle').classList.toggle('active', shape === 'circle');
+    document.getElementById('shape-triangle').classList.toggle('active', shape === 'triangle');
+    document.getElementById('shape-note').innerHTML = SHAPE_NOTES[shape];
+    buildCoil();
+    resetSim();
+};
+window.setBInto = function (into) {
+    state.bInto = into;
+    document.getElementById('bdir-in').classList.toggle('active', into);
+    document.getElementById('bdir-out').classList.toggle('active', !into);
+    buildMarks(); applyShow();
+};
+window.frontView = frontView;
+window.isoView = isoView;
+window.snapshot = function () {
+    renderer.render(scene, camera);
+    var a = document.createElement('a');
+    a.download = 'coil-field-sim.png';
+    a.href = renderer.domElement.toDataURL('image/png');
+    a.click();
+};
+
+/* 滑桿綁定 */
+function bindSlider(id, key, fmt, after) {
+    var sld = document.getElementById('sld-' + id), lab = document.getElementById('val-' + id);
+    sld.addEventListener('input', function () {
+        var v = parseFloat(sld.value); state[key] = v;
+        lab.textContent = fmt ? fmt(v) : v.toFixed(1);
+        if (after) after();
+    });
+}
+bindSlider('simspeed', 'simSpeed', function (v) { return v.toFixed(2) + '×'; });
+bindSlider('B', 'B');
+bindSlider('v', 'v', null, function () {
+    if (state.motion === 'constant' || state.done) { state.vel = state.v; }
+    // 放手模式運行中不改 v0，否則能量條百分比基準會被破壞
+    if (state.motion === 'constant' || state.done) { state.v0 = state.v; }
+});
+bindSlider('L', 'L', null, function () { buildCoil(); refitView(); });
+bindSlider('w', 'w', null, function () { buildCoil(); if (state.done) resetSim(); refitView(); });
+bindSlider('N', 'N', function (v) { return String(v); });
+bindSlider('R', 'R');
+bindSlider('m', 'm');
+
+/* =========================================================================
+   2D 課本示意圖（Canvas 2D，迎向頁面視角）
+   ========================================================================= */
+var cv2d = document.getElementById('view2d'), ctx2d = null;
+function resize2D() {
+    var r = cv2d.getBoundingClientRect();
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    cv2d.width = Math.max(1, r.width * dpr); cv2d.height = Math.max(1, r.height * dpr);
+    ctx2d = cv2d.getContext('2d'); ctx2d.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+function draw2D(p) {
+    if (!ctx2d) { resize2D(); if (!ctx2d) return; }
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var W = cv2d.width / dpr, H = cv2d.height / dpr;
+    ctx2d.clearRect(0, 0, W, H);
+    ctx2d.fillStyle = '#f8fafc'; ctx2d.fillRect(0, 0, W, H);
+
+    var worldMinX = Math.min(startX(), endX()) - 1, worldMaxX = Math.max(startX(), endX()) + 1, worldYH = FIELD_YH + 1;
+    var pad = 8;
+    var sx = (W - 2 * pad) / (worldMaxX - worldMinX);
+    var sy = (H - 2 * pad) / (2 * worldYH);
+    var s = Math.min(sx, sy);
+    var ox = W / 2, oy = H / 2, cxWorld = (worldMinX + worldMaxX) / 2;
+    function X(x) { return ox + (x - cxWorld) * s; }
+    function Y(y) { return oy - y * s; }
+
+    // 磁場區
+    ctx2d.fillStyle = state.show.field ? 'rgba(253,228,207,0.65)' : 'rgba(253,228,207,0.25)';
+    ctx2d.fillRect(X(FIELD_L), Y(FIELD_YH), (FIELD_R - FIELD_L) * s, 2 * FIELD_YH * s);
+    ctx2d.strokeStyle = '#ea580c'; ctx2d.setLineDash([5, 4]); ctx2d.lineWidth = 1.5;
+    ctx2d.strokeRect(X(FIELD_L), Y(FIELD_YH), (FIELD_R - FIELD_L) * s, 2 * FIELD_YH * s);
+    ctx2d.setLineDash([]);
+
+    // × / · 標記
+    if (state.show.field) {
+        ctx2d.strokeStyle = '#ea580c'; ctx2d.fillStyle = '#ea580c'; ctx2d.lineWidth = 1.5;
+        for (var mx = FIELD_L + 0.9; mx <= FIELD_R - 0.4; mx += 1.6) {
+            for (var my = -FIELD_YH + 0.8; my <= FIELD_YH - 0.4; my += 1.6) {
+                var px = X(mx), py = Y(my), r = 3.2;
+                if (state.bInto) { ctx2d.beginPath(); ctx2d.moveTo(px - r, py - r); ctx2d.lineTo(px + r, py + r); ctx2d.moveTo(px + r, py - r); ctx2d.lineTo(px - r, py + r); ctx2d.stroke(); }
+                else { ctx2d.beginPath(); ctx2d.arc(px, py, 2.2, 0, Math.PI * 2); ctx2d.fill(); }
+            }
+        }
+    }
+
+    // 線圈
+    var hw = state.w / 2, hL = state.L / 2, cx = state.coilX;
+
+    // 依形狀描出線圈路徑（canvas 座標）
+    function traceCoil() {
+        ctx2d.beginPath();
+        if (state.shape === 'circle') {
+            ctx2d.ellipse(X(cx), Y(0), hw * s, hL * s, 0, 0, Math.PI * 2);
+        } else if (state.shape === 'triangle') {
+            ctx2d.moveTo(X(cx - hw), Y(-hL)); ctx2d.lineTo(X(cx + hw), Y(0)); ctx2d.lineTo(X(cx - hw), Y(hL));
+            ctx2d.closePath();
+        } else {
+            ctx2d.rect(X(cx - hw), Y(hL), state.w * s, state.L * s);
+        }
+    }
+
+    // 磁通量重疊區高亮：以線圈路徑作剪裁，填磁場範圍
+    if (state.show.flux) {
+        var loX = Math.max(cx - hw, FIELD_L), hiX = Math.min(cx + hw, FIELD_R);
+        if (hiX - loX > 1e-4) {
+            ctx2d.save();
+            traceCoil(); ctx2d.clip();
+            ctx2d.fillStyle = 'rgba(59,130,246,0.28)';
+            ctx2d.fillRect(X(FIELD_L), Y(FIELD_YH), (FIELD_R - FIELD_L) * s, 2 * FIELD_YH * s);
+            ctx2d.restore();
+        }
+    }
+
+    ctx2d.strokeStyle = '#c86a2c'; ctx2d.lineWidth = 3;
+    traceCoil(); ctx2d.stroke();
+
+    // 頂點標籤（矩形 PQRS / 三角形 PQR；圓形無）
+    if (state.show.labels && state.shape !== 'circle') {
+        ctx2d.fillStyle = '#1e293b'; ctx2d.font = 'bold 12px Segoe UI'; ctx2d.textAlign = 'center';
+        if (state.shape === 'triangle') {
+            ctx2d.fillText('P', X(cx - hw) - 8, Y(hL) - 4);
+            ctx2d.fillText('Q', X(cx + hw) + 9, Y(0) + 4);
+            ctx2d.fillText('R', X(cx - hw) - 8, Y(-hL) + 14);
+        } else {
+            ctx2d.fillText('P', X(cx - hw) - 8, Y(hL) - 4);
+            ctx2d.fillText('Q', X(cx + hw) + 8, Y(hL) - 4);
+            ctx2d.fillText('R', X(cx + hw) + 8, Y(-hL) + 14);
+            ctx2d.fillText('S', X(cx - hw) - 8, Y(-hL) + 14);
+        }
+    }
+
+    // 速度箭頭（向右）
+    if (state.show.vectors && state.vel > 0.01) {
+        var ay = Y(0), ax0 = X(cx + hw) + 4, ax1 = ax0 + Math.min(46, 14 + state.vel * 6);
+        arrow2d(ctx2d, ax0, ay, ax1, ay, '#ca8a04', 2.5);
+        ctx2d.fillStyle = '#a16207'; ctx2d.font = 'bold 12px Segoe UI'; ctx2d.textAlign = 'left';
+        ctx2d.fillText('v', ax1 + 4, ay - 4);
+    }
+
+    // 感應電流方向箭頭（矩形限定：在切割磁力線的垂直邊上標示；其他形狀由中心符號 + 轉向指示表達）
+    if (state.show.current && state.shape === 'rect' && Math.abs(p.I) > 1e-3) {
+        var actX = activeEdgeX();
+        var onLeft = actX < cx;
+        // 正電流 = 逆時針：右邊向上、左邊向下；負電流相反
+        var up = (p.I > 0) ? !onLeft : onLeft;
+        var ya = Y(-hL * 0.4), yb = Y(hL * 0.4);
+        arrow2d(ctx2d, X(actX), up ? ya : yb, X(actX), up ? yb : ya, '#dc2626', 2.5);
+        ctx2d.fillStyle = '#dc2626'; ctx2d.font = 'bold 11px Segoe UI'; ctx2d.textAlign = 'center';
+        ctx2d.fillText('I', X(actX), Y(hL) - 6);
+    }
+
+    // 楞次對抗標記：線圈中心的感應場符號（藍）+ 轉向指示
+    if (state.show.lenz && Math.abs(p.I) > 1e-3) {
+        var iOut = p.I > 0;                                  // 逆時針 → 感應場出頁 ⊙
+        var icx = X(cx), icy = Y(0), rr = 6;
+        ctx2d.strokeStyle = '#2563eb'; ctx2d.fillStyle = '#2563eb'; ctx2d.lineWidth = 1.6;
+        ctx2d.beginPath(); ctx2d.arc(icx, icy, rr, 0, Math.PI * 2); ctx2d.stroke();
+        if (iOut) { ctx2d.beginPath(); ctx2d.arc(icx, icy, 2.2, 0, Math.PI * 2); ctx2d.fill(); }
+        else {
+            var cr = rr * 0.62;
+            ctx2d.beginPath();
+            ctx2d.moveTo(icx - cr, icy - cr); ctx2d.lineTo(icx + cr, icy + cr);
+            ctx2d.moveTo(icx + cr, icy - cr); ctx2d.lineTo(icx - cr, icy + cr);
+            ctx2d.stroke();
+        }
+        ctx2d.fillStyle = '#dc2626'; ctx2d.font = 'bold 13px Segoe UI'; ctx2d.textAlign = 'center';
+        ctx2d.fillText(iOut ? '↺' : '↻', icx, Y(-hL) + 16);
+    }
+}
+function arrow2d(ctx, x0, y0, x1, y1, color, lw) {
+    ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = lw; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+    var ang = Math.atan2(y1 - y0, x1 - x0), hs = 7;
+    ctx.beginPath(); ctx.moveTo(x1, y1);
+    ctx.lineTo(x1 - hs * Math.cos(ang - 0.5), y1 - hs * Math.sin(ang - 0.5));
+    ctx.lineTo(x1 - hs * Math.cos(ang + 0.5), y1 - hs * Math.sin(ang + 0.5));
+    ctx.closePath(); ctx.fill();
+}
+
+/* =========================================================================
+   Φ–ε–I 圖表 & 檢流計
+   ========================================================================= */
+var cvChart = document.getElementById('chart'), ctxC = null;
+var cvBig = document.getElementById('chart-big'), ctxBig = null, bigChartOn = false;
+var cvGalv = document.getElementById('galv'), ctxG = null;
+function resizeCanvas(cv) {
+    var r = cv.getBoundingClientRect();
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    cv.width = Math.max(1, r.width * dpr); cv.height = Math.max(1, r.height * dpr);
+    var c = cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return c;
+}
+// 共用的圖表繪製（小圖嵌於右欄；big=true 為主畫面放大版，線更粗、附即時數值圖例）
+function renderChart(c, cv, big) {
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var W = cv.width / dpr, H = cv.height / dpr;
+    if (W < 4 || H < 4) return;
+    c.clearRect(0, 0, W, H); c.fillStyle = '#f8fafc'; c.fillRect(0, 0, W, H);
+    var padL = big ? 36 : 26, padR = big ? 14 : 8, padT = big ? 14 : 10, padB = big ? 22 : 12;
+    var gx = padL, gy = padT, gw = W - padL - padR, gh = H - padT - padB, midY = gy + gh / 2;
+    // 階段色帶背景（進入=淡綠 / 內部=淡藍 / 離開=淡紅）
+    var BAND = { enter: 'rgba(22,163,74,0.09)', inside: 'rgba(37,99,235,0.08)', exit: 'rgba(220,38,38,0.08)' };
+    var b0 = 0;
+    for (var bi = 1; bi <= histStage.length; bi++) {
+        if (bi === histStage.length || histStage[bi] !== histStage[b0]) {
+            var col = BAND[histStage[b0]];
+            if (col) {
+                var bx0 = gx + (b0 / (HIST_MAX - 1)) * gw;
+                var bx1 = gx + ((bi - 1) / (HIST_MAX - 1)) * gw;
+                c.fillStyle = col;
+                c.fillRect(bx0, gy, Math.max(1, bx1 - bx0), gh);
+            }
+            b0 = bi;
+        }
+    }
+    c.strokeStyle = '#e2e8f0'; c.lineWidth = 1; c.strokeRect(gx, gy, gw, gh);
+    c.strokeStyle = '#cbd5e1'; c.setLineDash([3, 3]);
+    c.beginPath(); c.moveTo(gx, midY); c.lineTo(gx + gw, midY); c.stroke();
+    c.setLineDash([]);
+    c.fillStyle = '#94a3b8'; c.font = (big ? '13px' : '9px') + ' Segoe UI'; c.textAlign = 'right';
+    c.fillText('0', gx - 4, midY + 4);
+    if (big) { c.textAlign = 'right'; c.fillText('時間 t →', gx + gw - 4, gy + gh + 17); }
+
+    var half = gh / 2;
+    // 自動縮放
+    var maxPhi = 1e-3, maxE = 1e-3, maxI = 1e-3, i;
+    for (i = 0; i < histFlux.length; i++) {
+        maxPhi = Math.max(maxPhi, Math.abs(histFlux[i]));
+        maxE = Math.max(maxE, Math.abs(histEmf[i]));
+        maxI = Math.max(maxI, Math.abs(histCur[i]));
+    }
+    var phiScale = half * 0.9 / Math.max(maxPhi, 1);
+    var eScale = half * 0.85 / Math.max(maxE, 1);
+    var iScale = half * 0.68 / Math.max(maxI, 1);   // 刻意小於 ε 的縮放：I 與 ε 形狀相同，避免兩線完全重疊
+
+    var lw = big ? 3 : 2;
+    function plot(arr, scale, color) {
+        if (arr.length < 2) return;
+        c.strokeStyle = color; c.lineWidth = lw; c.beginPath();
+        for (var j = 0; j < arr.length; j++) {
+            var x = gx + (j / (HIST_MAX - 1)) * gw;
+            var y = midY - Math.max(-half, Math.min(half, arr[j] * scale));
+            if (j === 0) c.moveTo(x, y); else c.lineTo(x, y);
+        }
+        c.stroke();
+    }
+    plot(histFlux, phiScale, '#2563eb');
+    plot(histEmf, eScale, '#16a34a');
+    plot(histCur, iScale, '#dc2626');
+
+    // 放大版：即時數值顯示在底部列（避免遮住曲線）
+    if (big) {
+        var n2 = histFlux.length;
+        document.getElementById('bigv-phi').textContent = (n2 ? histFlux[n2 - 1] : 0).toFixed(1);
+        document.getElementById('bigv-emf').textContent = (n2 ? histEmf[n2 - 1] : 0).toFixed(1);
+        document.getElementById('bigv-cur').textContent = (n2 ? histCur[n2 - 1] : 0).toFixed(1);
+    }
+}
+function drawChart() {
+    if (!ctxC) ctxC = resizeCanvas(cvChart);
+    renderChart(ctxC, cvChart, false);
+    if (bigChartOn) {
+        if (!ctxBig) ctxBig = resizeCanvas(cvBig);
+        renderChart(ctxBig, cvBig, true);
+    }
+}
+window.toggleBigChart = function () {
+    bigChartOn = !bigChartOn;
+    document.getElementById('chart-big-wrap').classList.toggle('panel-hidden', !bigChartOn);
+    if (bigChartOn) setTimeout(function () { ctxBig = resizeCanvas(cvBig); drawChart(); }, 0);
+};
+function drawGalv(I) {
+    if (!ctxG) ctxG = resizeCanvas(cvGalv);
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var W = cvGalv.width / dpr, H = cvGalv.height / dpr;
+    ctxG.clearRect(0, 0, W, H); ctxG.fillStyle = '#f8fafc'; ctxG.fillRect(0, 0, W, H);
+    var cx = W / 2, cy = H * 0.86, R = Math.min(W * 0.40, H * 0.72);
+    ctxG.strokeStyle = '#cbd5e1'; ctxG.lineWidth = 2;
+    ctxG.beginPath(); ctxG.arc(cx, cy, R, Math.PI * 1.15, Math.PI * 1.85); ctxG.stroke();
+    ctxG.strokeStyle = '#94a3b8'; ctxG.lineWidth = 1.5;
+    for (var a = -60; a <= 60; a += 15) {
+        var rad = (-90 + a) * Math.PI / 180;
+        ctxG.beginPath();
+        ctxG.moveTo(cx + (R - 8) * Math.cos(rad), cy + (R - 8) * Math.sin(rad));
+        ctxG.lineTo(cx + R * Math.cos(rad), cy + R * Math.sin(rad));
+        ctxG.stroke();
+    }
+    ctxG.fillStyle = '#64748b'; ctxG.font = 'bold 12px Segoe UI'; ctxG.textAlign = 'center';
+    ctxG.fillText('0', cx, cy - R - 6);
+    ctxG.fillText('−', cx - R * 0.78, cy - R * 0.28); ctxG.fillText('+', cx + R * 0.78, cy - R * 0.28);
+    // 指針（滿偏對應 I≈±最大常見值）
+    var defl = Math.max(-1, Math.min(1, I / 20)) * 60;
+    var nr = (-90 + defl) * Math.PI / 180;
+    ctxG.strokeStyle = '#dc2626'; ctxG.lineWidth = 3; ctxG.lineCap = 'round';
+    ctxG.beginPath(); ctxG.moveTo(cx, cy); ctxG.lineTo(cx + (R - 5) * Math.cos(nr), cy + (R - 5) * Math.sin(nr)); ctxG.stroke();
+    ctxG.fillStyle = '#334155'; ctxG.beginPath(); ctxG.arc(cx, cy, 4, 0, Math.PI * 2); ctxG.fill();
+}
+
+/* =========================================================================
+   主迴圈
+   ========================================================================= */
+var STAGE_LABELS = {
+    before: '尚未進入磁場', enter: '進入中 — 磁通量增加，產生感應電動勢',
+    inside: '完全在磁場內 — 磁通量不變，ε = 0', exit: '離開中 — 磁通量減少，ε 反向', after: '已離開磁場'
+};
+var dotOffset = 0;
+var clock = new THREE.Clock();
+
+function updateScene(p) {
+    coilGroup.position.x = state.coilX;
+    // 向量
+    var actX = activeEdgeX();
+    var moving = state.vel > 0.01;
+    velArrow.visible = state.show.vectors && moving;
+    var vlen = Math.max(0.3, state.vel * 0.5);
+    velArrow.position.set(state.coilX, state.L / 2 + 0.9, 0);
+    velArrow.setDirection(new THREE.Vector3(1, 0, 0));   // 運動方向 +X（向右）
+    velArrow.setLength(vlen, 0.4, 0.26);
+    velLabel.position.set(state.coilX + vlen + 0.5, state.L / 2 + 0.9, 0);
+    velLabel.visible = state.show.vectors && moving;
+
+    var showF = state.show.vectors && p.F > 1e-3;
+    forceArrow.visible = showF; forceLabel.visible = showF;
+    if (showF) {
+        var flen = Math.max(0.4, Math.min(3, p.F * 0.12));
+        forceArrow.position.set(actX, 0, 0);
+        forceArrow.setLength(flen, 0.4, 0.26);
+        forceArrow.setDirection(new THREE.Vector3(-1, 0, 0));   // 阻力恆逆運動 (−X，阻礙向右運動)
+        forceLabel.position.set(actX - flen - 0.5, 0, 0);
+    }
+
+    // 電流點
+    if (state.show.current) {
+        var flowing = Math.abs(p.I) > 1e-3;
+        var dir = p.I > 0 ? 1 : -1;
+        if (flowing) dotOffset += dir * Math.min(0.03, 0.006 + Math.abs(p.I) * 0.0016);
+        for (var i = 0; i < currentDots.length; i++) {
+            var pt = shapePoint(dotOffset + i / NDOTS);
+            currentDots[i].position.set(pt[0], pt[1], pt[2]);
+            currentDots[i].visible = flowing;
+        }
+    }
+
+    // 楞次對抗標記：線圈內感應場符號 + 電流轉向指示
+    var lenzOn = state.show.lenz && Math.abs(p.I) > 1e-3;
+    indGroup.visible = lenzOn;
+    ccwLabel.visible = lenzOn && p.I > 0;
+    cwLabel.visible = lenzOn && p.I < 0;
+    if (lenzOn) {
+        var sign = p.I > 0 ? 1 : -1;
+        if (sign !== indSignCache) {
+            indSignCache = sign;
+            var t = (sign > 0) ? texDotInd : texCrossInd;   // I>0 = 逆時針 → 線圈內感應場出頁 ⊙
+            for (var j = 0; j < indMarks.length; j++) indMarks[j].material.map = t;
+        }
+        var qx = state.w * 0.26, qy = state.L * 0.26;
+        // 三角形內部偏窄：標記靠向底邊側，並少放一顆
+        var off = (state.shape === 'triangle')
+            ? [[0, 0], [-qx, qy], [-qx, -qy], [qx * 0.7, 0]]
+            : [[0, 0], [-qx, qy], [qx, qy], [-qx, -qy], [qx, -qy]];
+        for (var j2 = 0; j2 < indMarks.length; j2++) {
+            var inUse = j2 < off.length;
+            indMarks[j2].visible = inUse;
+            if (inUse) indMarks[j2].position.set(state.coilX + off[j2][0], off[j2][1], 0.15);
+        }
+        var rl = p.I > 0 ? ccwLabel : cwLabel;
+        rl.position.set(state.coilX, -state.L / 2 - 0.9, 0);
+    }
+
+    // 磁通量重疊區高亮（形狀幾何 + 磁場邊界剪裁平面）
+    fluxMesh.visible = state.show.flux && overlapArea() > 1e-4;
+    fluxMesh.position.set(state.coilX, 0, -0.05);
+}
+
+// 楞次三步推理面板：Change → Oppose → Induce
+// 方向一律由 p.I 符號推導（I>0 = 逆時針），與 3D 電流點動畫共用同一真值來源
+function updateLenz(p, st) {
+    var chg = document.getElementById('lenz-change');
+    var opp = document.getElementById('lenz-oppose');
+    var ind = document.getElementById('lenz-induce');
+    var active = (st === 'enter' || st === 'exit') && Math.abs(p.I) > 1e-3;
+    document.getElementById('lenz-step-1').classList.toggle('idle', !active);
+    document.getElementById('lenz-step-2').classList.toggle('idle', !active);
+    document.getElementById('lenz-step-3').classList.toggle('idle', !active);
+    if (!active) {
+        chg.textContent = (st === 'inside') ? '磁通量不變（dΦ/dt = 0）' : '線圈在磁場外，磁通量為零';
+        opp.textContent = '無變化，無需對抗';
+        ind.textContent = '無感應電流（ε = 0）';
+        return;
+    }
+    var outerSym = state.bInto ? '⊗' : '⊙';
+    var outerName = state.bInto ? '交叉' : '點點';
+    var inc = (st === 'enter');
+    chg.innerHTML = '線圈內 <span class="sym" style="color:#ea580c">' + outerSym + '</span>（' + outerName + '）'
+        + (inc ? '<b style="color:#16a34a">增加</b>' : '<b style="color:#dc2626">減少</b>');
+    var indOut = p.I > 0;                                   // 逆時針電流 → 線圈內感應場出頁
+    opp.innerHTML = '感應電流在線圈內生產 <span class="sym" style="color:#2563eb">' + (indOut ? '⊙' : '⊗') + '</span>（'
+        + (indOut ? '點點' : '交叉') + '）以' + (inc ? '對抗增加' : '補償減少');
+    ind.innerHTML = (p.I > 0) ? '<b style="color:#dc2626">逆時針 ↺</b>' : '<b style="color:#dc2626">順時針 ↻</b>';
+}
+
+function updateReadouts(p) {
+    document.getElementById('ro-phi').textContent = p.phi.toFixed(1);
+    document.getElementById('ro-emf').textContent = p.emf.toFixed(1);
+    document.getElementById('ro-cur').textContent = p.I.toFixed(1);
+    document.getElementById('ro-force').textContent = p.F.toFixed(1);
+    var st = stageName();
+    document.getElementById('stage-text').textContent = STAGE_LABELS[st];
+    updateLenz(p, st);
+    // 能量條
+    if (state.motion === 'free') {
+        var ke = 0.5 * state.m * state.vel * state.vel;
+        var ke0 = 0.5 * state.m * state.v0 * state.v0 + 1e-6;
+        var kePct = Math.max(0, Math.min(100, ke / ke0 * 100));
+        var heatPct = Math.max(0, Math.min(100, state.heat / ke0 * 100));
+        document.getElementById('ebar-ke').style.width = kePct + '%';
+        document.getElementById('ebar-heat').style.width = heatPct + '%';
+    }
+}
+
+function step(dt) {
+    if (!state.playing || state.done) return;
+    var sim = dt * state.simSpeed * 1.6;
+    if (state.motion === 'free') {
+        var p = physics();
+        var a = -(p.F / state.m) * FREE_DRAG;                 // 感應阻力使其減速（速率恆正）
+        state.vel = state.vel + a * sim;
+        var floor = Math.max(0.15 * state.v0, 0.3);           // 速率下限：確保線圈仍會進入並通過磁場，只是明顯變慢
+        if (state.vel < floor) state.vel = floor;
+        state.heat += FREE_DRAG * p.I * p.I * state.R * sim;  // 累積 I²R 熱能（與減速同一縮放，能量條才互補）
+    } else {
+        state.vel = state.v;
+    }
+    state.coilX += DIR * state.vel * sim;                      // 向右運動
+    if (state.coilX >= endX()) {                              // 抵達右側終點 → 完成
+        state.coilX = endX();
+        state.done = true; state.playing = false;
+        document.getElementById('btn-play').textContent = '↺ 重播';
+    }
+    // 關鍵時刻自動暫停：進入 / 完全內部 / 開始離開 / 完全離開
+    var st = stageName();
+    if (st !== prevStage) {
+        prevStage = st;
+        if (state.autoPause && !state.done) {
+            state.playing = false;
+            document.getElementById('btn-play').textContent = '▶ 播放';
+            flashBadge();
+        }
+    }
+    pushHist(physics());
+}
+
+var frame = 0;
+function loop() {
+    requestAnimationFrame(loop);
+    var dt = Math.min(0.05, clock.getDelta());
+    step(dt);
+    var p = physics();
+    updateScene(p);
+    controls.update();
+    renderer.render(scene, camera);
+
+    frame++;
+    if (frame % 2 === 0) {
+        updateReadouts(p);
+        if (state.show.view2d) draw2D(p);
+        drawChart();
+        drawGalv(p.I);
+    }
+}
+
+/* =========================================================================
+   Resize
+   ========================================================================= */
+function onResize() {
+    var w = view3d.clientWidth, h = view3d.clientHeight;
+    if (w > 0 && h > 0) {
+        camera.aspect = w / h; camera.updateProjectionMatrix();
+        renderer.setSize(w, h);
+        refitView();   // 用戶未動過鏡頭時，隨視窗比例重新取景
+    }
+    resize2D();
+    ctxC = resizeCanvas(cvChart);
+    ctxG = resizeCanvas(cvGalv);
+    if (bigChartOn) ctxBig = resizeCanvas(cvBig);
+}
+window.addEventListener('resize', onResize);
+
+/* =========================================================================
+   左欄清單模式（卡片可摺疊）
+   ========================================================================= */
+function initAccordion() {
+    var cards = document.querySelectorAll('#left-panel .card');
+    for (var i = 0; i < cards.length; i++) {
+        (function (card) {
+            var header = card.querySelector('.card-header');
+            var chev = document.createElement('span');
+            chev.className = 'chev'; chev.textContent = '▾';
+            header.appendChild(chev);
+            header.addEventListener('click', function () { card.classList.toggle('collapsed'); });
+        })(cards[i]);
+    }
+}
+
+/* =========================================================================
+   2D 視窗拖曳
+   ========================================================================= */
+function makeDraggable(wrapId, headId, closeId) {
+    var wrap = document.getElementById(wrapId);
+    var head = document.getElementById(headId);
+    head.style.cursor = 'move';
+    var drag = false, sx = 0, sy = 0, ox = 0, oy = 0;
+    function pointerDown(e) {
+        if (e.target && e.target.id === closeId) return;
+        var pt = e.touches ? e.touches[0] : e;
+        var r = wrap.getBoundingClientRect(), pr = wrap.parentElement.getBoundingClientRect();
+        ox = r.left - pr.left; oy = r.top - pr.top;
+        wrap.style.transform = 'none';   // 初始定位若含 translate，改為絕對座標後清除
+        wrap.style.left = ox + 'px'; wrap.style.top = oy + 'px';
+        wrap.style.right = 'auto'; wrap.style.bottom = 'auto';
+        sx = pt.clientX; sy = pt.clientY; drag = true;
+        e.preventDefault();
+    }
+    function pointerMove(e) {
+        if (!drag) return;
+        var pt = e.touches ? e.touches[0] : e;
+        var pr = wrap.parentElement.getBoundingClientRect();
+        var nx = ox + (pt.clientX - sx), ny = oy + (pt.clientY - sy);
+        nx = Math.max(0, Math.min(pr.width - wrap.offsetWidth, nx));
+        ny = Math.max(0, Math.min(pr.height - wrap.offsetHeight, ny));
+        wrap.style.left = nx + 'px'; wrap.style.top = ny + 'px';
+    }
+    function pointerUp() { drag = false; }
+    head.addEventListener('mousedown', pointerDown);
+    head.addEventListener('touchstart', pointerDown, { passive: false });
+    window.addEventListener('mousemove', pointerMove);
+    window.addEventListener('touchmove', pointerMove, { passive: false });
+    window.addEventListener('mouseup', pointerUp);
+    window.addEventListener('touchend', pointerUp);
+}
+
+/* =========================================================================
+   教學導覽（逐步帶學生走完整個推理）
+   ========================================================================= */
+function syncPlayBtn() {
+    document.getElementById('btn-play').textContent = state.done ? '↺ 重播' : (state.playing ? '⏸ 暫停' : '▶ 播放');
+}
+function pauseSim() { state.playing = false; syncPlayBtn(); }
+function ensureConstant() {
+    if (state.shape !== 'rect') setShape('rect');   // 導覽以矩形 PQRS 為敘述前提
+    if (state.motion !== 'constant') setMotion('constant');
+}
+var TOUR = [
+    { text: '<b>步驟 1/7 · 認識裝置</b><br>橙色虛線框是<b>均勻磁場區</b>（<span class="hl-field">⊗ = 射入頁內</span>），棕色矩形是金屬線圈 <b>PQRS</b>。線圈將由左側以速度 <span class="hl-vel">v</span> 向右進入磁場、再從右側離開。',
+      act: function () { ensureConstant(); setBInto(true); resetSim(); pauseSim(); } },
+    { text: '<b>步驟 2/7 · 進入前</b><br>線圈仍在磁場外：穿過線圈的磁通量 <b>Φ = 0</b>，沒有變化 → 沒有感應電動勢，檢流計指針在零位。',
+      act: function () { ensureConstant(); setBInto(true); resetSim(); pauseSim(); } },
+    { text: '<b>步驟 3/7 · 進入中（重點！）</b><br>① <b>Change</b>：線圈內 ⊗ 增加 → ② <b>Oppose</b>：感應電流生產 <span class="hl-field">⊙</span> 對抗 → ③ <b>Induce</b>：電流<span class="hl-cur">逆時針 ↺</span>。對照上方推理面板與線圈內的藍色標記。',
+      act: function () { ensureConstant(); setBInto(true); jumpStage('enter'); pauseSim(); } },
+    { text: '<b>步驟 4/7 · 完全內部</b><br>兩條垂直邊都在場內，Φ 達到最大但<b>不再變化</b>（dΦ/dt = 0）→ <b>ε = 0、無電流</b>。這是 DSE 最常考的陷阱！',
+      act: function () { ensureConstant(); setBInto(true); jumpStage('inside'); pauseSim(); } },
+    { text: '<b>步驟 5/7 · 離開中</b><br>① Change：⊗ <b>減少</b> → ② Oppose：生產 <span class="hl-field">⊗</span> 補償 → ③ Induce：電流<span class="hl-cur">順時針 ↻</span> — 與進入時<b>方向相反</b>。',
+      act: function () { ensureConstant(); setBInto(true); jumpStage('exit'); pauseSim(); } },
+    { text: '<b>步驟 6/7 · 對照 Φ–ε–I 圖形</b><br>播放整個過程，觀察右方圖表：Φ 呈<b>梯形</b>、ε 與 I 呈<b>兩個反向方波</b>。背景色帶標出進入（綠）/ 內部（藍）/ 離開（紅）三段。',
+      act: function () { ensureConstant(); setBInto(true); resetSim(); } },
+    { text: '<b>步驟 7/7 · 放手模式 — 能量去哪了？</b><br>感應阻力 <span class="hl-force">F = NBIL</span> 使線圈減速，動能經 I²R 轉為熱能（見右方能量條）。這就是楞次定律背後的<b>能量守恆</b>。',
+      act: function () { setBInto(true); if (state.shape !== 'rect') setShape('rect'); if (state.motion !== 'free') setMotion('free'); else resetSim(); } }
+];
+var tourIdx = 0;
+function renderTour() {
+    document.getElementById('tour-text').innerHTML = TOUR[tourIdx].text;
+    document.getElementById('tour-prev').disabled = (tourIdx === 0);
+    document.getElementById('tour-next').disabled = (tourIdx === TOUR.length - 1);
+}
+window.tourNext = function () { if (tourIdx < TOUR.length - 1) { tourIdx++; TOUR[tourIdx].act(); renderTour(); } };
+window.tourPrev = function () { if (tourIdx > 0) { tourIdx--; TOUR[tourIdx].act(); renderTour(); } };
+
+/* =========================================================================
+   小測驗
+   ========================================================================= */
+var QUIZ = [
+    { q: '線圈「進入」磁場時，穿過線圈的磁通量如何變化？', opts: ['增加', '不變', '減少'], a: 0, fb: '前緣進入使場內面積變大，磁通量 Φ 增加，故 dΦ/dt≠0 產生感應電動勢。' },
+    { q: '當線圈「完全在磁場內」時，感應電動勢 ε 為何？', opts: ['最大', '為零', '反向最大'], a: 1, fb: '兩條垂直邊都在場內，磁通量不再改變 (dΦ/dt=0)，故 ε=0、無感應電流。' },
+    { q: '線圈「離開」磁場時，感應電流方向與「進入」時相比？', opts: ['相同', '相反', '無電流'], a: 1, fb: '離開時磁通量減少，依楞次定律感應電流方向反轉，以維持原磁通。' },
+    { q: '感應電流對線圈產生的力（F=NBIL）方向如何？', opts: ['助長運動', '阻礙運動', '垂直運動'], a: 1, fb: '楞次定律：感應效應恆阻礙變化，故此力阻礙線圈運動，需外力做功。' },
+    { q: '把速度 v 加倍（其他不變），感應電動勢 ε 會？', opts: ['不變', '加倍', '變四倍'], a: 1, fb: 'ε = NBLv 與 v 成正比，v 加倍則 ε 加倍、電流亦加倍。' },
+    { q: '「放手」讓線圈自由進入磁場，它的動能最終去了哪裡？', opts: ['憑空消失', '轉為電阻的 I²R 熱能', '全部變成磁能'], a: 1, fb: '阻力做負功，動能經感應電流在電阻上以 I²R 發熱耗散 —— 能量守恆。' }
+];
+var quizIdx = 0, quizDone = false;
+function renderQuiz() {
+    var item = QUIZ[quizIdx];
+    document.getElementById('quiz-q').textContent = (quizIdx + 1) + '. ' + item.q;
+    var box = document.getElementById('quiz-options'); box.innerHTML = '';
+    document.getElementById('quiz-feedback').textContent = '';
+    document.getElementById('quiz-next').style.display = 'none';
+    quizDone = false;
+    item.opts.forEach(function (opt, i) {
+        var b = document.createElement('button');
+        b.className = 'quiz-opt'; b.textContent = opt;
+        b.onclick = function () { answerQuiz(i, b); };
+        box.appendChild(b);
+    });
+}
+function answerQuiz(i, btn) {
+    if (quizDone) return;
+    quizDone = true;
+    var item = QUIZ[quizIdx];
+    var opts = document.querySelectorAll('#quiz-options .quiz-opt');
+    opts[item.a].classList.add('correct');
+    if (i !== item.a) btn.classList.add('wrong');
+    document.getElementById('quiz-feedback').innerHTML = (i === item.a ? '✅ 正確！' : '❌ ') + item.fb;
+    document.getElementById('quiz-next').style.display = QUIZ.length > 1 ? 'block' : 'none';
+}
+window.nextQuiz = function () { quizIdx = (quizIdx + 1) % QUIZ.length; renderQuiz(); };
+
+/* =========================================================================
+   啟動
+   ========================================================================= */
+buildCoil();
+setMotion('constant');
+renderQuiz();
+renderTour();
+initAccordion();
+makeDraggable('view2d-wrap', 'view2d-head', 'view2d-close');
+makeDraggable('chart-big-wrap', 'chart-big-head', 'chart-big-close');
+onResize();
+loop();
+</script>
+
+</body>
+</html>

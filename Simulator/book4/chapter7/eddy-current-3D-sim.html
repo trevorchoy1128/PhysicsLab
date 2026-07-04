@@ -1,0 +1,1676 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>渦電流特寫與制動模擬 — Eddy Current Lab 3D 互動模擬器 | 實驗室專業版</title>
+    <script>
+        window.MathJax = {
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']] },
+            chtml: { displayAlign: 'center' },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        /* --- 實驗室灰 (Lab Gray) 主題（沿用 Book 4 系列模擬器） --- */
+        body {
+            font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+            background: #e2e6eb;
+            color: #334155;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #topbar {
+            background: #1e293b;
+            border-bottom: 1px solid #0f172a;
+            padding: 10px 20px;
+            display: flex; align-items: center; justify-content: space-between;
+            flex-shrink: 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        #topbar .title-block h1 { font-size: 1.2rem; font-weight: 700; color: #f8fafc; letter-spacing: 0.03em; }
+        #topbar .title-block p  { font-size: 0.75rem; color: #94a3b8; margin-top: 2px; }
+
+        .panel-toggle-btn {
+            background: #334155; border: 1px solid #475569; border-radius: 6px;
+            color: #f8fafc; padding: 7px 12px; font-size: 0.8rem; font-weight: 600;
+            cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 6px;
+        }
+        .panel-toggle-btn:hover { background: #475569; border-color: #64748b; }
+        .panel-toggle-btn.inactive { background: #0f172a; color: #64748b; border-color: #1e293b; }
+
+        .panel-hidden { display: none !important; }
+
+        #main { display: flex; flex: 1; min-height: 0; overflow: hidden; }
+
+        #left-panel {
+            width: 300px; flex-shrink: 0; background: #f1f5f9;
+            border-right: 1px solid #cbd5e1; display: flex;
+            flex-direction: column; overflow-y: auto; padding: 14px 12px; gap: 12px;
+        }
+
+        .card { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .card-header {
+            background: #e2e8f0;
+            padding: 8px 13px; font-size: 0.75rem; font-weight: 700;
+            color: #475569; text-transform: uppercase; letter-spacing: 0.1em;
+            display: flex; align-items: center; gap: 7px;
+        }
+        .card-body { padding: 11px 13px; }
+
+        .mode-label { font-size: 0.68rem; color: #64748b; letter-spacing: 0.02em; margin-bottom: 7px; margin-top: 4px; line-height: 1.6; }
+
+        .dir-btn-group { display: flex; gap: 6px; flex-wrap: wrap; }
+        .dir-btn {
+            flex: 1; min-width: 58px; padding: 8px 5px; border-radius: 8px;
+            border: 1px solid #cbd5e1; background: #f8fafc;
+            color: #475569; font-size: 0.74rem; font-weight: 600;
+            cursor: pointer; transition: all 0.2s; text-align: center;
+        }
+        .dir-btn:hover { border-color: #94a3b8; color: #1e293b; background: #f1f5f9; }
+        .dir-btn.active {
+            border-color: #0284c7; background: #f0f9ff;
+            color: #0369a1; box-shadow: 0 0 0 1px #0284c7;
+        }
+        .scene-btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+
+        /* 滑桿 */
+        .slider-row { margin-bottom: 13px; }
+        .slider-row:last-child { margin-bottom: 0; }
+        .slider-row.disabled { opacity: 0.4; pointer-events: none; }
+        .slider-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px; }
+        .slider-head label { font-size: 0.74rem; color: #475569; font-weight: 600; }
+        .slider-head .val { font-size: 0.78rem; color: #0369a1; font-weight: 700; font-variant-numeric: tabular-nums; }
+        input[type=range] {
+            -webkit-appearance: none; appearance: none; width: 100%; height: 5px;
+            background: #cbd5e1; border-radius: 3px; outline: none; cursor: pointer;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none; width: 16px; height: 16px;
+            border-radius: 50%; background: #3b82f6; border: 2px solid #fff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3); cursor: pointer;
+        }
+        input[type=range]::-moz-range-thumb {
+            width: 16px; height: 16px; border-radius: 50%; background: #3b82f6;
+            border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.3); cursor: pointer;
+        }
+
+        .toggle-row {
+            display: flex; align-items: center; gap: 9px; padding: 7px 12px;
+            background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px;
+            cursor: pointer; transition: background 0.2s; user-select: none;
+            margin-bottom: 6px;
+        }
+        .toggle-row:last-child { margin-bottom: 0; }
+        .toggle-row:hover { background: #f8fafc; }
+        .toggle-track {
+            width: 32px; height: 18px; border-radius: 9px; background: #cbd5e1;
+            position: relative; transition: background 0.2s; flex-shrink: 0;
+        }
+        .toggle-track.on { background: #3b82f6; }
+        .toggle-thumb {
+            width: 14px; height: 14px; border-radius: 50%; background: #fff;
+            position: absolute; top: 2px; left: 2px; transition: left 0.2s;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+        .toggle-track.on .toggle-thumb { left: 16px; }
+        .toggle-row span { font-size: 0.73rem; color: #475569; font-weight: 500; }
+
+        .btn-row { display: flex; gap: 6px; }
+        .action-btn {
+            flex: 1; padding: 9px 6px; border-radius: 8px; border: 1px solid #cbd5e1;
+            font-size: 0.78rem; font-weight: 700; cursor: pointer; transition: all 0.2s; text-align: center;
+        }
+        .btn-go { background: #16a34a; border-color: #15803d; color: #fff; }
+        .btn-go:hover { background: #15803d; }
+        .btn-reset { background: #f1f5f9; color: #475569; }
+        .btn-reset:hover { background: #e2e8f0; }
+        .btn-pause { background: #f59e0b; border-color: #d97706; color: #fff; }
+        .btn-pause:hover { background: #d97706; }
+
+        .info-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 11px 12px; font-size: 0.78rem; line-height: 1.8; color: #475569; }
+        .hl-emf     { color: #16a34a; font-weight: 700; }
+        .hl-current { color: #dc2626; font-weight: 700; }
+        .hl-field   { color: #2563eb; font-weight: 700; }
+        .hl-heat    { color: #ea580c; font-weight: 700; }
+        .hl-n       { color: #dc2626; font-weight: 700; }
+        .hl-s       { color: #2563eb; font-weight: 700; }
+
+        #canvas-wrap { flex: 1; position: relative; min-width: 0; background: #e2e6eb; overflow: hidden; display: flex; }
+        #view3d { flex: 1; position: relative; min-width: 0; }
+        #view3d canvas { display: block; outline: none; }
+        #view2d-wrap {
+            position: absolute; top: 12px; right: 12px; z-index: 12;
+            width: 340px; height: 290px; min-width: 210px;
+            border: 1px solid #cbd5e1; border-radius: 10px; overflow: hidden;
+            background: #f8fafc; box-shadow: 0 6px 20px rgba(0,0,0,0.14);
+            display: flex; flex-direction: column;
+        }
+        #view2d-wrap.panel-hidden { display: none !important; }
+        #view2d-head {
+            padding: 7px 10px 7px 12px; font-size: 0.72rem; font-weight: 700; color: #475569;
+            background: #eef2f7; border-bottom: 1px solid #e2e8f0; text-transform: uppercase; letter-spacing: 0.06em;
+            display: flex; align-items: center; justify-content: space-between; gap: 8px;
+            cursor: move; user-select: none; touch-action: none;
+        }
+        #view2d-close {
+            border: 1px solid #cbd5e1; background: #f8fafc; color: #64748b; border-radius: 5px;
+            width: 20px; height: 20px; font-size: 0.8rem; line-height: 1; cursor: pointer; flex-shrink: 0;
+        }
+        #view2d-close:hover { background: #e2e8f0; color: #1e293b; }
+        #view2d { flex: 1; width: 100%; display: block; }
+
+        #status-badge {
+            position: absolute; top: 14px; left: 14px;
+            background: rgba(255,255,255,0.92); border: 1px solid #cbd5e1;
+            border-radius: 22px; padding: 7px 18px; font-size: 0.82rem;
+            font-weight: 600; color: #1e293b; backdrop-filter: blur(8px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            white-space: nowrap; pointer-events: none; z-index: 10;
+        }
+        #hint {
+            position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+            background: rgba(255,255,255,0.85); border: 1px solid #cbd5e1;
+            border-radius: 18px; padding: 6px 18px; font-size: 0.75rem;
+            color: #475569; backdrop-filter: blur(4px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            pointer-events: none; white-space: nowrap; z-index: 10;
+        }
+
+        #right-panel {
+            width: 278px; flex-shrink: 0; background: #f1f5f9;
+            border-left: 1px solid #cbd5e1; display: flex;
+            flex-direction: column; padding: 14px 12px; gap: 12px; overflow-y: auto;
+        }
+        .formula-box { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .formula-box h4 { font-size: 0.7rem; color: #475569; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 9px; }
+        .formula { background: #f8fafc; border-radius: 6px; padding: 4px 10px; color: #0f172a; margin-bottom: 7px; border: 1px solid #e2e8f0; overflow-x: auto; font-size: 1.02rem; text-align: center; }
+        .formula-desc { font-size: 0.71rem; color: #64748b; line-height: 1.8; }
+        .formula-desc span { color: #334155; font-weight: 600; }
+        .readout-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+        .readout-cell { padding: 6px 8px; border-radius: 7px; font-size: 0.74rem; font-weight: 700; text-align: center; font-variant-numeric: tabular-nums; border: 1px solid; }
+        .rc-blue { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; }
+        .rc-green { background: #f0fdf4; border-color: #bbf7d0; color: #166534; }
+        .rc-orange { background: #fff7ed; border-color: #fed7aa; color: #c2410c; }
+        .rc-red { background: #fef2f2; border-color: #fecaca; color: #b91c1c; }
+        .readout-cell small { display: block; font-size: 0.6rem; font-weight: 600; opacity: 0.75; letter-spacing: 0.05em; }
+
+        .guide-box { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .guide-box h4 { font-size: 0.7rem; color: #0284c7; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 9px; }
+        #guide-text { font-size: 0.78rem; color: #1e293b; line-height: 1.65; min-height: 54px; }
+        .guide-nav { display: flex; gap: 6px; margin-top: 9px; }
+        .guide-nav button { flex: 1; padding: 6px 8px; border-radius: 6px; border: 1px solid #cbd5e1; background: #f1f5f9; color: #475569; font-size: 0.74rem; cursor: pointer; font-weight: 600; }
+        .guide-nav button:hover { background: #e2e8f0; }
+        #guide-step-no { font-size: 0.68rem; color: #94a3b8; margin-top: 6px; text-align: right; }
+
+        .quiz-box { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .quiz-box h4 { font-size: 0.7rem; color: #0284c7; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 9px; }
+        .quiz-q { font-size: 0.78rem; color: #1e293b; line-height: 1.65; margin-bottom: 10px; font-weight: 500; }
+        .quiz-options { display: flex; flex-direction: column; gap: 5px; }
+        .quiz-opt { padding: 7px 10px; border-radius: 7px; border: 1px solid #cbd5e1; background: #f8fafc; color: #475569; font-size: 0.76rem; cursor: pointer; transition: all 0.2s; }
+        .quiz-opt:hover { border-color: #94a3b8; background: #f1f5f9; color: #1e293b; }
+        .quiz-opt.correct { border-color: #22c55e; background: #f0fdf4; color: #166534; }
+        .quiz-opt.wrong   { border-color: #ef4444; background: #fef2f2; color: #991b1b; }
+        #quiz-feedback { font-size: 0.73rem; margin-top: 8px; min-height: 18px; line-height: 1.55; color: #475569; }
+        #quiz-next { margin-top: 8px; padding: 6px 12px; border-radius: 6px; border: 1px solid #cbd5e1; background: #f1f5f9; color: #475569; font-size: 0.74rem; cursor: pointer; display: none; width: 100%; font-weight: 600; }
+        #quiz-next:hover { background: #e2e8f0; }
+
+        @media (max-width: 1100px) { #right-panel { display: none; } }
+        @media (max-width: 820px) {
+            #view2d-wrap { top: auto; bottom: 8px; right: 8px; left: 8px; width: auto; height: 38%; }
+        }
+
+        /* Home button */
+        #home-btn {
+            position: fixed; bottom: 16px; left: 16px; z-index: 99999;
+            background: rgba(30,41,59,0.85); backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 10px; padding: 8px 14px; font-size: 13px; font-weight: bold;
+            color: #fff; text-decoration: none; box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+            transition: background 0.2s, transform 0.2s; display: inline-flex;
+            align-items: center; gap: 6px;
+        }
+        #home-btn:hover { background: rgba(30,41,59,0.95); transform: translateY(-2px); }
+    </style>
+</head>
+<body>
+
+<div id="topbar">
+    <div style="display: flex; align-items: center; gap: 16px;">
+        <button class="panel-toggle-btn" id="btn-toggle-left" onclick="toggleLeftPanel()">
+            <span>☰</span> 控制
+        </button>
+        <div class="title-block">
+            <h1>🔁 渦電流特寫與制動模擬 — Eddy Current Lab</h1>
+            <p>HKDSE Physics · Book 4 · 電磁感應 · 渦電流 (Eddy Currents) 成因、制動與應用</p>
+        </div>
+    </div>
+    <button class="panel-toggle-btn" id="btn-toggle-right" onclick="toggleRightPanel()">
+        <span>📖</span> 資訊
+    </button>
+</div>
+
+<div id="main">
+    <div id="left-panel">
+        <div class="card">
+            <div class="card-header">🎬 實驗情境</div>
+            <div class="card-body">
+                <div class="scene-btn-group">
+                    <button class="dir-btn active" id="scene-A" onclick="setScene('A')">🧲 磁鐵下墜</button>
+                    <button class="dir-btn"        id="scene-B" onclick="setScene('B')">🪝 鋁片擺動</button>
+                    <button class="dir-btn"        id="scene-C" onclick="setScene('C')">💍 跳起之環</button>
+                    <button class="dir-btn"        id="scene-D" onclick="setScene('D')">🍳 電磁爐</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">▶ 播放控制</div>
+            <div class="card-body">
+                <div class="btn-row" style="margin-bottom:10px;">
+                    <button class="action-btn btn-go"    id="btn-go"    onclick="sceneGo()">▶ 開始</button>
+                    <button class="action-btn btn-pause" id="btn-pause" onclick="togglePause()">⏸ 暫停</button>
+                    <button class="action-btn btn-reset" onclick="sceneReset()">↺ 重設</button>
+                </div>
+                <div class="slider-row">
+                    <div class="slider-head"><label>慢動作 / 速率</label><span class="val" id="val-slow">1.0 ×</span></div>
+                    <input type="range" id="sld-slow" min="0.1" max="2" step="0.1" value="1">
+                </div>
+                <div class="mode-label">調慢速率可仔細觀察渦電流方向與制動瞬間。</div>
+            </div>
+        </div>
+
+        <!-- 情境 A：磁鐵下墜 -->
+        <div class="card scene-ctrl" id="ctrl-A">
+            <div class="card-header">🧲 磁鐵下墜設定</div>
+            <div class="card-body">
+                <div class="mode-label">左＝<b>鋁管</b>（導體）· 右＝<b>塑膠管</b>（絕緣體）。按「開始」同時釋放兩顆相同磁鐵。</div>
+                <div class="slider-row">
+                    <div class="slider-head"><label>磁鐵強度</label><span class="val" id="val-Astr">100 %</span></div>
+                    <input type="range" id="sld-Astr" min="40" max="160" step="5" value="100">
+                </div>
+                <div class="slider-row">
+                    <div class="slider-head"><label>管壁導電度</label><span class="val" id="val-Acond">中</span></div>
+                    <input type="range" id="sld-Acond" min="0.4" max="1.8" step="0.1" value="1">
+                </div>
+                <div class="mode-label">導電度／磁鐵強度越高 → 渦電流煞車越強 → 終端速度越小。</div>
+            </div>
+        </div>
+
+        <!-- 情境 B：鋁片擺動 -->
+        <div class="card scene-ctrl" id="ctrl-B" style="display:none;">
+            <div class="card-header">🪝 鋁片擺動設定</div>
+            <div class="card-body">
+                <div class="mode-label">鋁片擺過強磁鐵縫隙（Waltenhofen 擺）。</div>
+                <div class="mode-label" style="margin-bottom:5px;">鋁片型式</div>
+                <div class="dir-btn-group">
+                    <button class="dir-btn active" id="Bsolid"  onclick="setPlate('solid')">實心片</button>
+                    <button class="dir-btn"        id="Bslot"   onclick="setPlate('slot')">有縫（梳齒）片</button>
+                </div>
+                <div class="slider-row" style="margin-top:12px;">
+                    <div class="slider-head"><label>磁場強度</label><span class="val" id="val-Bstr">100 %</span></div>
+                    <input type="range" id="sld-Bstr" min="20" max="160" step="5" value="100">
+                </div>
+                <div class="mode-label">實心片：渦電流完整 → 快速制動。有縫片：縫切斷電流迴路 → 幾乎自由擺動。</div>
+            </div>
+        </div>
+
+        <!-- 情境 C：跳起之環 -->
+        <div class="card scene-ctrl" id="ctrl-C" style="display:none;">
+            <div class="card-header">💍 跳起之環設定</div>
+            <div class="card-body">
+                <div class="mode-label">鐵芯線圈通交流電，鋁環受排斥而上跳／懸浮（Thomson 跳環）。</div>
+                <div class="mode-label" style="margin-bottom:5px;">鋁環型式</div>
+                <div class="dir-btn-group">
+                    <button class="dir-btn active" id="Cintact" onclick="setRing('intact')">完整環</button>
+                    <button class="dir-btn"        id="Ccut"    onclick="setRing('cut')">開口環</button>
+                </div>
+                <div class="mode-label" style="margin-top:10px; margin-bottom:5px;">電源模式</div>
+                <div class="dir-btn-group">
+                    <button class="dir-btn active" id="Cac" onclick="setCMode('ac')">交流 AC（懸浮）</button>
+                    <button class="dir-btn"        id="Cdc" onclick="setCMode('dc')">直流 DC（跳一下）</button>
+                </div>
+                <div class="slider-row" style="margin-top:12px;">
+                    <div class="slider-head"><label>電壓</label><span class="val" id="val-Cvolt">100 %</span></div>
+                    <input type="range" id="sld-Cvolt" min="30" max="180" step="5" value="100">
+                </div>
+                <div class="slider-row" id="Cfreq-row">
+                    <div class="slider-head"><label>頻率</label><span class="val" id="val-Cfreq">1.0 ×</span></div>
+                    <input type="range" id="sld-Cfreq" min="0.5" max="2" step="0.1" value="1">
+                </div>
+                <div class="toggle-row" onclick="toggleAC()" style="margin-top:6px;">
+                    <div class="toggle-track" id="Cac-track"><div class="toggle-thumb"></div></div>
+                    <span>接通電源 ⚡</span>
+                </div>
+                <div class="mode-label"><b>AC</b>：持續交變 → 環被排斥<b>懸浮</b>。<b>DC</b>：接通瞬間才有暫態 → <b>跳一下</b>再落回（自由落體）。開口環斷路 → 不動。</div>
+            </div>
+        </div>
+
+        <!-- 情境 D：電磁爐 -->
+        <div class="card scene-ctrl" id="ctrl-D" style="display:none;">
+            <div class="card-header">🍳 電磁爐設定</div>
+            <div class="card-body">
+                <div class="mode-label">高頻交變磁場在鍋底感生渦電流 → I²R 生熱。</div>
+                <div class="mode-label" style="margin-bottom:5px;">鍋具材質</div>
+                <div class="dir-btn-group">
+                    <button class="dir-btn active" id="Diron"  onclick="setPot('iron')">鐵鍋</button>
+                    <button class="dir-btn"        id="Dglass" onclick="setPot('glass')">玻璃／陶瓷鍋</button>
+                </div>
+                <div class="slider-row" style="margin-top:12px;">
+                    <div class="slider-head"><label>火力（功率）</label><span class="val" id="val-Dpow">70 %</span></div>
+                    <input type="range" id="sld-Dpow" min="0" max="100" step="5" value="70">
+                </div>
+                <div class="toggle-row" onclick="togglePotClear()" style="margin-top:6px;">
+                    <div class="toggle-track" id="Dclear-track"><div class="toggle-thumb"></div></div>
+                    <span>半透明鍋（看渦電流／磁場）🫧</span>
+                </div>
+                <div class="mode-label">按「▶ 開始加熱」才通電加熱。鐵鍋強烈發熱；玻璃／陶瓷不導電幾乎不生熱。<span class="hl-field">藍</span>＝線圈磁場、<span style="color:#16a34a;font-weight:700">綠</span>＝鍋底感生磁場、<span class="hl-current">紅</span>＝鍋底渦電流。</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">👁 顯示選項</div>
+            <div class="card-body">
+                <div class="toggle-row" onclick="toggleOpt('eddy')">
+                    <div class="toggle-track on" id="opt-eddy"><div class="toggle-thumb"></div></div>
+                    <span>渦電流箭頭 🔴</span>
+                </div>
+                <div class="toggle-row" onclick="toggleOpt('field')">
+                    <div class="toggle-track on" id="opt-field"><div class="toggle-thumb"></div></div>
+                    <span>磁場 / 磁力線 🧲</span>
+                </div>
+                <div class="toggle-row" onclick="toggleGraph()">
+                    <div class="toggle-track on" id="opt-graph"><div class="toggle-thumb"></div></div>
+                    <span>數據圖（可拖動）📊</span>
+                </div>
+                <div class="toggle-row" onclick="toggleOpt('label')">
+                    <div class="toggle-track on" id="opt-label"><div class="toggle-thumb"></div></div>
+                    <span>3D 文字標籤 🏷️</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="canvas-wrap">
+        <div id="view3d">
+            <div id="status-badge">選擇情境並按「開始」</div>
+            <div id="hint">🖱️ 左鍵旋轉視角 · 滾輪縮放 · 右鍵平移</div>
+        </div>
+        <div id="view2d-wrap">
+            <div id="view2d-head">
+                <span id="view2d-title">📊 量測視圖</span>
+                <button id="view2d-close" onclick="toggleGraph()" title="隱藏數據圖（可由左側「數據圖」重新開啟）">✕</button>
+            </div>
+            <canvas id="view2d"></canvas>
+        </div>
+    </div>
+
+    <div id="right-panel">
+        <div class="formula-box">
+            <h4 id="fx-title">⚡ 物理原理</h4>
+            <div class="formula" id="fx-formula">$$\varepsilon = -N\,\frac{d\Phi}{dt}$$</div>
+            <div class="formula-desc" id="fx-desc"></div>
+            <div class="readout-grid">
+                <div class="readout-cell rc-blue"><small id="lb1">—</small><span id="ro1">0.00</span></div>
+                <div class="readout-cell rc-green"><small id="lb2">—</small><span id="ro2">0.00</span></div>
+                <div class="readout-cell rc-orange"><small id="lb3">—</small><span id="ro3">0.00</span></div>
+                <div class="readout-cell rc-red"><small id="lb4">—</small><span id="ro4">0.00</span></div>
+            </div>
+        </div>
+
+        <div class="guide-box">
+            <h4>🧭 渦電流即時解說</h4>
+            <div class="info-box" id="live-text">開始實驗後，這裡會即時說明渦電流如何產生與作用。</div>
+        </div>
+
+        <div class="guide-box">
+            <h4>📘 逐步引導</h4>
+            <div id="guide-text"></div>
+            <div id="guide-step-no"></div>
+            <div class="guide-nav">
+                <button onclick="guideStep(-1)">← 上一步</button>
+                <button onclick="guideStep(1)">下一步 →</button>
+            </div>
+        </div>
+
+        <div class="quiz-box">
+            <h4>📝 概念測驗</h4>
+            <div class="quiz-q" id="quiz-q"></div>
+            <div class="quiz-options" id="quiz-options"></div>
+            <div id="quiz-feedback"></div>
+            <button id="quiz-next" onclick="nextQuiz()">下一題 →</button>
+        </div>
+    </div>
+</div>
+
+<a id="home-btn" href="../../../index.html">🏠 主頁</a>
+
+<script>
+window.addEventListener('DOMContentLoaded', function () {
+    if (typeof THREE === 'undefined' || typeof THREE.OrbitControls === 'undefined') {
+        var o = document.createElement('div');
+        o.id = 'sim3d-load-error';
+        o.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;background:#0f172a;color:#fff;font-family:system-ui,sans-serif;font-size:18px;line-height:1.7';
+        o.innerHTML = '⚠️ 無法載入 3D 元件（three.js）<br>請檢查網路連線後重新整理頁面。';
+        document.body.appendChild(o);
+        return;
+    }
+    initSim();
+});
+
+/* ============================================================
+   全域狀態
+   ============================================================ */
+var currentScene = 'A';
+var paused = false;
+var slowFactor = 1.0;
+var showEddy = true, showField = true, showLabel = true, showGraph = true;
+
+var scene, camera, renderer, controls, wrap, clock;
+var grpA, grpB, grpC, grpD;
+var GACC = 6.0;   // 模擬單位重力加速度
+
+var CAM = {
+    A: { pos: new THREE.Vector3(0, 2.5, 22),  tgt: new THREE.Vector3(0, 0, 0) },
+    B: { pos: new THREE.Vector3(0.5, 1.5, 19), tgt: new THREE.Vector3(0, -1.2, 0) },
+    C: { pos: new THREE.Vector3(7, 4, 15),    tgt: new THREE.Vector3(0, 1.4, 0) },
+    D: { pos: new THREE.Vector3(8, 6.5, 13),  tgt: new THREE.Vector3(0, 0.4, 0) }
+};
+
+/* ============================================================
+   工具函式
+   ============================================================ */
+function sigmoid(u) { return 1 / (1 + Math.exp(-u)); }
+function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+function makeLabelSprite(text, bg, border, fg, scale) {
+    scale = scale || 1;
+    var cv = document.createElement('canvas'); cv.width = 256; cv.height = 256;
+    var ctx = cv.getContext('2d');
+    ctx.fillStyle = bg;
+    ctx.beginPath(); ctx.arc(128, 128, 110, 0, Math.PI * 2); ctx.fill();
+    ctx.lineWidth = 12; ctx.strokeStyle = border; ctx.stroke();
+    ctx.fillStyle = fg; ctx.font = 'bold 150px Arial';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(text, 128, 138);
+    var sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), transparent: true, depthTest: false }));
+    sp.scale.set(scale, scale, 1); sp.renderOrder = 999;
+    return sp;
+}
+
+function makeTextSprite(text, fg, scale) {
+    scale = scale || 1;
+    var cv = document.createElement('canvas'); cv.width = 512; cv.height = 128;
+    var ctx = cv.getContext('2d');
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    roundRect(ctx, 6, 20, 500, 88, 20); ctx.fill();
+    ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 3; roundRect(ctx, 6, 20, 500, 88, 20); ctx.stroke();
+    ctx.fillStyle = fg || '#334155'; ctx.font = 'bold 56px "Microsoft JhengHei",Arial';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(text, 256, 66);
+    var sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), transparent: true, depthTest: false }));
+    sp.scale.set(scale * 2.6, scale * 0.65, 1); sp.renderOrder = 998;
+    sp.userData.isLabel = true;
+    return sp;
+}
+function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+
+// 水平環形電流箭頭群（在 XZ 平面，可再旋轉/移動）
+function makeArrowRing(radius, count, color, coneSize) {
+    coneSize = coneSize || 0.1;
+    var g = new THREE.Group();
+    var mat = new THREE.MeshBasicMaterial({ color: color });
+    var cg = new THREE.ConeGeometry(coneSize, coneSize * 3, 8); cg.rotateX(Math.PI / 2);
+    var cones = [];
+    // 細環線
+    var pts = [];
+    for (var s = 0; s <= 48; s++) { var a = s / 48 * Math.PI * 2; pts.push(new THREE.Vector3(radius * Math.cos(a), 0, radius * Math.sin(a))); }
+    var ring = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: color, transparent: true, opacity: 0.55 }));
+    g.add(ring);
+    for (var i = 0; i < count; i++) {
+        var ang = i / count * Math.PI * 2;
+        var c = new THREE.Mesh(cg, mat);
+        c.position.set(radius * Math.cos(ang), 0, radius * Math.sin(ang));
+        g.add(c); cones.push({ mesh: c, ang: ang });
+    }
+    g.userData.cones = cones; g.userData.ring = ring; g.userData.color = color;
+    return g;
+}
+function setRingDir(g, sign) {
+    g.userData.cones.forEach(function (c) {
+        var t = new THREE.Vector3(-Math.sin(c.ang), 0, Math.cos(c.ang)).multiplyScalar(sign).normalize();
+        c.mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), t);
+    });
+}
+function setRingOpacity(g, op) {
+    g.userData.ring.material.opacity = clamp(op * 0.6, 0, 0.7);
+    g.userData.cones.forEach(function (c) { c.mesh.material.opacity = clamp(op, 0, 1); c.mesh.material.transparent = true; });
+}
+
+function disposeGroup(g) {
+    while (g.children.length) {
+        var c = g.children[0];
+        if (c.geometry) c.geometry.dispose();
+        if (c.material) { if (c.material.map) c.material.map.dispose(); c.material.dispose && c.material.dispose(); }
+        g.remove(c);
+    }
+}
+
+// 沿 Y 軸的長條磁鐵偶極磁力線（N 在上 +Y、S 在下 −Y）。half = 磁極到中心的半距。
+function makeDipoleField(color, half, bulges, planes) {
+    bulges = bulges || [1.2, 2.1, 3.0];
+    planes = planes || 4;
+    var g = new THREE.Group();
+    var tip = half + 0.05;
+    for (var p = 0; p < planes; p++) {
+        var rot = (p / planes) * Math.PI * 2;
+        for (var li = 0; li < bulges.length; li++) {
+            var out = bulges[li];
+            // N(上) → 外側 → S(下) 的一條磁力線（在 XY 平面，再繞 Y 旋轉分布）
+            var path = new THREE.CurvePath();
+            path.add(new THREE.CubicBezierCurve3(
+                new THREE.Vector3(0, tip, 0), new THREE.Vector3(out * 0.6, tip + out * 0.5, 0),
+                new THREE.Vector3(out, tip * 0.4, 0), new THREE.Vector3(out, 0, 0)));
+            path.add(new THREE.CubicBezierCurve3(
+                new THREE.Vector3(out, 0, 0), new THREE.Vector3(out, -tip * 0.4, 0),
+                new THREE.Vector3(out * 0.6, -tip - out * 0.5, 0), new THREE.Vector3(0, -tip, 0)));
+            var geo = new THREE.BufferGeometry().setFromPoints(path.getPoints(50));
+            var line = new THREE.Line(geo, new THREE.LineBasicMaterial({ color: color, transparent: true, opacity: 0.5 }));
+            line.rotation.y = rot; g.add(line);
+            // 方向錐（曲線中點附近，指向 N→S，即 −Y 一側）
+            var coneGeo = new THREE.ConeGeometry(0.09, 0.28, 7); coneGeo.rotateX(Math.PI / 2);
+            var cone = new THREE.Mesh(coneGeo, new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.8 }));
+            var holder = new THREE.Group(); holder.rotation.y = rot; g.add(holder); holder.add(cone);
+            var midPt = path.getPoint(0.5), midTan = path.getTangent(0.5).normalize();
+            cone.position.copy(midPt);
+            cone.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), midTan);
+        }
+    }
+    g.userData.lines = g.children.filter(function (c) { return c.type === 'Line'; });
+    return g;
+}
+function setFieldOpacity(g, op) {
+    g.traverse(function (c) {
+        if (c.material && c.material.opacity !== undefined && (c.type === 'Line' || c.type === 'Mesh'))
+            c.material.opacity = clamp(op * (c.type === 'Line' ? 0.7 : 1), 0, 1);
+    });
+}
+
+// 沿 +Y 軸的一束直線磁場＋箭頭（供線圈/鐵芯的軸向場；可依相位脈動）。
+function makeAxisField(color, y0, y1, ringR, ringN) {
+    var g = new THREE.Group();
+    var arrows = [];
+    for (var i = 0; i < ringN; i++) {
+        var a = i / ringN * Math.PI * 2;
+        var x = ringR * Math.cos(a), z = ringR * Math.sin(a);
+        var pts = [new THREE.Vector3(x, y0, z), new THREE.Vector3(x, y1, z)];
+        var line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: color, transparent: true, opacity: 0.5 }));
+        g.add(line);
+        var coneGeo = new THREE.ConeGeometry(0.1, 0.3, 8);   // 預設指向 +Y
+        var cone = new THREE.Mesh(coneGeo, new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.85 }));
+        cone.position.set(x, (y0 + y1) / 2, z); g.add(cone);
+        arrows.push({ cone: cone });
+    }
+    g.userData.arrows = arrows;
+    return g;
+}
+// dir=+1 箭頭朝上、−1 朝下（表示磁場方向隨交流反轉）
+function setAxisFieldDir(g, dir) {
+    g.userData.arrows.forEach(function (a) { a.cone.rotation.x = dir >= 0 ? 0 : Math.PI; });
+}
+
+/* ============================================================
+   初始化
+   ============================================================ */
+function initSim() {
+    wrap = document.getElementById('view3d');
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xe2e6eb);
+
+    var W = wrap.clientWidth, H = wrap.clientHeight;
+    camera = new THREE.PerspectiveCamera(42, W / H, 0.1, 300);
+    camera.position.copy(CAM.A.pos);
+
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(W, H);
+    wrap.appendChild(renderer.domElement);
+
+    controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.target.copy(CAM.A.tgt);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+    controls.enablePan = true;
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.82));
+    var key = new THREE.DirectionalLight(0xffffff, 0.6); key.position.set(6, 12, 8); scene.add(key);
+    var fill = new THREE.DirectionalLight(0xffffff, 0.28); fill.position.set(-8, 5, -6); scene.add(fill);
+
+    var grid = new THREE.GridHelper(50, 40, 0xc0c8d2, 0xd4dae2);
+    grid.position.y = -8.2; scene.add(grid);
+
+    grpA = new THREE.Group(); scene.add(grpA);
+    grpB = new THREE.Group(); scene.add(grpB);
+    grpC = new THREE.Group(); scene.add(grpC);
+    grpD = new THREE.Group(); scene.add(grpD);
+
+    buildSceneA();
+    buildSceneB();
+    buildSceneC();
+    buildSceneD();
+
+    bindControls();
+    setupGraphDrag();
+    window.addEventListener('resize', onResize);
+    onResize();
+
+    clock = new THREE.Clock();
+    setScene('A');
+    requestAnimationFrame(loop);
+}
+
+/* ============================================================
+   情境 A：磁鐵下墜（鋁管 vs 塑膠管）
+   ============================================================ */
+var A = {
+    xAlu: -3.2, xPla: 3.2, TOP: 6.5, BOTTOM: -6.5,
+    strength: 1.0, cond: 1.0,
+    yAlu: 6.5, uAlu: 0, yPla: 6.5, uPla: 0,
+    running: false, done: false, t: 0,
+    traceAlu: [], tracePla: [], TMAX: 6,
+    magAlu: null, magPla: null, ringTop: null, ringBot: null,
+    fieldAlu: null, fieldPla: null, indField: null, indN: null, indS: null,
+    vTermDisp: 0, brakeDisp: 0
+};
+function buildTube(x, color, label, labelColor) {
+    var g = new THREE.Group();
+    var h = A.TOP - A.BOTTOM + 1.6;
+    var mat = new THREE.MeshStandardMaterial({ color: color, transparent: true, opacity: 0.22, roughness: 0.3, metalness: 0.4, side: THREE.DoubleSide });
+    var outer = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, h, 32, 1, true), mat);
+    outer.position.set(x, (A.TOP + A.BOTTOM) / 2, 0);
+    g.add(outer);
+    // 上下環圈標示管口
+    var rimMat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.4, metalness: 0.5 });
+    var rimT = new THREE.Mesh(new THREE.TorusGeometry(1.0, 0.06, 8, 32), rimMat); rimT.rotation.x = Math.PI / 2; rimT.position.set(x, A.TOP + 0.8, 0); g.add(rimT);
+    var rimB = new THREE.Mesh(new THREE.TorusGeometry(1.0, 0.06, 8, 32), rimMat); rimB.rotation.x = Math.PI / 2; rimB.position.set(x, A.BOTTOM - 0.8, 0); g.add(rimB);
+    var lbl = makeTextSprite(label, labelColor, 1.15); lbl.position.set(x, A.TOP + 2.0, 0); g.add(lbl);
+    return g;
+}
+function makeMagnet(size) {
+    var g = new THREE.Group();
+    var matN = new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.45, metalness: 0.3, emissive: 0x7f1d1d, emissiveIntensity: 0.2 });
+    var matS = new THREE.MeshStandardMaterial({ color: 0x2563eb, roughness: 0.45, metalness: 0.3, emissive: 0x1e3a8a, emissiveIntensity: 0.2 });
+    // 前導（下方）為 N 極，符合課本設定：磁鐵 N 極先進入管中
+    var topH = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.62, size / 2, 20), matS); topH.position.y = size / 4; g.add(topH);
+    var botH = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.62, size / 2, 20), matN); botH.position.y = -size / 4; g.add(botH);
+    var sLbl = makeLabelSprite('S', '#dbeafe', '#2563eb', '#2563eb', 0.6); sLbl.position.set(0, size / 2 + 0.35, 0); sLbl.userData.isLabel = true; g.add(sLbl);
+    var nLbl = makeLabelSprite('N', '#fee2e2', '#dc2626', '#dc2626', 0.6); nLbl.position.set(0, -size / 2 - 0.35, 0); nLbl.userData.isLabel = true; g.add(nLbl);
+    return g;
+}
+function buildSceneA() {
+    disposeGroup(grpA);
+    A.magAlu = A.magPla = A.ringTop = A.ringBot = null;
+
+    grpA.add(buildTube(A.xAlu, 0x94a3b8, '鋁管（導體）', '#0369a1'));
+    grpA.add(buildTube(A.xPla, 0xf59e0b, '塑膠管（絕緣體）', '#b45309'));
+
+    A.magAlu = makeMagnet(1.3); A.magAlu.position.set(A.xAlu, A.yAlu, 0); grpA.add(A.magAlu);
+    A.magPla = makeMagnet(1.3); A.magPla.position.set(A.xPla, A.yPla, 0); grpA.add(A.magPla);
+
+    // 磁鐵本身的偶極磁力線（N 在下 → 旋轉 180°）
+    A.fieldAlu = makeDipoleField(0x2563eb, 0.65, [1.0, 1.7]); A.fieldAlu.rotation.z = Math.PI; grpA.add(A.fieldAlu);
+    A.fieldPla = makeDipoleField(0x2563eb, 0.65, [1.0, 1.7]); A.fieldPla.rotation.z = Math.PI; grpA.add(A.fieldPla);
+
+    // 鋁管內：磁鐵上/下方兩組反向渦電流環
+    A.ringTop = makeArrowRing(1.02, 10, 0xdc2626, 0.1); grpA.add(A.ringTop);
+    A.ringBot = makeArrowRing(1.02, 10, 0xdc2626, 0.1); grpA.add(A.ringBot);
+    A.ringTop.visible = false; A.ringBot.visible = false;
+
+    // 渦電流感生的「對抗磁場」(綠) — 下方感應 N 排斥、上方感應 S 吸引，皆反抗下墜
+    A.indField = makeDipoleField(0x16a34a, 0.55, [0.9, 1.5]); grpA.add(A.indField); A.indField.visible = false;
+    A.indN = makeLabelSprite('N', '#dcfce7', '#16a34a', '#16a34a', 0.7); A.indN.userData.isLabel = true; grpA.add(A.indN); A.indN.visible = false;
+    A.indS = makeLabelSprite('S', '#dcfce7', '#16a34a', '#16a34a', 0.7); A.indS.userData.isLabel = true; grpA.add(A.indS); A.indS.visible = false;
+}
+function resetA() {
+    A.yAlu = A.TOP; A.uAlu = 0; A.yPla = A.TOP; A.uPla = 0;
+    A.running = false; A.done = false; A.t = 0; A.traceAlu = []; A.tracePla = [];
+    A.vTermDisp = 0; A.brakeDisp = 0;
+    if (A.magAlu) A.magAlu.position.y = A.yAlu;
+    if (A.magPla) A.magPla.position.y = A.yPla;
+}
+function updateA(dt) {
+    if (!A.running) return;
+    A.t += dt;
+    // 塑膠管：自由落體
+    if (A.yPla > A.BOTTOM) {
+        A.uPla += GACC * dt;
+        A.yPla -= A.uPla * dt;
+        if (A.yPla <= A.BOTTOM) { A.yPla = A.BOTTOM; }
+    }
+    // 鋁管：m du/dt = mg - k u（渦電流煞車 ∝ v）
+    var kEff = 5.4 * A.strength * A.strength * A.cond;   // 有效煞車係數
+    if (A.yAlu > A.BOTTOM) {
+        A.uAlu += (GACC - kEff * A.uAlu) * dt;
+        if (A.uAlu < 0) A.uAlu = 0;
+        A.yAlu -= A.uAlu * dt;
+        if (A.yAlu <= A.BOTTOM) { A.yAlu = A.BOTTOM; }
+    }
+    A.vTermDisp = GACC / kEff;
+    A.brakeDisp = kEff * A.uAlu;
+    A.magAlu.position.y = A.yAlu;
+    A.magPla.position.y = A.yPla;
+
+    // 記錄
+    if (A.traceAlu.length === 0 || A.t - A.traceAlu[A.traceAlu.length - 1].t >= 0.03) {
+        A.traceAlu.push({ t: A.t, v: A.uAlu });
+        A.tracePla.push({ t: A.t, v: A.uPla });
+    }
+    if (A.yAlu <= A.BOTTOM && A.yPla <= A.BOTTOM) { A.running = false; A.done = true; }
+}
+function visualsA(dt) {
+    // 磁鐵自身磁力線跟隨磁鐵（顯示與否由 applyFieldVisibility 控制）
+    if (A.fieldAlu) { A.fieldAlu.position.set(A.xAlu, A.yAlu, 0); setFieldOpacity(A.fieldAlu, 0.5 * A.strength + 0.2); }
+    if (A.fieldPla) { A.fieldPla.position.set(A.xPla, A.yPla, 0); setFieldOpacity(A.fieldPla, 0.5 * A.strength + 0.2); }
+
+    var eddyOn = showEddy && A.running && A.yAlu > A.BOTTOM + 0.05 && A.uAlu > 0.02;
+    A.ringTop.visible = eddyOn; A.ringBot.visible = eddyOn;
+    if (eddyOn) {
+        A.ringTop.position.set(A.xAlu, A.yAlu + 1.0, 0);
+        A.ringBot.position.set(A.xAlu, A.yAlu - 1.0, 0);
+        // 磁鐵下墜，N 極朝下：下方磁通增加→楞次反抗（環流一方向）；上方磁通減少→相反方向
+        setRingDir(A.ringBot, 1);
+        setRingDir(A.ringTop, -1);
+        A.ringTop.rotation.y += dt * 2.0; A.ringBot.rotation.y -= dt * 2.0;
+        var op = clamp(0.4 + A.uAlu * 0.5, 0.3, 1);
+        setRingOpacity(A.ringTop, op); setRingOpacity(A.ringBot, op);
+    }
+    // 渦電流感生的對抗磁場（綠）＋ 感應極標籤
+    var indOn = eddyOn;
+    if (A.indField) {
+        A.indField.visible = indOn;
+        if (indOn) { A.indField.position.set(A.xAlu, A.yAlu, 0); setFieldOpacity(A.indField, clamp(0.3 + A.uAlu * 0.5, 0.3, 0.95)); }
+    }
+    if (A.indN) { A.indN.visible = indOn && showLabel; A.indN.position.set(A.xAlu, A.yAlu - 1.7, 0); }
+    if (A.indS) { A.indS.visible = indOn && showLabel; A.indS.position.set(A.xAlu, A.yAlu + 1.7, 0); }
+
+    // 狀態
+    var badge = document.getElementById('status-badge');
+    if (A.done) badge.textContent = '✅ 鋁管磁鐵明顯較慢落底 — 渦電流制動';
+    else if (A.running) badge.textContent = '🪂 下墜中：鋁管 v=' + A.uAlu.toFixed(2) + ' · 塑膠管 v=' + A.uPla.toFixed(2);
+    else badge.textContent = '按「開始」同時釋放兩顆磁鐵';
+}
+
+/* ============================================================
+   情境 B：鋁片擺動（Waltenhofen 擺）
+   ============================================================ */
+var B = {
+    L: 6.2, pivotY: 5.5, theta: 0.9, omega: 0, plate: 'solid', strength: 1.0,
+    running: false, t: 0, amp: 0.9, trace: [],
+    arm: null, plate3d: null, plateSolid: null, plateSlot: null, magGap: null, swirl: null,
+    fieldLines: null, slotSwirls: [], gateNow: 0
+};
+function buildSceneB() {
+    disposeGroup(grpB);
+    // 支點
+    var pivot = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 1.2, 16), new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.6, roughness: 0.4 }));
+    pivot.rotation.z = Math.PI / 2; pivot.position.set(0, B.pivotY, 0); grpB.add(pivot);
+
+    B.arm = new THREE.Group(); grpB.add(B.arm);
+    B.arm.position.set(0, B.pivotY, 0);
+    var rod = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, B.L, 12), new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.5, roughness: 0.5 }));
+    rod.position.y = -B.L / 2; B.arm.add(rod);
+
+    // 兩種擺片（實心/有縫），掛在桿末端
+    B.plate3d = new THREE.Group(); B.plate3d.position.y = -B.L; B.arm.add(B.plate3d);
+    var plMat = new THREE.MeshStandardMaterial({ color: 0xcbd5e1, metalness: 0.85, roughness: 0.35, side: THREE.DoubleSide });
+    B.plateSolid = new THREE.Mesh(new THREE.BoxGeometry(2.6, 2.4, 0.12), plMat);
+    B.plate3d.add(B.plateSolid);
+    // 有縫片：以多條垂直長條組成，條間留縫；頂部以一條橫桿相連（否則視覺散開）
+    B.plateSlot = new THREE.Group();
+    B.slotSwirls = [];
+    var stripXs = [];
+    for (var i = 0; i < 5; i++) {
+        var sx = -1.04 + i * 0.52; stripXs.push(sx);
+        var strip = new THREE.Mesh(new THREE.BoxGeometry(0.34, 2.4, 0.12), plMat);
+        strip.position.x = sx; B.plateSlot.add(strip);
+        // 每條細片各有微小渦流（半徑小、透明度低）
+        var sw = makeArrowRing(0.13, 5, 0xdc2626, 0.05);
+        sw.rotation.x = Math.PI / 2; sw.position.set(sx, 0, 0.15);
+        B.plateSlot.add(sw); sw.visible = false; B.slotSwirls.push(sw);
+    }
+    // 頂部橫桿連結各細片
+    var topBar = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.36, 0.14), plMat);
+    topBar.position.set(0, 1.2 + 0.18, 0); B.plateSlot.add(topBar);
+    B.plate3d.add(B.plateSlot);
+    B.plateSlot.visible = false;
+
+    // 渦流旋轉箭頭（貼在擺片面上，面向 +Z）
+    B.swirl = makeArrowRing(0.85, 8, 0xdc2626, 0.1);
+    B.swirl.rotation.x = Math.PI / 2;   // 轉成 XY 平面
+    B.swirl.position.z = 0.16; B.plate3d.add(B.swirl); B.swirl.visible = false;
+
+    // 磁鐵縫隙（U 型磁鐵於擺動最低點兩側）
+    B.magGap = new THREE.Group(); grpB.add(B.magGap);
+    var poleY = B.pivotY - B.L;
+    var matN = new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.5, metalness: 0.3 });
+    var matS = new THREE.MeshStandardMaterial({ color: 0x2563eb, roughness: 0.5, metalness: 0.3 });
+    var poleFront = new THREE.Mesh(new THREE.BoxGeometry(1.6, 3.0, 0.9), matN); poleFront.position.set(0, poleY, 1.4); B.magGap.add(poleFront);
+    var poleBack = new THREE.Mesh(new THREE.BoxGeometry(1.6, 3.0, 0.9), matS); poleBack.position.set(0, poleY, -1.4); B.magGap.add(poleBack);
+    var nLbl = makeLabelSprite('N', '#fee2e2', '#dc2626', '#dc2626', 0.85); nLbl.position.set(0, poleY, 2.1); nLbl.userData.isLabel = true; B.magGap.add(nLbl);
+    var sLbl = makeLabelSprite('S', '#dbeafe', '#2563eb', '#2563eb', 0.85); sLbl.position.set(0, poleY, -2.1); sLbl.userData.isLabel = true; B.magGap.add(sLbl);
+
+    // 磁極間磁力線（N 前 → S 後，方向 −Z），受 showField 控制
+    B.fieldLines = new THREE.Group(); grpB.add(B.fieldLines);
+    var fmat = new THREE.LineBasicMaterial({ color: 0x2563eb, transparent: true, opacity: 0.5 });
+    var fcMat = new THREE.MeshBasicMaterial({ color: 0x2563eb, transparent: true, opacity: 0.8 });
+    for (var gx = -0.7; gx <= 0.7; gx += 0.7) {
+        for (var gy = -0.8; gy <= 0.8; gy += 0.8) {
+            var lp = [new THREE.Vector3(gx, poleY + gy, 0.95), new THREE.Vector3(gx, poleY + gy, -0.95)];
+            B.fieldLines.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(lp), fmat));
+            var cg2 = new THREE.ConeGeometry(0.08, 0.24, 7); cg2.rotateX(-Math.PI / 2); // 指向 −Z
+            var cn = new THREE.Mesh(cg2, fcMat); cn.position.set(gx, poleY + gy, 0); B.fieldLines.add(cn);
+        }
+    }
+}
+function resetB() {
+    B.theta = B.amp; B.omega = 0; B.running = false; B.t = 0; B.trace = [];
+    if (B.arm) B.arm.rotation.z = B.theta;
+}
+function updateB(dt) {
+    if (!B.running) return;
+    B.t += dt;
+    // gate：擺片在磁場區（接近最低點 θ≈0）
+    var gate = Math.exp(-(B.theta * B.theta) / (0.18));
+    B.gateNow = gate;
+    var bDamp = (B.plate === 'solid' ? 3.2 : 0.15) * B.strength * gate;
+    var alpha = -(GACC / B.L) * Math.sin(B.theta) - bDamp * B.omega - 0.02 * B.omega;
+    B.omega += alpha * dt;
+    B.theta += B.omega * dt;
+    if (B.arm) B.arm.rotation.z = B.theta;
+    // 記錄振幅包絡（用 |θ| 峰值近似：這裡直接記 θ）
+    if (B.trace.length === 0 || B.t - B.trace[B.trace.length - 1].t >= 0.03) {
+        B.trace.push({ t: B.t, th: B.theta });
+    }
+    if (B.t > 26) B.running = false;
+}
+function visualsB(dt) {
+    var inField = showEddy && B.running && B.gateNow > 0.15;
+    var dirSign = B.omega > 0 ? -1 : 1;
+    // 實心片：一個大渦流
+    if (B.swirl) {
+        var solidOn = inField && B.plate === 'solid';
+        B.swirl.visible = solidOn;
+        if (solidOn) {
+            setRingDir(B.swirl, dirSign);
+            B.swirl.rotation.y += dt * 3;
+            setRingOpacity(B.swirl, clamp(B.gateNow, 0.3, 1));
+        }
+    }
+    // 有縫片：每條細片各有微小渦流（效應很弱 → 透明度低）
+    var slotOn = inField && B.plate === 'slot';
+    B.slotSwirls.forEach(function (sw) {
+        sw.visible = slotOn;
+        if (slotOn) {
+            setRingDir(sw, dirSign);
+            sw.rotation.y += dt * 3;
+            setRingOpacity(sw, clamp(B.gateNow * 0.45, 0.15, 0.5));
+        }
+    });
+    var badge = document.getElementById('status-badge');
+    if (!B.running) badge.textContent = (B.plate === 'solid' ? '實心片' : '有縫片') + ' — 按「開始」釋放擺';
+    else if (B.plate === 'solid') badge.textContent = '🛑 實心片：渦電流制動，振幅快速衰減';
+    else badge.textContent = '🔁 有縫片：縫切斷渦流，幾乎自由擺動';
+}
+
+/* ============================================================
+   情境 C：跳起之環（Thomson 跳環）
+   ============================================================ */
+var C = {
+    y: 0.0, vy: 0, acOn: false, mode: 'ac', ring: 'intact', voltage: 1.0, freq: 1.0,
+    core: null, coil: null, ring3d: null, ringCur: null, poleLbl: null, coreField: null,
+    F0base: 9.2, h0: 3.2, cDamp: 1.2, baseY: 0.6, topY: 9.5,
+    Fdisp: 0, Idisp: 0, phase: 0
+};
+function buildSceneC() {
+    disposeGroup(grpC);
+    // 底座線圈
+    var coilMat = new THREE.MeshStandardMaterial({ color: 0xc86020, roughness: 0.35, metalness: 0.8 });
+    C.coil = new THREE.Group(); grpC.add(C.coil);
+    for (var i = 0; i < 6; i++) {
+        var t = new THREE.Mesh(new THREE.TorusGeometry(1.5, 0.16, 10, 32), coilMat);
+        t.rotation.x = Math.PI / 2; t.position.y = -1.4 + i * 0.28; C.coil.add(t);
+    }
+    var base = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.2, 0.5, 32), new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.6, metalness: 0.3 }));
+    base.position.y = -1.9; grpC.add(base);
+    // 鐵芯
+    C.core = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 12, 28), new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.5, metalness: 0.7 }));
+    C.core.position.y = 4.2; grpC.add(C.core);
+    // 鋁環
+    C.ring3d = new THREE.Group(); grpC.add(C.ring3d);
+    var ringMat = new THREE.MeshStandardMaterial({ color: 0xd1d5db, roughness: 0.3, metalness: 0.9 });
+    C.ringMeshIntact = new THREE.Mesh(new THREE.TorusGeometry(1.25, 0.22, 14, 40), ringMat);
+    C.ringMeshIntact.rotation.x = Math.PI / 2; C.ring3d.add(C.ringMeshIntact);
+    // 開口環（缺一段）
+    C.ringMeshCut = new THREE.Mesh(new THREE.TorusGeometry(1.25, 0.22, 14, 40, Math.PI * 1.75), ringMat);
+    C.ringMeshCut.rotation.x = Math.PI / 2; C.ring3d.add(C.ringMeshCut); C.ringMeshCut.visible = false;
+    // 環內感應電流箭頭
+    C.ringCur = makeArrowRing(1.25, 10, 0xdc2626, 0.11); C.ring3d.add(C.ringCur); C.ringCur.visible = false;
+    // 感應極標籤（環頂）
+    C.poleLbl = makeLabelSprite('N', '#fee2e2', '#dc2626', '#dc2626', 0.8); C.poleLbl.userData.isLabel = true; C.ring3d.add(C.poleLbl); C.poleLbl.visible = false;
+    // 鐵芯軸向交變磁場
+    C.coreField = makeAxisField(0x2563eb, -1.5, 9.6, 0.55, 4); grpC.add(C.coreField);
+    resetC();
+}
+function resetC() {
+    C.y = C.baseY; C.vy = 0; C.phase = 0; C.Fdisp = 0; C.Idisp = 0;
+    C._trace = []; C._traceT = 0;
+    if (C.ring3d) C.ring3d.position.y = C.y;
+}
+function updateC(dt) {
+    C.phase += dt * 12 * C.freq;
+    var canConduct = (C.ring === 'intact');
+    var g = GACC;
+    // AC：持續時間平均斥力（隨高度衰減、隨電壓與頻率增大）；DC：穩態無持續力（脈衝已於接通時給速度）
+    var Frep = 0;
+    if (C.acOn && canConduct && C.mode === 'ac') {
+        var F0 = C.F0base * C.voltage * (0.6 + 0.4 * C.freq);
+        Frep = F0 * Math.exp(-(C.y - C.baseY) / C.h0);
+    }
+    // 阻尼只在有斥力（AC 懸浮/上升）時作用以穩定懸浮；否則純自由落體
+    var damp = (Frep > 0.01) ? C.cDamp * C.vy : 0;
+    var a = Frep - g - damp;
+    C.vy += a * dt;
+    C.y += C.vy * dt;
+    if (C.y < C.baseY) { C.y = C.baseY; if (C.vy < 0) C.vy = 0; }
+    if (C.y > C.topY) { C.y = C.topY; if (C.vy > 0) C.vy = 0; }   // 到頂視為跳離
+    if (C.ring3d) C.ring3d.position.y = C.y;
+    C.Fdisp = Frep;
+    // 感應電流：AC 持續脈動；DC 只在上升暫態有短暫電流
+    if (C.acOn && canConduct && C.mode === 'ac')
+        C.Idisp = Math.sqrt(Math.max(0, Frep)) * (0.8 + 0.2 * Math.abs(Math.sin(C.phase)));
+    else if (C.acOn && canConduct && C.mode === 'dc' && C.vy > 0.1)
+        C.Idisp = C.vy * 0.35;
+    else C.Idisp = 0;
+}
+function visualsC(dt) {
+    var hasCurrent = C.acOn && C.ring === 'intact' && (C.mode === 'ac' || (C.mode === 'dc' && C.vy > 0.1));
+    if (C.ringCur) {
+        C.ringCur.visible = showEddy && hasCurrent;
+        if (C.ringCur.visible) {
+            setRingDir(C.ringCur, C.mode === 'ac' ? (Math.sin(C.phase) > 0 ? 1 : -1) : 1);
+            setRingOpacity(C.ringCur, 0.9);
+        }
+    }
+    if (C.poleLbl) {
+        C.poleLbl.visible = showLabel && hasCurrent;
+        C.poleLbl.position.set(0, 1.7, 0);
+    }
+    // 鐵芯軸向交變磁場
+    if (C.coreField) {
+        setAxisFieldDir(C.coreField, Math.sin(C.phase) > 0 ? 1 : -1);
+        var fop = C.acOn ? (C.mode === 'ac' ? 0.3 + 0.55 * C.voltage : (C.vy > 0.1 ? 0.7 : 0.18)) : 0.12;
+        setFieldOpacity(C.coreField, clamp(fop, 0.1, 1));
+    }
+    var badge = document.getElementById('status-badge');
+    if (!C.acOn) badge.textContent = '電源未接通 — 打開開關';
+    else if (C.ring === 'cut') badge.textContent = '🚫 開口環：斷路無環流 → 不受排斥，靜止不動';
+    else if (C.mode === 'dc') {
+        if (C.vy > 0.1) badge.textContent = '🚀 DC 接通暫態：環被推起 — 跳一下！';
+        else if (C.y <= C.baseY + 0.05) badge.textContent = '⬇ DC 穩態無持續力 → 環自由落回底座';
+        else badge.textContent = '⬇ DC 穩態：無感應電流，環自由落下';
+    }
+    else if (C.y >= C.topY - 0.05) badge.textContent = '🚀 完整環被強力排斥 — 跳離鐵芯！';
+    else badge.textContent = '🛸 完整環懸浮：時間平均斥力 ≈ 重力，高度 y=' + (C.y - C.baseY).toFixed(2);
+}
+
+/* ============================================================
+   情境 D：電磁爐
+   ============================================================ */
+var D = {
+    pot: 'iron', power: 0.7, temp: 25, TENV: 25, t: 0, trace: [], heating: false, transparent: false,
+    coil: null, pot3d: null, potWall: null, potMat: null, potBase: null, water: null,
+    eddy: null, coilField: null, baseField: null, steam: [], phase: 0
+};
+function buildSceneD() {
+    disposeGroup(grpD);
+    // 爐身
+    var body = new THREE.Mesh(new THREE.CylinderGeometry(3.6, 3.8, 1.2, 40), new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.6, metalness: 0.4 }));
+    body.position.y = -1.2; grpD.add(body);
+    // 玻璃爐面
+    var top = new THREE.Mesh(new THREE.CylinderGeometry(3.6, 3.6, 0.18, 40), new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.15, metalness: 0.2, transparent: true, opacity: 0.9 }));
+    top.position.y = -0.5; grpD.add(top);
+    // 爐面下方扁平螺旋線圈
+    D.coil = new THREE.Group(); grpD.add(D.coil);
+    var coilMat = new THREE.MeshStandardMaterial({ color: 0xc86020, roughness: 0.35, metalness: 0.8 });
+    for (var i = 0; i < 5; i++) {
+        var r = 0.7 + i * 0.55;
+        var t = new THREE.Mesh(new THREE.TorusGeometry(r, 0.1, 10, 40), coilMat);
+        t.rotation.x = Math.PI / 2; t.position.y = -0.75; D.coil.add(t);
+    }
+    var coilLbl = makeTextSprite('線圈（保持低溫）', '#b45309', 0.85); coilLbl.position.set(0, -2.4, 0); coilLbl.userData.isLabel = true; grpD.add(coilLbl);
+    // 鍋（LatheGeometry：密封、有厚度的旋轉體 → 各角度皆完整不破圖）
+    D.pot3d = new THREE.Group(); D.pot3d.position.y = -0.1; grpD.add(D.pot3d);
+    var potProfile = [
+        new THREE.Vector2(0.00, 0.00),   // 內底中心（軸上）
+        new THREE.Vector2(2.15, 0.00),   // 內底邊
+        new THREE.Vector2(2.15, 2.60),   // 內壁到鍋緣
+        new THREE.Vector2(2.40, 2.60),   // 鍋緣頂
+        new THREE.Vector2(2.40, -0.30),  // 外壁到鍋底外緣
+        new THREE.Vector2(0.00, -0.30)   // 鍋底外中心（軸上）→ 封閉
+    ];
+    D.potMat = new THREE.MeshStandardMaterial({ color: 0x9ca3af, roughness: 0.4, metalness: 0.7, side: THREE.DoubleSide });
+    D.potWall = new THREE.Mesh(new THREE.LatheGeometry(potProfile, 48), D.potMat);
+    D.pot3d.add(D.potWall);
+    // 鍋底發熱面（獨立薄片，供輝光/渦流定位）
+    D.potBase = new THREE.Mesh(new THREE.CylinderGeometry(2.08, 2.08, 0.08, 40), new THREE.MeshStandardMaterial({ color: 0x6b7280, roughness: 0.45, metalness: 0.6, emissive: 0x000000, side: THREE.DoubleSide }));
+    D.potBase.position.y = -0.26; D.pot3d.add(D.potBase);
+    // 把手
+    var handle = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.12, 10, 24, Math.PI), new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.6 }));
+    handle.position.set(2.7, 1.5, 0); handle.rotation.y = Math.PI / 2; D.pot3d.add(handle);
+    // 鍋內水面
+    D.water = new THREE.Mesh(new THREE.CylinderGeometry(2.05, 2.05, 0.05, 40), new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.5 }));
+    D.water.position.y = 1.6; D.pot3d.add(D.water);
+    // 鍋底渦流（貼近鍋底下方，半透明鍋時清楚可見）
+    D.eddy = new THREE.Group(); D.pot3d.add(D.eddy);
+    for (var k = 0; k < 3; k++) {
+        var ering = makeArrowRing(0.6 + k * 0.55, 8, 0xdc2626, 0.09);
+        ering.position.y = -0.34; D.eddy.add(ering);
+    }
+    D.eddy.visible = false;
+    // 線圈交變磁場（藍，向上升至鍋底）與鍋底感生磁場（綠，反向對抗）
+    D.coilField = makeAxisField(0x2563eb, -1.0, -0.5, 1.5, 6); grpD.add(D.coilField);
+    D.baseField = makeAxisField(0x16a34a, -0.5, -0.25, 0.95, 5); grpD.add(D.baseField);
+    // 蒸氣
+    D.steam = [];
+    var steamMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 });
+    for (var s = 0; s < 8; s++) {
+        var puff = new THREE.Mesh(new THREE.SphereGeometry(0.28, 8, 8), steamMat.clone());
+        puff.userData.phase = Math.random() * Math.PI * 2; D.pot3d.add(puff); D.steam.push(puff);
+    }
+    resetD();
+}
+function resetD() {
+    D.temp = D.TENV; D.t = 0; D.trace = []; D.phase = 0; D.heating = false;
+    if (D.potBase) D.potBase.material.emissive.setHex(0x000000);
+}
+function updateD(dt) {
+    D.phase += dt * 15;
+    // 只有按下「開始加熱」(D.heating) 才積分溫度，否則保持不變（不自動加熱）
+    if (!D.heating) return;
+    D.t += dt;
+    var matFactor = (D.pot === 'iron') ? 1.0 : 0.03;   // 玻璃/陶瓷幾乎不生熱
+    var P = D.power * matFactor;
+    var alpha = 55, beta = 0.14;
+    D.temp += (alpha * P - beta * (D.temp - D.TENV)) * dt;
+    if (D.temp > 400) D.temp = 400;
+    if (D.trace.length === 0 || D.t - D.trace[D.trace.length - 1].t >= 0.08) {
+        D.trace.push({ t: D.t, T: D.temp });
+        if (D.trace.length > 400) D.trace.shift();
+    }
+}
+function visualsD(dt) {
+    var powered = D.heating && D.power > 0.02;      // 通電（線圈有交變磁場）
+    var heating = powered && D.pot === 'iron';       // 鍋底真正發熱
+    // 鍋底輝光
+    if (D.potBase) {
+        var glow = clamp((D.temp - 60) / 340, 0, 1);
+        var col = new THREE.Color(0x000000);
+        if (heating) col.setRGB(glow, glow * 0.35, 0);
+        D.potBase.material.emissive.copy(col);
+        D.potBase.material.emissiveIntensity = 1.0;
+    }
+    // 鍋底渦流
+    if (D.eddy) {
+        D.eddy.visible = showEddy && heating;
+        if (D.eddy.visible) {
+            D.eddy.children.forEach(function (r, idx) {
+                setRingDir(r, Math.sin(D.phase) > 0 ? 1 : -1);
+                r.rotation.y += dt * (2 + idx);
+                setRingOpacity(r, clamp(D.power, 0.3, 1));
+            });
+        }
+    }
+    // 線圈交變磁場（藍）與鍋底感生磁場（綠，反向）
+    if (D.coilField) {
+        setAxisFieldDir(D.coilField, Math.sin(D.phase) > 0 ? 1 : -1);
+        setFieldOpacity(D.coilField, powered ? clamp(0.35 + 0.5 * D.power, 0.3, 1) : 0.0);
+    }
+    if (D.baseField) {
+        setAxisFieldDir(D.baseField, Math.sin(D.phase) > 0 ? -1 : 1);   // 反抗 → 反向
+        setFieldOpacity(D.baseField, heating ? clamp(0.35 + 0.5 * D.power, 0.3, 1) : 0.0);
+    }
+    // 蒸氣（沸騰）
+    var boiling = D.temp >= 100;
+    D.steam.forEach(function (p) {
+        if (boiling) {
+            p.userData.phase += dt * 1.5;
+            var ph = p.userData.phase % (Math.PI * 2);
+            p.position.set((Math.random() - 0.5) * 0.3 + Math.sin(p.userData.phase) * 0.8, 2.1 + (ph / (Math.PI * 2)) * 2.4, Math.cos(p.userData.phase * 1.3) * 0.8);
+            p.material.opacity = 0.5 * (1 - ph / (Math.PI * 2));
+        } else { p.material.opacity = 0; }
+    });
+    var badge = document.getElementById('status-badge');
+    if (!D.heating) badge.textContent = '按「▶ 開始加熱」通電（不會自動加熱）';
+    else if (D.pot === 'glass') badge.textContent = '🧊 玻璃／陶瓷鍋不導電 — 幾乎不生熱（T=' + D.temp.toFixed(0) + '°C）';
+    else if (D.power <= 0.02) badge.textContent = '火力為 0 — 調高功率開始加熱';
+    else if (boiling) badge.textContent = '🔥 鍋底 ' + D.temp.toFixed(0) + '°C — 水沸騰！（線圈仍低溫）';
+    else badge.textContent = '🔥 渦電流加熱中：鍋底 ' + D.temp.toFixed(0) + '°C';
+}
+
+/* ============================================================
+   情境切換
+   ============================================================ */
+var sceneData = {
+    A: {
+        cam: 'A', graph: '📊 速度–時間 (v–t)',
+        fxTitle: '⚡ 楞次定律 · 渦電流制動', fxFormula: '$$F_{煞車}\\;\\propto\\; B^2 v$$',
+        fxDesc: '磁鐵下墜使管壁磁通改變 → 感生<span>渦電流</span>；由<b>楞次定律</b>，渦電流產生的磁場<b>反抗</b>磁鐵運動，形成與速度成正比的<span>煞車力</span>，直到 <b>mg = 煞車力</b> 達<span>終端速度</span>。塑膠管不導電，無渦電流，維持自由落體。',
+        labels: ['鋁管 v', '塑膠管 v', '終端速度', '煞車力'], hint: '🪂 按「開始」同時釋放兩顆磁鐵 · 觀察鋁管明顯較慢'
+    },
+    B: {
+        cam: 'B', graph: '📊 擺角–時間 (θ–t)',
+        fxTitle: '⚡ 磁阻尼 (Magnetic Damping)', fxFormula: '$$\\tau_{阻} \\propto -\\,\\omega\\,\\;(實心)$$',
+        fxDesc: '鋁片掃過磁場時磁通改變 → 感生<span>渦電流</span> → 產生反抗運動的力矩（<b>磁阻尼</b>）。<b>實心片</b>渦流迴路完整、阻尼大，振幅快速衰減；<b>有縫片</b>的縫<b>切斷</b>渦流路徑，阻尼近乎消失，幾乎自由擺動。此即以結構設計降低渦流損耗的原理。',
+        labels: ['擺角 θ', '角速度 ω', '振幅', '阻尼'], hint: '🪝 切換實心／有縫片，比較停止快慢'
+    },
+    C: {
+        cam: 'C', graph: '📊 環高度–時間 (h–t)',
+        fxTitle: '⚡ 交流電磁排斥 · 跳環', fxFormula: '$$\\varepsilon=-N\\frac{d\\Phi}{dt},\\;\\; \\bar F_{斥}>mg$$',
+        fxDesc: '線圈通<b>交流電</b> → 鐵芯內交變磁通 → 鋁環感生<span>環流</span>；由楞次定律環流磁場與線圈<b>相斥</b>。交流使斥力<b>時間平均為正</b>，當 <b>平均斥力 > 重力</b> 時環上跳／懸浮。<b>開口環</b>斷路無環流 → 不受力。',
+        labels: ['環高度 h', '感應電流 I', '斥力 F', '狀態'], hint: '💍 打開交流電開關 · 比較完整環與開口環'
+    },
+    D: {
+        cam: 'D', graph: '📊 溫度–時間 (T–t)',
+        fxTitle: '⚡ 感應加熱 · 電磁爐', fxFormula: '$$P = I^2 R \\quad(渦電流生熱)$$',
+        fxDesc: '爐下線圈通<b>高頻交流電</b> → 鍋底感生<span>渦電流</span> → 電流在鍋底電阻上以 <b>P=I²R</b> 生熱。鐵鍋既導電又導磁，渦流大、發熱強；玻璃／陶瓷不導電，幾乎不生熱。能量路徑：電能 → 磁場 → 渦電流 → <span class="hl-heat">熱能</span>；線圈本身幾乎不熱。',
+        labels: ['鍋底溫度', '火力 P', '材質係數', '狀態'], hint: '🍳 切換鐵鍋／玻璃鍋 · 調火力觀察升溫'
+    }
+};
+function setScene(s) {
+    currentScene = s;
+    ['A', 'B', 'C', 'D'].forEach(function (k) {
+        document.getElementById('scene-' + k).classList.toggle('active', k === s);
+        document.getElementById('ctrl-' + k).style.display = (k === s) ? '' : 'none';
+    });
+    grpA.visible = (s === 'A'); grpB.visible = (s === 'B'); grpC.visible = (s === 'C'); grpD.visible = (s === 'D');
+
+    var d = sceneData[s];
+    snapCamera(CAM[d.cam]);
+    document.getElementById('view2d-title').textContent = d.graph;
+    document.getElementById('fx-title').innerHTML = d.fxTitle;
+    document.getElementById('fx-formula').innerHTML = d.fxFormula;
+    document.getElementById('fx-desc').innerHTML = d.fxDesc;
+    for (var i = 0; i < 4; i++) document.getElementById('lb' + (i + 1)).textContent = d.labels[i];
+    document.getElementById('hint').textContent = d.hint;
+    if (window.MathJax && MathJax.typesetPromise) MathJax.typesetPromise([document.getElementById('fx-formula')]);
+
+    // 更新開始按鈕語意
+    var goBtn = document.getElementById('btn-go');
+    goBtn.textContent = (s === 'A') ? '▶ 釋放磁鐵' : (s === 'B') ? '▶ 釋放擺' : (s === 'C') ? '▶ 重新開始' : '▶ 開始加熱';
+
+    sceneReset();
+    initGuide(); initQuiz();
+    applyLabelVisibility();
+    applyFieldVisibility();
+}
+function snapCamera(preset) {
+    camera.position.copy(preset.pos);
+    controls.target.copy(preset.tgt);
+    controls.update();
+}
+
+/* ============================================================
+   播放控制
+   ============================================================ */
+function sceneGo() {
+    paused = false; setPauseBtn();
+    if (currentScene === 'A') { resetA(); A.running = true; }
+    else if (currentScene === 'B') { resetB(); B.running = true; }
+    else if (currentScene === 'C') { resetC(); }
+    else if (currentScene === 'D') { D.heating = true; }   // 只有按下才開始加熱
+}
+function sceneReset() {
+    if (currentScene === 'A') resetA();
+    else if (currentScene === 'B') resetB();
+    else if (currentScene === 'C') resetC();
+    else if (currentScene === 'D') resetD();
+}
+function togglePause() { paused = !paused; setPauseBtn(); }
+function setPauseBtn() {
+    var b = document.getElementById('btn-pause');
+    b.textContent = paused ? '▶ 繼續' : '⏸ 暫停';
+}
+
+/* ============================================================
+   顯示選項 / 面板
+   ============================================================ */
+function toggleOpt(which) {
+    if (which === 'eddy') { showEddy = !showEddy; document.getElementById('opt-eddy').classList.toggle('on', showEddy); }
+    if (which === 'field') { showField = !showField; document.getElementById('opt-field').classList.toggle('on', showField); applyFieldVisibility(); }
+    if (which === 'label') { showLabel = !showLabel; document.getElementById('opt-label').classList.toggle('on', showLabel); applyLabelVisibility(); }
+}
+function applyFieldVisibility() {
+    // 各情境的「磁力線」場群統一由 showField 開關；實體磁鐵/線圈恆顯示
+    if (A.fieldAlu) A.fieldAlu.visible = showField;
+    if (A.fieldPla) A.fieldPla.visible = showField;
+    if (B.fieldLines) B.fieldLines.visible = showField;
+    if (C.coreField) C.coreField.visible = showField;
+    if (D.coilField) D.coilField.visible = showField;
+    if (D.baseField) D.baseField.visible = showField;
+}
+function applyLabelVisibility() {
+    scene.traverse(function (o) { if (o.userData && o.userData.isLabel) o.visible = showLabel; });
+}
+
+function setPlate(t) {
+    B.plate = t;
+    document.getElementById('Bsolid').classList.toggle('active', t === 'solid');
+    document.getElementById('Bslot').classList.toggle('active', t === 'slot');
+    if (B.plateSolid) B.plateSolid.visible = (t === 'solid');
+    if (B.plateSlot) B.plateSlot.visible = (t === 'slot');
+}
+function setRing(t) {
+    C.ring = t;
+    document.getElementById('Cintact').classList.toggle('active', t === 'intact');
+    document.getElementById('Ccut').classList.toggle('active', t === 'cut');
+    if (C.ringMeshIntact) C.ringMeshIntact.visible = (t === 'intact');
+    if (C.ringMeshCut) C.ringMeshCut.visible = (t === 'cut');
+    resetC();
+}
+function toggleAC() {
+    C.acOn = !C.acOn;
+    document.getElementById('Cac-track').classList.toggle('on', C.acOn);
+    if (C.acOn) {
+        resetC();
+        // DC：接通瞬間給一次向上速度脈衝（暫態），完整環才有
+        if (C.mode === 'dc' && C.ring === 'intact') C.vy = 7.5 * C.voltage;
+    }
+}
+function setCMode(m) {
+    C.mode = m;
+    document.getElementById('Cac').classList.toggle('active', m === 'ac');
+    document.getElementById('Cdc').classList.toggle('active', m === 'dc');
+    document.getElementById('Cfreq-row').classList.toggle('disabled', m === 'dc');
+    // 切換模式時關閉電源並重設
+    C.acOn = false; document.getElementById('Cac-track').classList.remove('on');
+    resetC();
+}
+function setPot(t) {
+    D.pot = t;
+    document.getElementById('Diron').classList.toggle('active', t === 'iron');
+    document.getElementById('Dglass').classList.toggle('active', t === 'glass');
+    var col = (t === 'iron') ? 0x9ca3af : 0xbae6fd;
+    if (D.potMat) D.potMat.color.setHex(col);
+    if (D.potBase) D.potBase.material.color.setHex((t === 'iron') ? 0x6b7280 : 0xbae6fd);
+    resetD();
+}
+function togglePotClear() {
+    D.transparent = !D.transparent;
+    document.getElementById('Dclear-track').classList.toggle('on', D.transparent);
+    if (D.potMat) {
+        D.potMat.transparent = D.transparent;
+        D.potMat.opacity = D.transparent ? 0.3 : 1.0;
+        D.potMat.depthWrite = !D.transparent;
+        D.potMat.needsUpdate = true;
+    }
+}
+
+function toggleLeftPanel() {
+    var p = document.getElementById('left-panel');
+    p.classList.toggle('panel-hidden');
+    document.getElementById('btn-toggle-left').classList.toggle('inactive', p.classList.contains('panel-hidden'));
+    onResize();
+}
+function toggleRightPanel() {
+    var p = document.getElementById('right-panel');
+    p.classList.toggle('panel-hidden');
+    document.getElementById('btn-toggle-right').classList.toggle('inactive', p.classList.contains('panel-hidden'));
+    onResize();
+}
+function toggleGraph() {
+    showGraph = !showGraph;
+    document.getElementById('opt-graph').classList.toggle('on', showGraph);
+    document.getElementById('view2d-wrap').classList.toggle('panel-hidden', !showGraph);
+    if (showGraph) resize2D();
+}
+// 量測圖：拖曳標題列可移動
+function setupGraphDrag() {
+    var head = document.getElementById('view2d-head');
+    var panel = document.getElementById('view2d-wrap');
+    var container = document.getElementById('canvas-wrap');
+    var dragging = false, ox = 0, oy = 0;
+    head.addEventListener('pointerdown', function (e) {
+        if (e.target && e.target.id === 'view2d-close') return;
+        dragging = true;
+        var pr = panel.getBoundingClientRect(), cr = container.getBoundingClientRect();
+        panel.style.left = (pr.left - cr.left) + 'px';
+        panel.style.top = (pr.top - cr.top) + 'px';
+        panel.style.right = 'auto';
+        ox = e.clientX - pr.left; oy = e.clientY - pr.top;
+        try { head.setPointerCapture(e.pointerId); } catch (err) {}
+        e.preventDefault();
+    });
+    head.addEventListener('pointermove', function (e) {
+        if (!dragging) return;
+        var cr = container.getBoundingClientRect();
+        var nx = clamp(e.clientX - cr.left - ox, 0, cr.width - panel.offsetWidth);
+        var ny = clamp(e.clientY - cr.top - oy, 0, cr.height - panel.offsetHeight);
+        panel.style.left = nx + 'px'; panel.style.top = ny + 'px';
+    });
+    function end(e) { if (dragging) { dragging = false; try { head.releasePointerCapture(e.pointerId); } catch (err) {} } }
+    head.addEventListener('pointerup', end);
+    head.addEventListener('pointercancel', end);
+}
+
+function bindControls() {
+    document.getElementById('sld-slow').addEventListener('input', function () {
+        slowFactor = parseFloat(this.value);
+        document.getElementById('val-slow').textContent = slowFactor.toFixed(1) + ' ×';
+    });
+    document.getElementById('sld-Astr').addEventListener('input', function () {
+        A.strength = parseInt(this.value) / 100; document.getElementById('val-Astr').textContent = this.value + ' %';
+    });
+    document.getElementById('sld-Acond').addEventListener('input', function () {
+        A.cond = parseFloat(this.value);
+        var l = A.cond < 0.8 ? '低' : (A.cond < 1.3 ? '中' : '高');
+        document.getElementById('val-Acond').textContent = l;
+    });
+    document.getElementById('sld-Bstr').addEventListener('input', function () {
+        B.strength = parseInt(this.value) / 100; document.getElementById('val-Bstr').textContent = this.value + ' %';
+    });
+    document.getElementById('sld-Cvolt').addEventListener('input', function () {
+        C.voltage = parseInt(this.value) / 100; document.getElementById('val-Cvolt').textContent = this.value + ' %';
+    });
+    document.getElementById('sld-Cfreq').addEventListener('input', function () {
+        C.freq = parseFloat(this.value); document.getElementById('val-Cfreq').textContent = C.freq.toFixed(1) + ' ×';
+    });
+    document.getElementById('sld-Dpow').addEventListener('input', function () {
+        D.power = parseInt(this.value) / 100; document.getElementById('val-Dpow').textContent = this.value + ' %';
+    });
+}
+
+function onResize() {
+    if (!renderer) return;
+    var w = wrap.clientWidth, h = wrap.clientHeight;
+    if (w && h) { camera.aspect = w / h; camera.updateProjectionMatrix(); renderer.setSize(w, h); }
+    resize2D();
+}
+
+/* ============================================================
+   讀數
+   ============================================================ */
+function updateReadouts() {
+    var r1 = document.getElementById('ro1'), r2 = document.getElementById('ro2'), r3 = document.getElementById('ro3'), r4 = document.getElementById('ro4');
+    if (currentScene === 'A') {
+        r1.textContent = A.uAlu.toFixed(2); r2.textContent = A.uPla.toFixed(2);
+        r3.textContent = A.vTermDisp.toFixed(2); r4.textContent = A.brakeDisp.toFixed(2);
+    } else if (currentScene === 'B') {
+        r1.textContent = (B.theta * 57.3).toFixed(0) + '°'; r2.textContent = B.omega.toFixed(2);
+        r3.textContent = (Math.abs(B.theta) * 57.3).toFixed(0) + '°'; r4.textContent = (B.plate === 'solid' ? '大' : '微');
+    } else if (currentScene === 'C') {
+        r1.textContent = (C.y - C.baseY).toFixed(2); r2.textContent = C.Idisp.toFixed(2);
+        r3.textContent = C.Fdisp.toFixed(2);
+        r4.textContent = (!C.acOn ? '待機' : C.ring === 'cut' ? '不動'
+            : C.mode === 'dc' ? (C.vy > 0.1 ? '跳起' : (C.y > C.baseY + 0.1 ? '落下' : '落回'))
+            : (C.y >= C.topY - 0.05 ? '跳離' : '懸浮'));
+    } else if (currentScene === 'D') {
+        r1.textContent = D.temp.toFixed(0) + '°C'; r2.textContent = (D.power * 100).toFixed(0) + '%';
+        r3.textContent = (D.pot === 'iron' ? '1.0' : '0.03'); r4.textContent = (!D.heating ? '待機' : D.temp >= 100 ? '沸騰' : D.pot === 'glass' ? '不熱' : '加熱');
+    }
+    updateLive();
+}
+function updateLive() {
+    var el = document.getElementById('live-text');
+    if (currentScene === 'A') {
+        if (!A.running && !A.done) el.innerHTML = '按「開始」讓兩顆相同磁鐵同時落下。';
+        else if (A.done) el.innerHTML = '結果：<b>鋁管</b>磁鐵因<span class="hl-current">渦電流</span>制動，落底明顯較慢；<b>塑膠管</b>磁鐵自由落體先到底。';
+        else el.innerHTML = '鋁管磁鐵在管壁感生<span class="hl-current">渦電流</span>，其磁場<b>反抗</b>下墜（楞次定律），速度趨近<b>終端速度</b>；塑膠管無渦電流，持續加速。';
+    } else if (currentScene === 'B') {
+        el.innerHTML = (B.plate === 'solid')
+            ? '<b>實心片</b>掃過磁場時形成完整<span class="hl-current">渦電流</span>迴路，磁阻尼力矩大 → 振幅<b>快速衰減</b>。'
+            : '<b>有縫片</b>：縫<b>切斷</b>了<span class="hl-current">渦電流</span>路徑，阻尼近乎消失 → 幾乎<b>自由擺動</b>。';
+    } else if (currentScene === 'C') {
+        if (!C.acOn) el.innerHTML = '打開電源開關，觀察鋁環的反應。';
+        else if (C.ring === 'cut') el.innerHTML = '<b>開口環</b>斷路，無法形成<span class="hl-current">環流</span> → 不受排斥，靜止不動。';
+        else if (C.mode === 'dc') el.innerHTML = '<b>DC</b>：只有<b>接通瞬間</b>磁通改變才感生<span class="hl-current">電流</span>把環推起；之後磁場穩定、無感應 → 環<b>自由落回</b>（純重力加速度）。';
+        else el.innerHTML = '<b>AC</b>：交變磁通在完整環持續感生<span class="hl-current">環流</span>，其磁場與線圈<b>相斥</b>；平均斥力 ' + (C.Fdisp > GACC ? '大於' : '約等於') + '重力，環<b>' + (C.y >= C.topY - 0.05 ? '跳離' : '懸浮') + '</b>。';
+    } else if (currentScene === 'D') {
+        if (D.pot === 'glass') el.innerHTML = '<b>玻璃／陶瓷</b>不導電，無法形成<span class="hl-current">渦電流</span> → 幾乎<b>不生熱</b>。';
+        else el.innerHTML = '高頻磁場在<b>鐵鍋底</b>感生<span class="hl-current">渦電流</span>，以 <b>P=I²R</b> 產生<span class="hl-heat">熱</span>。注意：<b>線圈本身保持低溫</b>，熱只在鍋底。';
+    }
+}
+
+/* ============================================================
+   2D 量測視圖
+   ============================================================ */
+var cv2d, ctx2d;
+function resize2D() {
+    cv2d = document.getElementById('view2d');
+    if (!cv2d) return;
+    var r = cv2d.getBoundingClientRect();
+    var dpr = Math.min(window.devicePixelRatio, 2);
+    cv2d.width = Math.max(1, r.width * dpr);
+    cv2d.height = Math.max(1, r.height * dpr);
+    ctx2d = cv2d.getContext('2d');
+    ctx2d.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+function scopeFrame(W, H, zeroMid) {
+    var padL = 34, padR = 10, padT = 16, padB = 20;
+    var f = { gx: padL, gy: padT, gw: W - padL - padR, gh: H - padT - padB };
+    f.zeroY = zeroMid ? f.gy + f.gh / 2 : f.gy + f.gh - 4;
+    ctx2d.strokeStyle = '#e2e8f0'; ctx2d.lineWidth = 1; ctx2d.strokeRect(f.gx, f.gy, f.gw, f.gh);
+    ctx2d.strokeStyle = '#cbd5e1'; ctx2d.setLineDash([3, 3]);
+    ctx2d.beginPath(); ctx2d.moveTo(f.gx, f.zeroY); ctx2d.lineTo(f.gx + f.gw, f.zeroY); ctx2d.stroke();
+    ctx2d.setLineDash([]);
+    ctx2d.fillStyle = '#94a3b8'; ctx2d.font = '10px Segoe UI'; ctx2d.textAlign = 'right';
+    ctx2d.fillText('0', f.gx - 4, f.zeroY + 3);
+    ctx2d.textAlign = 'right'; ctx2d.fillText('t →', f.gx + f.gw - 2, f.gy + f.gh - 5);
+    return f;
+}
+function draw2D() {
+    if (!ctx2d) { resize2D(); if (!ctx2d) return; }
+    var dpr = Math.min(window.devicePixelRatio, 2);
+    var W = cv2d.width / dpr, H = cv2d.height / dpr;
+    ctx2d.clearRect(0, 0, W, H);
+    ctx2d.fillStyle = '#f8fafc'; ctx2d.fillRect(0, 0, W, H);
+    if (currentScene === 'A') drawA2D(W, H);
+    else if (currentScene === 'B') drawB2D(W, H);
+    else if (currentScene === 'C') drawC2D(W, H);
+    else if (currentScene === 'D') drawD2D(W, H);
+}
+function legend(f, items) {
+    ctx2d.textAlign = 'left'; ctx2d.font = 'bold 11px Segoe UI';
+    var x = f.gx + 6;
+    items.forEach(function (it) { ctx2d.fillStyle = it.c; ctx2d.fillText('■ ' + it.t, x, f.gy + 12); x += it.w; });
+}
+function plotSeries(f, arr, xkey, ykey, xspan, yscale, color) {
+    if (arr.length < 2) return;
+    ctx2d.strokeStyle = color; ctx2d.lineWidth = 2; ctx2d.beginPath();
+    for (var i = 0; i < arr.length; i++) {
+        var x = f.gx + clamp(arr[i][xkey] / xspan, 0, 1) * f.gw;
+        var y = f.zeroY - clamp(arr[i][ykey] * yscale, -(f.gh - 6), f.gh - 6);
+        if (i === 0) ctx2d.moveTo(x, y); else ctx2d.lineTo(x, y);
+    }
+    ctx2d.stroke();
+}
+function drawA2D(W, H) {
+    var f = scopeFrame(W, H, false);
+    var xspan = Math.max(2, A.t);
+    var maxV = 1; for (var i = 0; i < A.tracePla.length; i++) maxV = Math.max(maxV, A.tracePla[i].v);
+    var ys = (f.gh - 10) / maxV;
+    plotSeries(f, A.tracePla, 't', 'v', xspan, ys, '#f59e0b');
+    plotSeries(f, A.traceAlu, 't', 'v', xspan, ys, '#0284c7');
+    // 終端速度虛線
+    if (A.vTermDisp > 0) {
+        var yT = f.zeroY - clamp(A.vTermDisp * ys, 0, f.gh - 6);
+        ctx2d.strokeStyle = '#0284c7'; ctx2d.setLineDash([4, 3]); ctx2d.lineWidth = 1;
+        ctx2d.beginPath(); ctx2d.moveTo(f.gx, yT); ctx2d.lineTo(f.gx + f.gw, yT); ctx2d.stroke(); ctx2d.setLineDash([]);
+    }
+    legend(f, [{ t: '鋁管', c: '#0284c7', w: 52 }, { t: '塑膠管', c: '#f59e0b', w: 70 }]);
+    if (A.tracePla.length < 2) hintText(f, '按「開始」記錄 v–t');
+}
+function drawB2D(W, H) {
+    var f = scopeFrame(W, H, true);
+    var xspan = Math.max(6, B.t);
+    var ys = (f.gh / 2 - 6) / (B.amp * 1.05);
+    plotSeries(f, B.trace, 't', 'th', xspan, ys, B.plate === 'solid' ? '#dc2626' : '#16a34a');
+    legend(f, [{ t: (B.plate === 'solid' ? '實心 θ' : '有縫 θ'), c: B.plate === 'solid' ? '#dc2626' : '#16a34a', w: 80 }]);
+    if (B.trace.length < 2) hintText(f, '按「開始」記錄 θ–t');
+}
+function drawC2D(W, H) {
+    var f = scopeFrame(W, H, false);
+    if (!C._trace) C._trace = [];
+    legend(f, [{ t: '環高度 h', c: '#0284c7', w: 80 }]);
+    var ys = (f.gh - 10) / (C.topY - C.baseY);
+    plotSeries(f, C._trace, 't', 'h', Math.max(4, C._traceT || 4), ys, '#0284c7');
+}
+function drawD2D(W, H) {
+    var f = scopeFrame(W, H, false);
+    var xspan = Math.max(6, D.t);
+    var ys = (f.gh - 10) / 260;
+    plotSeries(f, D.trace, 't', 'T', xspan, ys, '#ea580c');
+    // 100°C 沸點線
+    var y100 = f.zeroY - clamp(100 * ys, 0, f.gh - 6);
+    ctx2d.strokeStyle = '#ef4444'; ctx2d.setLineDash([4, 3]); ctx2d.lineWidth = 1;
+    ctx2d.beginPath(); ctx2d.moveTo(f.gx, y100); ctx2d.lineTo(f.gx + f.gw, y100); ctx2d.stroke(); ctx2d.setLineDash([]);
+    ctx2d.fillStyle = '#ef4444'; ctx2d.font = '9px Segoe UI'; ctx2d.textAlign = 'left'; ctx2d.fillText('100°C 沸點', f.gx + 4, y100 - 3);
+    legend(f, [{ t: '鍋底溫度', c: '#ea580c', w: 80 }]);
+}
+function hintText(f, txt) {
+    ctx2d.fillStyle = '#94a3b8'; ctx2d.font = '12px Segoe UI'; ctx2d.textAlign = 'center';
+    ctx2d.fillText(txt, f.gx + f.gw / 2, f.gy + f.gh / 2);
+}
+
+/* ============================================================
+   逐步引導（依情境切換）
+   ============================================================ */
+var guideSetAll = {
+    A: [
+        '步驟 1：兩支管上端各放一顆<b>相同磁鐵</b>。左為<b>鋁管</b>（導體），右為<b>塑膠管</b>（絕緣體）。',
+        '步驟 2：按「開始」同時釋放。塑膠管磁鐵<b>自由落體</b>，很快到底。',
+        '步驟 3：鋁管磁鐵下墜使管壁磁通改變 → 感生<span class="hl-current">渦電流</span>；由楞次定律，其磁場<b>反抗</b>下墜。',
+        '步驟 4：煞車力 ∝ 速度。當 <b>mg = 煞車力</b> 時達<b>終端速度</b>，看 v–t 圖鋁管曲線趨於水平。',
+        '步驟 5：調高「磁鐵強度」或「管壁導電度」，觀察終端速度變得更小。'
+    ],
+    B: [
+        '步驟 1：先選<b>實心片</b>，按「開始」釋放擺，讓它掃過磁鐵縫隙。',
+        '步驟 2：鋁片經過磁場時磁通改變 → 感生<span class="hl-current">渦電流</span> → 產生<b>磁阻尼</b>力矩。',
+        '步驟 3：觀察 θ–t 圖：實心片振幅<b>迅速衰減</b>，很快停下。',
+        '步驟 4：改選<b>有縫（梳齒）片</b>再釋放，縫<b>切斷</b>渦流路徑。',
+        '步驟 5：比較兩者：有縫片阻尼近乎消失，<b>持續擺動</b>。這就是以開槽降低渦流損耗的原理。'
+    ],
+    C: [
+        '步驟 1：鋁環套在鐵芯上。打開「接通交流電」開關。',
+        '步驟 2：交變磁通在<b>完整環</b>感生<span class="hl-current">環流</span>，其磁場與線圈<b>相斥</b>。',
+        '步驟 3：交流使斥力<b>時間平均為正</b>。當平均斥力 > 重力，環<b>上跳／懸浮</b>。',
+        '步驟 4：調高「交流電功率」→ 斥力更大 → 環跳得更高，甚至跳離鐵芯。',
+        '步驟 5：改用<b>開口環</b>：斷路無法形成環流 → 不受排斥，靜止不動。'
+    ],
+    D: [
+        '步驟 1：確認放上<b>鐵鍋</b>，調整「火力」。',
+        '步驟 2：爐下線圈通高頻交流電 → 鍋底感生<span class="hl-current">渦電流</span>。',
+        '步驟 3：渦電流在鍋底電阻上以 <b>P=I²R</b> 生熱，看鍋底發紅、T–t 上升。',
+        '步驟 4：到 100°C 水<b>沸騰</b>冒蒸氣；注意<b>線圈本身仍低溫</b>。',
+        '步驟 5：換<b>玻璃／陶瓷鍋</b>：不導電、無渦流 → 幾乎不升溫，說明電磁爐需用導磁鍋具。'
+    ]
+};
+var guideSteps = [], guideIdx = 0;
+function initGuide() { guideSteps = guideSetAll[currentScene]; guideIdx = 0; renderGuide(); }
+function renderGuide() {
+    document.getElementById('guide-text').innerHTML = guideSteps[guideIdx];
+    document.getElementById('guide-step-no').textContent = (guideIdx + 1) + ' / ' + guideSteps.length;
+}
+function guideStep(d) { guideIdx = (guideIdx + d + guideSteps.length) % guideSteps.length; renderGuide(); }
+
+/* ============================================================
+   概念測驗（依情境切換）
+   ============================================================ */
+var quizAll = {
+    A: [
+        { q: '磁鐵在鋁管中下墜比在塑膠管中慢，主因是？', opts: ['空氣阻力較大', '鋁管感生渦電流產生反抗力', '塑膠管較滑', '磁鐵在鋁管中變重'], ans: 1, exp: '鋁為導體，下墜使磁通改變而感生渦電流，其磁場依楞次定律反抗磁鐵運動。' },
+        { q: '鋁管中的磁鐵最終會？', opts: ['一直加速', '達到終端速度後等速', '停止不動', '往上飄'], ans: 1, exp: '煞車力 ∝ 速度，當 mg = 煞車力時合力為零，達等速（終端速度）。' }
+    ],
+    B: [
+        { q: '有縫（梳齒）鋁片比實心片停得慢，原因是？', opts: ['質量較小', '縫切斷了渦電流迴路', '較不導磁', '受到較大空氣阻力'], ans: 1, exp: '開槽切斷渦流路徑，使渦電流與磁阻尼大幅減小，故擺動不易停止。' },
+        { q: '磁阻尼力矩的方向總是？', opts: ['與角速度同向', '與角速度反向', '指向磁鐵', '隨機'], ans: 1, exp: '由楞次定律，感應效應恆反抗運動，阻尼力矩與角速度反向。' }
+    ],
+    C: [
+        { q: '完整鋁環在交流線圈上被排斥跳起，是因為？', opts: ['靜電排斥', '環中感應環流與線圈磁場相斥', '重力減小', '空氣浮力'], ans: 1, exp: '交變磁通在環中感生環流，其磁場與線圈相斥（楞次定律）。' },
+        { q: '把完整環換成開口環，結果會？', opts: ['跳得更高', '一樣跳起', '不再跳起', '被吸下去'], ans: 2, exp: '開口環斷路無法形成環流，故不產生排斥力，不會跳起。' }
+    ],
+    D: [
+        { q: '電磁爐使鍋底發熱的機制是？', opts: ['火焰加熱', '鍋底渦電流的 I²R 生熱', '線圈直接接觸傳熱', '微波加熱'], ans: 1, exp: '高頻磁場在鍋底感生渦電流，電流在鍋底電阻上以 P=I²R 生熱。' },
+        { q: '為何玻璃鍋在電磁爐上幾乎不熱？', opts: ['玻璃太厚', '玻璃不導電，無法形成渦電流', '玻璃反射磁場', '功率不足'], ans: 1, exp: '玻璃／陶瓷為絕緣體，無法形成渦電流，因此幾乎不生熱。' }
+    ]
+};
+var quizBank = [], quizIdx = 0, quizDone = false;
+function initQuiz() { quizBank = quizAll[currentScene]; quizIdx = 0; renderQuiz(); }
+function renderQuiz() {
+    var qz = quizBank[quizIdx]; quizDone = false;
+    document.getElementById('quiz-q').innerHTML = (quizIdx + 1) + '. ' + qz.q;
+    var box = document.getElementById('quiz-options'); box.innerHTML = '';
+    qz.opts.forEach(function (o, i) {
+        var d = document.createElement('div'); d.className = 'quiz-opt'; d.textContent = o;
+        d.onclick = function () { answerQuiz(i); };
+        box.appendChild(d);
+    });
+    document.getElementById('quiz-feedback').textContent = '';
+    document.getElementById('quiz-next').style.display = 'none';
+}
+function answerQuiz(i) {
+    if (quizDone) return; quizDone = true;
+    var qz = quizBank[quizIdx];
+    var opts = document.querySelectorAll('#quiz-options .quiz-opt');
+    opts.forEach(function (o, idx) {
+        if (idx === qz.ans) o.classList.add('correct');
+        else if (idx === i) o.classList.add('wrong');
+        o.onclick = null;
+    });
+    document.getElementById('quiz-feedback').innerHTML = (i === qz.ans ? '✅ 正確！' : '❌ ') + qz.exp;
+    document.getElementById('quiz-next').style.display = 'block';
+}
+function nextQuiz() { quizIdx = (quizIdx + 1) % quizBank.length; renderQuiz(); }
+
+/* ============================================================
+   主迴圈
+   ============================================================ */
+function loop() {
+    var raw = Math.min(clock.getDelta(), 0.05);
+    var dt = paused ? 0 : raw * slowFactor;
+
+    if (currentScene === 'A') { updateA(dt); visualsA(dt); }
+    else if (currentScene === 'B') { updateB(dt); visualsB(dt); }
+    else if (currentScene === 'C') {
+        updateC(dt); visualsC(dt);
+        // 記錄環高度
+        if (!C._trace) { C._trace = []; C._traceT = 0; }
+        C._traceT += dt;
+        if (C._trace.length === 0 || C._traceT - C._trace[C._trace.length - 1].t >= 0.04) {
+            C._trace.push({ t: C._traceT, h: C.y - C.baseY });
+            if (C._trace.length > 300) C._trace.shift();
+        }
+    }
+    else if (currentScene === 'D') { updateD(dt); visualsD(dt); }
+
+    updateReadouts();
+    draw2D();
+
+    controls.update();
+    renderer.render(scene, camera);
+    requestAnimationFrame(loop);
+}
+</script>
+</body>
+</html>

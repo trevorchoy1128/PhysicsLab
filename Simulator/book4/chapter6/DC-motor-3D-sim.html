@@ -4,231 +4,341 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>3D 直流電動機模擬器 (終極效能極致版)</title>
+  <!-- Tailwind 仍保留：CSS-3D 場景的內部元件（標籤、磁鐵字、過場）以 Tailwind 工具類別生成 -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']] },
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
   <style>
-    /* 確保 3D 場景的子元素能夠在 3D 空間內正確交疊渲染 */
+    /* === CSS-3D 引擎必要類別（場景沿用，勿移除） === */
     .preserve-3d { transform-style: preserve-3d; }
-    .select-none { user-select: none; -webkit-user-select: none; }
-    /* 視角中心點 */
-    .orbit-center {
-      position: absolute;
-      top: 50%; left: 50%;
-      width: 0; height: 0;
-      transform-style: preserve-3d;
-    }
-    /* 自訂精細滾動條 */
-    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-    .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
-    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
-    /* 電池 180 度翻轉平滑動畫 */
+    .orbit-center { position: absolute; top: 50%; left: 50%; width: 0; height: 0; transform-style: preserve-3d; }
     .battery-transition { transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
-  
+
+    /* === 實驗室灰 (Lab Gray) 主題（與其他模擬器一致） === */
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+      background: #e2e6eb; color: #334155;
+      min-height: 100vh; display: flex; flex-direction: column;
+      -webkit-user-select: none; user-select: none; overflow-x: hidden;
+    }
+
+    #topbar {
+      background: #1e293b; border-bottom: 1px solid #0f172a;
+      padding: 10px 16px; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; flex-wrap: wrap; flex-shrink: 0; box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    #topbar .title-block h1 { font-size: 1.15rem; font-weight: 700; color: #f8fafc; letter-spacing: 0.02em; }
+    #topbar .title-block p  { font-size: 0.72rem; color: #94a3b8; margin-top: 2px; }
+    .topbar-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+    .panel-toggle-btn {
+      background: #334155; border: 1px solid #475569; border-radius: 6px;
+      color: #f8fafc; padding: 7px 11px; font-size: 0.8rem; font-weight: 600;
+      cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px;
+    }
+    .panel-toggle-btn:hover { background: #475569; border-color: #64748b; }
+    .panel-toggle-btn.active-play { background: #dc2626; border-color: #ef4444; }
+    .panel-toggle-btn.accent { background: #4338ca; border-color: #6366f1; }
+
+    .panel-hidden { display: none !important; }
+
+    #main { display: flex; flex: 1; min-height: 0; overflow: hidden; }
+
+    #left-panel, #right-panel {
+      flex-shrink: 0; background: #f1f5f9; display: flex; flex-direction: column;
+      overflow-y: auto; padding: 14px 12px; gap: 12px;
+    }
+    #left-panel { width: 290px; border-right: 1px solid #cbd5e1; }
+    #right-panel { width: 300px; border-left: 1px solid #cbd5e1; }
+
+    .card { background: #fff; border: 1px solid #cbd5e1; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .card-header {
+      background: #e2e8f0; padding: 8px 13px; font-size: 0.75rem; font-weight: 700;
+      color: #475569; text-transform: uppercase; letter-spacing: 0.08em;
+      display: flex; align-items: center; gap: 7px;
+    }
+    .card-body { padding: 11px 13px; }
+    .mode-label { font-size: 0.68rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 7px; }
+
+    .dir-btn-group { display: flex; gap: 6px; flex-wrap: wrap; }
+    .dir-btn {
+      flex: 1; min-width: 46px; padding: 8px 5px; border-radius: 8px;
+      border: 1px solid #cbd5e1; background: #f8fafc; color: #475569;
+      font-size: 0.74rem; font-weight: 600; cursor: pointer; transition: all 0.2s; text-align: center;
+    }
+    .dir-btn:hover { border-color: #94a3b8; color: #1e293b; background: #f1f5f9; }
+    .dir-btn.active { border-color: #0284c7; background: #f0f9ff; color: #0369a1; box-shadow: 0 0 0 1px #0284c7; }
+    .swap-btn { width: 100%; margin-top: 7px; flex: none; }
+
+    .slider-row { margin-bottom: 14px; }
+    .slider-row:last-child { margin-bottom: 0; }
+    .slider-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px; }
+    .slider-head label { font-size: 0.74rem; color: #475569; font-weight: 600; }
+    .slider-head .val { font-size: 0.78rem; color: #0369a1; font-weight: 700; font-variant-numeric: tabular-nums; }
+    input[type=range] {
+      -webkit-appearance: none; appearance: none; width: 100%; height: 5px;
+      background: #cbd5e1; border-radius: 3px; outline: none; cursor: pointer;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none; width: 16px; height: 16px; border-radius: 50%;
+      background: #3b82f6; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.3); cursor: pointer;
+    }
+    input[type=range]::-moz-range-thumb {
+      width: 16px; height: 16px; border-radius: 50%; background: #3b82f6;
+      border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.3); cursor: pointer;
+    }
+
+    .toggle-row {
+      display: flex; align-items: center; gap: 9px; padding: 7px 10px;
+      background: #fff; border: 1px solid #cbd5e1; border-radius: 8px;
+      cursor: pointer; transition: background 0.2s; margin-bottom: 6px;
+    }
+    .toggle-row:last-child { margin-bottom: 0; }
+    .toggle-row:hover { background: #f8fafc; }
+    .toggle-track { width: 32px; height: 18px; border-radius: 9px; background: #cbd5e1; position: relative; transition: background 0.2s; flex-shrink: 0; }
+    .toggle-track.on { background: #3b82f6; }
+    .toggle-thumb { width: 14px; height: 14px; border-radius: 50%; background: #fff; position: absolute; top: 2px; left: 2px; transition: left 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+    .toggle-track.on .toggle-thumb { left: 16px; }
+    .toggle-row > span { font-size: 0.73rem; color: #475569; font-weight: 500; }
+
+    /* === 3D 視圖區 === */
+    #canvas-wrap { flex: 1; position: relative; min-width: 0; background: #0f172a; overflow: hidden; }
+    #3d-viewport { width: 100%; height: 100%; position: relative; cursor: grab; touch-action: none; perspective: 1000px; }
+    #3d-viewport:active { cursor: grabbing; }
+
+    #status-badge {
+      position: absolute; top: 14px; left: 14px; z-index: 10; pointer-events: none; min-width: 156px;
+      background: rgba(15,23,42,0.82); border: 1px solid #334155; border-radius: 12px;
+      padding: 9px 13px; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    }
+    #status-badge .sb-title { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.12em; color: #94a3b8; font-weight: 700; border-bottom: 1px solid #334155; padding-bottom: 4px; margin-bottom: 5px; }
+    #status-badge .sb-row { display: flex; justify-content: space-between; gap: 14px; font-size: 0.72rem; margin-top: 3px; }
+    #status-badge .sb-row > span:first-child { color: #94a3b8; }
+    #status-badge .sb-val { font-family: ui-monospace, 'Consolas', monospace; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+    #hint {
+      position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 10; pointer-events: none;
+      background: rgba(255,255,255,0.85); border: 1px solid #cbd5e1; border-radius: 18px;
+      padding: 6px 16px; font-size: 0.72rem; color: #475569; white-space: nowrap;
+      backdrop-filter: blur(4px); box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    /* === 視角縮放疊層按鈕 === */
+    .zoom-ctrl {
+      position: absolute; bottom: 14px; right: 14px; z-index: 10;
+      display: flex; flex-direction: column; gap: 6px; pointer-events: auto;
+    }
+    .zoom-ctrl button {
+      width: 34px; height: 34px; border-radius: 9px; cursor: pointer;
+      background: rgba(15,23,42,0.82); border: 1px solid #334155; color: #f8fafc;
+      font-size: 1.05rem; font-weight: 700; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.25); transition: background 0.2s, transform 0.1s;
+    }
+    .zoom-ctrl button:hover { background: rgba(51,65,85,0.92); }
+    .zoom-ctrl button:active { transform: scale(0.92); }
+
+    /* === 右側資訊 / 公式面板 === */
+    .formula-box { background: #fff; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .formula-box h4 { font-size: 0.7rem; color: #475569; text-transform: uppercase; letter-spacing: 0.08em; margin: 0 0 9px 0; display: flex; align-items: center; gap: 6px; }
+    .formula { background: #f8fafc; border-radius: 6px; padding: 4px 10px; color: #0f172a; margin-bottom: 7px; border: 1px solid #e2e8f0; overflow-x: auto; font-size: 1.0rem; text-align: center; }
+    .formula-desc { font-size: 0.72rem; color: #64748b; line-height: 1.75; }
+    .formula-desc b { color: #334155; }
+    .step-row { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 8px; font-size: 0.74rem; line-height: 1.6; color: #475569; }
+    .step-row:last-child { margin-bottom: 0; }
+    .step-row b { color: #1e293b; }
+    .step-num { flex-shrink: 0; width: 19px; height: 19px; border-radius: 50%; color: #fff; font-weight: 700; font-size: 0.65rem; display: flex; align-items: center; justify-content: center; }
+    #torque-canvas { width: 100%; height: 150px; display: block; }
+
     /* Home button */
     #home-btn {
-        position: fixed;
-        bottom: 16px;
-        left: 16px;
-        z-index: 99999;
-        background: rgba(30,41,59,0.85);
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-        border: 1px solid rgba(255,255,255,0.3);
-        border-radius: 10px;
-        padding: 8px 14px;
-        font-size: 13px;
-        font-weight: bold;
-        color: #fff;
-        text-decoration: none;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.25);
-        transition: background 0.2s, transform 0.2s;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
+      position: fixed; bottom: 16px; left: 16px; z-index: 99999;
+      background: rgba(30,41,59,0.85); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,0.3); border-radius: 10px; padding: 8px 14px;
+      font-size: 13px; font-weight: bold; color: #fff; text-decoration: none;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.25); transition: background 0.2s, transform 0.2s;
+      display: inline-flex; align-items: center; gap: 6px;
     }
-    #home-btn:hover {
-        background: rgba(30,41,59,0.95);
-        transform: translateY(-2px);
-    }
+    #home-btn:hover { background: rgba(30,41,59,0.95); transform: translateY(-2px); }
 
-        /* -- Responsive (Mobile / Tablet) -- */
-        @media (max-width: 768px) {
-            #ui-panel, .ui-panel {
-                width: calc(100vw - 20px) !important;
-                max-width: 100vw !important;
-                max-height: 45vh !important;
-                overflow-y: auto !important;
-                top: auto !important;
-                bottom: 0 !important;
-                left: 0 !important;
-                right: 0 !important;
-                border-radius: 12px 12px 0 0 !important;
-                padding: 12px !important;
-                font-size: 12px !important;
-            }
-            #ui-panel h2, .ui-panel h2 { font-size: 14px !important; margin: 0 0 6px 0 !important; }
-            #ui-panel h3, .ui-panel h3 { font-size: 13px !important; }
-            #ui-panel label, .ui-panel label { font-size: 11px !important; }
-            #ui-panel input[type=range], .ui-panel input[type=range] { height: 20px !important; }
-            #ui-panel .btn, .ui-panel .btn { padding: 7px 4px !important; font-size: 11px !important; }
-        }
-        @media (min-width: 769px) and (max-width: 1024px) {
-            #ui-panel, .ui-panel {
-                width: 260px !important;
-                font-size: 13px !important;
-            }
-        }
-    </style>
+    /* === 響應式 === */
+    @media (max-width: 1024px) { #right-panel { display: none; } }
+    @media (max-width: 720px) {
+      #main { flex-direction: column; overflow: visible; }
+      #left-panel { width: 100%; border-right: none; border-bottom: 1px solid #cbd5e1; max-height: 44vh; }
+      #canvas-wrap { min-height: 340px; }
+      #topbar .title-block h1 { font-size: 1rem; }
+      #topbar .title-block p { display: none; }
+    }
+  </style>
 </head>
-<body class="bg-slate-100 p-2 sm:p-4 min-h-screen select-none font-sans antialiased m-0 overflow-x-hidden">
+<body>
 
-
-  <div id="main-container" class="w-full max-w-7xl mx-auto bg-slate-50 rounded-xl shadow-lg p-3 sm:p-5 flex flex-col transition-all duration-300">
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
-      
-      <div id="visual-area" class="lg:col-span-8 flex flex-col gap-4 transition-all duration-300">
-        
-        <div id="3d-viewport" class="w-full h-[450px] sm:h-[520px] bg-slate-900 rounded-lg overflow-hidden relative cursor-grab active:cursor-grabbing touch-none shadow-inner" style="perspective: 1000px;">
-          
-          <div class="absolute top-3 left-3 text-slate-400 text-xs flex items-center gap-1.5 pointer-events-none z-10 bg-slate-900/60 px-2 py-1 rounded backdrop-blur-sm">
-            <i data-lucide="move" class="w-3.5 h-3.5"></i> <span class="i18n" data-zh="拖曳可繞著實驗裝置旋轉視角" data-en="Drag to rotate view around the apparatus">拖曳可繞著實驗裝置旋轉視角</span>
-          </div>
-
-          <div class="absolute bottom-3 left-3 z-10 bg-slate-900/80 border border-slate-700/50 text-slate-200 text-xs rounded-lg p-2.5 shadow-lg backdrop-blur-md flex flex-col gap-1 min-w-[140px] pointer-events-none">
-            <div class="text-[10px] uppercase tracking-wider text-slate-400 font-bold border-b border-slate-700/60 pb-1 mb-1 flex items-center gap-1">
-              <i data-lucide="gauge" class="w-3 h-3 text-indigo-400"></i> <span class="i18n" data-zh="即時狀態監測" data-en="Live Status Monitor">即時狀態監測</span>
-            </div>
-            <div class="flex justify-between items-center gap-4">
-              <span class="text-slate-400 i18n" data-zh="旋轉角度:" data-en="Rotation Angle:">旋轉角度:</span>
-              <span id="live-angle" class="font-mono font-bold text-amber-400 text-right">0.0°</span>
-            </div>
-            <div class="flex justify-between items-center gap-4">
-              <span class="text-slate-400 i18n" data-zh="實時力矩:" data-en="Live Torque:">實時力矩:</span>
-              <span id="live-torque" class="font-mono font-bold text-pink-400 text-right">0.00 N·m</span>
-            </div>
-          </div>
-
-          <div class="absolute top-3 right-3 flex items-center gap-2 z-20">
-            <button id="btn-lang" class="p-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg shadow-md transition-colors font-bold text-xs flex items-center justify-center w-8" title="Language / 語言">
-              EN
-            </button>
-            <button id="btn-toggle-play" class="p-2 rounded-lg shadow-md bg-emerald-500 hover:bg-emerald-600 text-white transition-colors i18n-title" data-zh="播放/暫停" data-en="Play/Pause" title="播放/暫停">
-              <i id="icon-play" data-lucide="play" class="w-4 h-4"></i>
-              <i id="icon-pause" data-lucide="pause" class="w-4 h-4 hidden"></i>
-            </button>
-            <button id="btn-reset" class="p-2 bg-slate-800/80 hover:bg-slate-700 text-white rounded-lg shadow-md transition-colors i18n-title" data-zh="重置" data-en="Reset" title="重置">
-              <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
-            </button>
-            <button id="btn-toggle-controls" class="p-2 bg-slate-800/80 hover:bg-slate-700 text-white rounded-lg shadow-md transition-all flex items-center gap-1 text-xs font-bold i18n-title" data-zh="隱藏/顯示控制面板" data-en="Toggle Control Panel" title="隱藏/顯示控制面板">
-              <i id="icon-eye-off" data-lucide="eye-off" class="w-4 h-4"></i>
-              <i id="icon-eye" data-lucide="eye" class="w-4 h-4 hidden"></i>
-              <span id="text-toggle-controls">隱藏控制</span>
-            </button>
-            <button id="btn-fullscreen" class="p-2 bg-slate-800/80 hover:bg-slate-700 text-white rounded-lg shadow-md transition-colors i18n-title" data-zh="全螢幕模式" data-en="Fullscreen Mode" title="全螢幕模式">
-              <i id="icon-maximize" data-lucide="maximize-2" class="w-4 h-4"></i>
-              <i id="icon-minimize" data-lucide="minimize-2" class="w-4 h-4 hidden"></i>
-            </button>
-          </div>
-
-          <div class="orbit-center">
-            <div id="3d-world" class="preserve-3d" style="transform: rotateX(-20deg) rotateY(-35deg);">
-              </div>
-          </div>
-        </div>
-
-        <div class="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex flex-col flex-grow">
-          <h3 class="text-sm font-bold text-slate-800 mb-3 flex items-center gap-1.5">
-            <i data-lucide="activity" class="w-4 h-4 text-blue-600"></i> <span class="i18n" data-zh="實時力矩 (Torque) 圖" data-en="Live Torque Chart">實時力矩 (Torque) 圖</span>
-          </h3>
-          <div class="w-full h-[180px] relative">
-            <canvas id="torque-canvas" class="w-full h-full"></canvas>
-          </div>
-        </div>
+  <div id="topbar">
+    <div style="display:flex; align-items:center; gap:14px;">
+      <button class="panel-toggle-btn" id="btn-toggle-controls" title="控制面板"><span>☰</span> <span id="text-toggle-controls">隱藏控制</span></button>
+      <div class="title-block">
+        <h1>⚙️ <span class="i18n" data-zh="3D 直流電動機模擬器" data-en="3D DC Motor Simulator">3D 直流電動機模擬器</span></h1>
+        <p class="i18n" data-zh="HKDSE Physics · Book 4 · 馬達原理 · τ = BIL·cosθ + 反電動勢動力學" data-en="HKDSE Physics · Book 4 · Motor Principle · τ = BIL·cosθ + Back-EMF Dynamics">HKDSE Physics · Book 4 · 馬達原理 · τ = BIL·cosθ + 反電動勢動力學</p>
       </div>
-
-      <div id="control-panel" class="lg:col-span-4 flex flex-col gap-4 transition-all duration-300 max-h-[780px] overflow-y-auto custom-scrollbar pr-1">
-        
-        <div class="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex flex-col gap-4">
-          <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5 border-b pb-2">
-            <i data-lucide="settings-2" class="w-4 h-4 text-indigo-600"></i> <span class="i18n" data-zh="核心參數控制" data-en="Core Parameters">核心參數控制</span>
-          </h3>
-          <div>
-            <div class="flex justify-between items-center mb-1">
-              <span class="text-xs font-semibold text-slate-700 flex items-center gap-1 i18n" data-zh="電壓 / 電流方向 (V)" data-en="Voltage / Current Dir (V)">電壓 / 電流方向 (V)</span>
-              <div class="flex items-center gap-2">
-                <button id="btn-swap-v" class="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded border border-slate-200 flex items-center gap-0.5"><i data-lucide="arrow-left-right" class="w-2.5 h-2.5"></i><span class="i18n" data-zh="對調" data-en="Swap">對調</span></button>
-                <span id="val-v" class="text-xs font-bold text-blue-600 w-12 text-right">3.0 V</span>
-              </div>
-            </div>
-            <input id="slider-v" type="range" min="-5" max="5" step="0.1" value="3.0" class="w-full cursor-pointer accent-blue-600">
-          </div>
-          <div>
-            <div class="flex justify-between items-center mb-1">
-              <span class="text-xs font-semibold text-slate-700 flex items-center gap-1 i18n" data-zh="磁場強度與方向 (B)" data-en="B-Field Strength/Dir (B)">磁場強度與方向 (B)</span>
-              <div class="flex items-center gap-2">
-                <button id="btn-swap-b" class="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded border border-slate-200 flex items-center gap-0.5"><i data-lucide="arrow-left-right" class="w-2.5 h-2.5"></i><span class="i18n" data-zh="對調" data-en="Swap">對調</span></button>
-                <span id="val-b" class="text-xs font-bold text-emerald-600 w-12 text-right">3.0 T</span>
-              </div>
-            </div>
-            <input id="slider-b" type="range" min="-5" max="5" step="0.1" value="3.0" class="w-full cursor-pointer accent-emerald-600">
-          </div>
-        </div>
-
-        <div class="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex flex-col gap-3">
-          <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5 border-b pb-2">
-            <i data-lucide="eye" class="w-4 h-4 text-purple-600"></i> <span class="i18n" data-zh="視覺顯示設定" data-en="Visual Settings">視覺顯示設定</span>
-          </h3>
-          <div class="grid grid-cols-2 gap-2 text-xs text-slate-600">
-            <label class="flex items-center gap-1.5 cursor-pointer hover:text-slate-900"><input id="chk-labels" type="checkbox" checked class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"> <span class="i18n" data-zh="ABCD 節點標記" data-en="ABCD Node Labels">ABCD 節點標記</span></label>
-            <label class="flex items-center gap-1.5 cursor-pointer hover:text-slate-900"><input id="chk-polarity" type="checkbox" checked class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"> <span class="i18n" data-zh="極性動態著色" data-en="Dynamic Polarity Color">極性動態著色</span></label>
-            <label class="flex items-center gap-1.5 cursor-pointer hover:text-slate-900"><input id="chk-force" type="checkbox" checked class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"> <span class="i18n" data-zh="磁力向量箭頭 (F)" data-en="Force Vectors (F)">磁力向量箭頭 (F)</span></label>
-            <label class="flex items-center gap-1.5 cursor-pointer hover:text-slate-900"><input id="chk-bfield" type="checkbox" checked class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"> <span class="i18n" data-zh="磁場線分佈 (B)" data-en="B-Field Lines (B)">磁場線分佈 (B)</span></label>
-            <label class="flex items-center gap-1.5 cursor-pointer hover:text-slate-900"><input id="chk-arrows" type="checkbox" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"> <span class="i18n" data-zh="電流方向箭頭 (I)" data-en="Current Arrows (I)">電流方向箭頭 (I)</span></label>
-            <label class="flex items-center gap-1.5 cursor-pointer hover:text-slate-900"><input id="chk-dots" type="checkbox" checked class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"> <span class="i18n" data-zh="動態電流粒子" data-en="Dynamic Current Particles">動態電流粒子</span></label>
-            <label class="flex items-center gap-1.5 cursor-pointer hover:text-slate-900 col-span-2"><input id="chk-battery" type="checkbox" checked class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"> <span class="i18n" data-zh="顯示外電路與直流電源" data-en="Show External Circuit & DC Power">顯示外電路與直流電源</span></label>
-          </div>
-        </div>
-
-        <div class="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex flex-col gap-3">
-          <div>
-            <span class="text-xs font-bold text-slate-500 block mb-1.5 i18n" data-zh="模擬運行速度" data-en="Simulation Speed">模擬運行速度</span>
-            <div class="flex gap-1" id="speed-group">
-              <button id="btn-sm-0.25" class="btn-sm flex-1 py-1 text-xs font-medium rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors">0.25x</button>
-              <button id="btn-sm-0.5" class="btn-sm flex-1 py-1 text-xs font-medium rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors">0.5x</button>
-              <button id="btn-sm-1" class="btn-sm flex-1 py-1 text-xs font-medium rounded-md bg-indigo-600 text-white transition-colors">1.0x</button>
-              <button id="btn-sm-2" class="btn-sm flex-1 py-1 text-xs font-medium rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors">2.0x</button>
-            </div>
-          </div>
-          <div>
-            <span class="text-xs font-bold text-slate-500 block mb-1.5 i18n" data-zh="電流粒子速度" data-en="Particle Speed">電流粒子速度</span>
-            <div class="flex gap-1" id="pspeed-group">
-              <button id="btn-ps-0.5" class="btn-ps flex-1 py-1 text-xs font-medium rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"><span class="i18n" data-zh="慢" data-en="Slow">慢</span></button>
-              <button id="btn-ps-1" class="btn-ps flex-1 py-1 text-xs font-medium rounded-md bg-yellow-500 text-white transition-colors"><span class="i18n" data-zh="中" data-en="Med">中</span></button>
-              <button id="btn-ps-2" class="btn-ps flex-1 py-1 text-xs font-medium rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"><span class="i18n" data-zh="快" data-en="Fast">快</span></button>
-              <button id="btn-ps-4" class="btn-ps flex-1 py-1 text-xs font-medium rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"><span class="i18n" data-zh="極快" data-en="Ultra">極快</span></button>
-            </div>
-          </div>
-          <div class="pt-1 border-t border-slate-100">
-            <label class="flex items-center gap-1.5 cursor-pointer text-xs text-slate-600 hover:text-slate-900">
-              <input id="chk-startzero" type="checkbox" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5">
-              <span class="i18n" data-zh="圖表從時間 0 開始完整紀錄" data-en="Record chart strictly from time 0">圖表從時間 0 開始完整紀錄</span>
-            </label>
-          </div>
-        </div>
-
-      </div>
+    </div>
+    <div class="topbar-tools">
+      <button class="panel-toggle-btn" id="btn-toggle-play" title="播放/暫停"><span id="play-icon">▶</span> <span id="play-text">播放</span></button>
+      <button class="panel-toggle-btn" id="btn-reset" title="重置"><span>↺</span> <span class="i18n" data-zh="重置" data-en="Reset">重置</span></button>
+      <button class="panel-toggle-btn" id="btn-fullscreen" title="全螢幕"><span id="fs-icon">⛶</span></button>
+      <button class="panel-toggle-btn accent" id="btn-lang" title="Language / 語言">EN</button>
+      <button class="panel-toggle-btn" id="btn-toggle-right" title="資訊面板"><span>📊</span> <span class="i18n" data-zh="資訊" data-en="Info">資訊</span></button>
     </div>
   </div>
 
-  <script>
-    lucide.createIcons();
+  <div id="main">
 
+    <div id="left-panel">
+      <div class="card">
+        <div class="card-header">⚙️ <span class="i18n" data-zh="核心參數控制" data-en="Core Parameters">核心參數控制</span></div>
+        <div class="card-body">
+          <div class="slider-row">
+            <div class="slider-head"><label class="i18n" data-zh="電壓 / 電流方向 (V)" data-en="Voltage / Current (V)">電壓 / 電流方向 (V)</label><span class="val" id="val-v">3.0 V</span></div>
+            <input id="slider-v" type="range" min="-5" max="5" step="0.1" value="3">
+            <button class="dir-btn swap-btn" id="btn-swap-v">⇄ <span class="i18n" data-zh="對調電壓方向" data-en="Swap Voltage">對調電壓方向</span></button>
+          </div>
+          <div class="slider-row">
+            <div class="slider-head"><label class="i18n" data-zh="磁場強度與方向 (B)" data-en="B-Field Strength / Dir (B)">磁場強度與方向 (B)</label><span class="val" id="val-b">3.0 T</span></div>
+            <input id="slider-b" type="range" min="-5" max="5" step="0.1" value="3">
+            <button class="dir-btn swap-btn" id="btn-swap-b">⇄ <span class="i18n" data-zh="對調磁場方向" data-en="Swap Field">對調磁場方向</span></button>
+          </div>
+          <div class="slider-row">
+            <div class="slider-head"><label class="i18n" data-zh="負載扭矩 (阻力)" data-en="Load Torque (Resistance)">負載扭矩 (阻力)</label><span class="val" id="val-load">0.0</span></div>
+            <input id="slider-load" type="range" min="0" max="6" step="0.1" value="0">
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">🔄 <span class="i18n" data-zh="換向裝置 / 電源" data-en="Commutation / Source">換向裝置 / 電源</span></div>
+        <div class="card-body">
+          <div class="mode-label i18n" data-zh="轉子接電方式" data-en="Rotor Contacts">轉子接電方式</div>
+          <div class="dir-btn-group" id="ring-group">
+            <button class="dir-btn active" id="btn-ring-commutator"><span class="i18n" data-zh="換向器" data-en="Commutator">換向器</span></button>
+            <button class="dir-btn" id="btn-ring-slip"><span class="i18n" data-zh="滑環" data-en="Slip Ring">滑環</span></button>
+          </div>
+          <div id="source-row" class="panel-hidden" style="margin-top:12px;">
+            <div class="mode-label i18n" data-zh="電源類型" data-en="Power Source">電源類型</div>
+            <div class="dir-btn-group" id="source-group">
+              <button class="dir-btn active" id="btn-src-dc">DC</button>
+              <button class="dir-btn" id="btn-src-ac">AC ~</button>
+            </div>
+          </div>
+          <div id="ring-hint" class="formula-desc i18n" style="margin-top:10px;"
+               data-zh="換向器：每半圈機械反相 → 連續轉動。滑環 + DC：電流不反相 → 線圈來回擺動。滑環 + AC：電源同步反相 → 連續轉動。"
+               data-en="Commutator: mechanical half-turn reversal → continuous spin. Slip ring + DC: no reversal → the coil just oscillates. Slip ring + AC: source reverses in sync → continuous spin.">換向器：每半圈機械反相 → 連續轉動。滑環 + DC：電流不反相 → 線圈來回擺動。滑環 + AC：電源同步反相 → 連續轉動。</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">👀 <span class="i18n" data-zh="視覺顯示設定" data-en="Visual Settings">視覺顯示設定</span></div>
+        <div class="card-body">
+          <div class="toggle-row" data-toggle="showLabels"><div class="toggle-track on"><div class="toggle-thumb"></div></div><span class="i18n" data-zh="ABCD 節點標記" data-en="ABCD Node Labels">ABCD 節點標記</span></div>
+          <div class="toggle-row" data-toggle="colorByPolarity"><div class="toggle-track on"><div class="toggle-thumb"></div></div><span class="i18n" data-zh="極性動態著色" data-en="Dynamic Polarity Color">極性動態著色</span></div>
+          <div class="toggle-row" data-toggle="showForce"><div class="toggle-track on"><div class="toggle-thumb"></div></div><span class="i18n" data-zh="磁力向量箭頭 (F)" data-en="Force Vectors (F)">磁力向量箭頭 (F)</span></div>
+          <div class="toggle-row" data-toggle="showBField"><div class="toggle-track on"><div class="toggle-thumb"></div></div><span class="i18n" data-zh="磁場線分佈 (B)" data-en="B-Field Lines (B)">磁場線分佈 (B)</span></div>
+          <div class="toggle-row" data-toggle="showCurrentArrows"><div class="toggle-track"><div class="toggle-thumb"></div></div><span class="i18n" data-zh="電流方向箭頭 (I)" data-en="Current Arrows (I)">電流方向箭頭 (I)</span></div>
+          <div class="toggle-row" data-toggle="showCurrentDots"><div class="toggle-track on"><div class="toggle-thumb"></div></div><span class="i18n" data-zh="動態電流粒子" data-en="Dynamic Current Particles">動態電流粒子</span></div>
+          <div class="toggle-row" data-toggle="showBattery"><div class="toggle-track on"><div class="toggle-thumb"></div></div><span class="i18n" data-zh="顯示外電路與直流電源" data-en="Show External Circuit & DC Power">顯示外電路與直流電源</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">⏱️ <span class="i18n" data-zh="速度與紀錄" data-en="Speed & Recording">速度與紀錄</span></div>
+        <div class="card-body">
+          <div class="mode-label i18n" data-zh="模擬運行速度" data-en="Simulation Speed">模擬運行速度</div>
+          <div class="dir-btn-group" id="speed-group">
+            <button class="dir-btn" id="btn-sm-0.25">0.25×</button>
+            <button class="dir-btn" id="btn-sm-0.5">0.5×</button>
+            <button class="dir-btn active" id="btn-sm-1">1.0×</button>
+            <button class="dir-btn" id="btn-sm-2">2.0×</button>
+          </div>
+          <div class="mode-label i18n" data-zh="電流粒子速度" data-en="Particle Speed" style="margin-top:12px;">電流粒子速度</div>
+          <div class="dir-btn-group" id="pspeed-group">
+            <button class="dir-btn" id="btn-ps-0.5"><span class="i18n" data-zh="慢" data-en="Slow">慢</span></button>
+            <button class="dir-btn active" id="btn-ps-1"><span class="i18n" data-zh="中" data-en="Med">中</span></button>
+            <button class="dir-btn" id="btn-ps-2"><span class="i18n" data-zh="快" data-en="Fast">快</span></button>
+            <button class="dir-btn" id="btn-ps-4"><span class="i18n" data-zh="極快" data-en="Ultra">極快</span></button>
+          </div>
+          <div class="toggle-row" data-toggle="startFromZero" style="margin-top:12px;"><div class="toggle-track"><div class="toggle-thumb"></div></div><span class="i18n" data-zh="圖表從時間 0 完整紀錄" data-en="Record chart from time 0">圖表從時間 0 完整紀錄</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="canvas-wrap">
+      <div id="3d-viewport">
+        <div id="status-badge">
+          <div class="sb-title i18n" data-zh="即時狀態監測" data-en="Live Status Monitor">即時狀態監測</div>
+          <div class="sb-row"><span class="i18n" data-zh="旋轉角度" data-en="Angle">旋轉角度</span><span class="sb-val" id="live-angle" style="color:#fbbf24;">0.0°</span></div>
+          <div class="sb-row"><span class="i18n" data-zh="實時力矩" data-en="Torque">實時力矩</span><span class="sb-val" id="live-torque" style="color:#f472b6;">0.00 N·m</span></div>
+          <div class="sb-row"><span class="i18n" data-zh="轉速" data-en="Speed">轉速</span><span class="sb-val" id="live-rpm" style="color:#22d3ee;">0.0 RPM</span></div>
+        </div>
+        <div id="hint" class="i18n" data-zh="🖱 拖曳旋轉視角 · 滾輪縮放" data-en="🖱 Drag to rotate · Scroll to zoom">🖱 拖曳旋轉視角 · 滾輪縮放</div>
+        <div class="zoom-ctrl">
+          <button id="btn-zoom-in" title="放大">＋</button>
+          <button id="btn-zoom-reset" title="重設縮放">⟳</button>
+          <button id="btn-zoom-out" title="縮小">－</button>
+        </div>
+        <div class="orbit-center">
+          <div id="3d-world" class="preserve-3d" style="transform: rotateX(-20deg) rotateY(-35deg);"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="right-panel">
+      <div class="formula-box">
+        <h4>📐 <span class="i18n" data-zh="馬達力矩公式" data-en="Motor Torque">馬達力矩公式</span></h4>
+        <div class="formula">$$\tau = B\,I\,L\,\cos\theta$$</div>
+        <div class="formula-desc i18n" data-zh="換向器每半圈反轉電流，使力矩恆為正（已整流）；轉速由力矩與摩擦、負載、反電動勢共同決定。" data-en="The commutator reverses current each half-turn so torque stays positive (rectified); speed is set by torque vs. friction, load and back-EMF.">換向器每半圈反轉電流，使力矩恆為正（已整流）；轉速由力矩與摩擦、負載、反電動勢共同決定。</div>
+      </div>
+
+      <div class="formula-box">
+        <h4>📈 <span class="i18n" data-zh="實時力矩圖" data-en="Live Torque Chart">實時力矩圖</span></h4>
+        <canvas id="torque-canvas"></canvas>
+      </div>
+
+      <div class="formula-box">
+        <h4>🔄 <span class="i18n" data-zh="換向器 vs 滑環（匯電環）" data-en="Commutator vs Slip Ring">換向器 vs 滑環（匯電環）</span></h4>
+        <div class="step-row"><span class="step-num" style="background:#0ea5e9;">A</span><span class="i18n" data-zh="<b>換向器 + DC</b>：分裂環每半圈機械式反轉線圈電流，力矩恆同向 → <b>連續轉動</b>。" data-en="<b>Commutator + DC</b>: the split ring mechanically reverses the coil current every half-turn, so torque stays one-way → <b>continuous rotation</b>."><b>換向器 + DC</b>：分裂環每半圈機械式反轉線圈電流，力矩恆同向 → <b>連續轉動</b>。</span></div>
+        <div class="step-row"><span class="step-num" style="background:#ef4444;">B</span><span class="i18n" data-zh="<b>滑環 + DC</b>：連續環讓電流方向固定不反轉，過 90° 後力矩反向 → 線圈只能<b>來回擺動</b>，停在平衡點，無法連續轉動。" data-en="<b>Slip ring + DC</b>: continuous rings keep the current direction fixed; past 90° the torque reverses → the coil merely <b>oscillates</b> and settles, it cannot spin continuously."><b>滑環 + DC</b>：連續環讓電流方向固定不反轉，過 90° 後力矩反向 → 線圈只能<b>來回擺動</b>，停在平衡點，無法連續轉動。</span></div>
+        <div class="step-row"><span class="step-num" style="background:#22c55e;">C</span><span class="i18n" data-zh="<b>滑環 + AC</b>：電源在外部每半圈同步反相，取代換向器的機械反相 → 恢復<b>連續轉動</b>（此為理想同步化示意）。" data-en="<b>Slip ring + AC</b>: the supply reverses in sync every half-turn, replacing the commutator's mechanical reversal → <b>continuous rotation</b> returns (idealized synchronous case)."><b>滑環 + AC</b>：電源在外部每半圈同步反相，取代換向器的機械反相 → 恢復<b>連續轉動</b>（此為理想同步化示意）。</span></div>
+      </div>
+
+      <div class="formula-box">
+        <h4>📖 <span class="i18n" data-zh="工作原理" data-en="How It Works">工作原理</span></h4>
+        <div class="step-row"><span class="step-num" style="background:#ec4899;">1</span><span class="i18n" data-zh="<b>磁力 F = B·I·L</b>：通電導線在磁場中受力，力的方向與電流、磁場互相垂直。" data-en="<b>Force F = B·I·L</b>: a current-carrying wire in a magnetic field feels a force perpendicular to both current and field."><b>磁力 F = B·I·L</b>：通電導線在磁場中受力，力的方向與電流、磁場互相垂直。</span></div>
+        <div class="step-row"><span class="step-num" style="background:#6366f1;">2</span><span class="i18n" data-zh="<b>弗萊明左手定則</b>：食指 = 磁場 (B)、中指 = 電流 (I)、拇指 = 受力 / 運動方向。" data-en="<b>Fleming's Left-Hand Rule</b>: first finger = field (B), second finger = current (I), thumb = force / motion."><b>弗萊明左手定則</b>：食指 = 磁場 (B)、中指 = 電流 (I)、拇指 = 受力 / 運動方向。</span></div>
+        <div class="step-row"><span class="step-num" style="background:#10b981;">3</span><span class="i18n" data-zh="<b>換向器 + 碳刷</b>：每半圈反轉線圈電流，使力矩始終同向（因此力矩圖恆為正）。" data-en="<b>Commutator + brushes</b>: reverse the coil current every half turn so the torque always drives one way (hence the torque chart stays positive)."><b>換向器 + 碳刷</b>：每半圈反轉線圈電流，使力矩始終同向（因此力矩圖恆為正）。</span></div>
+        <div class="step-row"><span class="step-num" style="background:#f59e0b;">4</span><span class="i18n" data-zh="<b>死點 (90° / 270°)</b>：力矩瞬間為 0，靠轉動慣量帶過。" data-en="<b>Dead spot (90° / 270°)</b>: torque is momentarily zero; rotational inertia carries the coil through."><b>死點 (90° / 270°)</b>：力矩瞬間為 0，靠轉動慣量帶過。</span></div>
+        <div class="step-row"><span class="step-num" style="background:#06b6d4;">5</span><span class="i18n" data-zh="<b>反電動勢</b>：轉速上升使反電動勢增大、電流下降，最終達到穩態轉速；增加負載則轉速下降、電流回升。" data-en="<b>Back-EMF</b>: as speed rises, back-EMF grows and current falls until a steady speed is reached; adding load lowers the speed and raises the current."><b>反電動勢</b>：轉速上升使反電動勢增大、電流下降，最終達到穩態轉速；增加負載則轉速下降、電流回升。</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
     // --- 多語言支援邏輯 ---
     let currentLang = 'zh';
     const dynI18n = {
       hide_ctrl: { zh: "隱藏控制", en: "Hide Ctrl" },
       show_ctrl: { zh: "顯示控制", en: "Show Ctrl" },
-      fs_block: { zh: "全螢幕遭阻擋：", en: "Fullscreen blocked: " }
+      fs_block: { zh: "全螢幕遭阻擋：", en: "Fullscreen blocked: " },
+      play: { zh: "播放", en: "Play" },
+      pause: { zh: "暫停", en: "Pause" }
     };
 
     function updateLangUI() {
@@ -240,6 +350,7 @@
       });
       document.getElementById('text-toggle-controls').innerText = isPanelVisible ? dynI18n.hide_ctrl[currentLang] : dynI18n.show_ctrl[currentLang];
       document.getElementById('btn-lang').innerText = currentLang === 'zh' ? 'EN' : '中';
+      updatePlayBtnUI();
     }
 
     document.getElementById('btn-lang').onclick = () => {
@@ -248,12 +359,29 @@
     };
     // ----------------------
 
+    // 物理常數（調校使預設 v=3,b=3 的穩態轉速接近原本手感 ≈ 9°/ms 等級）
+    // 穩態時 tDrive ≈ cFric*omega → omega_ss ≈ Kt*I*b / cFric，I ≈ v/R（反電動勢抵消後）
+    const PHYS = {
+      J: 0.4,             // 轉動慣量（越大加速越慢）
+      R: 1.0,             // 電樞電阻
+      Ke: 0.02,           // 反電動勢常數（emf = Ke·ω）
+      Kt: 0.56,           // 力矩常數（tDrive = Kt·I·|B|·|cosθ|）
+      cFric: 0.05,        // 黏滯摩擦係數
+      LOAD: 0.6,          // 負載扭矩滑桿換算係數
+      TORQUE_DISPLAY: 5   // 力矩顯示縮放（讓圖表落在 0~80 區間）
+    };
+    // ω 以「度/秒」為單位；角度積分 angle += ω·dt(秒)
+
     let state = {
-      v: 3.0, b: 3.0, isPlaying: false, showLabels: true, colorByPolarity: true,
+      v: 3.0, b: 3.0, load: 0, isPlaying: false, showLabels: true, colorByPolarity: true,
       showForce: true, showBField: true, showCurrentArrows: false, showCurrentDots: true,
       showBattery: true, startFromZero: false, speedMultiplier: 1.0, particleSpeed: 1.0,
-      angle: 0, extProgress: 0, coilProgress: 0, viewAngle: { x: -20, y: -35 }, chartData: [],
-      lastBDir: null, lastVPos: null
+      angle: 0, omega: 0, current: 0, extProgress: 0, coilProgress: 0,
+      viewAngle: { x: -20, y: -35 }, chartData: [],
+      lastBDir: null, lastVPos: null,
+      ringType: 'commutator',   // 'commutator'（分裂環換向器）| 'slip'（連續滑環 / 匯電環）
+      acMode: false,            // 滑環下電源：false = DC、true = AC（與轉子同步反相）
+      zoom: 1                   // 視角縮放（0.4–2.8）
     };
 
     let lastFrameTime = null;
@@ -268,6 +396,7 @@
     const canvas = document.getElementById('torque-canvas');
     const liveAngleText = document.getElementById('live-angle');
     const liveTorqueText = document.getElementById('live-torque');
+    const liveRpmText = document.getElementById('live-rpm');
 
     // ==========================================
     // 核心工具：產生高效靜態 3D 節點
@@ -289,6 +418,14 @@
       let segments = 12, thick = 4, angleStep = 150/segments, R = r - thick/2;
       let w = 2 * R * Math.tan((Math.PI/180)*(angleStep/2)), html = `<div id="${id}" class="absolute preserve-3d" style="transform:${transform};">`;
       for(let i=0; i<segments; i++) html += createBoxHTML({w: w+0.6, h: thick, d: d, color: color, transform: `rotateZ(${15 + i*angleStep + angleStep/2}deg) translateY(${-R}px)`, faceClass: 'transition-colors duration-150'});
+      return html + `</div>`;
+    }
+
+    // 連續滑環（匯電環）：完整 360° 環，與換向器不同——無間隙、不換向
+    function createFullRingHTML(id, r, d, color, transform) {
+      let segments = 24, thick = 4, angleStep = 360/segments, R = r - thick/2;
+      let w = 2 * R * Math.tan((Math.PI/180)*(angleStep/2)), html = `<div id="${id}" class="absolute preserve-3d" style="transform:${transform};">`;
+      for(let i=0; i<segments; i++) html += createBoxHTML({w: w+0.6, h: thick, d: d, color: color, transform: `rotateZ(${i*angleStep + angleStep/2}deg) translateY(${-R}px)`, faceClass: 'transition-colors duration-150'});
       return html + `</div>`;
     }
 
@@ -343,6 +480,9 @@
       html += `<div id="el_b_lines" class="absolute preserve-3d"></div>`;
       html += createBrushHTML('el_brush_l', 15, 22, 5, '#64748b', 'translate3d(0,0,125px)', true);
       html += createBrushHTML('el_brush_r', 15, 22, 5, '#64748b', 'translate3d(0,0,125px)', false);
+      // 滑環專用碳刷（靜止）：每環一支，皆從底部接觸（預設隱藏）
+      html += createBrushHTML('el_slipbrush_1', 15, 12, 5, '#64748b', 'translate3d(0,0,118px)', true);
+      html += createBrushHTML('el_slipbrush_2', 15, 12, 5, '#64748b', 'translate3d(0,0,150px)', true);
       
       // 極性動態標籤 (將安全地放在下方)
       html += `<div id="el_pol_l" class="absolute preserve-3d"></div><div id="el_pol_r" class="absolute preserve-3d"></div>`;
@@ -379,7 +519,15 @@
       html += createBoxHTML({id:'el_coil_da4', w:8, h:8, d:38, color:'#d97706', transform:'translate3d(15px,0,100px)', faceClass:cFace});
       html += createHalfRingHTML('el_ring_l', 14, 34, '#d97706', 'translate3d(0,0,125px) rotateZ(180deg)');
       html += createHalfRingHTML('el_ring_r', 14, 34, '#d97706', 'translate3d(0,0,125px)');
-      
+      // 連續滑環：兩條沿軸向明顯分開的完整環（皆位於線圈端平面 z≈119 前方），各接一個線圈端（預設隱藏，隨轉子旋轉）
+      html += createFullRingHTML('el_slip_l', 14, 12, '#d97706', 'translate3d(0,0,130px)');  // 近環 ← 線圈端 A
+      html += createFullRingHTML('el_slip_r', 14, 12, '#d97706', 'translate3d(0,0,155px)');  // 遠環 ← 線圈端 D
+      // 滑環專用引線（只在滑環模式顯示）：A 端短接近環；D 端在近環之前先向外撐到半徑 22、軸向跨過近環、再接入遠環
+      html += createBoxHTML({id:'el_slipwire_a',  w:8,  h:8, d:16, color:'#d97706', transform:'translate3d(-15px,0,125px)', faceClass:cFace});
+      html += createBoxHTML({id:'el_slipwire_d1', w:12, h:8, d:8,  color:'#d97706', transform:'translate3d(18.5px,0,119px)', faceClass:cFace});
+      html += createBoxHTML({id:'el_slipwire_d2', w:8,  h:8, d:38, color:'#d97706', transform:'translate3d(22px,0,137px)', faceClass:cFace});
+      html += createBoxHTML({id:'el_slipwire_d3', w:12, h:8, d:8,  color:'#d97706', transform:'translate3d(18px,0,155px)', faceClass:cFace});
+
       // ABCD 標籤
       html += createLabelStaticHTML('el_lbl_a', 'A', 'translate3d(-78px,0,88px)', 'bg-slate-800 border-orange-500');
       html += createLabelStaticHTML('el_lbl_b', 'B', 'translate3d(-78px,0,-88px)', 'bg-slate-800 border-emerald-500');
@@ -397,7 +545,7 @@
       world.innerHTML = html;
       
       // 快取所有 DOM 節點，日後 100% 只靠 JS 更新 CSS，消除效能卡頓
-      let ids = ['mag_left','mag_right','b_lines','brush_l','brush_r','pol_l','pol_r','circuit','battery_wrap','rotor','coil_ab','coil_bc','coil_cd','coil_da1','coil_da2','coil_da3','coil_da4','ring_l','ring_r','lbl_a','lbl_b','lbl_c','lbl_d','lbl_a_inner','lbl_b_inner','lbl_c_inner','lbl_d_inner','arr_cur_l','arr_cur_r','arr_f1_rot','arr_f2_rot','arr_f1','arr_f2'];
+      let ids = ['mag_left','mag_right','b_lines','brush_l','brush_r','pol_l','pol_r','circuit','battery_wrap','rotor','coil_ab','coil_bc','coil_cd','coil_da1','coil_da2','coil_da3','coil_da4','ring_l','ring_r','slip_l','slip_r','slipwire_a','slipwire_d1','slipwire_d2','slipwire_d3','slipbrush_1','slipbrush_2','lbl_a','lbl_b','lbl_c','lbl_d','lbl_a_inner','lbl_b_inner','lbl_c_inner','lbl_d_inner','arr_cur_l','arr_cur_r','arr_f1_rot','arr_f2_rot','arr_f1','arr_f2'];
       for(let i=1; i<=6; i++) ids.push('ext_dots_'+i);
       for(let i=1; i<=7; i++) ids.push('coil_dots_'+i);
       ids.forEach(id => { dom[id] = document.getElementById('el_' + id); });
@@ -463,15 +611,44 @@
     }
 
     // ==========================================
+    // 物理模型：換向死區 + 電流 / 整流驅動力矩
+    // ==========================================
+    // 換向器切換死區（線圈平面與磁場垂直，碳刷跨接兩換向片）
+    function inCommutationZone(angle) {
+      return (angle > 82 && angle < 98) || (angle > 262 && angle < 278);
+    }
+
+    // 依目前狀態計算電流 I 與驅動力矩 tMag
+    //  - 整流模式（換向器 / 滑環+AC）：geo = |cosθ| → tMag 恆正 → 連續轉動
+    //  - 滑環 + DC：geo = cosθ（帶符號）→ tMag 過 90° 後變號 → 線圈來回擺動
+    // s = 轉向；反電動勢 (Ke·ω) 隨轉速上升而抵消電流
+    function computePhysics() {
+      const cosT = Math.cos(state.angle * Math.PI / 180);   // 帶符號幾何因子
+      const s = Math.sign(state.v * state.b);
+      // 整流：換向器（機械反相）或 滑環+AC（電源同步反相）
+      const rectified = (state.ringType === 'commutator') || (state.ringType === 'slip' && state.acMode);
+      // 換向死區僅分裂環有（有間隙）；滑環連續接觸無死區
+      const commutating = state.ringType === 'commutator' && inCommutationZone(state.angle);
+      let I = (Math.abs(state.v) - PHYS.Ke * (state.omega * s)) / PHYS.R;
+      if (I < 0) I = 0;                                  // 此簡化模型不做再生制動
+      const geo = rectified ? (commutating ? 0 : Math.abs(cosT)) : cosT;
+      const tMag = PHYS.Kt * I * Math.abs(state.b) * geo; // 整流時 ≥0；滑環+DC 時帶符號
+      return { geo, s, I, tMag, cosT, rectified, commutating };
+    }
+
+    // ==========================================
     // 3D 核心渲染機制 (完全消除掉幀卡頓)
     // ==========================================
     function render3D() {
-      world.style.transform = `rotateX(${state.viewAngle.x}deg) rotateY(${state.viewAngle.y}deg)`;
+      world.style.transform = `scale(${state.zoom}) rotateX(${state.viewAngle.x}deg) rotateY(${state.viewAngle.y}deg)`;
 
       let isFlipped = state.angle > 90 && state.angle < 270;
-      let isCommutating = (state.angle > 82 && state.angle < 98) || (state.angle > 262 && state.angle < 278);
+      // 滑環+DC 電流方向固定不反轉；換向器/滑環+AC 每半圈反相（機械/電氣）
+      let reverseNow = (state.ringType === 'commutator' || state.acMode) ? isFlipped : false;
+      // 只有分裂環有中性換向死區；滑環連續接觸無死區
+      let isNeutral = state.ringType === 'commutator' && inCommutationZone(state.angle);
       let mDir = state.v > 0 ? 1 : (state.v < 0 ? -1 : 0);
-      let wire1Current = mDir * (isFlipped ? -1 : 1);
+      let wire1Current = mDir * (reverseNow ? -1 : 1);
       let f1Dir = -wire1Current * (state.b >= 0 ? 1 : -1);
       let f2Dir = wire1Current * (state.b >= 0 ? 1 : -1);
 
@@ -479,10 +656,10 @@
       let leftBrush = state.v > 0 ? posC : (state.v < 0 ? negC : neuC);
       let rightBrush = state.v > 0 ? negC : (state.v < 0 ? posC : neuC);
 
-      let cAB = state.colorByPolarity ? (isCommutating ? neuC : (!isFlipped ? leftBrush : rightBrush)) : "#d97706";
-      let cCD = state.colorByPolarity ? (isCommutating ? neuC : (!isFlipped ? rightBrush : leftBrush)) : "#d97706";
-      let cBC = state.colorByPolarity ? (isCommutating ? neuC : "#22c55e") : "#d97706";
-      let cDA = state.colorByPolarity ? (isCommutating ? neuC : "#a855f7") : "#d97706";
+      let cAB = state.colorByPolarity ? (isNeutral ? neuC : (!reverseNow ? leftBrush : rightBrush)) : "#d97706";
+      let cCD = state.colorByPolarity ? (isNeutral ? neuC : (!reverseNow ? rightBrush : leftBrush)) : "#d97706";
+      let cBC = state.colorByPolarity ? (isNeutral ? neuC : "#22c55e") : "#d97706";
+      let cDA = state.colorByPolarity ? (isNeutral ? neuC : "#a855f7") : "#d97706";
 
       // 磁鐵更新
       updateBoxColor(dom.mag_left, state.b>=0?posC:negC); updateBoxColor(dom.mag_right, state.b>=0?negC:posC);
@@ -513,8 +690,11 @@
       // 電池與外部電路
       dom.circuit.style.display = state.showBattery ? 'block' : 'none';
       if(state.showBattery) {
-        // 電池翻轉機制 (靠 CSS Transition 自動平滑旋轉)
-        dom.battery_wrap.style.transform = `translate3d(0,0,237px) rotateY(${state.v < 0 ? 180 : 0}deg)`;
+        // 電池翻轉機制 (靠 CSS Transition 自動平滑旋轉)。
+        // 滑環+AC：電源每半圈同步反相 → 電池跟著翻轉，呈現「外部交流反相」
+        const acFlip = (state.ringType === 'slip' && state.acMode) && reverseNow;
+        const batFlipped = (state.v < 0) !== acFlip;   // XOR：電壓極性 ⊕ AC 反相
+        dom.battery_wrap.style.transform = `translate3d(0,0,237px) rotateY(${batFlipped ? 180 : 0}deg)`;
         
         // 粒子更新
         if(state.showCurrentDots && Math.abs(state.v) > 0) {
@@ -527,6 +707,18 @@
       updateBoxColor(dom.coil_ab, cAB); updateBoxColor(dom.coil_bc, cBC); updateBoxColor(dom.coil_cd, cCD);
       updateBoxColor(dom.coil_da1, cDA); updateBoxColor(dom.coil_da2, cDA); updateBoxColor(dom.coil_da3, cDA); updateBoxColor(dom.coil_da4, cDA);
       updateBoxColor(dom.ring_l, cAB); updateBoxColor(dom.ring_r, cCD);
+      // 滑環：近環+A 引線用 cAB，遠環+D 引線用 cCD
+      updateBoxColor(dom.slip_l, cAB); updateBoxColor(dom.slip_r, cCD);
+      updateBoxColor(dom.slipwire_a, cAB);
+      updateBoxColor(dom.slipwire_d1, cCD); updateBoxColor(dom.slipwire_d2, cCD); updateBoxColor(dom.slipwire_d3, cCD);
+      updateBoxColor(dom.slipbrush_1, leftBrush); updateBoxColor(dom.slipbrush_2, rightBrush);
+      // 換向器（分裂環 + 上下兩刷）與連續滑環（兩環各一刷 + 各自引線）顯示切換
+      let showSlip = state.ringType === 'slip';
+      dom.ring_l.style.display = dom.ring_r.style.display = showSlip ? 'none' : 'block';
+      dom.brush_l.style.display = dom.brush_r.style.display = showSlip ? 'none' : 'block';
+      dom.slip_l.style.display = dom.slip_r.style.display = showSlip ? 'block' : 'none';
+      dom.slipwire_a.style.display = dom.slipwire_d1.style.display = dom.slipwire_d2.style.display = dom.slipwire_d3.style.display = showSlip ? 'block' : 'none';
+      dom.slipbrush_1.style.display = dom.slipbrush_2.style.display = showSlip ? 'block' : 'none';
 
       // 看板旋轉抵銷
       if(state.showLabels) {
@@ -537,12 +729,12 @@
       } else { ['a','b','c','d'].forEach(lbl => dom['lbl_'+lbl].style.display = 'none'); }
 
       // 轉子粒子
-      if(state.showCurrentDots && Math.abs(state.v) > 0 && !isCommutating) {
+      if(state.showCurrentDots && Math.abs(state.v) > 0 && !isNeutral) {
         for(let i=1; i<=7; i++) { dom['coil_dots_'+i].style.display='block'; updateDotsTransform('coil_dots_'+i, state.coilProgress); }
       } else { for(let i=1; i<=7; i++) dom['coil_dots_'+i].style.display='none'; }
 
       // 向量箭頭更新 (全靠 Transform，極致順暢)
-      if(Math.abs(state.v) > 0 && !isCommutating) {
+      if(Math.abs(state.v) > 0 && !isNeutral) {
         if(state.showCurrentArrows) {
           dom.arr_cur_l.style.display = 'block'; dom.arr_cur_r.style.display = 'block';
           dom.arr_cur_l.style.transform = `translate3d(0,-18px,${-wire1Current>0?-18:18}px) rotateX(${-wire1Current>0?90:-90}deg)`;
@@ -569,17 +761,19 @@
       const pad = { top: 20, right: 15, bottom: 25, left: 35 }, cW = w - pad.left - pad.right, cH = h - pad.top - pad.bottom;
       ctx.clearRect(0, 0, w, h); if(cW <= 0 || cH <= 0) return;
 
-      const yMax = 30, yMin = -30, yRange = yMax - yMin;
-      ctx.strokeStyle = '#f1f5f9'; ctx.lineWidth = 1;
-      [-30, -15, 0, 15, 30].forEach(tick => {
+      // 力矩圖 Y 軸：整流模式（換向器 / 滑環+AC）恆正 0~80；
+      // 滑環+DC 力矩帶符號會擺動 → 改用對稱 -80~80、含 0 基線
+      const signed = state.ringType === 'slip' && !state.acMode;
+      const yMax = 80, yMin = signed ? -80 : 0, yRange = yMax - yMin;
+      const ticks = signed ? [-80, -40, 0, 40, 80] : [0, 20, 40, 60, 80];
+      ctx.font = '10px sans-serif';
+      ticks.forEach(tick => {
         const y = pad.top + cH - ((tick - yMin) / yRange) * cH;
+        if(signed && tick === 0) { ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 1.5; }
+        else { ctx.strokeStyle = '#f1f5f9'; ctx.lineWidth = 1; }
         ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + cW, y); ctx.stroke();
-        ctx.fillStyle = '#94a3b8'; ctx.font = '10px sans-serif'; ctx.fillText(tick, pad.left - 24, y + 3);
+        ctx.fillStyle = '#94a3b8'; ctx.fillText(tick, pad.left - 24, y + 3);
       });
-
-      const yZero = pad.top + cH - ((0 - yMin) / yRange) * cH;
-      ctx.strokeStyle = '#f87171'; ctx.lineWidth = 1.2; ctx.setLineDash([4, 4]);
-      ctx.beginPath(); ctx.moveTo(pad.left, yZero); ctx.lineTo(pad.left + cW, yZero); ctx.stroke(); ctx.setLineDash([]);
 
       if(state.chartData.length > 1) {
         ctx.beginPath(); ctx.strokeStyle = '#ec4899'; ctx.lineWidth = 2.5; ctx.lineJoin = 'round';
@@ -603,30 +797,49 @@
     }
 
     // 左下角數據即時更新
-    function updateLiveStatsPanel(currentAngle, currentTorque) {
+    function updateLiveStatsPanel(currentAngle, currentTorque, currentOmega) {
       liveAngleText.innerText = currentAngle.toFixed(1) + "°";
       liveTorqueText.innerText = currentTorque.toFixed(2) + " N·m";
+      // ω (度/秒) → RPM
+      liveRpmText.innerText = (Math.abs(currentOmega) / 360 * 60).toFixed(1) + " RPM";
     }
 
-    // 完美順暢的主動畫循環
+    // 完美順暢的主動畫循環（以力矩驅動轉動 → 真實動力學）
     function loop(timestamp) {
       if (!lastFrameTime) { lastFrameTime = timestamp; requestAnimationFrame(loop); return; }
       let dt = timestamp - lastFrameTime; lastFrameTime = timestamp; if(dt > 100) dt = 16;
 
-      let torque = state.v * state.b * 1.0 * Math.cos(state.angle * Math.PI / 180);
-      if((state.angle > 82 && state.angle < 98) || (state.angle > 262 && state.angle < 278)) torque = 0;
-      updateLiveStatsPanel(state.angle, torque);
+      const phys = computePhysics();
+      state.current = phys.I;
+      // 顯示用力矩：整流後恆正，並反映反電動勢與負載造成的電流變化
+      let torque = phys.tMag * PHYS.TORQUE_DISPLAY;
+      updateLiveStatsPanel(state.angle, torque, state.omega);
 
       if(state.isPlaying) {
-        let speed = state.v * state.b * 0.005 * state.speedMultiplier;
-        state.angle = (state.angle + speed * dt) % 360;
+        const dtp = dt * state.speedMultiplier / 1000; // 積分步長（秒），含時間縮放
+
+        // 牛頓旋轉方程：J·dω/dt = 驅動力矩 − 黏滯摩擦 − 負載
+        const resistDir = Math.abs(state.omega) > 1e-4 ? Math.sign(state.omega) : phys.s;
+        const loadResist = state.load * PHYS.LOAD * resistDir;
+        const tNet = phys.s * phys.tMag - PHYS.cFric * state.omega - loadResist;
+        let newOmega = state.omega + (tNet / PHYS.J) * dtp;
+        // 失速夾制：整流模式下驅動力矩不足以抵抗摩擦+負載時，不讓阻力把馬達倒推過零。
+        // 滑環+DC 為帶符號力矩，須允許 ω 自由過零往復（擺動），故不套用。
+        if(phys.rectified && state.omega !== 0 && Math.sign(newOmega) === -Math.sign(state.omega)
+           && phys.tMag <= (state.load * PHYS.LOAD + PHYS.cFric * Math.abs(state.omega))) {
+          newOmega = 0;
+        }
+        state.omega = newOmega;
+        state.angle = (state.angle + state.omega * dtp) % 360;
         if(state.angle < 0) state.angle += 360;
 
-        let mDir = state.v > 0 ? 1 : (state.v < 0 ? -1 : 0);
-        let isFlipped = state.angle > 90 && state.angle < 270;
-        let coilDir = mDir * (isFlipped ? -1 : 1);
-
-        let pStep = Math.abs(state.v) * 0.00015 * state.speedMultiplier * state.particleSpeed;
+        // 電流粒子：速度依實際電流（反電動勢/負載改變電流時粒子也跟著變）
+        const mDir = state.v > 0 ? 1 : (state.v < 0 ? -1 : 0);
+        const isFlipped = state.angle > 90 && state.angle < 270;
+        // 滑環+DC 電流方向固定不反轉；換向器/滑環+AC 每半圈反相
+        const reverseNow = (state.ringType === 'commutator' || state.acMode) ? isFlipped : false;
+        const coilDir = mDir * (reverseNow ? -1 : 1);
+        let pStep = state.current * 0.00015 * state.speedMultiplier * state.particleSpeed;
         state.extProgress = (state.extProgress + pStep * dt * mDir) % 1; if(state.extProgress < 0) state.extProgress += 1;
         state.coilProgress = (state.coilProgress + pStep * dt * coilDir) % 1; if(state.coilProgress < 0) state.coilProgress += 1;
 
@@ -658,85 +871,107 @@
     const endDrag = (e) => { if(isDragging) { isDragging = false; try{viewport.releasePointerCapture(e.pointerId);}catch(c){} } };
     viewport.onpointerup = endDrag; viewport.onpointercancel = endDrag;
 
+    // 視角縮放：滾輪 + 疊層按鈕
+    const setZoom = (z) => { state.zoom = Math.max(0.4, Math.min(2.8, z)); };
+    viewport.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      setZoom(state.zoom * (e.deltaY < 0 ? 1.1 : 1/1.1));
+    }, { passive: false });
+    document.getElementById('btn-zoom-in').onclick = () => setZoom(state.zoom * 1.15);
+    document.getElementById('btn-zoom-out').onclick = () => setZoom(state.zoom / 1.15);
+    document.getElementById('btn-zoom-reset').onclick = () => setZoom(1);
+
     // --- 完全原生、不卡頓的滑桿控制 ---
-    const sliderV = document.getElementById('slider-v'), sliderB = document.getElementById('slider-b');
-    const valV = document.getElementById('val-v'), valB = document.getElementById('val-b');
-    
+    const sliderV = document.getElementById('slider-v'), sliderB = document.getElementById('slider-b'), sliderLoad = document.getElementById('slider-load');
+    const valV = document.getElementById('val-v'), valB = document.getElementById('val-b'), valLoad = document.getElementById('val-load');
+
     sliderV.addEventListener('input', (e) => { state.v = parseFloat(e.target.value); valV.innerText = state.v.toFixed(1) + " V"; });
     sliderB.addEventListener('input', (e) => { state.b = parseFloat(e.target.value); valB.innerText = state.b.toFixed(1) + " T"; });
+    sliderLoad.addEventListener('input', (e) => { state.load = parseFloat(e.target.value); valLoad.innerText = state.load.toFixed(1); });
 
     document.getElementById('btn-swap-v').onclick = () => { state.v = -state.v; sliderV.value = state.v; valV.innerText = state.v.toFixed(1) + " V"; };
     document.getElementById('btn-swap-b').onclick = () => { state.b = -state.b; sliderB.value = state.b; valB.innerText = state.b.toFixed(1) + " T"; };
 
     // 播放與重置按鈕
-    const btnTogglePlay = document.getElementById('btn-toggle-play'), iconPlay = document.getElementById('icon-play'), iconPause = document.getElementById('icon-pause');
+    const btnTogglePlay = document.getElementById('btn-toggle-play');
+    const playIcon = document.getElementById('play-icon'), playText = document.getElementById('play-text');
     function updatePlayBtnUI() {
-      if(state.isPlaying) {
-        iconPlay.classList.add('hidden'); iconPause.classList.remove('hidden');
-        btnTogglePlay.className = "p-2 rounded-lg shadow-md bg-rose-500 hover:bg-rose-600 text-white transition-colors i18n-title";
-      } else {
-        iconPlay.classList.remove('hidden'); iconPause.classList.add('hidden');
-        btnTogglePlay.className = "p-2 rounded-lg shadow-md bg-emerald-500 hover:bg-emerald-600 text-white transition-colors i18n-title";
-      }
+      playIcon.textContent = state.isPlaying ? '⏸' : '▶';
+      playText.textContent = state.isPlaying ? dynI18n.pause[currentLang] : dynI18n.play[currentLang];
+      btnTogglePlay.classList.toggle('active-play', state.isPlaying);
     }
-    
-    btnTogglePlay.onclick = (e) => { 
+
+    btnTogglePlay.onclick = (e) => {
       e.preventDefault();
-      state.isPlaying = !state.isPlaying; 
-      updatePlayBtnUI(); 
+      state.isPlaying = !state.isPlaying;
+      updatePlayBtnUI();
     };
 
     document.getElementById('btn-reset').onclick = () => {
-      state.angle=0; state.extProgress=0; state.coilProgress=0; state.v=3.0; state.b=3.0; state.isPlaying=false;
+      state.angle=0; state.omega=0; state.current=0; state.extProgress=0; state.coilProgress=0;
+      state.v=3.0; state.b=3.0; state.load=0; state.isPlaying=false;
       state.viewAngle={x:-20,y:-35}; state.chartData=[]; totalSimulatedTime=0;
-      sliderV.value=3.0; sliderB.value=3.0; valV.innerText="3.0 V"; valB.innerText="3.0 T";
-      updatePlayBtnUI(); drawChart();
+      state.ringType='commutator'; state.acMode=false; state.zoom=1;
+      sliderV.value=3.0; sliderB.value=3.0; sliderLoad.value=0;
+      valV.innerText="3.0 V"; valB.innerText="3.0 T"; valLoad.innerText="0.0";
+      syncRingUI(); updatePlayBtnUI(); drawChart();
     };
 
-    // 其他 UI 選單設定
-    document.getElementById('chk-labels').onchange = (e) => state.showLabels = e.target.checked;
-    document.getElementById('chk-polarity').onchange = (e) => state.colorByPolarity = e.target.checked;
-    document.getElementById('chk-force').onchange = (e) => state.showForce = e.target.checked;
-    document.getElementById('chk-bfield').onchange = (e) => state.showBField = e.target.checked;
-    document.getElementById('chk-arrows').onchange = (e) => state.showCurrentArrows = e.target.checked;
-    document.getElementById('chk-dots').onchange = (e) => state.showCurrentDots = e.target.checked;
-    document.getElementById('chk-battery').onchange = (e) => state.showBattery = e.target.checked;
-    document.getElementById('chk-startzero').onchange = (e) => {
-      state.startFromZero = e.target.checked;
-      if (!state.startFromZero && state.chartData.length > 100) state.chartData = state.chartData.slice(-100);
-    };
+    // 顯示項目開關 (toggle-row 樣式，data-toggle = state 欄位)
+    function syncToggle(row) { row.querySelector('.toggle-track').classList.toggle('on', !!state[row.dataset.toggle]); }
+    document.querySelectorAll('.toggle-row[data-toggle]').forEach(row => {
+      const key = row.dataset.toggle;
+      syncToggle(row);
+      row.onclick = () => {
+        state[key] = !state[key];
+        syncToggle(row);
+        if (key === 'startFromZero' && !state.startFromZero && state.chartData.length > 100) state.chartData = state.chartData.slice(-100);
+      };
+    });
 
-    function updateBtnGrp(pid, id) {
-      document.querySelectorAll(`#${pid} button`).forEach(b => {
-        b.className = b.id===id ? (b.classList.contains('btn-ps')?"btn-ps flex-1 py-1 text-xs font-medium rounded-md bg-yellow-500 text-white":"btn-sm flex-1 py-1 text-xs font-medium rounded-md bg-indigo-600 text-white") : (b.classList.contains('btn-ps')?"btn-ps flex-1 py-1 text-xs font-medium rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200":"btn-sm flex-1 py-1 text-xs font-medium rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200");
-      });
+    // 分段選擇按鈕 (.dir-btn) 啟用狀態
+    function setActiveBtn(groupId, btn) {
+      document.querySelectorAll('#' + groupId + ' .dir-btn').forEach(b => b.classList.toggle('active', b === btn));
     }
-    document.querySelectorAll('.btn-sm').forEach(b => b.onclick = () => { state.speedMultiplier = parseFloat(b.id.replace('btn-sm-','')); updateBtnGrp('speed-group', b.id); });
-    document.querySelectorAll('.btn-ps').forEach(b => b.onclick = () => { state.particleSpeed = parseFloat(b.id.replace('btn-ps-','')); updateBtnGrp('pspeed-group', b.id); });
+    document.querySelectorAll('#speed-group .dir-btn').forEach(b => b.onclick = () => { state.speedMultiplier = parseFloat(b.id.replace('btn-sm-','')); setActiveBtn('speed-group', b); });
+    document.querySelectorAll('#pspeed-group .dir-btn').forEach(b => b.onclick = () => { state.particleSpeed = parseFloat(b.id.replace('btn-ps-','')); setActiveBtn('pspeed-group', b); });
 
-    // 面板顯隱控制
+    // 換向裝置：換向器 vs 滑環（滑環才顯示 DC/AC 電源選擇）
+    const sourceRow = document.getElementById('source-row');
+    function syncRingUI() {
+      setActiveBtn('ring-group', document.getElementById(state.ringType === 'slip' ? 'btn-ring-slip' : 'btn-ring-commutator'));
+      setActiveBtn('source-group', document.getElementById(state.acMode ? 'btn-src-ac' : 'btn-src-dc'));
+      sourceRow.classList.toggle('panel-hidden', state.ringType !== 'slip');
+    }
+    document.getElementById('btn-ring-commutator').onclick = () => { state.ringType = 'commutator'; state.acMode = false; syncRingUI(); };
+    document.getElementById('btn-ring-slip').onclick = () => { state.ringType = 'slip'; syncRingUI(); };
+    document.getElementById('btn-src-dc').onclick = () => { state.acMode = false; syncRingUI(); };
+    document.getElementById('btn-src-ac').onclick = () => { state.acMode = true; syncRingUI(); };
+
+    // 左側控制面板顯隱
     let isPanelVisible = true;
     document.getElementById('btn-toggle-controls').onclick = () => {
       isPanelVisible = !isPanelVisible;
-      document.getElementById('control-panel').classList.toggle('hidden', !isPanelVisible);
-      document.getElementById('visual-area').className = isPanelVisible ? "lg:col-span-8 flex flex-col gap-4 transition-all duration-300" : "lg:col-span-12 flex flex-col gap-4 transition-all duration-300";
-      document.getElementById('icon-eye-off').classList.toggle('hidden', !isPanelVisible);
-      document.getElementById('icon-eye').classList.toggle('hidden', isPanelVisible);
+      document.getElementById('left-panel').classList.toggle('panel-hidden', !isPanelVisible);
       document.getElementById('text-toggle-controls').innerText = isPanelVisible ? dynI18n.hide_ctrl[currentLang] : dynI18n.show_ctrl[currentLang];
       setTimeout(drawChart, 120);
     };
 
-    // 全螢幕控制
-    const mainContainer = document.getElementById('main-container');
+    // 右側資訊面板顯隱
+    let isRightVisible = true;
+    document.getElementById('btn-toggle-right').onclick = () => {
+      isRightVisible = !isRightVisible;
+      document.getElementById('right-panel').classList.toggle('panel-hidden', !isRightVisible);
+      setTimeout(drawChart, 120);
+    };
+
+    // 全螢幕控制（整頁）
     document.getElementById('btn-fullscreen').onclick = () => {
-      if(!document.fullscreenElement) { mainContainer.requestFullscreen().catch(err => alert(`${dynI18n.fs_block[currentLang]}${err.message}`)); }
+      if(!document.fullscreenElement) { document.documentElement.requestFullscreen().catch(err => alert(`${dynI18n.fs_block[currentLang]}${err.message}`)); }
       else { document.exitFullscreen(); }
     };
     document.addEventListener('fullscreenchange', () => {
-      let isFS = !!document.fullscreenElement;
-      document.getElementById('icon-maximize').classList.toggle('hidden', isFS);
-      document.getElementById('icon-minimize').classList.toggle('hidden', !isFS);
-      mainContainer.className = isFS ? "w-full h-screen bg-slate-50 p-4 sm:p-6 flex flex-col transition-all duration-300 overflow-y-auto custom-scrollbar" : "w-full max-w-7xl mx-auto bg-slate-50 rounded-xl shadow-lg p-3 sm:p-5 flex flex-col transition-all duration-300";
+      document.getElementById('fs-icon').textContent = document.fullscreenElement ? '🗗' : '⛶';
       setTimeout(drawChart, 150);
     });
 
@@ -744,6 +979,7 @@
 
     // 啟動程式 (建構 HTML 結構後啟動循環)
     initSceneDOM();
+    syncRingUI();
     updatePlayBtnUI();
     drawChart();
     requestAnimationFrame(loop);
