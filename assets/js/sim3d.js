@@ -87,23 +87,31 @@ PhysLab.sim3d = (function () {
      * AmbientLight(0xffffff, 0.82)、主光 DirectionalLight(0xffffff, 0.55) 於 (6,12,8)、
      * 補光 DirectionalLight(0xffffff, 0.25) 於 (-8,4,-6)。
      * @param {THREE.Scene} scene 目標場景
-     * @param {{ambient?:number, key?:number, fill?:number,
-     *          keyPos?:number[], fillPos?:number[]}} [opts] 強度／位置覆寫
-     * @returns {{ambient:THREE.AmbientLight, key:THREE.DirectionalLight,
-     *            fill:THREE.DirectionalLight}} 建立之燈光
+     * @param {{ambient?:number|false, key?:number|false, fill?:number|false,
+     *          keyPos?:number[], fillPos?:number[]}} [opts] 強度／位置覆寫；
+     *          任一項傳 false 則完全略過該燈（不建立零強度燈物件）
+     * @returns {{ambient:?THREE.AmbientLight, key:?THREE.DirectionalLight,
+     *            fill:?THREE.DirectionalLight}} 建立之燈光（略過者為 null）
      */
     function addLabLights(scene, opts) {
         var o = opts || {};
-        var ambient = new THREE.AmbientLight(0xffffff, (o.ambient !== undefined) ? o.ambient : 0.82);
-        scene.add(ambient);
-        var key = new THREE.DirectionalLight(0xffffff, (o.key !== undefined) ? o.key : 0.55);
-        var kp = o.keyPos || [6, 12, 8];
-        key.position.set(kp[0], kp[1], kp[2]);
-        scene.add(key);
-        var fill = new THREE.DirectionalLight(0xffffff, (o.fill !== undefined) ? o.fill : 0.25);
-        var fp = o.fillPos || [-8, 4, -6];
-        fill.position.set(fp[0], fp[1], fp[2]);
-        scene.add(fill);
+        var ambient = null, key = null, fill = null;
+        if (o.ambient !== false) {
+            ambient = new THREE.AmbientLight(0xffffff, (o.ambient !== undefined) ? o.ambient : 0.82);
+            scene.add(ambient);
+        }
+        if (o.key !== false) {
+            key = new THREE.DirectionalLight(0xffffff, (o.key !== undefined) ? o.key : 0.55);
+            var kp = o.keyPos || [6, 12, 8];
+            key.position.set(kp[0], kp[1], kp[2]);
+            scene.add(key);
+        }
+        if (o.fill !== false) {
+            fill = new THREE.DirectionalLight(0xffffff, (o.fill !== undefined) ? o.fill : 0.25);
+            var fp = o.fillPos || [-8, 4, -6];
+            fill.position.set(fp[0], fp[1], fp[2]);
+            scene.add(fill);
+        }
         return { ambient: ambient, key: key, fill: fill };
     }
 
@@ -174,7 +182,8 @@ PhysLab.sim3d = (function () {
         );
 
         var renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        // opts.pixelRatio 可覆寫預設的 min(dpr,2)（少數舊頁不設上限）
+        renderer.setPixelRatio((o.pixelRatio !== undefined) ? o.pixelRatio : Math.min(window.devicePixelRatio, 2));
         renderer.setSize(W, H);
         container.appendChild(renderer.domElement);
 

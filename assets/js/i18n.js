@@ -203,8 +203,8 @@ window.PhysLab = window.PhysLab || {};
     }
 
     /**
-     * 把翻譯套用到 root 底下所有 [data-i18n]（textContent）與
-     * [data-i18n-html]（innerHTML）節點。
+     * 把翻譯套用到 root 底下所有 [data-i18n]（textContent）、
+     * [data-i18n-html]（innerHTML）與 [data-i18n-title]（title 屬性）節點。
      * zh 模式下若 key 查無（t 回傳 key 本身）則跳過，保留頁面原作內容；
      * 字典值不是字串的節點一律跳過。
      * @param {ParentNode} [root=document] 套用範圍
@@ -233,6 +233,16 @@ window.PhysLab = window.PhysLab || {};
             if (typeof val !== 'string') continue;
             if (val === key && api.lang === 'zh') continue;
             node.innerHTML = val;
+        }
+
+        var titleNodes = scope.querySelectorAll('[data-i18n-title]');
+        for (i = 0; i < titleNodes.length; i++) {
+            node = titleNodes[i];
+            key = node.getAttribute('data-i18n-title');
+            val = t(key);
+            if (typeof val !== 'string') continue;
+            if (val === key && api.lang === 'zh') continue;
+            node.setAttribute('title', val);
         }
     }
 
@@ -332,13 +342,18 @@ window.PhysLab = window.PhysLab || {};
             toggleBtn.addEventListener('click', toggle);
         } else {
             var actions = document.querySelector('#topbar .tb-actions');
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.id = 'lang-btn';
+            btn.addEventListener('click', toggle);
             if (actions) {
-                var btn = document.createElement('button');
-                btn.type = 'button';
                 btn.className = 'panel-toggle-btn';
-                btn.id = 'lang-btn';
-                btn.addEventListener('click', toggle);
                 actions.insertBefore(btn, actions.firstChild);
+                toggleBtn = btn;
+            } else if (document.body && !document.body.hasAttribute('data-no-lang')) {
+                // 無 topbar 的頁面（懸浮面板型）→ 右下角浮動切換鈕
+                btn.className = 'pl-floating-lang';
+                document.body.appendChild(btn);
                 toggleBtn = btn;
             }
         }
