@@ -1,346 +1,398 @@
-﻿<!DOCTYPE html>
-<html lang="zh-HK">
+<!DOCTYPE html>
+<html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>水波干涉與繞射模擬器 - HKDSE物理科 (極致自由版)</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <!-- 共用資源（載入順序固定，不可 defer/async）：core → i18n → sim3d -->
+    <link rel="stylesheet" href="../../../assets/css/tokens.css">
+    <link rel="stylesheet" href="../../../assets/css/labgray.css">
+    <script src="../../../assets/js/core.js"></script>
+    <script src="../../../assets/js/i18n.js"></script>
+    <script src="../../../assets/js/sim3d.js"></script>
+
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Microsoft JhengHei', '微軟正黑體', Arial, sans-serif; background: linear-gradient(135deg, #2b5876 0%, #4e4376 100%); overflow: hidden; color: #333; }
-        #container { display: flex; height: 100vh; width: 100vw; overflow: hidden; }
-        #canvas-container { flex: 1; position: relative; min-width: 0; }
-        canvas { display: block; outline: none; }
-        
-        #info { position: absolute; top: 10px; left: 10px; background: rgba(255, 255, 255, 0.95); padding: 15px; border-radius: 10px; font-size: 13px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); max-width: 350px; z-index: 10; pointer-events: none; }
-        #info h2 { margin-bottom: 10px; color: #2b5876; font-size: 18px; pointer-events: auto; }
-        #info p { margin: 5px 0; line-height: 1.5; pointer-events: auto; }
-        
-        #show-panel-btn { position: absolute; top: 15px; right: 15px; z-index: 20; padding: 10px 15px; background: rgba(255, 255, 255, 0.95); color: #2b5876; border: 2px solid #2b5876; border-radius: 8px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.2); transition: all 0.3s; display: none; }
-        #show-panel-btn:hover { background: #2b5876; color: white; }
-        
-        #controls { width: 380px; flex-shrink: 0; background: white; padding: 20px; overflow-y: auto; box-shadow: -2px 0 15px rgba(0,0,0,0.3); z-index: 10; transition: margin-right 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
-        #controls.hidden { margin-right: -380px; }
-        #controls h1 { color: #2b5876; margin-bottom: 15px; font-size: 22px; text-align: center; }
-        
-        details.control-group { margin-bottom: 15px; background: #f4f7f6; border-radius: 8px; border-left: 4px solid #2b5876; transition: all 0.3s ease; }
-        details.control-group.display { border-left-color: #f39c12; }
-        details.control-group.source-group { border-left-color: #8e44ad; }
-        details.control-group.obstacle-group { border-left-color: #c0392b; background: #fdf5f4; }
-        details.control-group summary { padding: 12px; font-size: 15px; font-weight: bold; color: #333; cursor: pointer; outline: none; list-style: none; display: flex; justify-content: space-between; align-items: center; user-select: none; }
-        details.control-group summary::-webkit-details-marker { display: none; }
-        details.control-group summary::after { content: '▼'; font-size: 12px; color: #666; margin-left: 10px; }
-        details[open].control-group summary::after { content: '▲'; }
-        .details-content { padding: 0 12px 12px 12px; }
-        
-        .sub-group { margin-top: 10px; padding: 10px; background: white; border-radius: 6px; }
-        .sub-group.source1 { border-left: 4px solid #e74c3c; }
-        .sub-group.source2 { border-left: 4px solid #2ecc71; }
-        
-        .control-item { margin-bottom: 10px; }
-        .control-item label { display: block; margin-bottom: 5px; color: #555; font-size: 13px; font-weight: bold; }
-        .control-item input[type="range"], .control-item select { width: 100%; outline: none; }
-        .control-item input[type="range"] { height: 6px; border-radius: 3px; background: #ddd; -webkit-appearance: none; }
-        .control-item input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #2b5876; cursor: pointer; transition: all 0.2s; }
-        .control-item select { height: 35px; border-radius: 6px; border: 1px solid #ddd; padding: 0 10px; font-size: 13px; font-weight: bold; color: #333; cursor: pointer; }
-        .sub-group.source1 input[type="range"]::-webkit-slider-thumb { background: #e74c3c; }
-        .sub-group.source2 input[type="range"]::-webkit-slider-thumb { background: #2ecc71; }
-        .value-display { display: inline-block; float: right; color: #2b5876; font-weight: bold; }
-        
-        .checkbox-label { display: flex; align-items: center; font-size: 13px; font-weight: bold; color: #444; cursor: pointer; margin-bottom: 8px; }
-        .checkbox-label input { margin-right: 8px; width: 16px; height: 16px; cursor: pointer; }
-        
-        button.action-btn { width: 100%; padding: 10px; margin-top: 8px; background: linear-gradient(135deg, #2b5876 0%, #4e4376 100%); color: white; border: none; border-radius: 6px; font-size: 15px; font-weight: bold; cursor: pointer; transition: all 0.3s; }
-        button.action-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(43, 88, 118, 0.4); }
-        button#hide-panel-btn { background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); margin-bottom: 15px; }
-        
+        /* ── 頁面獨有樣式（共用 chrome 見 assets/css/labgray.css）── */
+        body { height: 100vh; overflow: hidden; }
+        #left-panel > *, #right-panel > * { flex-shrink: 0; }
+
+        /* 下拉選單（labgray 未收錄；樣式沿用 bar-magnetic pilot） */
+        select {
+            width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--pl-border);
+            background: #fff; color: var(--pl-text-strong); font-size: 13px; cursor: pointer;
+        }
+        select:hover { border-color: var(--pl-accent); }
+        .field-row { margin-bottom: 12px; }
+        .field-row:last-child { margin-bottom: 0; }
+        .field-label { display: block; font-size: 0.74rem; color: var(--pl-text-dim); font-weight: 600; margin-bottom: 5px; }
+
+        /* 波源 1 / 2 色帶子群組 */
+        .sub-group { margin-top: 10px; padding: 8px 10px; background: var(--pl-inset); border-radius: 6px; border-left: 4px solid var(--pl-border); }
+        .sub-group.source1 { border-left-color: #e74c3c; }
+        .sub-group.source2 { border-left-color: #2ecc71; }
+
+        .nodal-box { background: #fff8e1; padding: 8px 10px; border-radius: 6px; margin: 10px 0; border-left: 4px solid #f39c12; }
+        .warning-text { color: #e74c3c; font-size: 11px; display: none; margin-top: 8px; }
+        .medium-note { font-size: 12px; color: var(--pl-text-faint); margin-bottom: 12px; }
+        .btn-stack { display: flex; flex-direction: column; gap: 6px; }
+        .btn-stack .action-btn { flex: none; width: 100%; }
+
         /* 脈衝按鈕專屬特效 */
-        #fire-pulse-btn { background: linear-gradient(135deg, #e67e22 0%, #d35400 100%); font-size: 18px; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(230, 126, 34, 0.4); }
+        #fire-pulse-btn {
+            display: none; width: 100%; margin-top: 10px; border: none; color: #fff;
+            background: linear-gradient(135deg, #e67e22 0%, #d35400 100%);
+            box-shadow: 0 4px 15px rgba(230, 126, 34, 0.4);
+        }
         #fire-pulse-btn:active { transform: scale(0.95); }
         @keyframes pulse-anim { 0% { box-shadow: 0 0 0 0 rgba(230, 126, 34, 0.7); } 70% { box-shadow: 0 0 0 8px rgba(230, 126, 34, 0); } 100% { box-shadow: 0 0 0 0 rgba(230, 126, 34, 0); } }
         .btn-pulse-effect { animation: pulse-anim 2s infinite; }
 
-        .color-legend { margin-top: 15px; padding: 10px; background: white; border-radius: 6px; border: 1px solid #ddd; }
-        .color-legend h4 { margin-bottom: 8px; font-size: 13px; }
+        /* 振幅顏色圖例 */
         .legend-gradient { height: 15px; background: linear-gradient(to right, #001133 0%, #0044aa 30%, #3388ff 50%, #88ccff 70%, #ffffff 100%); border-radius: 4px; margin-bottom: 5px; }
-        .legend-labels { display: flex; justify-content: space-between; font-size: 11px; color: #666; }
-        .warning-text { color: #e74c3c; font-size: 11px; display: none; margin-top: 5px; }
-        
-        #lambda-label-1, #lambda-label-2 { position: absolute; display: none; font-weight: bold; font-size: 16px; color: #fff; background: rgba(0, 0, 0, 0.75); padding: 6px 12px; border-radius: 6px; transform: translate(-50%, -100%); margin-top: -15px; pointer-events: none; z-index: 15; box-shadow: 0 2px 4px rgba(0,0,0,0.5); white-space: nowrap; transition: background 0.2s; }
+        .legend-labels { display: flex; justify-content: space-between; font-size: 11px; color: var(--pl-text-faint); }
+
+        /* 可拖曳波長間尺標籤（隨 3D 投影定位） */
+        #lambda-label-1, #lambda-label-2 {
+            position: absolute; display: none; font-weight: bold; font-size: 16px; color: #fff;
+            background: rgba(0, 0, 0, 0.75); padding: 6px 12px; border-radius: 6px;
+            transform: translate(-50%, -100%); margin-top: -15px; pointer-events: none; z-index: 15;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5); white-space: nowrap; transition: background 0.2s;
+        }
         #lambda-label-1 { border-bottom: 4px solid #f39c12; }
         #lambda-label-2 { border-bottom: 4px solid #2ecc71; }
-        .grabbing-mode { background: rgba(243, 156, 18, 0.9) !important; color: white !important; }
-    
-    /* Home button */
-    #home-btn {
-        position: fixed;
-        bottom: 16px;
-        left: 16px;
-        z-index: 99999;
-        background: rgba(30,41,59,0.85);
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-        border: 1px solid rgba(255,255,255,0.3);
-        border-radius: 10px;
-        padding: 8px 14px;
-        font-size: 13px;
-        font-weight: bold;
-        color: #fff;
-        text-decoration: none;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.25);
-        transition: background 0.2s, transform 0.2s;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-    #home-btn:hover {
-        background: rgba(30,41,59,0.95);
-        transform: translateY(-2px);
-    }
-
-        /* -- Responsive (Mobile / Tablet) -- */
-        @media (max-width: 768px) {
-            #ui-panel, .ui-panel {
-                width: calc(100vw - 20px) !important;
-                max-width: 100vw !important;
-                max-height: 45vh !important;
-                overflow-y: auto !important;
-                top: auto !important;
-                bottom: 0 !important;
-                left: 0 !important;
-                right: 0 !important;
-                border-radius: 12px 12px 0 0 !important;
-                padding: 12px !important;
-                font-size: 12px !important;
-            }
-            #ui-panel h2, .ui-panel h2 { font-size: 14px !important; margin: 0 0 6px 0 !important; }
-            #ui-panel h3, .ui-panel h3 { font-size: 13px !important; }
-            #ui-panel label, .ui-panel label { font-size: 11px !important; }
-            #ui-panel input[type=range], .ui-panel input[type=range] { height: 20px !important; }
-            #ui-panel .btn, .ui-panel .btn { padding: 7px 4px !important; font-size: 11px !important; }
-        }
-        @media (min-width: 769px) and (max-width: 1024px) {
-            #ui-panel, .ui-panel {
-                width: 260px !important;
-                font-size: 13px !important;
-            }
-        }
+        .grabbing-mode { background: rgba(243, 156, 18, 0.9) !important; color: #fff !important; }
     </style>
-    <!-- sim3d-load-guard: three.js 載入失敗提示 -->
-    <script>
-      window.addEventListener('DOMContentLoaded', function () {
-        if (typeof THREE === 'undefined' || typeof THREE.OrbitControls === 'undefined') {
-          var o = document.createElement('div');
-          o.id = 'sim3d-load-error';
-          o.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;background:#0f172a;color:#fff;font-family:system-ui,\'Noto Sans HK\',sans-serif;font-size:18px;line-height:1.7';
-          o.innerHTML = '⚠️ 無法載入 3D 元件（three.js）<br>請檢查網路連線後重新整理頁面。';
-          document.body.appendChild(o);
-        }
-      });
-    </script>
 </head>
 <body>
 
-    <div id="container">
-        <div id="canvas-container">
-            <canvas id="canvas"></canvas>
-            <div id="lambda-label-1">λ₁ = -- cm</div>
-            <div id="lambda-label-2">λ₂ = -- cm</div>
-            <div id="info">
-                <h2>🌊 水波干涉與繞射模擬</h2>
-                <p><strong>💡 無限制視角：</strong>左鍵旋轉、右鍵平移、滾輪縮放。</p>
-                <p><strong>🧱 繞射現象：</strong>開啟平面波並加入單/雙縫，觀察惠更斯原理。</p>
-                <p><strong>💥 單一脈衝：</strong>切換至「單次脈衝」模式，清晰觀察水波的反射與邊緣繞射！</p>
+<div id="topbar">
+    <div style="display: flex; align-items: center; gap: 16px;">
+        <button type="button" class="panel-toggle-btn" id="btn-toggle-left">
+            <span>☰</span> <span data-i18n="topbar.controls">控制</span>
+        </button>
+        <div class="title-block">
+            <h1 data-i18n="topbar.title">🌊 水波干涉與繞射模擬</h1>
+            <p data-i18n="topbar.subtitle">HKDSE Physics · Book 3 · Chapter 5 · Wave Interference &amp; Diffraction</p>
+        </div>
+    </div>
+    <div class="tb-actions">
+        <!-- 語言切換 #lang-btn（i18n.js）與 🏠 主頁 #home-btn（core.js）自動注入 -->
+        <button type="button" class="panel-toggle-btn" id="btn-toggle-right">
+            <span>📖</span> <span data-i18n="topbar.info">資訊</span>
+        </button>
+    </div>
+</div>
+
+<div id="main">
+
+    <!-- ═══════════ 左側控制面板 ═══════════ -->
+    <div id="left-panel">
+
+        <div class="card">
+            <div class="card-header"><span data-i18n="panel.emission.header">波源輸出模式 Emission Mode</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <select id="wave-mode">
+                    <option value="continuous" selected data-i18n="emission.continuous">連續波 (Continuous Waves)</option>
+                    <option value="pulse" data-i18n="emission.pulse">單次脈衝 (Single Pulse) 💥</option>
+                </select>
+                <button type="button" class="action-btn btn-pulse-effect" id="fire-pulse-btn" data-i18n="emission.fire">💥 按此發射脈衝 (Fire Wave)</button>
             </div>
-            <button id="show-panel-btn">⬅️ 顯示控制面板</button>
         </div>
 
-        <div id="controls">
-            <button class="action-btn" id="hide-panel-btn">隱藏面板 ➡️</button>
-            <h1>🎛️ 控制面板</h1>
-
-            <div class="control-group" style="background: #fff3e0; border-left: 4px solid #e67e22; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-                <div class="control-item" style="margin-bottom: 10px;">
-                    <label style="color: #d35400;">波源輸出模式 Emission Mode</label>
-                    <select id="wave-mode">
-                        <option value="continuous" selected>連續波 (Continuous Waves)</option>
-                        <option value="pulse">單次脈衝 (Single Pulse) 💥</option>
+        <div class="card">
+            <div class="card-header"><span data-i18n="panel.main.header">主控參數</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <div class="field-row">
+                    <label class="field-label" data-i18n="label.sourceType">波源類型 Source Type</label>
+                    <select id="source-type">
+                        <option value="point" selected data-i18n="source.point">雙點波源 (圓形波)</option>
+                        <option value="plane" data-i18n="source.plane">平面波源 (長方形木條)</option>
                     </select>
                 </div>
-                <button class="action-btn btn-pulse-effect" id="fire-pulse-btn" style="display: none;">💥 按此發射脈衝 (Fire Wave)</button>
+                <div class="slider-row" id="plane-angle-container" style="display: none;">
+                    <div class="slider-head"><label data-i18n="label.planeAngle">平面波入射角 Angle (度)</label><span class="val" id="plane-angle-value">0</span></div>
+                    <input type="range" id="plane-angle" min="-45" max="45" step="1" value="0">
+                </div>
+                <div class="slider-row">
+                    <div class="slider-head"><label data-i18n="label.freq">主頻率 Frequency (Hz)</label><span class="val" id="master-freq-value">1.0</span></div>
+                    <input type="range" id="master-frequency" min="0.5" max="2.0" step="0.1" value="1.0">
+                </div>
+                <div class="slider-row">
+                    <div class="slider-head"><label data-i18n="label.amp">振幅 Amplitude (cm)</label><span class="val" id="amp-value">2.0</span></div>
+                    <input type="range" id="amplitude" min="0.5" max="5" step="0.1" value="2.0">
+                </div>
+                <div class="slider-row" id="dist-container">
+                    <div class="slider-head"><label data-i18n="label.dist">波源間距 Separation (cm)</label><span class="val" id="dist-value">20</span></div>
+                    <input type="range" id="source-distance" min="10" max="50" step="2" value="20">
+                </div>
             </div>
+        </div>
 
-            <details class="control-group" open>
-                <summary>主控參數</summary>
-                <div class="details-content">
-                    <div class="control-item">
-                        <label>波源類型 Source Type</label>
-                        <select id="source-type">
-                            <option value="point" selected>雙點波源 (圓形波)</option>
-                            <option value="plane">平面波源 (長方形木條)</option>
-                        </select>
+        <div class="card">
+            <div class="card-header"><span data-i18n="panel.obstacle.header">🧱 障礙物與繞射 (展開)</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <div class="field-row">
+                    <label class="field-label" data-i18n="label.obstacleMode">模式選擇 Mode</label>
+                    <select id="obstacle-mode">
+                        <option value="none" selected data-i18n="obstacle.none">無障礙物 (None)</option>
+                        <option value="reflect" data-i18n="obstacle.reflect">反射牆 (Reflection Wall)</option>
+                        <option value="single_slit" data-i18n="obstacle.singleSlit">單縫繞射 (Single Slit)</option>
+                        <option value="double_slit" data-i18n="obstacle.doubleSlit">雙縫干涉 (Double Slit)</option>
+                        <option value="single_obstacle" data-i18n="obstacle.singleObstacle">單一障礙物 (Single Obstacle)</option>
+                    </select>
+                </div>
+                <div class="slider-row" id="wall-pos-container" style="display:none;">
+                    <div class="slider-head"><label data-i18n="label.wallX">障礙物位置 X (cm)</label><span class="val" id="wall-pos-value">15</span></div>
+                    <input type="range" id="wall-x" min="-20" max="30" step="1" value="15">
+                </div>
+                <div class="slider-row" id="slit-width-container" style="display:none;">
+                    <div class="slider-head"><label data-i18n="label.slitWidth">縫隙/障礙物寬度 a (cm)</label><span class="val" id="slit-width-value">8</span></div>
+                    <input type="range" id="slit-width" min="2" max="30" step="0.5" value="8">
+                </div>
+                <div class="slider-row" id="slit-sep-container" style="display:none;">
+                    <div class="slider-head"><label data-i18n="label.slitSep">雙縫中心間距 d (cm)</label><span class="val" id="slit-sep-value">18</span></div>
+                    <input type="range" id="slit-sep" min="5" max="40" step="1" value="18">
+                </div>
+            </div>
+        </div>
+
+        <div class="card source-group collapsed">
+            <div class="card-header"><span data-i18n="panel.sources.header">獨立震動源設定 (點波源用)</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <div class="sub-group source1">
+                    <div class="toggle-row" id="row-src1">
+                        <div class="toggle-track on" id="src1-active"><div class="toggle-thumb"></div></div>
+                        <span data-i18n="sources.s1">開啟 震動源 1 (S1)</span>
                     </div>
-                    <div class="control-item" id="plane-angle-container" style="display: none; border-left: 3px solid #d35400; padding-left: 10px;">
-                        <label>平面波入射角 Angle (度) <span class="value-display" id="plane-angle-value">0</span></label>
-                        <input type="range" id="plane-angle" min="-45" max="45" step="1" value="0">
-                    </div>
-                    <div class="control-item">
-                        <label>主頻率 Frequency (Hz) <span class="value-display" id="master-freq-value">1.0</span></label>
-                        <input type="range" id="master-frequency" min="0.5" max="2.0" step="0.1" value="1.0">
-                    </div>
-                    <div class="control-item">
-                        <label>振幅 Amplitude (cm) <span class="value-display" id="amp-value">2.0</span></label>
-                        <input type="range" id="amplitude" min="0.5" max="5" step="0.1" value="2.0">
-                    </div>
-                    <div class="control-item" id="dist-container">
-                        <label>波源間距 Separation (cm) <span class="value-display" id="dist-value">20</span></label>
-                        <input type="range" id="source-distance" min="10" max="50" step="2" value="20">
+                    <div class="slider-row" style="margin-top: 8px;">
+                        <div class="slider-head"><label data-i18n="label.freq1">獨立頻率 f1 (Hz)</label><span class="val" id="freq1-value">1.0</span></div>
+                        <input type="range" id="freq1" min="0.5" max="2.0" step="0.1" value="1.0">
                     </div>
                 </div>
-            </details>
-
-            <details class="control-group obstacle-group" open>
-                <summary>🧱 障礙物與繞射 (展開)</summary>
-                <div class="details-content">
-                    <div class="control-item">
-                        <label>模式選擇 Mode</label>
-                        <select id="obstacle-mode">
-                            <option value="none" selected>無障礙物 (None)</option>
-                            <option value="reflect">反射牆 (Reflection Wall)</option>
-                            <option value="single_slit">單縫繞射 (Single Slit)</option>
-                            <option value="double_slit">雙縫干涉 (Double Slit)</option>
-                            <option value="single_obstacle">單一障礙物 (Single Obstacle)</option>
-                        </select>
+                <div class="sub-group source2">
+                    <div class="toggle-row" id="row-src2">
+                        <div class="toggle-track on" id="src2-active"><div class="toggle-thumb"></div></div>
+                        <span data-i18n="sources.s2">開啟 震動源 2 (S2)</span>
                     </div>
-                    <div class="control-item" id="wall-pos-container" style="display:none;">
-                        <label>障礙物位置 X (cm) <span class="value-display" id="wall-pos-value">15</span></label>
-                        <input type="range" id="wall-x" min="-20" max="30" step="1" value="15">
-                    </div>
-                    <div class="control-item" id="slit-width-container" style="display:none;">
-                        <label>縫隙/障礙物寬度 a (cm) <span class="value-display" id="slit-width-value">8</span></label>
-                        <input type="range" id="slit-width" min="2" max="30" step="0.5" value="8">
-                    </div>
-                    <div class="control-item" id="slit-sep-container" style="display:none;">
-                        <label>雙縫中心間距 d (cm) <span class="value-display" id="slit-sep-value">18</span></label>
-                        <input type="range" id="slit-sep" min="5" max="40" step="1" value="18">
+                    <div class="slider-row" style="margin-top: 8px;">
+                        <div class="slider-head"><label data-i18n="label.freq2">獨立頻率 f2 (Hz)</label><span class="val" id="freq2-value">1.0</span></div>
+                        <input type="range" id="freq2" min="0.5" max="2.0" step="0.1" value="1.0">
                     </div>
                 </div>
-            </details>
+            </div>
+        </div>
 
-            <details class="control-group source-group">
-                <summary>獨立震動源設定 (點波源用)</summary>
-                <div class="details-content">
-                    <div class="sub-group source1">
-                        <label class="checkbox-label" style="margin:0 0 10px 0;">
-                            <input type="checkbox" id="src1-active" checked> 開啟 震動源 1 (S1)
-                        </label>
-                        <div class="control-item">
-                            <label>獨立頻率 f1 (Hz) <span class="value-display" id="freq1-value">1.0</span></label>
-                            <input type="range" id="freq1" min="0.5" max="2.0" step="0.1" value="1.0">
-                        </div>
+        <div class="card">
+            <div class="card-header"><span data-i18n="panel.visual.header">視覺輔助功能 (波前/干涉線)</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <div class="toggle-row" id="row-ruler">
+                    <div class="toggle-track on" id="show-wavelength"><div class="toggle-thumb"></div></div>
+                    <span data-i18n="visual.ruler">📏 顯示可拖曳間尺 (測量波長)</span>
+                </div>
+                <div class="toggle-row" id="row-rays">
+                    <div class="toggle-track" id="show-rays"><div class="toggle-thumb"></div></div>
+                    <span data-i18n="visual.rays">↗️ 顯示波線 (傳播方向)</span>
+                </div>
+                <div class="nodal-box">
+                    <div class="toggle-row" id="row-antinodal">
+                        <div class="toggle-track" id="show-antinodal"><div class="toggle-thumb"></div></div>
+                        <span data-i18n="visual.antinodal">🟡 顯示腹線 (Antinodal)</span>
                     </div>
-                    <div class="sub-group source2">
-                        <label class="checkbox-label" style="margin:0 0 10px 0;">
-                            <input type="checkbox" id="src2-active" checked> 開啟 震動源 2 (S2)
-                        </label>
-                        <div class="control-item">
-                            <label>獨立頻率 f2 (Hz) <span class="value-display" id="freq2-value">1.0</span></label>
-                            <input type="range" id="freq2" min="0.5" max="2.0" step="0.1" value="1.0">
-                        </div>
+                    <div class="toggle-row" id="row-nodal">
+                        <div class="toggle-track" id="show-nodal"><div class="toggle-thumb"></div></div>
+                        <span data-i18n="visual.nodal">🟢 顯示節線 (Nodal)</span>
                     </div>
                 </div>
-            </details>
-
-            <details class="control-group display" open>
-                <summary>視覺輔助功能 (波前/干涉線)</summary>
-                <div class="details-content">
-                    <label class="checkbox-label" style="margin-bottom: 8px;">
-                        <input type="checkbox" id="show-wavelength" checked> 📏 顯示可拖曳間尺 (測量波長)
-                    </label>
-                    <label class="checkbox-label" style="margin-bottom: 15px; color: #d35400;">
-                        <input type="checkbox" id="show-rays"> ↗️ 顯示波線 (傳播方向)
-                    </label>
-
-                    <div style="background: #fff8e1; padding: 10px; border-radius: 6px; margin-bottom: 15px; border-left: 4px solid #f39c12;">
-                        <label class="checkbox-label" style="margin-bottom: 8px;">
-                            <input type="checkbox" id="show-antinodal"> 🟡 顯示腹線 (Antinodal)
-                        </label>
-                        <label class="checkbox-label" style="margin-bottom: 0;">
-                            <input type="checkbox" id="show-nodal"> 🟢 顯示節線 (Nodal)
-                        </label>
+                <div id="freq-warning" class="warning-text" data-i18n="visual.freqWarning">⚠️ 必須在雙波源、且頻率相同時才能形成穩定干涉線。</div>
+                <div class="sub-group source1">
+                    <div class="toggle-row" id="row-crest1">
+                        <div class="toggle-track" id="show-crest1"><div class="toggle-thumb"></div></div>
+                        <span data-i18n="visual.crest1">顯示 S1 / 平面波峰 (粗紅線)</span>
                     </div>
-                    <div id="freq-warning" class="warning-text" style="margin-bottom: 15px;">⚠️ 必須在雙波源、且頻率相同時才能形成穩定干涉線。</div>
-                    
-                    <div class="sub-group source1">
-                        <label class="checkbox-label"><input type="checkbox" id="show-crest1"> 顯示 S1 / 平面波峰 (粗紅線)</label>
-                        <label class="checkbox-label"><input type="checkbox" id="show-trough1"> 顯示 S1 / 平面波谷 (紅虛線)</label>
-                    </div>
-                    <div class="sub-group source2" id="s2-helpers">
-                        <label class="checkbox-label"><input type="checkbox" id="show-crest2"> 顯示 S2 波峰 (粗綠線)</label>
-                        <label class="checkbox-label"><input type="checkbox" id="show-trough2"> 顯示 S2 波谷 (綠虛線)</label>
+                    <div class="toggle-row" id="row-trough1">
+                        <div class="toggle-track" id="show-trough1"><div class="toggle-thumb"></div></div>
+                        <span data-i18n="visual.trough1">顯示 S1 / 平面波谷 (紅虛線)</span>
                     </div>
                 </div>
-            </details>
-
-            <details class="control-group" open>
-                <summary>介質與環境 (折射模式)</summary>
-                <div class="details-content">
-                    <p style="font-size: 12px; color: #666; margin-bottom: 15px;">* 水越深，波速越快 ($v \propto \sqrt{d}$)</p>
-                    <label class="checkbox-label" style="margin-bottom: 15px; color: #d35400; font-size: 14px; border-bottom: 1px solid #ddd; padding-bottom: 10px;">
-                        <input type="checkbox" id="enable-refraction"> 🌊 啟用雙介質 (折射模式)
-                    </label>
-                    <div class="control-item">
-                        <label>全區 / 深水區 d1 (cm) <span class="value-display" id="depth1-value">15</span></label>
-                        <input type="range" id="water-depth-1" min="3" max="30" step="1" value="15">
+                <div class="sub-group source2" id="s2-helpers">
+                    <div class="toggle-row" id="row-crest2">
+                        <div class="toggle-track" id="show-crest2"><div class="toggle-thumb"></div></div>
+                        <span data-i18n="visual.crest2">顯示 S2 波峰 (粗綠線)</span>
                     </div>
-                    <div class="control-item" id="depth2-container" style="opacity: 0.4; pointer-events: none;">
-                        <label>淺水區 d2 (cm) [右側] <span class="value-display" id="depth2-value">6</span></label>
-                        <input type="range" id="water-depth-2" min="3" max="30" step="1" value="6">
-                    </div>
-                    <div class="control-item" style="margin-top: 15px;">
-                        <label>播放速度 Speed Scale</label>
-                        <select id="playback-speed">
-                            <option value="0.1">0.1x (極慢速)</option>
-                            <option value="0.25">0.25x (特慢速)</option>
-                            <option value="0.5">0.5x (慢速)</option>
-                            <option value="1.0" selected>1.0x (正常速度)</option>
-                        </select>
+                    <div class="toggle-row" id="row-trough2">
+                        <div class="toggle-track" id="show-trough2"><div class="toggle-thumb"></div></div>
+                        <span data-i18n="visual.trough2">顯示 S2 波谷 (綠虛線)</span>
                     </div>
                 </div>
-            </details>
+            </div>
+        </div>
 
-            <button class="action-btn" id="pause">⏸️ 暫停 / 播放</button>
-            <button class="action-btn" id="reset">🔄 重置所有參數</button>
+        <div class="card">
+            <div class="card-header"><span data-i18n="panel.medium.header">介質與環境 (折射模式)</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <p class="medium-note" data-i18n="medium.note">* 水越深，波速越快 ($v \propto \sqrt{d}$)</p>
+                <div class="toggle-row" id="row-refraction" style="margin-bottom: 12px;">
+                    <div class="toggle-track" id="enable-refraction"><div class="toggle-thumb"></div></div>
+                    <span data-i18n="medium.enable">🌊 啟用雙介質 (折射模式)</span>
+                </div>
+                <div class="slider-row">
+                    <div class="slider-head"><label data-i18n="label.depth1">全區 / 深水區 d1 (cm)</label><span class="val" id="depth1-value">15</span></div>
+                    <input type="range" id="water-depth-1" min="3" max="30" step="1" value="15">
+                </div>
+                <div class="slider-row" id="depth2-container" style="opacity: 0.4; pointer-events: none;">
+                    <div class="slider-head"><label data-i18n="label.depth2">淺水區 d2 (cm) [右側]</label><span class="val" id="depth2-value">6</span></div>
+                    <input type="range" id="water-depth-2" min="3" max="30" step="1" value="6">
+                </div>
+                <div class="field-row" style="margin-top: 12px;">
+                    <label class="field-label" data-i18n="label.playback">播放速度 Speed Scale</label>
+                    <select id="playback-speed">
+                        <option value="0.1" data-i18n="speed.x01">0.1x (極慢速)</option>
+                        <option value="0.25" data-i18n="speed.x025">0.25x (特慢速)</option>
+                        <option value="0.5" data-i18n="speed.x05">0.5x (慢速)</option>
+                        <option value="1.0" selected data-i18n="speed.x10">1.0x (正常速度)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
 
-            <div class="color-legend">
-                <h4>水波振幅顏色對照</h4>
+        <div class="btn-stack">
+            <button type="button" class="action-btn btn-reset" id="pause" data-i18n="btn.pause">⏸️ 暫停 / 播放</button>
+            <button type="button" class="action-btn btn-reset" id="reset" data-i18n="btn.reset">🔄 重置所有參數</button>
+        </div>
+    </div>
+
+    <!-- ═══════════ 中央 3D 視圖 ═══════════ -->
+    <div id="canvas-wrap">
+        <div id="view3d">
+            <div id="lambda-label-1">λ₁ = -- cm</div>
+            <div id="lambda-label-2">λ₂ = -- cm</div>
+        </div>
+    </div>
+
+    <!-- ═══════════ 右側資訊面板 ═══════════ -->
+    <div id="right-panel">
+        <div class="card">
+            <div class="card-header"><span data-i18n="panel.info.header">🌊 水波干涉與繞射模擬</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <div class="info-box">
+                    <p data-i18n-html="info.view"><strong>💡 無限制視角：</strong>左鍵旋轉、右鍵平移、滾輪縮放。</p>
+                    <p data-i18n-html="info.diffraction"><strong>🧱 繞射現象：</strong>開啟平面波並加入單/雙縫，觀察惠更斯原理。</p>
+                    <p data-i18n-html="info.pulse"><strong>💥 單一脈衝：</strong>切換至「單次脈衝」模式，清晰觀察水波的反射與邊緣繞射！</p>
+                </div>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-header"><span data-i18n="panel.legend.header">水波振幅顏色對照</span><span class="chevron">▾</span></div>
+            <div class="card-body">
                 <div class="legend-gradient"></div>
                 <div class="legend-labels">
-                    <span>深谷 (Trough)</span>
-                    <span>平衡 (Equilibrium)</span>
-                    <span>波峰 (Crest)</span>
+                    <span data-i18n="legend.trough">深谷 (Trough)</span>
+                    <span data-i18n="legend.eq">平衡 (Equilibrium)</span>
+                    <span data-i18n="legend.crest">波峰 (Crest)</span>
                 </div>
             </div>
         </div>
     </div>
+</div>
 
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <script>
-        const canvas = document.getElementById('canvas');
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0xdcecf5);
+<!-- ═══════════ 頁面字典（zh 必填；en 缺字自動回退 zh） ═══════════ -->
+<script>
+PhysLab.i18n.register({
+    zh: {
+        'topbar.title': '🌊 水波干涉與繞射模擬',
+        'topbar.subtitle': 'HKDSE Physics · Book 3 · Chapter 5 · Wave Interference & Diffraction',
+        'topbar.controls': '控制',
+        'topbar.info': '資訊',
+        'panel.emission.header': '波源輸出模式 Emission Mode',
+        'emission.continuous': '連續波 (Continuous Waves)',
+        'emission.pulse': '單次脈衝 (Single Pulse) 💥',
+        'emission.fire': '💥 按此發射脈衝 (Fire Wave)',
+        'panel.main.header': '主控參數',
+        'label.sourceType': '波源類型 Source Type',
+        'source.point': '雙點波源 (圓形波)',
+        'source.plane': '平面波源 (長方形木條)',
+        'label.planeAngle': '平面波入射角 Angle (度)',
+        'label.freq': '主頻率 Frequency (Hz)',
+        'label.amp': '振幅 Amplitude (cm)',
+        'label.dist': '波源間距 Separation (cm)',
+        'panel.obstacle.header': '🧱 障礙物與繞射 (展開)',
+        'label.obstacleMode': '模式選擇 Mode',
+        'obstacle.none': '無障礙物 (None)',
+        'obstacle.reflect': '反射牆 (Reflection Wall)',
+        'obstacle.singleSlit': '單縫繞射 (Single Slit)',
+        'obstacle.doubleSlit': '雙縫干涉 (Double Slit)',
+        'obstacle.singleObstacle': '單一障礙物 (Single Obstacle)',
+        'label.wallX': '障礙物位置 X (cm)',
+        'label.slitWidth': '縫隙/障礙物寬度 a (cm)',
+        'label.slitSep': '雙縫中心間距 d (cm)',
+        'panel.sources.header': '獨立震動源設定 (點波源用)',
+        'sources.s1': '開啟 震動源 1 (S1)',
+        'label.freq1': '獨立頻率 f1 (Hz)',
+        'sources.s2': '開啟 震動源 2 (S2)',
+        'label.freq2': '獨立頻率 f2 (Hz)',
+        'panel.visual.header': '視覺輔助功能 (波前/干涉線)',
+        'visual.ruler': '📏 顯示可拖曳間尺 (測量波長)',
+        'visual.rays': '↗️ 顯示波線 (傳播方向)',
+        'visual.antinodal': '🟡 顯示腹線 (Antinodal)',
+        'visual.nodal': '🟢 顯示節線 (Nodal)',
+        'visual.freqWarning': '⚠️ 必須在雙波源、且頻率相同時才能形成穩定干涉線。',
+        'visual.crest1': '顯示 S1 / 平面波峰 (粗紅線)',
+        'visual.trough1': '顯示 S1 / 平面波谷 (紅虛線)',
+        'visual.crest2': '顯示 S2 波峰 (粗綠線)',
+        'visual.trough2': '顯示 S2 波谷 (綠虛線)',
+        'panel.medium.header': '介質與環境 (折射模式)',
+        'medium.note': '* 水越深，波速越快 ($v \\propto \\sqrt{d}$)',
+        'medium.enable': '🌊 啟用雙介質 (折射模式)',
+        'label.depth1': '全區 / 深水區 d1 (cm)',
+        'label.depth2': '淺水區 d2 (cm) [右側]',
+        'label.playback': '播放速度 Speed Scale',
+        'speed.x01': '0.1x (極慢速)',
+        'speed.x025': '0.25x (特慢速)',
+        'speed.x05': '0.5x (慢速)',
+        'speed.x10': '1.0x (正常速度)',
+        'btn.pause': '⏸️ 暫停 / 播放',
+        'btn.reset': '🔄 重置所有參數',
+        'panel.info.header': '🌊 水波干涉與繞射模擬',
+        'info.view': '<strong>💡 無限制視角：</strong>左鍵旋轉、右鍵平移、滾輪縮放。',
+        'info.diffraction': '<strong>🧱 繞射現象：</strong>開啟平面波並加入單/雙縫，觀察惠更斯原理。',
+        'info.pulse': '<strong>💥 單一脈衝：</strong>切換至「單次脈衝」模式，清晰觀察水波的反射與邊緣繞射！',
+        'panel.legend.header': '水波振幅顏色對照',
+        'legend.trough': '深谷 (Trough)',
+        'legend.eq': '平衡 (Equilibrium)',
+        'legend.crest': '波峰 (Crest)'
+    },
+    en: {
+        /* 待 en-translator 補完（缺字自動回退 zh） */
+    }
+});
+</script>
 
-        const camera = new THREE.PerspectiveCamera(60, canvas.parentElement.clientWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(0, 60, 80);
+<!-- ═══════════ 頁面邏輯 ═══════════ -->
+<script>
+PhysLab.sim3d.ready(function () {
+        const view3d = document.getElementById('view3d');
 
-        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-        renderer.setSize(canvas.parentElement.clientWidth, window.innerHeight);
-        renderer.setPixelRatio(window.devicePixelRatio);
+        // 場景底座（原頁精確值：背景 0xdcecf5 / fov 60 / far 1000 / 相機 (0,60,80)
+        // / damping 0.05 / pixelRatio 不設上限；燈光與網格為頁面自有 → lights/grid:false）
+        const ctx = PhysLab.sim3d.create(view3d, {
+            background: 0xdcecf5,
+            fov: 60, near: 0.1, far: 1000,
+            views: { default: { pos: [0, 60, 80], tgt: [0, 0, 0] } },
+            controls: { damping: 0.05 },
+            lights: false, grid: false,
+            pixelRatio: window.devicePixelRatio
+        });
+        const scene = ctx.scene;
+        const camera = ctx.camera;
+        const renderer = ctx.renderer;
+        const controls = ctx.controls;
+        const canvas = renderer.domElement;
+
         renderer.localClippingEnabled = true;
-
-        const controls = new THREE.OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true;
-        controls.dampingFactor = 0.05;
         controls.minDistance = 5;
         controls.maxDistance = 500;
 
@@ -351,10 +403,10 @@
         scene.add(directionalLight);
 
         let params = {
-            waveMode: 'continuous', pulses: [], 
-            sourceType: 'point', planeAngle: 0, masterFreq: 1.0, freq1: 1.0, freq2: 1.0, 
-            src1Active: true, src2Active: true, amplitude: 2.0, sourceDistance: 20, 
-            enableRefraction: false, showRays: false, waterDepth1: 15, waterDepth2: 6, 
+            waveMode: 'continuous', pulses: [],
+            sourceType: 'point', planeAngle: 0, masterFreq: 1.0, freq1: 1.0, freq2: 1.0,
+            src1Active: true, src2Active: true, amplitude: 2.0, sourceDistance: 20,
+            enableRefraction: false, showRays: false, waterDepth1: 15, waterDepth2: 6,
             damping: 0.015, resolution: 200, heightScale: 1.0, showNodal: false, showAntinodal: false, paused: false,
             showCrest1: false, showTrough1: false, showCrest2: false, showTrough2: false,
             showWavelength: true, speed: 1.0, obstacleMode: 'none',
@@ -362,30 +414,30 @@
         };
 
         const tankSize = 100;
-        const waterGridSize = 102; 
+        const waterGridSize = 102;
         let waterGeometry, waterMesh;
         const DIFFRACTION_SPACING = 1.5;
-        let virtualSources = []; 
-        
+        let virtualSources = [];
+
         const interferenceLinesGroup = new THREE.Group();
         const crestsGroup = new THREE.Group();
-        const raysGroup = new THREE.Group(); 
+        const raysGroup = new THREE.Group();
         scene.add(interferenceLinesGroup);
         scene.add(crestsGroup);
         scene.add(raysGroup);
 
         const ruler1 = new THREE.Group();
         const ruler2 = new THREE.Group();
-        ruler1.position.set(-20, 4.0, 0); 
+        ruler1.position.set(-20, 4.0, 0);
         ruler2.position.set(20, 4.0, 0);
         scene.add(ruler1); scene.add(ruler2);
         let currentLambda1 = 0, currentLambda2 = 0;
 
         const clipPlanes = [
-            new THREE.Plane(new THREE.Vector3(-1, 0, 0), tankSize/2), 
-            new THREE.Plane(new THREE.Vector3(1, 0, 0), tankSize/2),  
-            new THREE.Plane(new THREE.Vector3(0, 0, -1), tankSize/2), 
-            new THREE.Plane(new THREE.Vector3(0, 0, 1), tankSize/2)   
+            new THREE.Plane(new THREE.Vector3(-1, 0, 0), tankSize/2),
+            new THREE.Plane(new THREE.Vector3(1, 0, 0), tankSize/2),
+            new THREE.Plane(new THREE.Vector3(0, 0, -1), tankSize/2),
+            new THREE.Plane(new THREE.Vector3(0, 0, 1), tankSize/2)
         ];
 
         const matCrest1 = new THREE.MeshBasicMaterial({ color: 0xff3333, side: THREE.DoubleSide, clippingPlanes: clipPlanes });
@@ -403,14 +455,14 @@
                 const step = (zEnd - zStart) / N;
                 for(let i=0; i<=N; i++) virtualSources.push(zStart + i * step);
             };
-            if (params.obstacleMode === 'single_slit') { addSlit(-params.slitWidth/2, params.slitWidth/2); } 
-            else if (params.obstacleMode === 'double_slit') { addSlit(-params.slitSep/2 - params.slitWidth/2, -params.slitSep/2 + params.slitWidth/2); addSlit(params.slitSep/2 - params.slitWidth/2, params.slitSep/2 + params.slitWidth/2); } 
+            if (params.obstacleMode === 'single_slit') { addSlit(-params.slitWidth/2, params.slitWidth/2); }
+            else if (params.obstacleMode === 'double_slit') { addSlit(-params.slitSep/2 - params.slitWidth/2, -params.slitSep/2 + params.slitWidth/2); addSlit(params.slitSep/2 - params.slitWidth/2, params.slitSep/2 + params.slitWidth/2); }
             else if (params.obstacleMode === 'single_obstacle') { addSlit(-params.slitWidth/2, params.slitWidth/2); }
         }
 
         function getSolidMask(z) {
             if (params.obstacleMode === 'reflect') return 1;
-            let blur = 1.5; 
+            let blur = 1.5;
             if (params.obstacleMode === 'single_slit') return Math.max(0, Math.min(1, (Math.abs(z) - params.slitWidth / 2) / blur + 0.5));
             if (params.obstacleMode === 'double_slit') {
                 let d1 = Math.abs(z - (-params.slitSep/2)) - params.slitWidth / 2;
@@ -474,11 +526,11 @@
             waterGeometry = new THREE.PlaneGeometry(waterGridSize, waterGridSize, params.resolution, params.resolution);
             const count = waterGeometry.attributes.position.count;
             waterGeometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array(count * 3), 3));
-            const waterMaterial = new THREE.MeshPhongMaterial({ 
-                side: THREE.DoubleSide, 
-                vertexColors: true, 
-                shininess: 120, 
-                transparent: true, 
+            const waterMaterial = new THREE.MeshPhongMaterial({
+                side: THREE.DoubleSide,
+                vertexColors: true,
+                shininess: 120,
+                transparent: true,
                 opacity: 0.85,
                 clippingPlanes: clipPlanes // 🌟 加入這行，強制作物理裁切，防止水面超出玻璃牆！
             });
@@ -495,7 +547,7 @@
         function updateSourcePositions() {
             const edgeOffset = tankSize / 2 - 5; const halfDist = params.sourceDistance / 2; const isPlane = (params.sourceType === 'plane');
             planeSource.visible = isPlane; source1.visible = !isPlane; source2.visible = !isPlane;
-            if (isPlane) { planeSource.position.set(-edgeOffset, -2, 0); planeSource.rotation.y = -params.planeAngle * Math.PI / 180; } 
+            if (isPlane) { planeSource.position.set(-edgeOffset, -2, 0); planeSource.rotation.y = -params.planeAngle * Math.PI / 180; }
             else { source1.position.set(-edgeOffset, -2, -halfDist); source2.position.set(-edgeOffset, -2, halfDist); }
         }
 
@@ -527,11 +579,11 @@
             const v1_f2 = getWaveSpeed(params.freq2, params.waterDepth1); const v2_f2 = getWaveSpeed(params.freq2, actualDepth2);
             const k1_f2 = 2 * Math.PI * params.freq2 / v1_f2; const k2_f2 = 2 * Math.PI * params.freq2 / v2_f2;
             const omega1 = 2 * Math.PI * params.freq1; const omega2 = 2 * Math.PI * params.freq2;
-            
+
             currentLambda1 = v1_f1 / params.freq1; currentLambda2 = v2_f1 / params.freq1;
             const theta1 = (params.sourceType === 'plane') ? params.planeAngle * Math.PI / 180 : 0;
             const k1x = k1_f1 * Math.cos(theta1); const k1z = k1_f1 * Math.sin(theta1);
-            
+
             let k2x_f1, TIR = false; const sinTheta2 = (v2_f1 / v1_f1) * Math.sin(theta1); let theta2 = 0;
             if (Math.abs(sinTheta2) > 1) TIR = true; else { theta2 = Math.asin(sinTheta2); k2x_f1 = k2_f1 * Math.cos(theta2); }
 
@@ -556,7 +608,7 @@
                     }
                 }
             }
-            
+
             let doDiffraction = ['single_slit', 'double_slit', 'single_obstacle'].includes(params.obstacleMode);
 
             for (let i = 0; i < positions.count; i++) {
@@ -564,7 +616,7 @@
 
                 if (params.obstacleMode !== 'none') {
                     let h_inc = 0, h_ref = 0, h_diff = 0;
-                    
+
                     if (params.sourceType === 'plane') {
                         let phaseInc;
                         if (params.enableRefraction && x_world > 0) phaseInc = k1x * edgeOffset + k2x_f1 * x_world + k1z * z_world - omega1 * time;
@@ -629,12 +681,12 @@
                             if (params.src1Active) { let vSrcX = 2 * params.wallX - source1.position.x; let r1_ref = Math.sqrt((x_world - vSrcX)**2 + (z_world - source1.position.z)**2); h_ref += params.amplitude * Math.exp(-params.damping * r1_ref) * getWaveVal(k1_f1 * r1_ref - omega1 * time, omega1) * 0.8; }
                             if (params.src2Active) { let vSrcX = 2 * params.wallX - source2.position.x; let r2_ref = Math.sqrt((x_world - vSrcX)**2 + (z_world - source2.position.z)**2); h_ref += params.amplitude * Math.exp(-params.damping * r2_ref) * getWaveVal(k1_f2 * r2_ref - omega2 * time, omega2) * 0.8; }
                         }
-                        h_ref *= solidMask; 
+                        h_ref *= solidMask;
                     }
 
-                    if (x_world <= params.wallX) { height = h_inc + h_ref; } 
+                    if (x_world <= params.wallX) { height = h_inc + h_ref; }
                     else {
-                        if (params.obstacleMode === 'reflect') height = 0; 
+                        if (params.obstacleMode === 'reflect') height = 0;
                         else if (params.obstacleMode === 'single_obstacle') {
                             let tx = Math.max(0, Math.min(1, x_world - params.wallX)); let use_pure = Math.max(tx, 1 - solidMask); height = (h_inc - h_diff) * use_pure;
                         } else {
@@ -670,15 +722,15 @@
                 positions.setZ(i, height * params.heightScale);
                 const maxAmp = params.sourceType === 'plane' ? params.amplitude * 1.3 : (params.src1Active ? params.amplitude : 0) + (params.src2Active ? params.amplitude : 0) || 1;
                 const normH = height / maxAmp; let r, g, b;
-                if (normH < -0.4) { r = 0.0; g = 0.05; b = 0.2; } 
-                else if (normH < 0) { const t = (normH + 0.4)/0.4; r = 0.0; g = 0.05 + t*0.2; b = 0.2 + t*0.4; } 
-                else if (normH < 0.4) { const t = normH/0.4; r = 0.0 + t*0.5; g = 0.25 + t*0.45; b = 0.6 + t*0.4; } 
+                if (normH < -0.4) { r = 0.0; g = 0.05; b = 0.2; }
+                else if (normH < 0) { const t = (normH + 0.4)/0.4; r = 0.0; g = 0.05 + t*0.2; b = 0.2 + t*0.4; }
+                else if (normH < 0.4) { const t = normH/0.4; r = 0.0 + t*0.5; g = 0.25 + t*0.45; b = 0.6 + t*0.4; }
                 else { r = 0.5 + (normH-0.4)*0.5; g = 0.7 + (normH-0.4)*0.3; b = 1.0; }
                 colors.setXYZ(i, r, g, b);
             }
 
             positions.needsUpdate = true; colors.needsUpdate = true; waterGeometry.computeVertexNormals();
-            updateHelpers(v1_f1, v2_f1, k1_f1, k2_f1, omega1); updateRulerVisuals(); 
+            updateHelpers(v1_f1, v2_f1, k1_f1, k2_f1, omega1); updateRulerVisuals();
         }
 
         function clearGroup(group) { while(group.children.length > 0) { const child = group.children[0]; if(child.geometry) child.geometry.dispose(); group.remove(child); } }
@@ -701,7 +753,7 @@
                 } else ruler2.visible = false;
                 if (params.sourceType === 'plane') {
                     ruler1.rotation.y = -params.planeAngle * Math.PI / 180;
-                    if (params.enableRefraction) { const v1 = getWaveSpeed(params.freq1, params.waterDepth1); const v2 = getWaveSpeed(params.freq1, params.waterDepth2); const sinTheta2 = (v2 / v1) * Math.sin(params.planeAngle * Math.PI / 180); if (Math.abs(sinTheta2) <= 1) ruler2.rotation.y = -Math.asin(sinTheta2); } 
+                    if (params.enableRefraction) { const v1 = getWaveSpeed(params.freq1, params.waterDepth1); const v2 = getWaveSpeed(params.freq1, params.waterDepth2); const sinTheta2 = (v2 / v1) * Math.sin(params.planeAngle * Math.PI / 180); if (Math.abs(sinTheta2) <= 1) ruler2.rotation.y = -Math.asin(sinTheta2); }
                     else ruler2.rotation.y = -params.planeAngle * Math.PI / 180;
                 } else { const midX = (source1.position.x + source2.position.x) / 2; const midZ = (source1.position.z + source2.position.z) / 2; ruler1.rotation.y = -Math.atan2(ruler1.position.z - midZ, ruler1.position.x - midX); ruler2.rotation.y = -Math.atan2(ruler2.position.z - midZ, ruler2.position.x - midX); }
             } else { ruler1.visible = false; ruler2.visible = false; }
@@ -709,14 +761,14 @@
 
         function updateLabels() {
             const label1 = document.getElementById('lambda-label-1');
-            if (ruler1.visible) { const vector = ruler1.position.clone().add(new THREE.Vector3(0, 0, 3)).project(camera); label1.style.display = 'block'; label1.style.left = `${(vector.x * .5 + .5) * canvas.parentElement.clientWidth}px`; label1.style.top = `${(vector.y * -.5 + .5) * window.innerHeight}px`; label1.innerText = `λ₁ = ${currentLambda1.toFixed(1)} cm`; } 
+            if (ruler1.visible) { const vector = ruler1.position.clone().add(new THREE.Vector3(0, 0, 3)).project(camera); label1.style.display = 'block'; label1.style.left = `${(vector.x * .5 + .5) * view3d.clientWidth}px`; label1.style.top = `${(vector.y * -.5 + .5) * view3d.clientHeight}px`; label1.innerText = `λ₁ = ${currentLambda1.toFixed(1)} cm`; }
             else label1.style.display = 'none';
             const label2 = document.getElementById('lambda-label-2');
-            if (ruler2.visible) { const vector = ruler2.position.clone().add(new THREE.Vector3(0, 0, 3)).project(camera); label2.style.display = 'block'; label2.style.left = `${(vector.x * .5 + .5) * canvas.parentElement.clientWidth}px`; label2.style.top = `${(vector.y * -.5 + .5) * window.innerHeight}px`; label2.innerText = `λ₂ = ${currentLambda2.toFixed(1)} cm`; } 
+            if (ruler2.visible) { const vector = ruler2.position.clone().add(new THREE.Vector3(0, 0, 3)).project(camera); label2.style.display = 'block'; label2.style.left = `${(vector.x * .5 + .5) * view3d.clientWidth}px`; label2.style.top = `${(vector.y * -.5 + .5) * view3d.clientHeight}px`; label2.innerText = `λ₂ = ${currentLambda2.toFixed(1)} cm`; }
             else label2.style.display = 'none';
         }
 
-        const raycaster = new THREE.Raycaster(); const mouse = new THREE.Vector2(); let draggedObject = null; let dragOffset = new THREE.Vector3(); const dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -4.0); 
+        const raycaster = new THREE.Raycaster(); const mouse = new THREE.Vector2(); let draggedObject = null; let dragOffset = new THREE.Vector3(); const dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -4.0);
 
         canvas.addEventListener('pointerdown', e => {
             if (!params.showWavelength || params.waveMode === 'pulse') return;
@@ -732,7 +784,7 @@
         window.addEventListener('pointermove', e => {
             if (params.waveMode === 'pulse') return;
             const rect = canvas.getBoundingClientRect(); mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1; mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-            if (draggedObject) { raycaster.setFromCamera(mouse, camera); let intersectPoint = new THREE.Vector3(); if (raycaster.ray.intersectPlane(dragPlane, intersectPoint)) draggedObject.position.copy(intersectPoint.add(dragOffset)); } 
+            if (draggedObject) { raycaster.setFromCamera(mouse, camera); let intersectPoint = new THREE.Vector3(); if (raycaster.ray.intersectPlane(dragPlane, intersectPoint)) draggedObject.position.copy(intersectPoint.add(dragOffset)); }
             else if (params.showWavelength) { raycaster.setFromCamera(mouse, camera); const objectsToTest = []; if(ruler1.visible) objectsToTest.push(ruler1); if(ruler2.visible) objectsToTest.push(ruler2); const intersects = raycaster.intersectObjects(objectsToTest, true); document.body.style.cursor = intersects.length > 0 ? 'grab' : 'default'; }
         });
 
@@ -741,18 +793,18 @@
         });
 
         function updateHelpers(v1, v2, k1, k2, omega) {
-            clearGroup(interferenceLinesGroup); clearGroup(crestsGroup); clearGroup(raysGroup); 
+            clearGroup(interferenceLinesGroup); clearGroup(crestsGroup); clearGroup(raysGroup);
 
             if (params.showRays) {
                 const matRay = new THREE.LineBasicMaterial({ color: 0xffff00, linewidth: 2 });
                 const drawRay = (startPos, angle) => {
                     const pts = [startPos.clone().setY(2)]; const dirX = Math.cos(angle); const dirZ = Math.sin(angle);
-                    if (dirX === 0) return; 
+                    if (dirX === 0) return;
                     if (params.obstacleMode !== 'none') {
                         const distToWall = (params.wallX - startPos.x) / dirX;
                         if (distToWall > 0) {
                             const hitPos = startPos.clone(); hitPos.x = params.wallX; hitPos.z += distToWall * dirZ; pts.push(hitPos.clone().setY(2));
-                            if (isSolid(hitPos.z)) { const refLength = 30; const refEndX = params.wallX - refLength * Math.cos(angle); const refEndZ = hitPos.z + refLength * Math.sin(angle); pts.push(new THREE.Vector3(refEndX, 2, refEndZ)); } 
+                            if (isSolid(hitPos.z)) { const refLength = 30; const refEndX = params.wallX - refLength * Math.cos(angle); const refEndZ = hitPos.z + refLength * Math.sin(angle); pts.push(new THREE.Vector3(refEndX, 2, refEndZ)); }
                             else { const endX = tankSize/2; const endZ = hitPos.z + (endX - hitPos.x) * Math.tan(angle); pts.push(new THREE.Vector3(endX, 2, endZ)); }
                         }
                     } else if (params.enableRefraction && startPos.x < 0) {
@@ -809,7 +861,7 @@
                 if ((params.showNodal || params.showAntinodal) && params.waveMode === 'continuous') {
                     if (params.src1Active && params.src2Active && Math.abs(params.freq1 - params.freq2) < 0.1) {
                         warningEl.style.display = 'none';
-                        const subLambda = lambda1; const d = params.sourceDistance; const maxN = Math.floor(d / subLambda * 2); 
+                        const subLambda = lambda1; const d = params.sourceDistance; const maxN = Math.floor(d / subLambda * 2);
                         const matAntinodal = new THREE.LineBasicMaterial({ color: 0xFFD700, clippingPlanes: clipPlanes });
                         const matNodal = new THREE.LineDashedMaterial({ color: 0x00FF00, dashSize: 1.5, gapSize: 1.5, clippingPlanes: clipPlanes });
                         for (let n = 0; n <= maxN; n++) {
@@ -826,11 +878,11 @@
             if (isNaN(b) || b === 0) return;
             const edgeOffset = tankSize / 2 - 5; const ptsPos = [], ptsNeg = [];
             for (let xLocal = 0; xLocal < tankSize; xLocal += 1.5) {
-                const zLocal = a * Math.sqrt(1 + (xLocal * xLocal) / (b * b)); 
+                const zLocal = a * Math.sqrt(1 + (xLocal * xLocal) / (b * b));
                 const xWorld = xLocal - edgeOffset; if (params.enableRefraction && xWorld > 0) break; if(xWorld > tankSize/2) break;
                 ptsPos.push(new THREE.Vector3(xWorld, 1.8, zLocal)); ptsNeg.push(new THREE.Vector3(xWorld, 1.8, -zLocal));
             }
-            const offsets = [new THREE.Vector3(0,0,0)]; 
+            const offsets = [new THREE.Vector3(0,0,0)];
             offsets.forEach(offset => {
                 if (ptsPos.length > 0) { const linePos = new THREE.Line(new THREE.BufferGeometry().setFromPoints(ptsPos.map(p => p.clone().add(offset))), material); if(isDashed) linePos.computeLineDistances(); interferenceLinesGroup.add(linePos); }
                 if (a !== 0 && ptsNeg.length > 0) { const lineNeg = new THREE.Line(new THREE.BufferGeometry().setFromPoints(ptsNeg.map(p => p.clone().add(offset))), material); if(isDashed) lineNeg.computeLineDistances(); interferenceLinesGroup.add(lineNeg); }
@@ -838,26 +890,33 @@
         }
 
         function setupUI() {
-            const bindSlider = (id, paramKey, displayId, callback) => {
-                const el = document.getElementById(id);
-                if(el) { el.addEventListener('input', e => { const val = parseFloat(e.target.value); params[paramKey] = val; document.getElementById(displayId).textContent = val; if(id === 'source-distance' || id === 'plane-angle') updateSourcePositions(); if(id === 'water-depth-1' || id === 'water-depth-2') createWaterTank(); if(callback) callback(); }); }
-            };
-
-            bindSlider('amplitude', 'amplitude', 'amp-value'); bindSlider('source-distance', 'sourceDistance', 'dist-value');
-            bindSlider('water-depth-1', 'waterDepth1', 'depth1-value'); bindSlider('water-depth-2', 'waterDepth2', 'depth2-value');
-            bindSlider('freq1', 'freq1', 'freq1-value'); bindSlider('freq2', 'freq2', 'freq2-value'); bindSlider('plane-angle', 'planeAngle', 'plane-angle-value'); 
-            bindSlider('wall-x', 'wallX', 'wall-pos-value', () => { updateVirtualSources(); createWaterTank(); });
-            bindSlider('slit-width', 'slitWidth', 'slit-width-value', () => { updateVirtualSources(); createWaterTank(); });
-            bindSlider('slit-sep', 'slitSep', 'slit-sep-value', () => { updateVirtualSources(); createWaterTank(); });
+            // 滑桿（PhysLab.ui.bindSlider 綁定時會即時執行一次回呼；
+            // 各回呼與原版 input 監聽器的副作用一一對應）
+            PhysLab.ui.bindSlider('amplitude', 'amp-value', v => { params.amplitude = v; return String(v); });
+            PhysLab.ui.bindSlider('source-distance', 'dist-value', v => { params.sourceDistance = v; updateSourcePositions(); return String(v); });
+            PhysLab.ui.bindSlider('water-depth-1', 'depth1-value', v => { params.waterDepth1 = v; createWaterTank(); return String(v); });
+            PhysLab.ui.bindSlider('water-depth-2', 'depth2-value', v => { params.waterDepth2 = v; createWaterTank(); return String(v); });
+            PhysLab.ui.bindSlider('freq1', 'freq1-value', v => { params.freq1 = v; return String(v); });
+            PhysLab.ui.bindSlider('freq2', 'freq2-value', v => { params.freq2 = v; return String(v); });
+            PhysLab.ui.bindSlider('plane-angle', 'plane-angle-value', v => { params.planeAngle = v; updateSourcePositions(); return String(v); });
+            PhysLab.ui.bindSlider('wall-x', 'wall-pos-value', v => { params.wallX = v; updateVirtualSources(); createWaterTank(); return String(v); });
+            PhysLab.ui.bindSlider('slit-width', 'slit-width-value', v => { params.slitWidth = v; updateVirtualSources(); createWaterTank(); return String(v); });
+            PhysLab.ui.bindSlider('slit-sep', 'slit-sep-value', v => { params.slitSep = v; updateVirtualSources(); createWaterTank(); return String(v); });
+            PhysLab.ui.bindSlider('master-frequency', 'master-freq-value', v => {
+                params.masterFreq = v; params.freq1 = v; params.freq2 = v;
+                document.getElementById('freq1').value = v; document.getElementById('freq2').value = v;
+                PhysLab.ui.setText('freq1-value', v); PhysLab.ui.setText('freq2-value', v);
+                return String(v);
+            });
 
             document.getElementById('wave-mode').addEventListener('change', e => {
-                params.waveMode = e.target.value; 
+                params.waveMode = e.target.value;
                 document.getElementById('fire-pulse-btn').style.display = params.waveMode === 'pulse' ? 'block' : 'none';
-                params.pulses = []; 
+                params.pulses = [];
             });
 
             document.getElementById('fire-pulse-btn').addEventListener('click', () => {
-                params.pulses.push(time); 
+                params.pulses.push(time);
             });
 
             document.getElementById('obstacle-mode').addEventListener('change', e => {
@@ -868,48 +927,48 @@
                 updateVirtualSources(); createWaterTank();
             });
 
-            document.getElementById('master-frequency').addEventListener('input', e => {
-                const val = parseFloat(e.target.value); params.masterFreq = val; document.getElementById('master-freq-value').textContent = val;
-                params.freq1 = val; params.freq2 = val; document.getElementById('freq1').value = val; document.getElementById('freq2').value = val;
-                document.getElementById('freq1-value').textContent = val; document.getElementById('freq2-value').textContent = val;
-            });
-
             document.getElementById('source-type').addEventListener('change', e => {
                 params.sourceType = e.target.value; updateSourcePositions(); const isPlane = (params.sourceType === 'plane');
                 document.getElementById('dist-container').style.opacity = isPlane ? '0.3' : '1'; document.getElementById('source-distance').disabled = isPlane;
                 document.getElementById('s2-helpers').style.display = isPlane ? 'none' : 'block'; document.querySelector('.source-group').style.opacity = isPlane ? '0.3' : '1';
-                document.getElementById('plane-angle-container').style.display = isPlane ? 'block' : 'none'; 
+                document.getElementById('plane-angle-container').style.display = isPlane ? 'block' : 'none';
             });
 
             document.getElementById('playback-speed').addEventListener('change', e => params.speed = parseFloat(e.target.value));
-            document.getElementById('enable-refraction').addEventListener('change', e => {
-                params.enableRefraction = e.target.checked; const container = document.getElementById('depth2-container');
-                if (params.enableRefraction) { container.style.opacity = '1'; container.style.pointerEvents = 'auto'; } 
-                else { container.style.opacity = '0.4'; container.style.pointerEvents = 'none'; }
-                createWaterTank(); 
-            });
 
-            const bindCheck = (id, paramKey, callback) => { const el = document.getElementById(id); if(el) el.addEventListener('change', e => { params[paramKey] = e.target.checked; if(callback) callback(); }); };
-            bindCheck('src1-active', 'src1Active'); bindCheck('src2-active', 'src2Active'); bindCheck('show-nodal', 'showNodal'); bindCheck('show-antinodal', 'showAntinodal');
-            bindCheck('show-crest1', 'showCrest1'); bindCheck('show-trough1', 'showTrough1'); bindCheck('show-crest2', 'showCrest2'); bindCheck('show-trough2', 'showTrough2'); 
-            bindCheck('show-wavelength', 'showWavelength'); bindCheck('show-rays', 'showRays'); 
+            // 開關列（原 checkbox → labgray .toggle-row）
+            const bindToggle = (rowId, trackId, onChange) => {
+                const row = document.getElementById(rowId); const track = document.getElementById(trackId);
+                if (row && track) row.addEventListener('click', () => { track.classList.toggle('on'); onChange(track.classList.contains('on')); });
+            };
+            bindToggle('row-src1', 'src1-active', on => params.src1Active = on);
+            bindToggle('row-src2', 'src2-active', on => params.src2Active = on);
+            bindToggle('row-nodal', 'show-nodal', on => params.showNodal = on);
+            bindToggle('row-antinodal', 'show-antinodal', on => params.showAntinodal = on);
+            bindToggle('row-crest1', 'show-crest1', on => params.showCrest1 = on);
+            bindToggle('row-trough1', 'show-trough1', on => params.showTrough1 = on);
+            bindToggle('row-crest2', 'show-crest2', on => params.showCrest2 = on);
+            bindToggle('row-trough2', 'show-trough2', on => params.showTrough2 = on);
+            bindToggle('row-ruler', 'show-wavelength', on => params.showWavelength = on);
+            bindToggle('row-rays', 'show-rays', on => params.showRays = on);
+            bindToggle('row-refraction', 'enable-refraction', on => {
+                params.enableRefraction = on; const container = document.getElementById('depth2-container');
+                if (params.enableRefraction) { container.style.opacity = '1'; container.style.pointerEvents = 'auto'; }
+                else { container.style.opacity = '0.4'; container.style.pointerEvents = 'none'; }
+                createWaterTank();
+            });
 
             document.getElementById('pause').addEventListener('click', () => params.paused = !params.paused);
             document.getElementById('reset').addEventListener('click', () => location.reload());
-
-            const controlsPanel = document.getElementById('controls'); const showBtn = document.getElementById('show-panel-btn'); const hideBtn = document.getElementById('hide-panel-btn');
-            hideBtn.addEventListener('click', () => { controlsPanel.classList.add('hidden'); showBtn.style.display = 'block'; setTimeout(() => window.dispatchEvent(new Event('resize')), 400); });
-            showBtn.addEventListener('click', () => { controlsPanel.classList.remove('hidden'); showBtn.style.display = 'none'; setTimeout(() => window.dispatchEvent(new Event('resize')), 400); });
         }
 
-        function resizeCanvas() { const width = canvas.parentElement.clientWidth; camera.aspect = width / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(width, window.innerHeight); }
+        updateVirtualSources(); createWaterTank(); createWaterSurface(); updateSourcePositions(); setupUI();
 
-        window.addEventListener('resize', resizeCanvas);
-        updateVirtualSources(); createWaterTank(); createWaterSurface(); updateSourcePositions(); setupUI(); resizeCanvas();
+        PhysLab.ui.bindPanelToggle('btn-toggle-left', 'left-panel', ctx.resize);
+        PhysLab.ui.bindPanelToggle('btn-toggle-right', 'right-panel', ctx.resize);
 
-        function animate() { requestAnimationFrame(animate); updateWaves(); updateLabels(); controls.update(); renderer.render(scene, camera); }
-        animate();
-    </script>
-    <a id="home-btn" href="../../../index.html">&#127968; &#20027;&#38913;</a>
+        ctx.start(function () { updateWaves(); updateLabels(); });
+});
+</script>
 </body>
 </html>
