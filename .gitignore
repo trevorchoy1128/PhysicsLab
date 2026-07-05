@@ -1,3 +1,6 @@
 # Claude Code 本地工具狀態 (設定等)，不納入版本控制；但 subagent 定義入庫（main 與 worktree 共用）
 .claude/*
 !.claude/agents/
+
+# 版權資源（教科書 PDF、詞彙表等），只限本機存取，絕不入庫、絕不上 GitHub
+resource/

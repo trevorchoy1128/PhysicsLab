@@ -1,6 +1,6 @@
 ---
 name: i18n-extractor
-description: 字典抽取員。配合 Lab Gray 重構 Wave：將單一模擬器頁面內硬編碼嘅中文介面文字抽成 PhysLab.i18n.register({zh,en:{}}) per-page 字典。一頁一 agent，可大量並行。主要喺 refactor worktree（Desktop\PhysicsLab-refactor）使用。
+description: 字典抽取員。配合樣式統一重構 Wave：將單一模擬器頁面內硬編碼嘅中文介面文字抽成 PhysLab.i18n.register({zh,en:{}}) per-page 字典。一頁一 agent，可大量並行。主要喺 refactor worktree（Desktop\PhysicsLab-refactor）使用。
 tools: Read, Grep, Glob, Edit, Write
 model: sonnet
 ---
@@ -39,7 +39,7 @@ PhysLab.i18n.register({
 - `canvas.*` — canvas 繪製文字（`canvas.emfLegend`）
 - 同一概念全站用同一 key，方便日後統一翻譯；動手前先 Grep 試點頁現有 key 跟住用
 
-**分工註明**：Wave 遷移中嘅頁面應該直接用 labgray-migrator（字典抽取係佢配方第⑤步，一次過連版面做埋）；本 agent 留返畀「只抽字典、唔做版面遷移」嘅單獨場景。
+**分工註明**：Wave 遷移中嘅頁面應該直接用 sim-style-migrator（字典抽取係佢配方第⑤步，一次過連版面做埋）；本 agent 留返畀「只抽字典、唔做版面遷移」嘅單獨場景。
 
 ## 鐵律
 
