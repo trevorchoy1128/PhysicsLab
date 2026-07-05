@@ -1,279 +1,117 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>平行導線相互作用 3D 互動模擬器 | 實驗室專業版</title>
-    <!-- KaTeX：所有公式渲染 -->
+    <!-- KaTeX：所有公式渲染（本頁沿用 KaTeX 0.16.9，勿改 MathJax） -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <!-- sim3d-load-guard: three.js 載入失敗提示 -->
-    <script>
-      window.addEventListener('DOMContentLoaded', function () {
-        if (typeof THREE === 'undefined' || typeof THREE.OrbitControls === 'undefined') {
-          var o = document.createElement('div');
-          o.id = 'sim3d-load-error';
-          o.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;background:#0f172a;color:#fff;font-family:system-ui,sans-serif;font-size:18px;line-height:1.7';
-          o.innerHTML = '⚠️ 無法載入 3D 元件（three.js）<br>請檢查網路連線後重新整理頁面。';
-          document.body.appendChild(o);
-        }
-      });
-    </script>
+
+    <!-- 共用資源（載入順序固定，不可 defer/async）：core → i18n → quiz → sim3d -->
+    <link rel="stylesheet" href="../../../assets/css/tokens.css">
+    <link rel="stylesheet" href="../../../assets/css/labgray.css">
+    <script src="../../../assets/js/core.js"></script>
+    <script src="../../../assets/js/i18n.js"></script>
+    <script src="../../../assets/js/quiz.js"></script>
+    <script src="../../../assets/js/sim3d.js"></script>
+
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        /* ── 頁面獨有樣式（共用 chrome 見 assets/css/labgray.css）── */
 
-        /* --- 實驗室灰 (Lab Gray) 主題（沿用弗林明左手定則模擬器） --- */
-        body {
-            font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
-            background: #e2e6eb;
-            color: #334155;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
+        /* .hl-* 覆寫：本頁教學色（紅=電流、藍=磁場）與 labgray 出貨的 AC-DC 值不同 */
+        .hl-current { color: #dc2626; }
+        .hl-field   { color: #2563eb; }
 
-        #topbar {
-            background: #1e293b;
-            border-bottom: 1px solid #0f172a;
-            padding: 10px 20px;
-            display: flex; align-items: center; justify-content: space-between;
-            flex-shrink: 0;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        #topbar .title-block h1 { font-size: 1.2rem; font-weight: 700; color: #f8fafc; letter-spacing: 0.03em; }
-        #topbar .title-block p  { font-size: 0.75rem; color: #94a3b8; margin-top: 2px; }
-
-        .panel-toggle-btn {
-            background: #334155; border: 1px solid #475569; border-radius: 6px;
-            color: #f8fafc; padding: 7px 12px; font-size: 0.8rem; font-weight: 600;
-            cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 6px;
-        }
-        .panel-toggle-btn:hover { background: #475569; border-color: #64748b; }
-        .panel-toggle-btn.inactive { background: #0f172a; color: #64748b; border-color: #1e293b; }
-
-        .panel-hidden { display: none !important; }
-
-        #main { display: flex; flex: 1; min-height: 0; overflow: hidden; }
-
-        #left-panel {
-            width: 300px; flex-shrink: 0; background: #f1f5f9;
-            border-right: 1px solid #cbd5e1; display: flex;
-            flex-direction: column; overflow-y: auto; padding: 14px 12px; gap: 12px;
-        }
-
-        .card { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-        .card-header {
-            background: #e2e8f0;
-            padding: 8px 13px; font-size: 0.75rem; font-weight: 700;
-            color: #475569; text-transform: uppercase; letter-spacing: 0.1em;
-            display: flex; align-items: center; gap: 7px;
-        }
-        .card-body { padding: 11px 13px; }
-
-        .mode-label { font-size: 0.68rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 7px; margin-top: 4px; }
-
-        .dir-btn-group { display: flex; gap: 6px; flex-wrap: wrap; }
-        .dir-btn {
-            flex: 1; min-width: 58px; padding: 8px 5px; border-radius: 8px;
-            border: 1px solid #cbd5e1; background: #f8fafc;
-            color: #475569; font-size: 0.74rem; font-weight: 600;
-            cursor: pointer; transition: all 0.2s; text-align: center;
-        }
-        .dir-btn:hover { border-color: #94a3b8; color: #1e293b; background: #f1f5f9; }
-        .dir-btn.active {
-            border-color: #0284c7; background: #f0f9ff;
-            color: #0369a1; box-shadow: 0 0 0 1px #0284c7;
-        }
-
-        /* 滑桿 */
-        .slider-row { margin-bottom: 13px; }
-        .slider-row:last-child { margin-bottom: 0; }
-        .slider-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px; }
-        .slider-head label { font-size: 0.74rem; color: #475569; font-weight: 600; }
-        .slider-head .val { font-size: 0.78rem; color: #0369a1; font-weight: 700; font-variant-numeric: tabular-nums; }
-        input[type=range] {
-            -webkit-appearance: none; appearance: none; width: 100%; height: 5px;
-            background: #cbd5e1; border-radius: 3px; outline: none; cursor: pointer;
-        }
-        input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none; appearance: none; width: 16px; height: 16px;
-            border-radius: 50%; background: #3b82f6; border: 2px solid #fff;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.3); cursor: pointer;
-        }
-        input[type=range]::-moz-range-thumb {
-            width: 16px; height: 16px; border-radius: 50%; background: #3b82f6;
-            border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.3); cursor: pointer;
-        }
-
-        .toggle-row {
-            display: flex; align-items: center; gap: 9px; padding: 7px 12px;
-            background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px;
-            cursor: pointer; transition: background 0.2s; user-select: none;
-            margin-bottom: 6px;
-        }
-        .toggle-row:last-child { margin-bottom: 0; }
-        .toggle-row:hover { background: #f8fafc; }
-        .toggle-track {
-            width: 32px; height: 18px; border-radius: 9px; background: #cbd5e1;
-            position: relative; transition: background 0.2s; flex-shrink: 0;
-        }
-        .toggle-track.on { background: #3b82f6; }
-        .toggle-thumb {
-            width: 14px; height: 14px; border-radius: 50%; background: #fff;
-            position: absolute; top: 2px; left: 2px; transition: left 0.2s;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.2);
-        }
-        .toggle-track.on .toggle-thumb { left: 16px; }
-        .toggle-row span { font-size: 0.73rem; color: #475569; font-weight: 500; }
+        /* 顯示項目開關的顏色樣本（單頁元件） */
         .swatch { width: 11px; height: 11px; border-radius: 3px; flex-shrink: 0; margin-left: auto; }
 
-        .info-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 11px 12px; font-size: 0.78rem; line-height: 1.8; color: #475569; }
-        .hl-force   { color: #16a34a; font-weight: 700; }
-        .hl-current { color: #dc2626; font-weight: 700; }
-        .hl-field   { color: #2563eb; font-weight: 700; }
-
-        /* 視圖容器 */
-        #canvas-wrap { flex: 1; position: relative; min-width: 0; background: #e2e6eb; overflow: hidden; }
-        #view3d { position: absolute; inset: 0; }
-        #view3d canvas { display: block; outline: none; }
-
-        /* 2D 截面：懸浮浮層（可拖曳、可收合） */
+        /* 2D 俯視浮窗（可拖曳、可收合；#view2d / .panel-hidden 已收錄於 labgray.css） */
         #view2d-wrap {
             position: absolute; top: 14px; right: 14px;
             width: 300px; height: 300px; z-index: 20;
             background: rgba(248,250,252,0.96);
             backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
-            border: 1px solid #cbd5e1; border-radius: 10px;
+            border: 1px solid var(--pl-border); border-radius: 10px;
             box-shadow: 0 8px 26px rgba(0,0,0,0.18);
             display: flex; flex-direction: column; overflow: hidden;
         }
-        #view2d-wrap.panel-hidden { display: none !important; }
         #view2d-wrap.collapsed { height: auto !important; }
         #view2d-wrap.collapsed #view2d { display: none; }
         #view2d-head {
-            padding: 7px 10px; font-size: 0.7rem; font-weight: 700; color: #475569;
-            background: #eef2f7; border-bottom: 1px solid #e2e8f0;
+            padding: 7px 10px; font-size: 0.7rem; font-weight: 700; color: var(--pl-text-dim);
+            background: #eef2f7; border-bottom: 1px solid var(--pl-border-soft);
             letter-spacing: 0.04em; cursor: move; user-select: none;
             display: flex; align-items: center; justify-content: space-between; gap: 6px;
         }
         #view2d-collapse {
-            border: none; background: transparent; color: #64748b; cursor: pointer;
+            border: none; background: transparent; color: var(--pl-text-faint); cursor: pointer;
             font-size: 0.85rem; font-weight: 700; padding: 0 4px; line-height: 1;
         }
-        #view2d-collapse:hover { color: #1e293b; }
-        #view2d { flex: 1; width: 100%; display: block; }
+        #view2d-collapse:hover { color: var(--pl-text-strong); }
 
-        #status-badge {
-            position: absolute; top: 14px; left: 14px;
-            background: rgba(255,255,255,0.92); border: 1px solid #cbd5e1;
-            border-radius: 22px; padding: 7px 18px; font-size: 0.82rem;
-            font-weight: 600; color: #1e293b; backdrop-filter: blur(8px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-            white-space: nowrap; pointer-events: none; z-index: 10;
-        }
-        #hint {
-            position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
-            background: rgba(255,255,255,0.85); border: 1px solid #cbd5e1;
-            border-radius: 18px; padding: 6px 18px; font-size: 0.75rem;
-            color: #475569; backdrop-filter: blur(4px);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-            pointer-events: none; white-space: nowrap; z-index: 10;
-        }
-
-        #right-panel {
-            width: 280px; flex-shrink: 0; background: #f1f5f9;
-            border-left: 1px solid #cbd5e1; display: flex;
-            flex-direction: column; padding: 14px 12px; gap: 12px; overflow-y: auto;
-        }
-        .formula-box { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-        .formula-box h4 { font-size: 0.7rem; color: #475569; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 9px; }
-        .formula { background: #f8fafc; border-radius: 6px; padding: 8px 10px; color: #0f172a; margin-bottom: 7px; border: 1px solid #e2e8f0; overflow-x: auto; text-align: center; }
-        .formula-desc { font-size: 0.71rem; color: #64748b; line-height: 1.8; }
-        .formula-desc span { color: #334155; font-weight: 600; }
+        /* 讀數列（單頁元件） */
         .force-readout { margin-top: 8px; padding: 8px 10px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 7px; font-size: 0.86rem; color: #166534; font-weight: 700; text-align: center; }
         .state-readout { margin-top: 7px; padding: 7px 10px; border-radius: 7px; font-size: 0.84rem; font-weight: 700; text-align: center; }
         .state-attract { background: #eff6ff; border: 1px solid #bfdbfe; color: #1d4ed8; }
         .state-repel   { background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; }
-        .state-none    { background: #f1f5f9; border: 1px solid #e2e8f0; color: #64748b; }
+        .state-none    { background: var(--pl-panel); border: 1px solid var(--pl-border-soft); color: var(--pl-text-faint); }
 
-        #graph-canvas { width: 100%; height: 150px; display: block; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 7px; }
+        #graph-canvas { width: 100%; height: 150px; display: block; background: var(--pl-inset); border: 1px solid var(--pl-border-soft); border-radius: 7px; }
 
-        .quiz-box { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-        .quiz-box h4 { font-size: 0.7rem; color: #0284c7; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 9px; }
-        .quiz-q { font-size: 0.78rem; color: #1e293b; line-height: 1.65; margin-bottom: 10px; font-weight: 500; }
-        .quiz-options { display: flex; flex-direction: column; gap: 5px; }
-        .quiz-opt { padding: 7px 10px; border-radius: 7px; border: 1px solid #cbd5e1; background: #f8fafc; color: #475569; font-size: 0.76rem; cursor: pointer; transition: all 0.2s; }
-        .quiz-opt:hover { border-color: #94a3b8; background: #f1f5f9; color: #1e293b; }
-        .quiz-opt.correct { border-color: #22c55e; background: #f0fdf4; color: #166534; }
-        .quiz-opt.wrong   { border-color: #ef4444; background: #fef2f2; color: #991b1b; }
-        #quiz-feedback { font-size: 0.73rem; margin-top: 8px; min-height: 18px; line-height: 1.55; color: #475569; }
-        #quiz-next { margin-top: 8px; padding: 6px 12px; border-radius: 6px; border: 1px solid #cbd5e1; background: #f1f5f9; color: #475569; font-size: 0.74rem; cursor: pointer; display: none; width: 100%; font-weight: 600; }
-        #quiz-next:hover { background: #e2e8f0; }
-
+        /* 應用實例（琥珀色卡；單頁元件） */
         .app-box { background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
         .app-box h4 { font-size: 0.7rem; color: #b45309; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 9px; }
-        .app-box .app-item { font-size: 0.73rem; color: #475569; line-height: 1.7; margin-bottom: 7px; }
+        .app-box .app-item { font-size: 0.73rem; color: var(--pl-text-dim); line-height: 1.7; margin-bottom: 7px; }
         .app-box .app-item:last-child { margin-bottom: 0; }
         .app-box .app-item b { color: #92400e; }
 
-        @media (max-width: 1100px) { #right-panel { display: none; } }
-        @media (max-width: 820px) {
+        @media (max-width: 860px) {
             #view2d-wrap { width: 210px; height: 210px; top: 10px; right: 10px; }
         }
-
-        /* Home button */
-        #home-btn {
-            position: fixed; bottom: 16px; left: 16px; z-index: 99999;
-            background: rgba(30,41,59,0.85); backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.3);
-            border-radius: 10px; padding: 8px 14px; font-size: 13px; font-weight: bold;
-            color: #fff; text-decoration: none; box-shadow: 0 2px 10px rgba(0,0,0,0.25);
-            transition: background 0.2s, transform 0.2s; display: inline-flex;
-            align-items: center; gap: 6px;
-        }
-        #home-btn:hover { background: rgba(30,41,59,0.95); transform: translateY(-2px); }
     </style>
 </head>
 <body>
 
 <div id="topbar">
     <div style="display: flex; align-items: center; gap: 16px;">
-        <button class="panel-toggle-btn" id="btn-toggle-left" onclick="toggleLeftPanel()">
-            <span>☰</span> 控制
+        <button type="button" class="panel-toggle-btn" id="btn-toggle-left">
+            <span>☰</span> <span data-i18n="topbar.controls">控制</span>
         </button>
         <div class="title-block">
-            <h1>🧲 平行導線相互作用 3D 互動模擬器</h1>
-            <p id="subtitle">HKDSE Physics · Book 4 · 兩平行載流導線間的磁力</p>
+            <h1 data-i18n="topbar.title">🧲 平行導線相互作用 3D 互動模擬器</h1>
+            <p data-i18n="topbar.subtitle">HKDSE Physics · Book 4 · 兩平行載流導線間的磁力</p>
         </div>
     </div>
-    <button class="panel-toggle-btn" id="btn-toggle-right" onclick="toggleRightPanel()">
-        <span>📖</span> 資訊
-    </button>
+    <div class="tb-actions">
+        <button type="button" class="panel-toggle-btn" id="btn-toggle-right">
+            <span>📖</span> <span data-i18n="topbar.info">資訊</span>
+        </button>
+    </div>
 </div>
 
 <div id="main">
     <div id="left-panel">
         <div class="card">
-            <div class="card-header">⚡ 導線 1 電流方向 (I₁)</div>
+            <div class="card-header">⚡ <span data-i18n="panel.i1.header">導線 1 電流方向 (I₁)</span><span class="chevron">▾</span></div>
             <div class="card-body">
                 <div class="dir-btn-group">
-                    <button class="dir-btn active" id="dir1-out" onclick="setDir(1, 1)">⊙ 流出紙面</button>
-                    <button class="dir-btn"        id="dir1-in"  onclick="setDir(1, -1)">⊗ 流入紙面</button>
+                    <button type="button" class="dir-btn active" id="dir1-out" data-i18n="dir.out">⊙ 流出紙面</button>
+                    <button type="button" class="dir-btn"        id="dir1-in"  data-i18n="dir.in">⊗ 流入紙面</button>
                 </div>
             </div>
         </div>
 
         <div class="card">
-            <div class="card-header">⚡ 導線 2 電流方向 (I₂)</div>
+            <div class="card-header">⚡ <span data-i18n="panel.i2.header">導線 2 電流方向 (I₂)</span><span class="chevron">▾</span></div>
             <div class="card-body">
                 <div class="dir-btn-group">
-                    <button class="dir-btn active" id="dir2-out" onclick="setDir(2, 1)">⊙ 流出紙面</button>
-                    <button class="dir-btn"        id="dir2-in"  onclick="setDir(2, -1)">⊗ 流入紙面</button>
+                    <button type="button" class="dir-btn active" id="dir2-out" data-i18n="dir.out">⊙ 流出紙面</button>
+                    <button type="button" class="dir-btn"        id="dir2-in"  data-i18n="dir.in">⊗ 流入紙面</button>
                 </div>
-                <div class="info-box" style="margin-top:10px; padding:8px 10px; font-size:0.72rem;">
+                <div class="info-box" data-i18n-html="panel.i2.note" style="margin-top:10px; padding:8px 10px; font-size:0.72rem;">
                     <b>同向</b>（兩者皆 ⊙ 或皆 ⊗）→ <span class="hl-field">互相吸引</span>；
                     <b>反向</b> → <span class="hl-current">互相排斥</span>。
                 </div>
@@ -281,98 +119,92 @@
         </div>
 
         <div class="card">
-            <div class="card-header" onclick="toggleCard('param-body','param-chevron')" style="cursor:pointer; justify-content:space-between;">
-                <span>🎚️ 定量參數</span><span id="param-chevron">▾</span>
-            </div>
-            <div class="card-body" id="param-body">
+            <div class="card-header">🎚️ <span data-i18n="panel.param.header">定量參數</span><span class="chevron">▾</span></div>
+            <div class="card-body">
                 <div class="slider-row">
-                    <div class="slider-head"><label>電流 I₁</label><span class="val" id="val-I1">10.0 A</span></div>
+                    <div class="slider-head"><label data-i18n="panel.param.i1">電流 I₁</label><span class="val" id="val-I1">10.0 A</span></div>
                     <input type="range" id="sld-I1" min="0" max="20" step="0.5" value="10">
                 </div>
                 <div class="slider-row">
-                    <div class="slider-head"><label>電流 I₂</label><span class="val" id="val-I2">10.0 A</span></div>
+                    <div class="slider-head"><label data-i18n="panel.param.i2">電流 I₂</label><span class="val" id="val-I2">10.0 A</span></div>
                     <input type="range" id="sld-I2" min="0" max="20" step="0.5" value="10">
                 </div>
                 <div class="slider-row">
-                    <div class="slider-head"><label>間距 r</label><span class="val" id="val-r">0.020 m</span></div>
+                    <div class="slider-head"><label data-i18n="panel.param.r">間距 r</label><span class="val" id="val-r">0.020 m</span></div>
                     <input type="range" id="sld-r" min="0.01" max="0.1" step="0.001" value="0.02">
                 </div>
                 <div class="slider-row">
-                    <div class="slider-head"><label>導線長 L</label><span class="val" id="val-L">1.00 m</span></div>
+                    <div class="slider-head"><label data-i18n="panel.param.len">導線長 L</label><span class="val" id="val-L">1.00 m</span></div>
                     <input type="range" id="sld-L" min="0.1" max="2" step="0.05" value="1">
                 </div>
             </div>
         </div>
 
         <div class="card">
-            <div class="card-header" onclick="toggleCard('motion-body','motion-chevron')" style="cursor:pointer; justify-content:space-between;">
-                <span>🏃 運動控制</span><span id="motion-chevron">▾</span>
-            </div>
-            <div class="card-body" id="motion-body">
-                <div class="toggle-row" id="power-toggle" onclick="togglePower()" style="margin-bottom:10px;">
+            <div class="card-header">🏃 <span data-i18n="panel.motion.header">運動控制</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <div class="toggle-row" id="power-toggle" style="margin-bottom:10px;">
                     <div class="toggle-track" id="power-track"><div class="toggle-thumb"></div></div>
-                    <span>🔓 釋放導線（依合力自由移動）</span>
+                    <span data-i18n="panel.motion.release">🔓 釋放導線（依合力自由移動）</span>
                 </div>
-                <button class="dir-btn" style="width:100%;" id="reset-btn" onclick="resetWires()">↺ 重設導線位置</button>
-                <div class="mode-label" style="margin-top:11px;">模擬速度（慢動作）</div>
+                <button type="button" class="dir-btn" style="width:100%;" id="reset-btn" data-i18n="panel.motion.reset">↺ 重設導線位置</button>
+                <div class="mode-label" style="margin-top:11px;" data-i18n="panel.motion.speed">模擬速度（慢動作）</div>
                 <div class="dir-btn-group">
-                    <button class="dir-btn" id="spd-0.1" onclick="setSpeed(0.1)">×0.1</button>
-                    <button class="dir-btn" id="spd-0.25" onclick="setSpeed(0.25)">×0.25</button>
-                    <button class="dir-btn active" id="spd-0.5" onclick="setSpeed(0.5)">×0.5</button>
-                    <button class="dir-btn" id="spd-1" onclick="setSpeed(1)">×1</button>
+                    <button type="button" class="dir-btn" id="spd-0.1">×0.1</button>
+                    <button type="button" class="dir-btn" id="spd-0.25">×0.25</button>
+                    <button type="button" class="dir-btn active" id="spd-0.5">×0.5</button>
+                    <button type="button" class="dir-btn" id="spd-1">×1</button>
                 </div>
-                <div class="info-box" style="margin-top:9px; padding:8px 10px; font-size:0.72rem;">電流一直存在。<b>釋放</b>後導線才依磁力移動：同向<b>相吸靠攏</b>、反向<b>相斥彈開</b>，靠近時力增大（1/r）→ 越來越快。按「重設」回起點。</div>
+                <div class="info-box" data-i18n-html="panel.motion.note" style="margin-top:9px; padding:8px 10px; font-size:0.72rem;">電流一直存在。<b>釋放</b>後導線才依磁力移動：同向<b>相吸靠攏</b>、反向<b>相斥彈開</b>，靠近時力增大（1/r）→ 越來越快。按「重設」回起點。</div>
             </div>
         </div>
 
         <div class="card">
-            <div class="card-header" onclick="toggleCard('display-body','display-chevron')" style="cursor:pointer; justify-content:space-between;">
-                <span>👀 顯示項目</span><span id="display-chevron">▾</span>
-            </div>
-            <div class="card-body" id="display-body">
-                <div class="toggle-row" id="field1-toggle" onclick="toggleField(1)">
+            <div class="card-header">👀 <span data-i18n="panel.display.header">顯示項目</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <div class="toggle-row" id="field1-toggle">
                     <div class="toggle-track on" id="field1-track"><div class="toggle-thumb"></div></div>
-                    <span>導線 1 磁場 B₁</span><span class="swatch" style="background:#b45309;"></span>
+                    <span data-i18n="panel.display.field1">導線 1 磁場 B₁</span><span class="swatch" style="background:#b45309;"></span>
                 </div>
-                <div class="toggle-row" id="field2-toggle" onclick="toggleField(2)">
+                <div class="toggle-row" id="field2-toggle">
                     <div class="toggle-track on" id="field2-track"><div class="toggle-thumb"></div></div>
-                    <span>導線 2 磁場 B₂</span><span class="swatch" style="background:#0d9488;"></span>
+                    <span data-i18n="panel.display.field2">導線 2 磁場 B₂</span><span class="swatch" style="background:#0d9488;"></span>
                 </div>
-                <div class="toggle-row" id="force1-toggle" onclick="toggleForce(1)">
+                <div class="toggle-row" id="force1-toggle">
                     <div class="toggle-track on" id="force1-track"><div class="toggle-thumb"></div></div>
-                    <span>導線 1 受力 F₁</span><span class="swatch" style="background:#16a34a;"></span>
+                    <span data-i18n="panel.display.force1">導線 1 受力 F₁</span><span class="swatch" style="background:#16a34a;"></span>
                 </div>
-                <div class="toggle-row" id="force2-toggle" onclick="toggleForce(2)">
+                <div class="toggle-row" id="force2-toggle">
                     <div class="toggle-track on" id="force2-track"><div class="toggle-thumb"></div></div>
-                    <span>導線 2 受力 F₂</span><span class="swatch" style="background:#ea580c;"></span>
+                    <span data-i18n="panel.display.force2">導線 2 受力 F₂</span><span class="swatch" style="background:#ea580c;"></span>
                 </div>
-                <div class="toggle-row" id="dots-toggle" onclick="toggleDots()">
+                <div class="toggle-row" id="dots-toggle">
                     <div class="toggle-track" id="dots-track"><div class="toggle-thumb"></div></div>
-                    <span>電流粒子 🟡</span>
+                    <span data-i18n="panel.display.dots">電流粒子 🟡</span>
                 </div>
-                <div class="toggle-row" id="hand-toggle" onclick="toggleHand()">
+                <div class="toggle-row" id="hand-toggle">
                     <div class="toggle-track" id="hand-track"><div class="toggle-thumb"></div></div>
-                    <span>Fleming 左手定則 🖐️</span>
+                    <span data-i18n="panel.display.hand">Fleming 左手定則 🖐️</span>
                 </div>
                 <div id="hand-target-row" style="margin:2px 0 8px 0;">
-                    <div class="mode-label">左手示範對象</div>
+                    <div class="mode-label" data-i18n="panel.display.handTarget">左手示範對象</div>
                     <div class="dir-btn-group">
-                        <button class="dir-btn" id="hand-w1" onclick="setHandTarget(1)">導線 1</button>
-                        <button class="dir-btn active" id="hand-w2" onclick="setHandTarget(2)">導線 2</button>
+                        <button type="button" class="dir-btn" id="hand-w1" data-i18n="panel.display.wire1">導線 1</button>
+                        <button type="button" class="dir-btn active" id="hand-w2" data-i18n="panel.display.wire2">導線 2</button>
                     </div>
                 </div>
-                <div class="toggle-row" id="2d-toggle" onclick="toggle2D()">
+                <div class="toggle-row" id="2d-toggle">
                     <div class="toggle-track on" id="2d-track"><div class="toggle-thumb"></div></div>
-                    <span>2D 俯視浮窗</span>
+                    <span data-i18n="panel.display.view2d">2D 俯視浮窗</span>
                 </div>
             </div>
         </div>
 
         <div class="card">
-            <div class="card-header">🎓 受力成因逐步拆解</div>
+            <div class="card-header">🎓 <span data-i18n="reveal.header">受力成因逐步拆解</span><span class="chevron">▾</span></div>
             <div class="card-body">
                 <div class="info-box" id="reveal-text" style="min-height:64px;">先設定兩導線電流方向，自己想想它們會<span class="hl-field">吸引</span>還是<span class="hl-current">排斥</span>，再按下方按鈕一步步看成因。</div>
-                <button class="dir-btn" style="width:100%; margin-top:8px;" id="reveal-btn" onclick="stepReveal()">▶ 下一步</button>
+                <button type="button" class="dir-btn" style="width:100%; margin-top:8px;" id="reveal-btn">▶ 下一步</button>
             </div>
         </div>
     </div>
@@ -380,12 +212,12 @@
     <div id="canvas-wrap">
         <div id="view3d">
             <div id="status-badge">載入中...</div>
-            <div id="hint">🖱 左鍵旋轉 · 右鍵平移 · 滾輪縮放</div>
+            <div id="hint" data-i18n="hint.orbit">🖱 左鍵旋轉 · 右鍵平移 · 滾輪縮放</div>
         </div>
         <div id="view2d-wrap">
             <div id="view2d-head">
-                <span>🛰️ 俯視圖 · 磁場垂直紙面（⊙出 / ⊗入）</span>
-                <button id="view2d-collapse" onclick="collapse2D(event)" title="收合/展開">▾</button>
+                <span data-i18n="view2d.title">🛰️ 俯視圖 · 磁場垂直紙面（⊙出 / ⊗入）</span>
+                <button type="button" id="view2d-collapse" title="收合/展開" data-i18n-title="view2d.collapseTitle">▾</button>
             </div>
             <canvas id="view2d"></canvas>
         </div>
@@ -393,9 +225,9 @@
 
     <div id="right-panel">
         <div class="formula-box">
-            <h4>📐 平行導線每單位長度受力</h4>
+            <h4 data-i18n="formula.header">📐 平行導線每單位長度受力</h4>
             <div class="formula" id="main-formula">\dfrac{F}{L}=\dfrac{\mu_0 I_1 I_2}{2\pi r}</div>
-            <div class="formula-desc">
+            <div class="formula-desc" data-i18n-html="formula.desc">
                 <span>F/L</span> 每米受力 (N/m)　<span>μ₀</span> = 4π×10⁻⁷ T·m/A<br>
                 <span>I₁,I₂</span> 兩導線電流 (A)　<span>r</span> 兩線間距 (m)
             </div>
@@ -405,39 +237,154 @@
         </div>
 
         <div class="formula-box">
-            <h4>📈 F/L – r 關係圖（破除「平方反比」迷思）</h4>
+            <h4 data-i18n="graph.header">📈 F/L – r 關係圖（破除「平方反比」迷思）</h4>
             <canvas id="graph-canvas"></canvas>
-            <div class="toggle-row" id="invsq-toggle" onclick="toggleInvSq()" style="margin-top:9px;">
+            <div class="toggle-row" id="invsq-toggle" style="margin-top:9px;">
                 <div class="toggle-track" id="invsq-track"><div class="toggle-thumb"></div></div>
-                <span>疊加 1/r² 對照虛線</span>
+                <span data-i18n="graph.invsq">疊加 1/r² 對照虛線</span>
             </div>
-            <div class="formula-desc" style="margin-top:6px;">
+            <div class="formula-desc" data-i18n-html="graph.desc" style="margin-top:6px;">
                 實線為實際 <span>F/L ∝ 1/r</span>（一次反比）。開啟對照線可見：r 加倍時實際力減半，而 1/r² 只剩 ¼ — 兩者明顯不同。
             </div>
         </div>
 
         <div class="quiz-box">
-            <h4>🧠 小測驗：吸引還是排斥？</h4>
+            <h4 data-i18n="quiz.header">🧠 小測驗：吸引還是排斥？</h4>
             <div class="quiz-q" id="quiz-q">載入題目中…</div>
             <div class="quiz-options" id="quiz-options"></div>
             <div id="quiz-feedback"></div>
-            <button id="quiz-next" onclick="nextQuiz()">下一題 →</button>
+            <button type="button" id="quiz-next" onclick="nextQuiz()" data-i18n="quiz.nextBtn">下一題 →</button>
         </div>
 
         <div class="app-box">
-            <h4>🌍 應用實例</h4>
-            <div class="app-item"><b>安培 (A) 的定義：</b>真空中相距 1 m 的兩無限長平行導線，若每米受力為 2×10⁻⁷ N，則各通有 1 安培電流。</div>
-            <div class="app-item"><b>輸電線：</b>高壓電纜載大電流，平行線間會互相施力，架設時須留間距與固定。</div>
-            <div class="app-item"><b>電磁炮 / 軌道炮：</b>利用大電流導軌間的強大磁力推動彈體。</div>
-            <div class="app-item"><b>揚聲器 / 電動機：</b>同源於「載流導線在磁場中受力」的原理。</div>
+            <h4 data-i18n="app.header">🌍 應用實例</h4>
+            <div class="app-item" data-i18n-html="app.ampere"><b>安培 (A) 的定義：</b>真空中相距 1 m 的兩無限長平行導線，若每米受力為 2×10⁻⁷ N，則各通有 1 安培電流。</div>
+            <div class="app-item" data-i18n-html="app.powerline"><b>輸電線：</b>高壓電纜載大電流，平行線間會互相施力，架設時須留間距與固定。</div>
+            <div class="app-item" data-i18n-html="app.railgun"><b>電磁炮 / 軌道炮：</b>利用大電流導軌間的強大磁力推動彈體。</div>
+            <div class="app-item" data-i18n-html="app.speaker"><b>揚聲器 / 電動機：</b>同源於「載流導線在磁場中受力」的原理。</div>
         </div>
     </div>
 </div>
 
-<a id="home-btn" href="../../../index.html">🏠 HOME</a>
-
+<!-- ═══════════ 頁面字典（zh 必填；en 缺字自動回退 zh） ═══════════ -->
 <script>
+PhysLab.i18n.register({
+    zh: {
+        'topbar.title': '🧲 平行導線相互作用 3D 互動模擬器',
+        'topbar.subtitle': 'HKDSE Physics · Book 4 · 兩平行載流導線間的磁力',
+        'topbar.controls': '控制',
+        'topbar.info': '資訊',
+
+        'panel.i1.header': '導線 1 電流方向 (I₁)',
+        'panel.i2.header': '導線 2 電流方向 (I₂)',
+        'dir.out': '⊙ 流出紙面',
+        'dir.in': '⊗ 流入紙面',
+        'panel.i2.note': '<b>同向</b>（兩者皆 ⊙ 或皆 ⊗）→ <span class="hl-field">互相吸引</span>；<b>反向</b> → <span class="hl-current">互相排斥</span>。',
+
+        'panel.param.header': '定量參數',
+        'panel.param.i1': '電流 I₁',
+        'panel.param.i2': '電流 I₂',
+        'panel.param.r': '間距 r',
+        'panel.param.len': '導線長 L',
+
+        'panel.motion.header': '運動控制',
+        'panel.motion.release': '🔓 釋放導線（依合力自由移動）',
+        'panel.motion.reset': '↺ 重設導線位置',
+        'panel.motion.speed': '模擬速度（慢動作）',
+        'panel.motion.note': '電流一直存在。<b>釋放</b>後導線才依磁力移動：同向<b>相吸靠攏</b>、反向<b>相斥彈開</b>，靠近時力增大（1/r）→ 越來越快。按「重設」回起點。',
+
+        'panel.display.header': '顯示項目',
+        'panel.display.field1': '導線 1 磁場 B₁',
+        'panel.display.field2': '導線 2 磁場 B₂',
+        'panel.display.force1': '導線 1 受力 F₁',
+        'panel.display.force2': '導線 2 受力 F₂',
+        'panel.display.dots': '電流粒子 🟡',
+        'panel.display.hand': 'Fleming 左手定則 🖐️',
+        'panel.display.handTarget': '左手示範對象',
+        'panel.display.wire1': '導線 1',
+        'panel.display.wire2': '導線 2',
+        'panel.display.view2d': '2D 俯視浮窗',
+
+        'reveal.header': '受力成因逐步拆解',
+        'reveal.intro': '先設定兩導線電流方向，自己想想它們會<span class="hl-field">吸引</span>還是<span class="hl-current">排斥</span>，再按下方按鈕一步步看成因。',
+        'reveal.warn': '⚠️ 請先讓兩導線都有電流（I₁、I₂ &gt; 0）再觀察成因。',
+        'reveal.btnNext': '▶ 下一步',
+        'reveal.btnNextN': '▶ 下一步 ({n}/{total})',
+        'reveal.btnRestart': '🔄 從頭再看一次',
+        'reveal.step1': '步驟 ①：<span class="hl-current">導線 1</span>（{dir}）依右手握拳定則，在周圍產生環形磁場（{rot}）。',
+        'reveal.step2': '步驟 ②：此磁場在<span class="hl-current">導線 2</span> 位置方向為 <span class="hl-field">{bdir}</span>，大小 {tex}。',
+        'reveal.step3': '步驟 ③：導線 2（{dir}）在此磁場中受力 {tex}。用 Fleming 左手定則 → 導線 2 {push}。',
+        'reveal.step4': '結論：由牛頓第三定律，導線 1 也受等大反向的力 → 兩線{result}。力 {tex}，與 r 成<b>一次反比</b>。',
+        'reveal.ccw': '逆時針',
+        'reveal.cw': '順時針',
+        'reveal.bUp': '向上 ⬆',
+        'reveal.bDown': '向下 ⬇',
+        'reveal.pushToward': '被推向導線 1',
+        'reveal.pushAway': '被推離導線 1',
+        'reveal.resAttract': '<span class="hl-field">互相吸引</span>（同向電流）',
+        'reveal.resRepel': '<span class="hl-current">互相排斥</span>（反向電流）',
+
+        'status.badge': '⚡ I₁：{d1} ｜ I₂：{d2} ｜ {res}',
+        'status.outPage': '⊙ 出頁',
+        'status.inPage': '⊗ 入頁',
+        'status.none': '無作用力',
+        'status.attract': '🔵 吸引',
+        'status.repel': '🔴 排斥',
+        'hint.orbit': '🖱 左鍵旋轉 · 右鍵平移 · 滾輪縮放',
+        'view2d.title': '🛰️ 俯視圖 · 磁場垂直紙面（⊙出 / ⊗入）',
+        'view2d.collapseTitle': '收合/展開',
+
+        'formula.header': '📐 平行導線每單位長度受力',
+        'formula.desc': '<span>F/L</span> 每米受力 (N/m)　<span>μ₀</span> = 4π×10⁻⁷ T·m/A<br><span>I₁,I₂</span> 兩導線電流 (A)　<span>r</span> 兩線間距 (m)',
+        'state.none': '⚪ 無作用力',
+        'state.attract': '🧲 互相吸引',
+        'state.repel': '↔️ 互相排斥',
+
+        'graph.header': '📈 F/L – r 關係圖（破除「平方反比」迷思）',
+        'graph.invsq': '疊加 1/r² 對照虛線',
+        'graph.desc': '實線為實際 <span>F/L ∝ 1/r</span>（一次反比）。開啟對照線可見：r 加倍時實際力減半，而 1/r² 只剩 ¼ — 兩者明顯不同。',
+
+        'quiz.header': '🧠 小測驗：吸引還是排斥？',
+        'quiz.nextBtn': '下一題 →',
+        'quiz.bank': [
+            { q: '導線 1 電流 <b>⊙ 流出紙面</b>，導線 2 電流 <b>⊙ 流出紙面</b>。<br>兩導線會互相吸引還是排斥？',
+              opts: ['🧲 互相吸引', '↔️ 互相排斥'], ans: 0, exp: '電流同向 → 吸引（<b>同向吸引、反向排斥</b>）。' },
+            { q: '導線 1 電流 <b>⊗ 流入紙面</b>，導線 2 電流 <b>⊗ 流入紙面</b>。<br>兩導線會互相吸引還是排斥？',
+              opts: ['🧲 互相吸引', '↔️ 互相排斥'], ans: 0, exp: '電流同向 → 吸引（<b>同向吸引、反向排斥</b>）。' },
+            { q: '導線 1 電流 <b>⊙ 流出紙面</b>，導線 2 電流 <b>⊗ 流入紙面</b>。<br>兩導線會互相吸引還是排斥？',
+              opts: ['🧲 互相吸引', '↔️ 互相排斥'], ans: 1, exp: '電流反向 → 排斥（<b>同向吸引、反向排斥</b>）。' },
+            { q: '導線 1 電流 <b>⊗ 流入紙面</b>，導線 2 電流 <b>⊙ 流出紙面</b>。<br>兩導線會互相吸引還是排斥？',
+              opts: ['🧲 互相吸引', '↔️ 互相排斥'], ans: 1, exp: '電流反向 → 排斥（<b>同向吸引、反向排斥</b>）。' }
+        ],
+
+        'app.header': '🌍 應用實例',
+        'app.ampere': '<b>安培 (A) 的定義：</b>真空中相距 1 m 的兩無限長平行導線，若每米受力為 2×10⁻⁷ N，則各通有 1 安培電流。',
+        'app.powerline': '<b>輸電線：</b>高壓電纜載大電流，平行線間會互相施力，架設時須留間距與固定。',
+        'app.railgun': '<b>電磁炮 / 軌道炮：</b>利用大電流導軌間的強大磁力推動彈體。',
+        'app.speaker': '<b>揚聲器 / 電動機：</b>同源於「載流導線在磁場中受力」的原理。',
+
+        'canvas.topNote': '👁 由上往下看　⊙ 指出紙面（朝向你）　⊗ 指入紙面（離開你）',
+        'canvas.betweenAttract': '兩線之間：⊙⊗ 抵銷 → 相吸',
+        'canvas.betweenRepel': '兩線之間：同號增強 → 相斥',
+        'canvas.legendW1': '● 銅＝導線①磁場',
+        'canvas.legendW2': '● 青＝導線②磁場',
+        'canvas.resAttract': '相吸',
+        'canvas.resRepel': '相斥',
+        'canvas.resNone': '無力',
+        'canvas.graphActual': '實際 ∝ 1/r',
+        'canvas.graphRef': '對照 ∝ 1/r²'
+    },
+    en: {}
+});
+</script>
+
+<!-- ═══════════ 頁面邏輯 ═══════════ -->
+<script>
+PhysLab.sim3d.ready(function () {
 'use strict';
+var t = PhysLab.i18n.t;
+var el = PhysLab.ui.el;
+var makeLabel = PhysLab.sim3d.makeLabel;
 
 /* =========================================================================
    單一物理真值來源 (single source of truth)
@@ -491,54 +438,28 @@ var simSpeed = 0.5;
 var revealStep = 0;
 
 /* =========================================================================
-   THREE.js 3D 場景
+   THREE.js 3D 場景（共用底座；本頁單一 key 光 @(6,10,8)、無 fill、無網格）
    ========================================================================= */
-var view3d = document.getElementById('view3d');
-var scene = new THREE.Scene();
-scene.background = new THREE.Color(0xe2e6eb);
-
-var camera = new THREE.PerspectiveCamera(42, 1, 0.1, 200);
-camera.position.set(5.5, 4.2, 8.5);
-
-var renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(window.devicePixelRatio || 1);
-view3d.appendChild(renderer.domElement);
-
-var controls = new THREE.OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true;
-controls.dampingFactor = 0.08;
-controls.target.set(0, 0, 0);
-
-scene.add(new THREE.AmbientLight(0xffffff, 0.82));
-var dl = new THREE.DirectionalLight(0xffffff, 0.55);
-dl.position.set(6, 10, 8);
-scene.add(dl);
-
-/* ---------- 文字精靈標籤 ---------- */
-function makeLabel(text, color, scale) {
-    var c = document.createElement('canvas');
-    c.width = 128; c.height = 128;
-    var ctx = c.getContext('2d');
-    ctx.fillStyle = color;
-    ctx.font = 'bold 80px Segoe UI, Arial';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(text, 64, 70);
-    var tex = new THREE.CanvasTexture(c);
-    var spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }));
-    var s = scale || 1;
-    spr.scale.set(s, s, s);
-    return spr;
-}
+var sim = PhysLab.sim3d.create(el('view3d'), {
+    background: 0xe2e6eb, fov: 42, near: 0.1, far: 200,
+    views: { default: { pos: [5.5, 4.2, 8.5], tgt: [0, 0, 0] } },
+    controls: { damping: 0.08 },
+    lights: false,
+    grid: false,
+    pixelRatio: window.devicePixelRatio || 1
+});
+var scene = sim.scene;
+PhysLab.sim3d.addLabLights(scene, { ambient: 0.82, key: 0.55, keyPos: [6, 10, 8], fill: false });
 
 /* ---------- 幾何 ---------- */
 var WIRE_RAD = 0.16;
 function wireVisualLen() {                // L(0.1~2 m) → 視覺長 2~9
-    var t = (L - 0.1) / (2 - 0.1); t = Math.max(0, Math.min(1, t));
-    return 2 + t * 7;
+    var frac = (L - 0.1) / (2 - 0.1); frac = Math.max(0, Math.min(1, frac));
+    return 2 + frac * 7;
 }
 function rToVisualHalf(rm) {              // r → 兩線對稱半距 0.45~3.0
-    var t = (rm - R_MIN) / (R_MAX - R_MIN); t = Math.max(0, Math.min(1, t));
-    return 0.45 + t * 2.55;
+    var frac = (rm - R_MIN) / (R_MAX - R_MIN); frac = Math.max(0, Math.min(1, frac));
+    return 0.45 + frac * 2.55;
 }
 
 var WIRE_HEX = { w1: '#b45309', w2: '#0d9488' };   // 導線1 銅橙 / 導線2 青綠
@@ -833,25 +754,20 @@ function layout3D() {
 
 function updateStatus() {
     var s = interactSign();
-    document.getElementById('status-badge').innerHTML =
-        '⚡ I₁：' + (dir1 > 0 ? '⊙ 出頁' : '⊗ 入頁') +
-        ' ｜ I₂：' + (dir2 > 0 ? '⊙ 出頁' : '⊗ 入頁') +
-        ' ｜ ' + (s === 0 ? '無作用力' : (s > 0 ? '🔵 吸引' : '🔴 排斥'));
+    el('status-badge').innerHTML = t('status.badge', {
+        d1: t(dir1 > 0 ? 'status.outPage' : 'status.inPage'),
+        d2: t(dir2 > 0 ? 'status.outPage' : 'status.inPage'),
+        res: t(s === 0 ? 'status.none' : (s > 0 ? 'status.attract' : 'status.repel'))
+    });
 }
 
-/* ---------- 科學記號（純文字 / KaTeX）---------- */
-var SUP = { '-': '⁻', '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹' };
+/* ---------- 科學記號（KaTeX）---------- */
 function sciParts(v) {
     if (v < 1e-15) return null;
     var exp = Math.floor(Math.log10(v));
     var mant = v / Math.pow(10, exp);
     if (mant >= 9.995) { mant = 1; exp += 1; }   // 進位修正
     return { mant: mant.toFixed(2), exp: exp };
-}
-function fmtSci(v, unit) {
-    var p = sciParts(v); if (!p) return '0 ' + unit;
-    var sup = String(p.exp).replace(/[-0-9]/g, function (c) { return SUP[c]; });
-    return p.mant + '×10' + sup + ' ' + unit;
 }
 function fmtSciTex(v, unitTex) {
     var p = sciParts(v); if (!p) return '0\\,' + unitTex;
@@ -867,14 +783,14 @@ function tex(latex, displayMode) {
 }
 
 function updateReadout() {
-    document.getElementById('force-readout').innerHTML =
+    el('force-readout').innerHTML =
         tex('\\dfrac{F}{L}=' + fmtSciTex(forcePerLength(), '\\text{N/m}'));
-    document.getElementById('ftot-readout').innerHTML =
+    el('ftot-readout').innerHTML =
         tex('F=' + fmtSciTex(forceTotal(), '\\text{N}') + '\\quad(L=' + L.toFixed(2) + '\\,\\text{m})');
-    var sr = document.getElementById('state-readout');
+    var sr = el('state-readout');
     var s = interactSign();
     sr.className = 'state-readout ' + (s === 0 ? 'state-none' : (s > 0 ? 'state-attract' : 'state-repel'));
-    sr.innerHTML = (s === 0 ? '⚪ 無作用力' : (s > 0 ? '🧲 互相吸引' : '↔️ 互相排斥'));
+    sr.innerHTML = t(s === 0 ? 'state.none' : (s > 0 ? 'state.attract' : 'state.repel'));
 }
 
 function updateAll() {
@@ -893,12 +809,12 @@ function updateAll() {
    兩線之間「一⊙一⊗＝抵銷→相吸」「同號＝增強→相斥」，直接看出成因。
    單線貢獻 by = dir·I/(gx − x_wire)（>0 指出紙面 ⊙、<0 指入紙面 ⊗）。
    ========================================================================= */
-var c2d = document.getElementById('view2d');
+var c2d = el('view2d');
 var ctx2 = c2d.getContext('2d');
 var wire1Pos = { x: 0, y: 0 }, wire2Pos = { x: 0, y: 0 };
 
 function draw2D() {
-    var wrap = document.getElementById('view2d-wrap');
+    var wrap = el('view2d-wrap');
     if (wrap.classList.contains('panel-hidden') || wrap.classList.contains('collapsed')) return;
     var W = c2d.clientWidth, H = c2d.clientHeight;
     if (W === 0 || H === 0) return;
@@ -908,8 +824,8 @@ function draw2D() {
     ctx2.clearRect(0, 0, W, H);
     ctx2.fillStyle = '#f8fafc'; ctx2.fillRect(0, 0, W, H);
 
-    var t = (activeR() - R_MIN) / (R_MAX - R_MIN); t = Math.max(0, Math.min(1, t));
-    var halfPx = 12 + t * (W * 0.26);
+    var frac = (activeR() - R_MIN) / (R_MAX - R_MIN); frac = Math.max(0, Math.min(1, frac));
+    var halfPx = 12 + frac * (W * 0.26);
     var cx = W / 2, cy = H / 2;
     wire1Pos = { x: cx - halfPx, y: cy };
     wire2Pos = { x: cx + halfPx, y: cy };
@@ -917,7 +833,7 @@ function draw2D() {
 
     // ── 頂部說明（觀察者 + 符號意義）──
     ctx2.fillStyle = '#475569'; ctx2.font = '10px Segoe UI'; ctx2.textAlign = 'center';
-    ctx2.fillText('👁 由上往下看　⊙ 指出紙面（朝向你）　⊗ 指入紙面（離開你）', cx, 14);
+    ctx2.fillText(t('canvas.topNote'), cx, 14);
 
     // ── 磁場符號（每格並排：左=導線1 場 銅色、右=導線2 場 青色）──
     // 各導線在 gx 處的垂直磁場貢獻 by_i = dir_i · I_i /(gx − x_i)；>0 → ⊙、<0 → ⊗。
@@ -940,8 +856,8 @@ function draw2D() {
     var s0 = interactSign();
     if (showField1 && showField2 && s0 !== 0) {
         ctx2.font = 'bold 11px Segoe UI'; ctx2.textAlign = 'center';
-        if (s0 > 0) { ctx2.fillStyle = '#0d9488'; ctx2.fillText('兩線之間：⊙⊗ 抵銷 → 相吸', cx, 28); }
-        else { ctx2.fillStyle = '#b91c1c'; ctx2.fillText('兩線之間：同號增強 → 相斥', cx, 28); }
+        if (s0 > 0) { ctx2.fillStyle = '#0d9488'; ctx2.fillText(t('canvas.betweenAttract'), cx, 28); }
+        else { ctx2.fillStyle = '#b91c1c'; ctx2.fillText(t('canvas.betweenRepel'), cx, 28); }
     }
 
     // ── 導線（彩色直立線）+ 電流方向箭頭 + ①/② ──
@@ -968,13 +884,14 @@ function draw2D() {
     }
 
     // ── 底部圖例：符號意義 + 顏色對應 + 結果 ──
+    var lg1 = t('canvas.legendW1'), lg2 = t('canvas.legendW2');
     ctx2.font = '10px Segoe UI'; ctx2.textAlign = 'left';
-    ctx2.fillStyle = WIRE_HEX.w1; ctx2.fillText('● 銅＝導線①磁場', 8, H - 8);
-    var w1w = ctx2.measureText('● 銅＝導線①磁場').width;
-    ctx2.fillStyle = WIRE_HEX.w2; ctx2.fillText('● 青＝導線②磁場', 8 + w1w + 12, H - 8);
+    ctx2.fillStyle = WIRE_HEX.w1; ctx2.fillText(lg1, 8, H - 8);
+    var w1w = ctx2.measureText(lg1).width;
+    ctx2.fillStyle = WIRE_HEX.w2; ctx2.fillText(lg2, 8 + w1w + 12, H - 8);
     ctx2.fillStyle = (s2 > 0 ? '#0d9488' : (s2 < 0 ? '#b91c1c' : '#64748b'));
     ctx2.textAlign = 'right'; ctx2.font = 'bold 11px Segoe UI';
-    ctx2.fillText(s2 > 0 ? '相吸' : (s2 < 0 ? '相斥' : '無力'), W - 8, H - 8);
+    ctx2.fillText(t(s2 > 0 ? 'canvas.resAttract' : (s2 < 0 ? 'canvas.resRepel' : 'canvas.resNone')), W - 8, H - 8);
 }
 
 /* 指出紙面(out=true)→ 純實心點；指入紙面(out=false)→ 純交叉 ✕。顏色 = 來源導線色 */
@@ -1018,7 +935,7 @@ function drawArrow2D(x1, y1, x2, y2, head) {
 /* =========================================================================
    F/L – r 關係圖
    ========================================================================= */
-var gc = document.getElementById('graph-canvas');
+var gc = el('graph-canvas');
 var gctx = gc.getContext('2d');
 function drawGraph() {
     var W = gc.clientWidth, H = gc.clientHeight;
@@ -1074,57 +991,48 @@ function drawGraph() {
     gctx.beginPath(); gctx.moveTo(mapX(cr), y0); gctx.lineTo(mapX(cr), mapY(cf)); gctx.stroke(); gctx.setLineDash([]);
 
     gctx.font = '9px Segoe UI'; gctx.textAlign = 'right';
-    gctx.fillStyle = '#2563eb'; gctx.fillText('實際 ∝ 1/r', x1 - 2, y1 + 8);
-    if (showInvSq) { gctx.fillStyle = '#dc2626'; gctx.fillText('對照 ∝ 1/r²', x1 - 2, y1 + 19); }
+    gctx.fillStyle = '#2563eb'; gctx.fillText(t('canvas.graphActual'), x1 - 2, y1 + 8);
+    if (showInvSq) { gctx.fillStyle = '#dc2626'; gctx.fillText(t('canvas.graphRef'), x1 - 2, y1 + 19); }
 }
 
 /* =========================================================================
-   控制項
+   控制項（全部 addEventListener；不再掛 window.*）
    ========================================================================= */
-window.setDir = function (wire, d) {
+function setDir(wire, d) {
     if (wire === 1) {
         dir1 = d;
-        document.getElementById('dir1-out').classList.toggle('active', d > 0);
-        document.getElementById('dir1-in').classList.toggle('active', d < 0);
+        el('dir1-out').classList.toggle('active', d > 0);
+        el('dir1-in').classList.toggle('active', d < 0);
     } else {
         dir2 = d;
-        document.getElementById('dir2-out').classList.toggle('active', d > 0);
-        document.getElementById('dir2-in').classList.toggle('active', d < 0);
+        el('dir2-out').classList.toggle('active', d > 0);
+        el('dir2-in').classList.toggle('active', d < 0);
     }
     refreshSymbols();
     updateAll();
-};
-
-function bindSlider(id, valId, fmt, setter) {
-    var el = document.getElementById(id);
-    el.addEventListener('input', function () {
-        setter(parseFloat(this.value));
-        document.getElementById(valId).textContent = fmt(parseFloat(this.value));
-        updateAll();
-    });
 }
-bindSlider('sld-I1', 'val-I1', function (v) { return v.toFixed(1) + ' A'; }, function (v) { I1 = v; });
-bindSlider('sld-I2', 'val-I2', function (v) { return v.toFixed(1) + ' A'; }, function (v) { I2 = v; });
-bindSlider('sld-r', 'val-r', function (v) { return v.toFixed(3) + ' m'; }, function (v) { rPhys = v; if (!powerOn) rDynamic = v; });
-bindSlider('sld-L', 'val-L', function (v) { return v.toFixed(2) + ' m'; }, function (v) { L = v; });
+el('dir1-out').addEventListener('click', function () { setDir(1, 1); });
+el('dir1-in').addEventListener('click', function () { setDir(1, -1); });
+el('dir2-out').addEventListener('click', function () { setDir(2, 1); });
+el('dir2-in').addEventListener('click', function () { setDir(2, -1); });
 
-function setToggle(trackId, state) { document.getElementById(trackId).classList.toggle('on', state); }
-window.toggleField = function (w) {
-    if (w === 1) { showField1 = !showField1; setToggle('field1-track', showField1); }
-    else { showField2 = !showField2; setToggle('field2-track', showField2); }
-    updateAll();
-};
-window.toggleForce = function (w) {
-    if (w === 1) { showForce1 = !showForce1; setToggle('force1-track', showForce1); }
-    else { showForce2 = !showForce2; setToggle('force2-track', showForce2); }
-    updateAll();
-};
-window.toggleDots = function () { showDots = !showDots; setToggle('dots-track', showDots); dotsGroup.visible = showDots; };
-window.toggleHand = function () { showHand = !showHand; setToggle('hand-track', showHand); updateHand(); };
-window.setHandTarget = function (w) {
+PhysLab.ui.bindSlider('sld-I1', 'val-I1', function (v) { I1 = v; updateAll(); return v.toFixed(1) + ' A'; });
+PhysLab.ui.bindSlider('sld-I2', 'val-I2', function (v) { I2 = v; updateAll(); return v.toFixed(1) + ' A'; });
+PhysLab.ui.bindSlider('sld-r', 'val-r', function (v) { rPhys = v; if (!powerOn) rDynamic = v; updateAll(); return v.toFixed(3) + ' m'; });
+PhysLab.ui.bindSlider('sld-L', 'val-L', function (v) { L = v; updateAll(); return v.toFixed(2) + ' m'; });
+
+function setToggle(trackId, state) { el(trackId).classList.toggle('on', state); }
+el('field1-toggle').addEventListener('click', function () { showField1 = !showField1; setToggle('field1-track', showField1); updateAll(); });
+el('field2-toggle').addEventListener('click', function () { showField2 = !showField2; setToggle('field2-track', showField2); updateAll(); });
+el('force1-toggle').addEventListener('click', function () { showForce1 = !showForce1; setToggle('force1-track', showForce1); updateAll(); });
+el('force2-toggle').addEventListener('click', function () { showForce2 = !showForce2; setToggle('force2-track', showForce2); updateAll(); });
+el('dots-toggle').addEventListener('click', function () { showDots = !showDots; setToggle('dots-track', showDots); dotsGroup.visible = showDots; });
+el('hand-toggle').addEventListener('click', function () { showHand = !showHand; setToggle('hand-track', showHand); updateHand(); });
+
+function setHandTarget(w) {
     handTarget = w;
-    document.getElementById('hand-w1').classList.toggle('active', w === 1);
-    document.getElementById('hand-w2').classList.toggle('active', w === 2);
+    el('hand-w1').classList.toggle('active', w === 1);
+    el('hand-w2').classList.toggle('active', w === 2);
     if (handBLabel) {                          // B 顏色跟來源導線
         handCore.remove(handBLabel);
         handBLabel = makeLabel('B', handBColor(), 0.7);
@@ -1132,52 +1040,56 @@ window.setHandTarget = function (w) {
         handCore.add(handBLabel);
     }
     updateHand();
-};
-window.toggle2D = function () {
+}
+el('hand-w1').addEventListener('click', function () { setHandTarget(1); });
+el('hand-w2').addEventListener('click', function () { setHandTarget(2); });
+
+el('2d-toggle').addEventListener('click', function () {
     show2D = !show2D; setToggle('2d-track', show2D);
-    document.getElementById('view2d-wrap').classList.toggle('panel-hidden', !show2D);
-    onResize();
-};
-window.toggleInvSq = function () { showInvSq = !showInvSq; setToggle('invsq-track', showInvSq); drawGraph(); };
-window.setSpeed = function (v) {
+    el('view2d-wrap').classList.toggle('panel-hidden', !show2D);
+    sim.resize();
+});
+el('invsq-toggle').addEventListener('click', function () { showInvSq = !showInvSq; setToggle('invsq-track', showInvSq); drawGraph(); });
+
+function setSpeed(v) {
     simSpeed = v;
     ['0.1', '0.25', '0.5', '1'].forEach(function (s) {
-        document.getElementById('spd-' + s).classList.toggle('active', parseFloat(s) === v);
+        el('spd-' + s).classList.toggle('active', parseFloat(s) === v);
     });
-};
-window.toggleCard = function (bodyId, chevId) {
-    var hidden = document.getElementById(bodyId).classList.toggle('panel-hidden');
-    document.getElementById(chevId).textContent = hidden ? '▸' : '▾';
-};
-window.togglePower = function () {
+}
+['0.1', '0.25', '0.5', '1'].forEach(function (s) {
+    el('spd-' + s).addEventListener('click', function () { setSpeed(parseFloat(s)); });
+});
+
+el('power-toggle').addEventListener('click', function () {
     powerOn = !powerOn; setToggle('power-track', powerOn);
     if (powerOn) { rDynamic = rPhys; vRel = 0; }
     else {
         rPhys = Math.max(0.01, Math.min(0.1, rDynamic));
-        document.getElementById('sld-r').value = rPhys;
-        document.getElementById('val-r').textContent = rPhys.toFixed(3) + ' m';
+        el('sld-r').value = rPhys;
+        el('val-r').textContent = rPhys.toFixed(3) + ' m';
     }
     updateAll();
-};
-window.resetWires = function () { rDynamic = rPhys; vRel = 0; updateAll(); };
+});
+el('reset-btn').addEventListener('click', function () { rDynamic = rPhys; vRel = 0; updateAll(); });
 
 /* ---------- 2D 浮窗：拖曳 + 收合 ---------- */
-window.collapse2D = function (ev) {
+el('view2d-collapse').addEventListener('click', function (ev) {
     ev.stopPropagation();
-    var wrap = document.getElementById('view2d-wrap');
+    var wrap = el('view2d-wrap');
     var col = wrap.classList.toggle('collapsed');
-    document.getElementById('view2d-collapse').textContent = col ? '▸' : '▾';
-    if (!col) { onResize(); }
-};
+    el('view2d-collapse').textContent = col ? '▸' : '▾';
+    if (!col) { sim.resize(); }
+});
 (function enable2DDrag() {
-    var wrap = document.getElementById('view2d-wrap');
-    var head = document.getElementById('view2d-head');
+    var wrap = el('view2d-wrap');
+    var head = el('view2d-head');
     var dragging = false, offX = 0, offY = 0;
     head.addEventListener('mousedown', function (e) {
         if (e.target.id === 'view2d-collapse') return;
         dragging = true;
         var rect = wrap.getBoundingClientRect();
-        var parent = document.getElementById('canvas-wrap').getBoundingClientRect();
+        var parent = el('canvas-wrap').getBoundingClientRect();
         offX = e.clientX - rect.left; offY = e.clientY - rect.top;
         wrap.style.right = 'auto';
         wrap.style.left = (rect.left - parent.left) + 'px';
@@ -1186,7 +1098,7 @@ window.collapse2D = function (ev) {
     });
     window.addEventListener('mousemove', function (e) {
         if (!dragging) return;
-        var parent = document.getElementById('canvas-wrap').getBoundingClientRect();
+        var parent = el('canvas-wrap').getBoundingClientRect();
         var nx = e.clientX - parent.left - offX;
         var ny = e.clientY - parent.top - offY;
         nx = Math.max(0, Math.min(parent.width - wrap.offsetWidth, nx));
@@ -1196,113 +1108,73 @@ window.collapse2D = function (ev) {
     window.addEventListener('mouseup', function () { dragging = false; });
 })();
 
-/* ---------- 受力成因逐步拆解 ---------- */
+/* ---------- 受力成因逐步拆解（依狀態動態組字 → 走 t() + 參數內插） ---------- */
+var revealShown = 'intro';        // 'intro' | 'warn' | 步驟索引（number）
+var revealBtnState = { type: 'next', n: 0, total: 4 };
 function revealMsgs() {
     var s = interactSign();
-    var b1Dir = dir1 > 0 ? '逆時針' : '順時針';
-    var bAtW2 = (dir1 > 0) ? '向上 ⬆' : '向下 ⬇';
     var B1val = MU0 * I1 / (2 * Math.PI * activeR());
     return [
-        '步驟 ①：<span class="hl-current">導線 1</span>（' + (dir1 > 0 ? '⊙ 出頁' : '⊗ 入頁') +
-            '）依右手握拳定則，在周圍產生環形磁場（' + b1Dir + '）。',
-        '步驟 ②：此磁場在<span class="hl-current">導線 2</span> 位置方向為 <span class="hl-field">' + bAtW2 + '</span>，大小 ' +
-            tex('B_1=\\dfrac{\\mu_0 I_1}{2\\pi r}=' + fmtSciTex(B1val, '\\text{T}')) + '。',
-        '步驟 ③：導線 2（' + (dir2 > 0 ? '⊙ 出頁' : '⊗ 入頁') + '）在此磁場中受力 ' +
-            tex('F=B_1 I_2 L') + '。用 Fleming 左手定則 → 導線 2 ' + (s > 0 ? '被推向導線 1' : '被推離導線 1') + '。',
-        '結論：由牛頓第三定律，導線 1 也受等大反向的力 → 兩線' +
-            (s > 0 ? '<span class="hl-field">互相吸引</span>（同向電流）' : '<span class="hl-current">互相排斥</span>（反向電流）') +
-            '。力 ' + tex('\\frac{F}{L}=\\frac{\\mu_0 I_1 I_2}{2\\pi r}') + '，與 r 成<b>一次反比</b>。'
+        t('reveal.step1', {
+            dir: t(dir1 > 0 ? 'status.outPage' : 'status.inPage'),
+            rot: t(dir1 > 0 ? 'reveal.ccw' : 'reveal.cw')
+        }),
+        t('reveal.step2', {
+            bdir: t(dir1 > 0 ? 'reveal.bUp' : 'reveal.bDown'),
+            tex: tex('B_1=\\dfrac{\\mu_0 I_1}{2\\pi r}=' + fmtSciTex(B1val, '\\text{T}'))
+        }),
+        t('reveal.step3', {
+            dir: t(dir2 > 0 ? 'status.outPage' : 'status.inPage'),
+            tex: tex('F=B_1 I_2 L'),
+            push: t(s > 0 ? 'reveal.pushToward' : 'reveal.pushAway')
+        }),
+        t('reveal.step4', {
+            result: t(s > 0 ? 'reveal.resAttract' : 'reveal.resRepel'),
+            tex: tex('\\frac{F}{L}=\\frac{\\mu_0 I_1 I_2}{2\\pi r}')
+        })
     ];
 }
-window.stepReveal = function () {
-    var txt = document.getElementById('reveal-text');
-    var btn = document.getElementById('reveal-btn');
-    if (interactSign() === 0) { txt.innerHTML = '⚠️ 請先讓兩導線都有電流（I₁、I₂ > 0）再觀察成因。'; return; }
+function revealRefresh() {                 // init 刷新一次 + 語言切換時重繪
+    var txt = el('reveal-text');
+    if (revealShown === 'intro') txt.innerHTML = t('reveal.intro');
+    else if (revealShown === 'warn') txt.innerHTML = t('reveal.warn');
+    else txt.innerHTML = revealMsgs()[revealShown];
+    var btn = el('reveal-btn');
+    if (revealBtnState.type === 'restart') btn.innerHTML = t('reveal.btnRestart');
+    else if (revealBtnState.type === 'nextN') btn.innerHTML = t('reveal.btnNextN', { n: revealBtnState.n, total: revealBtnState.total });
+    else btn.innerHTML = t('reveal.btnNext');
+}
+el('reveal-btn').addEventListener('click', function () {
+    if (interactSign() === 0) { revealShown = 'warn'; revealRefresh(); return; }
     var msgs = revealMsgs();
-    txt.innerHTML = msgs[revealStep];
+    el('reveal-text').innerHTML = msgs[revealStep];
+    revealShown = revealStep;
     revealStep++;
-    if (revealStep >= msgs.length) { revealStep = 0; btn.textContent = '🔄 從頭再看一次'; }
-    else { btn.textContent = '▶ 下一步 (' + revealStep + '/' + msgs.length + ')'; }
-};
+    if (revealStep >= msgs.length) {
+        revealStep = 0;
+        revealBtnState = { type: 'restart', n: 0, total: msgs.length };
+    } else {
+        revealBtnState = { type: 'nextN', n: revealStep, total: msgs.length };
+    }
+    revealRefresh();
+});
 
 /* ---------- 面板開關 ---------- */
-window.toggleLeftPanel = function () {
-    var p = document.getElementById('left-panel');
-    p.classList.toggle('panel-hidden');
-    document.getElementById('btn-toggle-left').classList.toggle('inactive', p.classList.contains('panel-hidden'));
-    onResize();
-};
-window.toggleRightPanel = function () {
-    var p = document.getElementById('right-panel');
-    p.classList.toggle('panel-hidden');
-    document.getElementById('btn-toggle-right').classList.toggle('inactive', p.classList.contains('panel-hidden'));
-    onResize();
-};
+PhysLab.ui.bindPanelToggle('btn-toggle-left', 'left-panel', sim.resize);
+PhysLab.ui.bindPanelToggle('btn-toggle-right', 'right-panel', sim.resize);
 
 /* =========================================================================
-   小測驗
+   小測驗（共用引擎；shuffle 對應原版隨機出題）
    ========================================================================= */
-var quizState = null;
-function buildQuiz() {
-    var q1 = Math.random() > 0.5 ? 1 : -1;
-    var q2 = Math.random() > 0.5 ? 1 : -1;
-    var ans = (q1 * q2 > 0) ? 1 : -1;
-    quizState = { d1: q1, d2: q2, answer: ans };
-    document.getElementById('quiz-q').innerHTML =
-        '導線 1 電流 <b>' + (q1 > 0 ? '⊙ 流出紙面' : '⊗ 流入紙面') + '</b>，導線 2 電流 <b>' +
-        (q2 > 0 ? '⊙ 流出紙面' : '⊗ 流入紙面') + '</b>。<br>兩導線會互相吸引還是排斥？';
-    var opts = document.getElementById('quiz-options');
-    opts.innerHTML = '';
-    [['🧲 互相吸引', 1], ['↔️ 互相排斥', -1]].forEach(function (o) {
-        var b = document.createElement('div');
-        b.className = 'quiz-opt';
-        b.textContent = o[0];
-        b.onclick = function () { answerQuiz(o[1], b); };
-        opts.appendChild(b);
-    });
-    document.getElementById('quiz-feedback').textContent = '';
-    document.getElementById('quiz-next').style.display = 'none';
-}
-function answerQuiz(choice, el) {
-    var opts = document.getElementById('quiz-options').children;
-    for (var i = 0; i < opts.length; i++) opts[i].onclick = null;
-    var fb = document.getElementById('quiz-feedback');
-    var correctTxt = quizState.answer > 0 ? '吸引' : '排斥';
-    if (choice === quizState.answer) {
-        el.classList.add('correct');
-        fb.innerHTML = '✅ 正確！電流' + (quizState.answer > 0 ? '同向 → 吸引' : '反向 → 排斥') + '。';
-    } else {
-        el.classList.add('wrong');
-        for (var j = 0; j < opts.length; j++) {
-            if ((opts[j].textContent.indexOf('吸引') >= 0 ? 1 : -1) === quizState.answer) opts[j].classList.add('correct');
-        }
-        fb.innerHTML = '❌ 再想想：<b>同向吸引、反向排斥</b>。正確為「' + correctTxt + '」。';
-    }
-    document.getElementById('quiz-next').style.display = 'block';
-}
-window.nextQuiz = buildQuiz;
+PhysLab.quiz.init({ bankKey: 'quiz.bank', shuffle: true });
 
 /* =========================================================================
-   尺寸 / 動畫
+   尺寸 / 動畫（共用底座 resize + 主迴圈；保留 dt clamp 與 simSpeed）
    ========================================================================= */
-function onResize() {
-    var w = view3d.clientWidth, h = view3d.clientHeight;
-    if (w > 0 && h > 0) {
-        camera.aspect = w / h;
-        camera.updateProjectionMatrix();
-        renderer.setSize(w, h);
-    }
-    draw2D();
-    drawGraph();
-}
-window.addEventListener('resize', onResize);
+sim.onResize(function () { draw2D(); drawGraph(); });
 
-var lastT = performance.now();
-function animate() {
-    requestAnimationFrame(animate);
-    var now = performance.now();
-    var dt = Math.min((now - lastT) / 1000, 0.05) * simSpeed;
-    lastT = now;
+sim.start(function (dt) {
+    dt = Math.min(dt, 0.05) * simSpeed;
 
     var s = interactSign();
     if (powerOn && s !== 0) {
@@ -1331,36 +1203,23 @@ function animate() {
             dots2[k].position.set(half, DOT_OFFSET, z2);
         }
     }
-
-    controls.update();
-    renderer.render(scene, camera);
-}
+});
 
 /* ---------- 啟動 ---------- */
-function renderStaticMath() {
-    if (window.renderMathInElement) {
-        try {
-            renderMathInElement(document.getElementById('main-formula'), {
-                delimiters: [{ left: '$$', right: '$$', display: true }], throwOnError: false
-            });
-        } catch (e) { /* ignore */ }
-    } else if (window.katex) {
-        var mf = document.getElementById('main-formula');
-        mf.innerHTML = tex(mf.textContent, true);
-    }
-}
-function init() {
-    // 主公式以 KaTeX display 呈現
-    var mf = document.getElementById('main-formula');
-    mf.innerHTML = tex(mf.textContent, true);
-    onResize();
+// 主公式以 KaTeX display 呈現
+var mf = el('main-formula');
+mf.innerHTML = tex(mf.textContent, true);
+revealRefresh();
+updateAll();
+setTimeout(sim.resize, 60);
+setTimeout(sim.resize, 300);
+
+/* ---------- 語言切換：重繪 JS 管理的文字（badge / 讀數 / 兩張 canvas / 拆解卡） ---------- */
+PhysLab.i18n.onChange(function () {
     updateAll();
-    buildQuiz();
-    animate();
-    setTimeout(onResize, 60);
-    setTimeout(onResize, 300);
-}
-init();
+    revealRefresh();
+});
+});
 </script>
 </body>
 </html>
