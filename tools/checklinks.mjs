@@ -7,7 +7,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(process.argv[2] || path.dirname(path.dirname(fileURLToPath(import.meta.url))));
-const SKIP_DIRS = new Set(['.git', 'node_modules', 'tools']);
+// templates：範本的相對路徑以「複製到 Simulator/bookX/chapterY/ 後」為準，
+// 在 assets/templates/ 原位必然解析失敗，屬預期，不納入審計
+const SKIP_DIRS = new Set(['.git', 'node_modules', 'tools', 'templates']);
 const REF_RE = /(?:href|src)\s*=\s*(["'])(.*?)\1/gi;
 
 // 遞迴列出所有 .html
