@@ -144,7 +144,9 @@ window.PhysLab = window.PhysLab || {};
         var a = document.createElement('a');
         a.id = 'home-btn';
         a.href = PhysLab.root + 'index.html';
-        a.innerHTML = '🏠 <span data-i18n="nav.home">主頁</span>';
+        // 整個標籤包成單一 flex item：emoji 與文字之間用普通空格，
+        // 避免被 #home-btn 的 flex gap 撐開（標準頁像素保真要求）
+        a.innerHTML = '<span>🏠 <span data-i18n="nav.home">主頁</span></span>';
 
         if (m === 'topbar') {
             actions.appendChild(a);

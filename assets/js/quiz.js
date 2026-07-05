@@ -86,6 +86,8 @@ PhysLab.quiz = (function () {
      * 渲染目前題目：題號前綴 + 題目（innerHTML）、選項 <div class="quiz-opt">、
      * 清空回饋（textContent = ''）、隱藏下一題按鈕（display:'none'）——
      * 與原版 renderQuiz 逐項對應；同時重設作答鎖定旗標。
+     * 選項附 role="button" + tabindex + Enter/Space 鍵盤處理
+     * （部分舊頁原以 <button> 實作，統一 <div> 後補回鍵盤可達性）。
      */
     function render() {
         answered = false;
@@ -99,7 +101,12 @@ PhysLab.quiz = (function () {
             var d = document.createElement('div');
             d.className = 'quiz-opt';
             d.innerHTML = opt;
+            d.setAttribute('role', 'button');
+            d.setAttribute('tabindex', '0');
             d.onclick = function () { answer(i); };
+            d.onkeydown = function (e) {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); answer(i); }
+            };
             box.appendChild(d);
         });
         PhysLab.ui.el(els.feedback).textContent = '';
