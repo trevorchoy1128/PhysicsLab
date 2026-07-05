@@ -1,19 +1,38 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DSE 物理教學模擬器：平面鏡成像 (支援平移與自由視角)</title>
+
+    <!-- 共用資源（載入順序固定，不可 defer/async）：core → i18n
+         本頁場景為 CSS 3D transforms（非 Three.js），故不載入 three.js / sim3d.js -->
+    <link rel="stylesheet" href="../../../assets/css/tokens.css">
+    <link rel="stylesheet" href="../../../assets/css/labgray.css">
+    <script src="../../../assets/js/core.js"></script>
+    <script src="../../../assets/js/i18n.js"></script>
+
     <style>
+        /* ── 頁面 chrome 覆寫（固定視口版面鐵律：成對使用） ── */
+        body { height: 100vh; overflow: hidden; }
+        #left-panel > * { flex-shrink: 0; }
+
+        /* 物件選擇下拉（labgray 未收錄 select 樣式） */
+        #obj-select {
+            width: 100%; padding: 7px 9px; border-radius: 6px; margin-bottom: 13px;
+            border: 1px solid var(--pl-border); background: var(--pl-card);
+            color: var(--pl-text-strong); font-size: 0.78rem; cursor: pointer;
+        }
+        #obj-select:hover { border-color: var(--pl-blue); }
+
+        /* ==============================================================
+           以下為 CSS 3D 場景實作（保留原樣，不計入頁面 CSS 預算）
+           --object-dist 為幾何變數（物距），非樣式 token，不改名。
+           ============================================================== */
         :root {
             --object-dist: 160px;
         }
-        body {
-            margin: 0; padding: 0; background-color: #e0e4e8; color: #333;
-            font-family: 'Helvetica Neue', Arial, sans-serif; height: 100vh; display: flex; overflow: hidden;
-        }
-        
-        /* 3D 畫布環境 (現在在左邊) */
+
         #stage-container {
             flex: 1; position: relative; overflow: hidden;
             background: linear-gradient(135deg, #eef2f7 0%, #d5dbdb 100%);
@@ -21,40 +40,20 @@
         }
         #stage-container:active { cursor: grabbing; }
 
-        /* 控制面板 (現在在右邊) */
-        #control-panel {
-            width: 330px; background: #2c3e50; padding: 25px; 
-            box-shadow: -3px 0 15px rgba(0,0,0,0.2); /* 陰影改向左邊 */
-            z-index: 100; display: flex; flex-direction: column; gap: 18px; color: #fff; overflow-y: auto;
-        }
-        h1 { font-size: 18px; color: #00d2ff; margin: 0 0 5px 0; border-bottom: 1px solid #34495e; padding-bottom: 10px; }
-        h2 { font-size: 14px; color: #ecf0f1; margin: 0; }
-        label { font-size: 13px; display: block; margin-bottom: 8px; color: #bdc3c7; }
-        select, input[type="range"], button {
-            width: 100%; padding: 10px; background: #34495e; border: 1px solid #465c71; color: #fff; border-radius: 6px; box-sizing: border-box; font-size: 14px;
-        }
-        button { background: #16a085; cursor: pointer; font-weight: bold; transition: 0.2s; border: none; }
-        button:hover { background: #1abc9c; }
-        
-        .switch-btn { background: #c0392b; }
-        .switch-btn.active { background: #27ae60; }
-        .reset-btn { background: #f39c12; margin-top: 10px; }
-        .reset-btn:hover { background: #e67e22; }
-
         /* 雙層場景設定 */
         .scene {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             perspective: 1400px; display: flex; justify-content: center; align-items: center;
             pointer-events: none;
         }
-        
+
         #scene-real { z-index: 2; }
         #scene-virtual { z-index: 1; }
 
         /* 3D 空間群組 */
         .space3d {
             width: 600px; height: 400px; position: relative; transform-style: preserve-3d;
-            transform: scale(1) translate(0px, 0px) rotateX(-15deg) rotateY(-45deg); 
+            transform: scale(1) translate(0px, 0px) rotateX(-15deg) rotateY(-45deg);
         }
 
         /* 鏡子結構 */
@@ -87,7 +86,7 @@
         /* 物與像的真實 3D 空間位置 */
         .element-wrapper {
             position: absolute; width: 160px; height: 160px; transform-style: preserve-3d;
-            left: 220px; top: 120px; 
+            left: 220px; top: 120px;
         }
 
         #real-object { transform: translateZ(var(--object-dist)) rotateY(180deg); }
@@ -100,16 +99,16 @@
 
         /* 物件模型通用結構 */
         .text-solid-box { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; }
-        .text-front { 
-            position: absolute; width: 100%; height: 100%; transform: translateZ(13px); 
-            backface-visibility: hidden; display: flex; justify-content: center; align-items: center; 
+        .text-front {
+            position: absolute; width: 100%; height: 100%; transform: translateZ(13px);
+            backface-visibility: hidden; display: flex; justify-content: center; align-items: center;
             background: #ecf0f1; border: 2px solid #bdc3c7; box-sizing: border-box;
         }
-        .text-back  { 
-            position: absolute; width: 100%; height: 100%; transform: translateZ(-13px) rotateY(180deg); 
-            background: #2c3e50; border: 2px solid #1a252f; box-sizing: border-box; 
-            backface-visibility: hidden; display: flex; justify-content: center; align-items: center; 
-            color: #7f8c8d; font-size: 12px; font-weight: bold; 
+        .text-back  {
+            position: absolute; width: 100%; height: 100%; transform: translateZ(-13px) rotateY(180deg);
+            background: #2c3e50; border: 2px solid #1a252f; box-sizing: border-box;
+            backface-visibility: hidden; display: flex; justify-content: center; align-items: center;
+            color: #7f8c8d; font-size: 12px; font-weight: bold;
         }
         .glow-text { font-size: 56px; font-weight: bold; color: #e74c3c; text-shadow: 0 0 12px rgba(231, 76, 60, 0.6); font-family: sans-serif; }
         .text-side-wall { position: absolute; background: #2c3e50; border: 1px solid #1a252f; box-sizing: border-box; }
@@ -140,7 +139,7 @@
 
         /* --- 真正的多重 3D 立體虛線 --- */
         #distance-lines {
-            position: absolute; left: 300px; top: 200px; 
+            position: absolute; left: 300px; top: 200px;
             transform-style: preserve-3d; display: none;
         }
 
@@ -185,529 +184,563 @@
             background: rgba(0,0,0,0.75); color: #fff; padding: 12px 24px; border-radius: 8px; font-size: 14px; pointer-events: none;
             text-align: left; line-height: 1.8; box-shadow: 0 4px 15px rgba(0,0,0,0.4); z-index: 9999; backdrop-filter: blur(4px);
         }
-    
-    /* Home button */
-    #home-btn {
-        position: fixed;
-        bottom: 16px;
-        left: 16px;
-        z-index: 99999;
-        background: rgba(30,41,59,0.85);
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-        border: 1px solid rgba(255,255,255,0.3);
-        border-radius: 10px;
-        padding: 8px 14px;
-        font-size: 13px;
-        font-weight: bold;
-        color: #fff;
-        text-decoration: none;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.25);
-        transition: background 0.2s, transform 0.2s;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-    #home-btn:hover {
-        background: rgba(30,41,59,0.95);
-        transform: translateY(-2px);
-    }
-
-        /* -- Responsive (Mobile / Tablet) -- */
-        @media (max-width: 768px) {
-            #ui-panel, .ui-panel {
-                width: calc(100vw - 20px) !important;
-                max-width: 100vw !important;
-                max-height: 45vh !important;
-                overflow-y: auto !important;
-                top: auto !important;
-                bottom: 0 !important;
-                left: 0 !important;
-                right: 0 !important;
-                border-radius: 12px 12px 0 0 !important;
-                padding: 12px !important;
-                font-size: 12px !important;
-            }
-            #ui-panel h2, .ui-panel h2 { font-size: 14px !important; margin: 0 0 6px 0 !important; }
-            #ui-panel h3, .ui-panel h3 { font-size: 13px !important; }
-            #ui-panel label, .ui-panel label { font-size: 11px !important; }
-            #ui-panel input[type=range], .ui-panel input[type=range] { height: 20px !important; }
-            #ui-panel .btn, .ui-panel .btn { padding: 7px 4px !important; font-size: 11px !important; }
-        }
-        @media (min-width: 769px) and (max-width: 1024px) {
-            #ui-panel, .ui-panel {
-                width: 260px !important;
-                font-size: 13px !important;
-            }
-        }
     </style>
 </head>
 <body>
 
+<div id="topbar">
+    <div style="display: flex; align-items: center; gap: 16px;">
+        <button type="button" class="panel-toggle-btn" id="btn-toggle-left">
+            <span>☰</span> <span data-i18n="topbar.controls">控制</span>
+        </button>
+        <div class="title-block">
+            <h1 data-i18n="topbar.title">🪞 DSE 物理鏡像模擬器</h1>
+            <p data-i18n="topbar.subtitle">HKDSE Physics · Book 3 · Chapter 1 · 平面鏡反射</p>
+        </div>
+    </div>
+    <div class="tb-actions">
+        <!-- 語言切換 #lang-btn（i18n.js）與 🏠 主頁 #home-btn（core.js）自動注入 -->
+    </div>
+</div>
 
-    <!-- 將 stage-container 移到前面，讓它排在左邊 -->
-    <div id="stage-container">
-        <div id="scene-real" class="scene">
-            <div id="space3d-real" class="space3d">
-                <div class="mirror-3d-box">
-                    <div class="mirror-front">
-                        <div id="tr-tl" class="tracker" style="left: 0; top: 0;"></div>
-                        <div id="tr-tr" class="tracker" style="right: 0; top: 0;"></div>
-                        <div id="tr-br" class="tracker" style="right: 0; bottom: 0;"></div>
-                        <div id="tr-bl" class="tracker" style="left: 0; bottom: 0;"></div>
-                    </div>
-                    <div class="mirror-back"></div>
-                    <div class="mirror-side m-side-top"></div>
-                    <div class="mirror-side m-side-bottom"></div>
-                    <div class="mirror-side m-side-left"></div>
-                    <div class="mirror-side m-side-right"></div>
-                    <div class="mirror-label">平面鏡 (PLANE MIRROR)</div>
+<div id="main">
+
+    <!-- ═══════════ 左側控制面板 ═══════════ -->
+    <div id="left-panel">
+
+        <div class="card">
+            <div class="card-header">👁 <span data-i18n="panel.display.header">顯示選項</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <div class="mode-label" data-i18n="panel.display.mockLabel">鏡後輔助影像控制</div>
+                <div class="toggle-row" id="row-mock">
+                    <div class="toggle-track" id="track-mock"><div class="toggle-thumb"></div></div>
+                    <span id="lbl-mock">顯示鏡後輔助像：已隱藏 ❌</span>
                 </div>
-
-                <!-- 距離標示線群組 -->
-                <div id="distance-lines">
-                    <div id="obj-dist-container" class="dist-line-container obj-dist"></div>
-                    <div id="img-dist-container" class="dist-line-container img-dist"></div>
-                    
-                    <div id="obj-dist-label" class="dist-label">物距 u</div>
-                    <div id="img-dist-label" class="dist-label">像距 v</div>
+                <div class="mode-label" data-i18n="panel.display.opacityLabel">真實物件外觀</div>
+                <div class="toggle-row" id="row-opacity">
+                    <div class="toggle-track" id="track-opacity"><div class="toggle-thumb"></div></div>
+                    <span id="lbl-opacity">真實物件半透明：已關閉 ❌</span>
                 </div>
-
-                <div id="real-object" class="element-wrapper"></div>
-                <div id="image-position-mock-field" class="element-wrapper"></div>
+                <div class="mode-label" data-i18n="panel.display.distLabel">顯示距離</div>
+                <div class="toggle-row" id="row-dist">
+                    <div class="toggle-track" id="track-dist"><div class="toggle-thumb"></div></div>
+                    <span id="lbl-dist">顯示物距與像距：已隱藏 ❌</span>
+                </div>
             </div>
         </div>
 
-        <div id="scene-virtual" class="scene">
-            <div id="space3d-virtual" class="space3d">
-                <div id="mirror-image-in-lens" class="element-wrapper"></div>
+        <div class="card">
+            <div class="card-header">⚙️ <span data-i18n="panel.object.header">物件與參數</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <div class="mode-label" data-i18n="panel.object.select">選擇物件</div>
+                <select id="obj-select">
+                    <option value="CLOCK" data-i18n="panel.object.optClock">即時時鐘</option>
+                    <option value="PHY" data-i18n="panel.object.optPhy">立體厚度文字：PHY</option>
+                    <option value="CTW" data-i18n="panel.object.optCtw">立體厚度文字：CTW</option>
+                </select>
+                <div class="slider-row">
+                    <div class="slider-head"><label data-i18n="panel.object.dist">改變物距</label><span class="val" id="val-dist">160px</span></div>
+                    <input type="range" id="dist-slider" min="60" max="800" value="160">
+                </div>
+                <div class="slider-row">
+                    <div class="slider-head"><label data-i18n="panel.object.zoom">鏡頭縮放</label><span class="val" id="val-zoom">1.0x</span></div>
+                    <input type="range" id="zoom-slider" min="0.3" max="3.0" step="0.1" value="1.0">
+                </div>
             </div>
         </div>
 
-        <div id="view-tip">
-            <b>🎥 攝影機操作指南：</b><br>
-            🖱️ <b>左鍵拖曳</b> / 單指滑動：旋轉視角<br>
-            🖱️ <b>右鍵拖曳</b> / 雙指滑動：平移畫面<br>
-            🖱️ <b>滾動滾輪</b> / 雙指縮放：拉近 / 推遠
+        <div class="card">
+            <div class="card-header">🎥 <span data-i18n="panel.view.header">快速切換視覺</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <div class="dir-btn-group">
+                    <button type="button" class="dir-btn" id="btn-view-iso" data-i18n="panel.view.iso">斜對角立體圖</button>
+                    <button type="button" class="dir-btn" id="btn-view-front" data-i18n="panel.view.front">正視圖</button>
+                    <button type="button" class="dir-btn" id="btn-view-back" data-i18n="panel.view.back">後視圖</button>
+                    <button type="button" class="dir-btn" id="btn-view-top" data-i18n="panel.view.top">正俯視圖</button>
+                </div>
+                <button type="button" class="action-btn btn-reset" id="btn-cam-reset" style="width:100%; margin-top:8px;" data-i18n="panel.view.reset">🔄 重置攝影機位置</button>
+            </div>
         </div>
+
     </div>
 
-    <!-- 控制面板移到後面，讓它排在右邊 -->
-    <div id="control-panel">
-        <h1>DSE 物理鏡像模擬器</h1>
-        
-        <div>
-            <label><b>1. 鏡後輔助影像控制</b></label>
-            <button id="toggle-mock-btn" class="switch-btn" onclick="toggleMockField()">顯示鏡後輔助像：已隱藏 ❌</button>
-        </div>
-
-        <div>
-            <label><b>2. 真實物件外觀</b></label>
-            <button id="toggle-opacity-btn" class="switch-btn" onclick="toggleObjectOpacity()">真實物件半透明：已關閉 ❌</button>
-        </div>
-
-        <div>
-            <label><b>3. 顯示距離</b></label>
-            <button id="toggle-dist-btn" class="switch-btn" onclick="toggleDistance()">顯示物距與像距：已隱藏 ❌</button>
-        </div>
-
-        <div>
-            <label for="obj-select"><b>4. 選擇物件</b></label>
-            <select id="obj-select" onchange="changeObject(this.value)">
-                <option value="CLOCK">即時時鐘</option>
-                <option value="PHY">立體厚度文字：PHY</option>
-                <option value="CTW">立體厚度文字：CTW</option>
-            </select>
-        </div>
-
-        <div>
-            <label><b>5. 改變物距: <span id="dist-txt">160</span>px</b></label>
-            <input type="range" id="dist-slider" min="60" max="800" value="160" oninput="updateDistance(this.value)">
-        </div>
-
-        <div>
-            <label><b>6. 鏡頭縮放: <span id="zoom-txt">1.0</span>x</b></label>
-            <input type="range" id="zoom-slider" min="0.3" max="3.0" step="0.1" value="1.0" oninput="updateZoom(this.value)">
-        </div>
-
-        <div>
-            <h2>7. 快速切換視覺</h2>
-            <button onclick="changeView(-15, -45)" style="margin-top:8px;">斜對角立體圖</button>
-            <button onclick="changeView(0, 0)" style="margin-top:5px;">正視圖</button>
-            <button onclick="changeView(0, 180)" style="margin-top:5px;">後視圖</button>
-            <button onclick="changeView(-90, 0)" style="margin-top:5px;">正俯視圖</button>
-            <button onclick="resetCamera()" class="reset-btn">🔄 重置攝影機位置</button>
-        </div>
-    </div>
-
-    <script>
-        let showMockField = false;
-        let isObjectTransparent = false;
-        let showDistance = false;
-        let currentObjectType = 'CLOCK';
-        
-        let currentRotX = -15;
-        let currentRotY = -45;
-        let currentScale = 1.0;
-        let currentTransX = 0;
-        let currentTransY = 0;
-        
-        let clockInterval = null;
-
-        const realObjDiv = document.getElementById('real-object');
-        const mirrorLensDiv = document.getElementById('mirror-image-in-lens');
-        const mockFieldDiv = document.getElementById('image-position-mock-field');
-        const distanceLinesDiv = document.getElementById('distance-lines');
-        const objDistContainer = document.getElementById('obj-dist-container');
-        const imgDistContainer = document.getElementById('img-dist-container');
-        
-        const space3dReal = document.getElementById('space3d-real');
-        const space3dVirtual = document.getElementById('space3d-virtual');
-        const sceneVirtual = document.getElementById('scene-virtual');
-        const stageContainer = document.getElementById('stage-container');
-
-        // 動態生成 3D 虛線方塊
-        function renderDashedLines(dist) {
-            const dashLength = 12; // 方塊長度
-            const gap = 10;        // 空隙長度
-            const step = dashLength + gap;
-            
-            let html = '';
-            // 根據距離計算需要多少個小方塊
-            for (let x = 0; x + dashLength <= dist; x += step) {
-                html += `
-                    <div class="dash-3d" style="transform: translateX(${x}px)">
-                        <div class="dash-face df-front"></div>
-                        <div class="dash-face df-back"></div>
-                        <div class="dash-face df-top"></div>
-                        <div class="dash-face df-bottom"></div>
-                        <div class="dash-face df-left"></div>
-                        <div class="dash-face df-right"></div>
+    <!-- ═══════════ 中央 CSS 3D 舞台（場景實作原樣保留） ═══════════ -->
+    <div id="canvas-wrap">
+        <div id="stage-container">
+            <div id="scene-real" class="scene">
+                <div id="space3d-real" class="space3d">
+                    <div class="mirror-3d-box">
+                        <div class="mirror-front">
+                            <div id="tr-tl" class="tracker" style="left: 0; top: 0;"></div>
+                            <div id="tr-tr" class="tracker" style="right: 0; top: 0;"></div>
+                            <div id="tr-br" class="tracker" style="right: 0; bottom: 0;"></div>
+                            <div id="tr-bl" class="tracker" style="left: 0; bottom: 0;"></div>
+                        </div>
+                        <div class="mirror-back"></div>
+                        <div class="mirror-side m-side-top"></div>
+                        <div class="mirror-side m-side-bottom"></div>
+                        <div class="mirror-side m-side-left"></div>
+                        <div class="mirror-side m-side-right"></div>
+                        <div class="mirror-label" data-i18n="scene.mirrorLabel">平面鏡 (PLANE MIRROR)</div>
                     </div>
-                `;
-            }
-            objDistContainer.innerHTML = html;
-            imgDistContainer.innerHTML = html;
-        }
 
-        function getClockFaceHTML() {
-            let ticks = '';
-            for(let i = 0; i < 12; i++) {
-                let angle = i * 30;
-                let isMajor = i % 3 === 0;
-                let height = isMajor ? '14px' : '8px';
-                let width = isMajor ? '4px' : '2px';
-                ticks += `<div style="position:absolute; left:50%; top:50%; width:${width}; height:${height}; background:currentColor; transform: translate(-50%, -50%) rotate(${angle}deg) translateY(-50px);"></div>`;
-            }
-            return `
-                <div class="clock-face">
-                    ${ticks}
-                    <div class="hand hour-hand"></div>
-                    <div class="hand minute-hand"></div>
-                    <div class="hand second-hand"></div>
-                    <div class="center-dot"></div>
+                    <!-- 距離標示線群組 -->
+                    <div id="distance-lines">
+                        <div id="obj-dist-container" class="dist-line-container obj-dist"></div>
+                        <div id="img-dist-container" class="dist-line-container img-dist"></div>
+
+                        <div id="obj-dist-label" class="dist-label" data-i18n="scene.objDist">物距 u</div>
+                        <div id="img-dist-label" class="dist-label" data-i18n="scene.imgDist">像距 v</div>
+                    </div>
+
+                    <div id="real-object" class="element-wrapper"></div>
+                    <div id="image-position-mock-field" class="element-wrapper"></div>
+                </div>
+            </div>
+
+            <div id="scene-virtual" class="scene">
+                <div id="space3d-virtual" class="space3d">
+                    <div id="mirror-image-in-lens" class="element-wrapper"></div>
+                </div>
+            </div>
+
+            <div id="view-tip" data-i18n-html="scene.viewTip">
+                <b>🎥 攝影機操作指南：</b><br>
+                🖱️ <b>左鍵拖曳</b> / 單指滑動：旋轉視角<br>
+                🖱️ <b>右鍵拖曳</b> / 雙指滑動：平移畫面<br>
+                🖱️ <b>滾動滾輪</b> / 雙指縮放：拉近 / 推遠
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- ═══════════ 頁面字典（zh 必填；en 缺字自動回退 zh） ═══════════ -->
+<script>
+PhysLab.i18n.register({
+    zh: {
+        'topbar.title': '🪞 DSE 物理鏡像模擬器',
+        'topbar.subtitle': 'HKDSE Physics · Book 3 · Chapter 1 · 平面鏡反射',
+        'topbar.controls': '控制',
+
+        'panel.display.header': '顯示選項',
+        'panel.display.mockLabel': '鏡後輔助影像控制',
+        'panel.display.mockOn': '顯示鏡後輔助像：已開啟 👁️',
+        'panel.display.mockOff': '顯示鏡後輔助像：已隱藏 ❌',
+        'panel.display.opacityLabel': '真實物件外觀',
+        'panel.display.opacityOn': '真實物件半透明：已開啟 👁️',
+        'panel.display.opacityOff': '真實物件半透明：已關閉 ❌',
+        'panel.display.distLabel': '顯示距離',
+        'panel.display.distOn': '顯示物距與像距：已開啟 📏',
+        'panel.display.distOff': '顯示物距與像距：已隱藏 ❌',
+
+        'panel.object.header': '物件與參數',
+        'panel.object.select': '選擇物件',
+        'panel.object.optClock': '即時時鐘',
+        'panel.object.optPhy': '立體厚度文字：PHY',
+        'panel.object.optCtw': '立體厚度文字：CTW',
+        'panel.object.dist': '改變物距',
+        'panel.object.zoom': '鏡頭縮放',
+
+        'panel.view.header': '快速切換視覺',
+        'panel.view.iso': '斜對角立體圖',
+        'panel.view.front': '正視圖',
+        'panel.view.back': '後視圖',
+        'panel.view.top': '正俯視圖',
+        'panel.view.reset': '🔄 重置攝影機位置',
+
+        'scene.mirrorLabel': '平面鏡 (PLANE MIRROR)',
+        'scene.objDist': '物距 u',
+        'scene.imgDist': '像距 v',
+        'scene.viewTip': '<b>🎥 攝影機操作指南：</b><br>🖱️ <b>左鍵拖曳</b> / 單指滑動：旋轉視角<br>🖱️ <b>右鍵拖曳</b> / 雙指滑動：平移畫面<br>🖱️ <b>滾動滾輪</b> / 雙指縮放：拉近 / 推遠'
+    },
+    en: {}
+});
+</script>
+
+<!-- ═══════════ 頁面邏輯（CSS 3D 場景／光學邏輯原樣保留，只換 UI 接線） ═══════════ -->
+<script>
+    let showMockField = false;
+    let isObjectTransparent = false;
+    let showDistance = false;
+    let currentObjectType = 'CLOCK';
+
+    let currentRotX = -15;
+    let currentRotY = -45;
+    let currentScale = 1.0;
+    let currentTransX = 0;
+    let currentTransY = 0;
+
+    let clockInterval = null;
+
+    const realObjDiv = document.getElementById('real-object');
+    const mirrorLensDiv = document.getElementById('mirror-image-in-lens');
+    const mockFieldDiv = document.getElementById('image-position-mock-field');
+    const distanceLinesDiv = document.getElementById('distance-lines');
+    const objDistContainer = document.getElementById('obj-dist-container');
+    const imgDistContainer = document.getElementById('img-dist-container');
+
+    const space3dReal = document.getElementById('space3d-real');
+    const space3dVirtual = document.getElementById('space3d-virtual');
+    const sceneVirtual = document.getElementById('scene-virtual');
+    const stageContainer = document.getElementById('stage-container');
+
+    // 動態生成 3D 虛線方塊
+    function renderDashedLines(dist) {
+        const dashLength = 12; // 方塊長度
+        const gap = 10;        // 空隙長度
+        const step = dashLength + gap;
+
+        let html = '';
+        // 根據距離計算需要多少個小方塊
+        for (let x = 0; x + dashLength <= dist; x += step) {
+            html += `
+                <div class="dash-3d" style="transform: translateX(${x}px)">
+                    <div class="dash-face df-front"></div>
+                    <div class="dash-face df-back"></div>
+                    <div class="dash-face df-top"></div>
+                    <div class="dash-face df-bottom"></div>
+                    <div class="dash-face df-left"></div>
+                    <div class="dash-face df-right"></div>
                 </div>
             `;
         }
+        objDistContainer.innerHTML = html;
+        imgDistContainer.innerHTML = html;
+    }
 
-        function updateClockHands() {
-            if (currentObjectType !== 'CLOCK') return;
-            const now = new Date();
-            const hours = now.getHours();
-            const minutes = now.getMinutes();
-            const seconds = now.getSeconds();
+    function getClockFaceHTML() {
+        let ticks = '';
+        for(let i = 0; i < 12; i++) {
+            let angle = i * 30;
+            let isMajor = i % 3 === 0;
+            let height = isMajor ? '14px' : '8px';
+            let width = isMajor ? '4px' : '2px';
+            ticks += `<div style="position:absolute; left:50%; top:50%; width:${width}; height:${height}; background:currentColor; transform: translate(-50%, -50%) rotate(${angle}deg) translateY(-50px);"></div>`;
+        }
+        return `
+            <div class="clock-face">
+                ${ticks}
+                <div class="hand hour-hand"></div>
+                <div class="hand minute-hand"></div>
+                <div class="hand second-hand"></div>
+                <div class="center-dot"></div>
+            </div>
+        `;
+    }
 
-            const hourAngle = (hours % 12) * 30 + (minutes * 0.5);
-            const minuteAngle = minutes * 6 + (seconds * 0.1);
-            const secondAngle = seconds * 6;
+    function updateClockHands() {
+        if (currentObjectType !== 'CLOCK') return;
+        const now = new Date();
+        const hours = now.getHours();
+        const minutes = now.getMinutes();
+        const seconds = now.getSeconds();
 
-            const setTransform = (selector, angle, isSecond) => {
-                document.querySelectorAll(selector).forEach(el => {
-                    if (isSecond && seconds === 0) el.style.transition = 'none';
-                    else if (isSecond && seconds === 1) el.style.transition = 'transform 0.1s cubic-bezier(0.4, 2.08, 0.55, 0.44)';
-                    el.style.transform = `rotate(${angle}deg)`;
-                });
-            };
+        const hourAngle = (hours % 12) * 30 + (minutes * 0.5);
+        const minuteAngle = minutes * 6 + (seconds * 0.1);
+        const secondAngle = seconds * 6;
 
-            setTransform('.hour-hand', hourAngle, false);
-            setTransform('.minute-hand', minuteAngle, false);
-            setTransform('.second-hand', secondAngle, true);
+        const setTransform = (selector, angle, isSecond) => {
+            document.querySelectorAll(selector).forEach(el => {
+                if (isSecond && seconds === 0) el.style.transition = 'none';
+                else if (isSecond && seconds === 1) el.style.transition = 'transform 0.1s cubic-bezier(0.4, 2.08, 0.55, 0.44)';
+                el.style.transform = `rotate(${angle}deg)`;
+            });
+        };
+
+        setTransform('.hour-hand', hourAngle, false);
+        setTransform('.minute-hand', minuteAngle, false);
+        setTransform('.second-hand', secondAngle, true);
+    }
+
+    function getInnerContent(type) {
+        if (type === 'CLOCK') return getClockFaceHTML();
+        return `<div class="glow-text">${type}</div>`;
+    }
+
+    function getObjectHTML(type) {
+        return `
+            <div class="text-solid-box">
+                <div class="text-front">${getInnerContent(type)}</div>
+                <div class="text-side-wall tw-top"></div>
+                <div class="text-side-wall tw-bottom"></div>
+                <div class="text-side-wall tw-left"></div>
+                <div class="text-side-wall tw-right"></div>
+                <div class="text-back">BACK</div>
+            </div>
+        `;
+    }
+
+    function getMockFieldHTML(type) {
+        let innerContent = type === 'CLOCK' ? getClockFaceHTML() : `<div class="glow-text mock-text">${type}</div>`;
+        return `
+            <div class="text-solid-box mock-style">
+                <div class="text-front">${innerContent}</div>
+                <div class="text-side-wall tw-top"></div>
+                <div class="text-side-wall tw-bottom"></div>
+                <div class="text-side-wall tw-left"></div>
+                <div class="text-side-wall tw-right"></div>
+                <div class="text-back">BACK</div>
+            </div>
+        `;
+    }
+
+    function updateTransform() {
+        const transformStr = `scale(${currentScale}) translate(${currentTransX}px, ${currentTransY}px) rotateX(${currentRotX}deg) rotateY(${currentRotY}deg)`;
+        space3dReal.style.transform = transformStr;
+        space3dVirtual.style.transform = transformStr;
+
+        // 標籤永遠面向攝影機 (Billboarding 效果)
+        document.getElementById('obj-dist-label').style.transform =
+            `translateZ(calc(var(--object-dist) / 2)) translate(-50%, -150%) rotateY(${-currentRotY}deg) rotateX(${-currentRotX}deg)`;
+
+        document.getElementById('img-dist-label').style.transform =
+            `translateZ(calc(var(--object-dist) / -2)) translate(-50%, -150%) rotateY(${-currentRotY}deg) rotateX(${-currentRotX}deg)`;
+
+        updateOpticalLogic();
+    }
+
+    function updateOpticalLogic() {
+        let normalizedY = ((currentRotY % 360) + 360) % 360;
+        let isFrontSide = (normalizedY < 90 || normalizedY > 270);
+
+        mockFieldDiv.style.display = showMockField ? 'block' : 'none';
+
+        if (isFrontSide) {
+            sceneVirtual.style.display = 'flex';
+            sceneVirtual.style.opacity = 1.0;
+
+            const sceneRect = sceneVirtual.getBoundingClientRect();
+            const tl = document.getElementById('tr-tl').getBoundingClientRect();
+            const tr = document.getElementById('tr-tr').getBoundingClientRect();
+            const br = document.getElementById('tr-br').getBoundingClientRect();
+            const bl = document.getElementById('tr-bl').getBoundingClientRect();
+
+            const getCoords = (rect) => `${rect.left - sceneRect.left}px ${rect.top - sceneRect.top}px`;
+            sceneVirtual.style.clipPath = `polygon(${getCoords(tl)}, ${getCoords(tr)}, ${getCoords(br)}, ${getCoords(bl)})`;
+        } else {
+            sceneVirtual.style.display = 'none';
+        }
+    }
+
+    function changeObject(type) {
+        currentObjectType = type;
+        realObjDiv.innerHTML = getObjectHTML(type);
+        mirrorLensDiv.innerHTML = getObjectHTML(type);
+        mockFieldDiv.innerHTML = getMockFieldHTML(type);
+
+        if (clockInterval) clearInterval(clockInterval);
+        if (type === 'CLOCK') {
+            updateClockHands();
+            clockInterval = setInterval(updateClockHands, 1000);
+        }
+        updateOpticalLogic();
+    }
+
+    /* ── 顯示選項開關（toggle-row + 動態全文標籤，保留原「已開啟/已隱藏」字樣） ── */
+    function refreshToggleLabels() {
+        const t = PhysLab.i18n.t;
+        PhysLab.ui.setText('lbl-mock', t(showMockField ? 'panel.display.mockOn' : 'panel.display.mockOff'));
+        PhysLab.ui.setText('lbl-opacity', t(isObjectTransparent ? 'panel.display.opacityOn' : 'panel.display.opacityOff'));
+        PhysLab.ui.setText('lbl-dist', t(showDistance ? 'panel.display.distOn' : 'panel.display.distOff'));
+    }
+
+    function toggleMockField() {
+        showMockField = !showMockField;
+        document.getElementById('track-mock').classList.toggle('on', showMockField);
+        refreshToggleLabels();
+        updateOpticalLogic();
+    }
+
+    function toggleObjectOpacity() {
+        isObjectTransparent = !isObjectTransparent;
+        document.getElementById('track-opacity').classList.toggle('on', isObjectTransparent);
+        realObjDiv.classList.toggle('semi-transparent', isObjectTransparent);
+        refreshToggleLabels();
+    }
+
+    function toggleDistance() {
+        showDistance = !showDistance;
+        document.getElementById('track-dist').classList.toggle('on', showDistance);
+        distanceLinesDiv.style.display = showDistance ? 'block' : 'none';
+        refreshToggleLabels();
+    }
+
+    function updateDistance(val) {
+        document.documentElement.style.setProperty('--object-dist', val + 'px');
+        renderDashedLines(parseInt(val)); // 更新 3D 虛線方塊數量
+        updateOpticalLogic();
+    }
+
+    function updateZoom(val) {
+        currentScale = parseFloat(val);
+        updateTransform();
+    }
+
+    function changeView(x, y) {
+        currentRotX = x;
+        currentRotY = y;
+        currentTransX = 0;
+        currentTransY = 0;
+        updateTransform();
+    }
+
+    function resetCamera() {
+        currentScale = 1.0;
+        document.getElementById('zoom-slider').value = 1.0;
+        PhysLab.ui.setText('val-zoom', '1.0x');
+        changeView(-15, -45);
+    }
+
+    // --- 滑鼠與觸控拖曳邏輯 ---
+    let isDragging = false;
+    let isPanning = false;
+    let previousMousePosition = { x: 0, y: 0 };
+    let initialPinchDistance = null;
+
+    stageContainer.addEventListener('contextmenu', e => e.preventDefault());
+
+    stageContainer.addEventListener('mousedown', (e) => {
+        if (e.button === 0) isDragging = true;
+        else if (e.button === 2) isPanning = true;
+        previousMousePosition = { x: e.clientX, y: e.clientY };
+    });
+
+    window.addEventListener('mousemove', (e) => {
+        if (!isDragging && !isPanning) return;
+        let deltaX = e.clientX - previousMousePosition.x;
+        let deltaY = e.clientY - previousMousePosition.y;
+
+        if (isDragging) {
+            currentRotY += deltaX * 0.4;
+            currentRotX -= deltaY * 0.4;
+            currentRotX = Math.max(-90, Math.min(90, currentRotX));
+        } else if (isPanning) {
+            currentTransX += deltaX / currentScale;
+            currentTransY += deltaY / currentScale;
         }
 
-        function getInnerContent(type) {
-            if (type === 'CLOCK') return getClockFaceHTML();
-            return `<div class="glow-text">${type}</div>`;
+        previousMousePosition = { x: e.clientX, y: e.clientY };
+        updateTransform();
+    });
+
+    window.addEventListener('mouseup', (e) => {
+        if (e.button === 0) isDragging = false;
+        if (e.button === 2) isPanning = false;
+    });
+
+    stageContainer.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const zoomSpeed = 0.05;
+        if (e.deltaY < 0) currentScale += zoomSpeed;
+        else currentScale -= zoomSpeed;
+
+        currentScale = Math.max(0.3, Math.min(3.0, currentScale));
+        document.getElementById('zoom-slider').value = currentScale;
+        PhysLab.ui.setText('val-zoom', currentScale.toFixed(1) + 'x');
+
+        updateTransform();
+    });
+
+    stageContainer.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1) {
+            isDragging = true;
+            previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        } else if (e.touches.length === 2) {
+            isPanning = true;
+            let cx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+            let cy = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+            previousMousePosition = { x: cx, y: cy };
+
+            initialPinchDistance = Math.hypot(
+                e.touches[0].clientX - e.touches[1].clientX,
+                e.touches[0].clientY - e.touches[1].clientY
+            );
         }
+    }, {passive: false});
 
-        function getObjectHTML(type) {
-            return `
-                <div class="text-solid-box">
-                    <div class="text-front">${getInnerContent(type)}</div>
-                    <div class="text-side-wall tw-top"></div>
-                    <div class="text-side-wall tw-bottom"></div>
-                    <div class="text-side-wall tw-left"></div>
-                    <div class="text-side-wall tw-right"></div>
-                    <div class="text-back">BACK</div>
-                </div>
-            `;
-        }
+    window.addEventListener('touchmove', (e) => {
+        if (!isDragging && !isPanning) return;
+        e.preventDefault();
 
-        function getMockFieldHTML(type) {
-            let innerContent = type === 'CLOCK' ? getClockFaceHTML() : `<div class="glow-text mock-text">${type}</div>`;
-            return `
-                <div class="text-solid-box mock-style">
-                    <div class="text-front">${innerContent}</div>
-                    <div class="text-side-wall tw-top"></div>
-                    <div class="text-side-wall tw-bottom"></div>
-                    <div class="text-side-wall tw-left"></div>
-                    <div class="text-side-wall tw-right"></div>
-                    <div class="text-back">BACK</div>
-                </div>
-            `;
-        }
+        if (isDragging && e.touches.length === 1) {
+            let deltaX = e.touches[0].clientX - previousMousePosition.x;
+            let deltaY = e.touches[0].clientY - previousMousePosition.y;
+            currentRotY += deltaX * 0.4;
+            currentRotX -= deltaY * 0.4;
+            currentRotX = Math.max(-90, Math.min(90, currentRotX));
+            previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        } else if (isPanning && e.touches.length === 2) {
+            let cx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+            let cy = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+            let deltaX = cx - previousMousePosition.x;
+            let deltaY = cy - previousMousePosition.y;
 
-        function updateTransform() {
-            const transformStr = `scale(${currentScale}) translate(${currentTransX}px, ${currentTransY}px) rotateX(${currentRotX}deg) rotateY(${currentRotY}deg)`;
-            space3dReal.style.transform = transformStr;
-            space3dVirtual.style.transform = transformStr;
-            
-            // 標籤永遠面向攝影機 (Billboarding 效果)
-            document.getElementById('obj-dist-label').style.transform = 
-                `translateZ(calc(var(--object-dist) / 2)) translate(-50%, -150%) rotateY(${-currentRotY}deg) rotateX(${-currentRotX}deg)`;
-            
-            document.getElementById('img-dist-label').style.transform = 
-                `translateZ(calc(var(--object-dist) / -2)) translate(-50%, -150%) rotateY(${-currentRotY}deg) rotateX(${-currentRotX}deg)`;
+            currentTransX += deltaX / currentScale;
+            currentTransY += deltaY / currentScale;
+            previousMousePosition = { x: cx, y: cy };
 
-            updateOpticalLogic();
-        }
-
-        function updateOpticalLogic() {
-            let normalizedY = ((currentRotY % 360) + 360) % 360;
-            let isFrontSide = (normalizedY < 90 || normalizedY > 270);
-
-            mockFieldDiv.style.display = showMockField ? 'block' : 'none';
-
-            if (isFrontSide) {
-                sceneVirtual.style.display = 'flex';
-                sceneVirtual.style.opacity = 1.0; 
-
-                const sceneRect = sceneVirtual.getBoundingClientRect();
-                const tl = document.getElementById('tr-tl').getBoundingClientRect();
-                const tr = document.getElementById('tr-tr').getBoundingClientRect();
-                const br = document.getElementById('tr-br').getBoundingClientRect();
-                const bl = document.getElementById('tr-bl').getBoundingClientRect();
-
-                const getCoords = (rect) => `${rect.left - sceneRect.left}px ${rect.top - sceneRect.top}px`;
-                sceneVirtual.style.clipPath = `polygon(${getCoords(tl)}, ${getCoords(tr)}, ${getCoords(br)}, ${getCoords(bl)})`;
-            } else {
-                sceneVirtual.style.display = 'none';       
-            }
-        }
-
-        function changeObject(type) {
-            currentObjectType = type;
-            realObjDiv.innerHTML = getObjectHTML(type);
-            mirrorLensDiv.innerHTML = getObjectHTML(type);
-            mockFieldDiv.innerHTML = getMockFieldHTML(type);
-            
-            if (clockInterval) clearInterval(clockInterval);
-            if (type === 'CLOCK') {
-                updateClockHands(); 
-                clockInterval = setInterval(updateClockHands, 1000);
-            }
-            updateOpticalLogic();
-        }
-
-        function toggleMockField() {
-            showMockField = !showMockField;
-            const btn = document.getElementById('toggle-mock-btn');
-            if (showMockField) {
-                btn.innerText = '顯示鏡後輔助像：已開啟 👁️';
-                btn.classList.add('active');
-            } else {
-                btn.innerText = '顯示鏡後輔助像：已隱藏 ❌';
-                btn.classList.remove('active');
-            }
-            updateOpticalLogic(); 
-        }
-
-        function toggleObjectOpacity() {
-            isObjectTransparent = !isObjectTransparent;
-            const btn = document.getElementById('toggle-opacity-btn');
-            if (isObjectTransparent) {
-                btn.innerText = '真實物件半透明：已開啟 👁️';
-                btn.classList.add('active');
-                realObjDiv.classList.add('semi-transparent');
-            } else {
-                btn.innerText = '真實物件半透明：已關閉 ❌';
-                btn.classList.remove('active');
-                realObjDiv.classList.remove('semi-transparent');
-            }
-        }
-
-        function toggleDistance() {
-            showDistance = !showDistance;
-            const btn = document.getElementById('toggle-dist-btn');
-            if (showDistance) {
-                btn.innerText = '顯示物距與像距：已開啟 📏';
-                btn.classList.add('active');
-                distanceLinesDiv.style.display = 'block';
-            } else {
-                btn.innerText = '顯示物距與像距：已隱藏 ❌';
-                btn.classList.remove('active');
-                distanceLinesDiv.style.display = 'none';
-            }
-        }
-
-        function updateDistance(val) {
-            document.documentElement.style.setProperty('--object-dist', val + 'px');
-            document.getElementById('dist-txt').innerText = val;
-            renderDashedLines(parseInt(val)); // 更新 3D 虛線方塊數量
-            updateOpticalLogic();
-        }
-
-        function updateZoom(val) {
-            currentScale = parseFloat(val);
-            document.getElementById('zoom-txt').innerText = currentScale.toFixed(1);
-            updateTransform();
-        }
-
-        function changeView(x, y) {
-            currentRotX = x; 
-            currentRotY = y;
-            currentTransX = 0; 
-            currentTransY = 0;
-            updateTransform();
-        }
-
-        function resetCamera() {
-            currentScale = 1.0;
-            document.getElementById('zoom-slider').value = 1.0;
-            document.getElementById('zoom-txt').innerText = "1.0";
-            changeView(-15, -45);
-        }
-
-        // --- 滑鼠與觸控拖曳邏輯 ---
-        let isDragging = false; 
-        let isPanning = false;  
-        let previousMousePosition = { x: 0, y: 0 };
-        let initialPinchDistance = null;
-
-        stageContainer.addEventListener('contextmenu', e => e.preventDefault());
-
-        stageContainer.addEventListener('mousedown', (e) => {
-            if (e.button === 0) isDragging = true; 
-            else if (e.button === 2) isPanning = true;  
-            previousMousePosition = { x: e.clientX, y: e.clientY };
-        });
-
-        window.addEventListener('mousemove', (e) => {
-            if (!isDragging && !isPanning) return;
-            let deltaX = e.clientX - previousMousePosition.x;
-            let deltaY = e.clientY - previousMousePosition.y;
-
-            if (isDragging) {
-                currentRotY += deltaX * 0.4;
-                currentRotX -= deltaY * 0.4;
-                currentRotX = Math.max(-90, Math.min(90, currentRotX));
-            } else if (isPanning) {
-                currentTransX += deltaX / currentScale;
-                currentTransY += deltaY / currentScale;
-            }
-
-            previousMousePosition = { x: e.clientX, y: e.clientY };
-            updateTransform();
-        });
-
-        window.addEventListener('mouseup', (e) => {
-            if (e.button === 0) isDragging = false;
-            if (e.button === 2) isPanning = false;
-        });
-
-        stageContainer.addEventListener('wheel', (e) => {
-            e.preventDefault();
-            const zoomSpeed = 0.05;
-            if (e.deltaY < 0) currentScale += zoomSpeed;
-            else currentScale -= zoomSpeed;
-            
-            currentScale = Math.max(0.3, Math.min(3.0, currentScale));
-            document.getElementById('zoom-slider').value = currentScale;
-            document.getElementById('zoom-txt').innerText = currentScale.toFixed(1);
-            
-            updateTransform();
-        });
-
-        stageContainer.addEventListener('touchstart', (e) => {
-            if (e.touches.length === 1) {
-                isDragging = true;
-                previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-            } else if (e.touches.length === 2) {
-                isPanning = true;
-                let cx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-                let cy = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-                previousMousePosition = { x: cx, y: cy };
-                
-                initialPinchDistance = Math.hypot(
+            if (initialPinchDistance) {
+                let currentDist = Math.hypot(
                     e.touches[0].clientX - e.touches[1].clientX,
                     e.touches[0].clientY - e.touches[1].clientY
                 );
+                let scaleChange = (currentDist - initialPinchDistance) * 0.005;
+                currentScale += scaleChange;
+                currentScale = Math.max(0.3, Math.min(3.0, currentScale));
+                document.getElementById('zoom-slider').value = currentScale;
+                PhysLab.ui.setText('val-zoom', currentScale.toFixed(1) + 'x');
+                initialPinchDistance = currentDist;
             }
-        }, {passive: false});
+        }
+        updateTransform();
+    }, {passive: false});
 
-        window.addEventListener('touchmove', (e) => {
-            if (!isDragging && !isPanning) return;
-            e.preventDefault(); 
+    window.addEventListener('touchend', (e) => {
+        if (e.touches.length === 0) {
+            isDragging = false;
+            isPanning = false;
+            initialPinchDistance = null;
+        } else if (e.touches.length === 1) {
+            isPanning = false;
+            isDragging = true;
+            previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        }
+    });
 
-            if (isDragging && e.touches.length === 1) {
-                let deltaX = e.touches[0].clientX - previousMousePosition.x;
-                let deltaY = e.touches[0].clientY - previousMousePosition.y;
-                currentRotY += deltaX * 0.4;
-                currentRotX -= deltaY * 0.4;
-                currentRotX = Math.max(-90, Math.min(90, currentRotX));
-                previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-            } else if (isPanning && e.touches.length === 2) {
-                let cx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-                let cy = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-                let deltaX = cx - previousMousePosition.x;
-                let deltaY = cy - previousMousePosition.y;
-                
-                currentTransX += deltaX / currentScale;
-                currentTransY += deltaY / currentScale;
-                previousMousePosition = { x: cx, y: cy };
+    /* ── UI 接線（PhysLab 共用層） ── */
+    document.getElementById('row-mock').addEventListener('click', toggleMockField);
+    document.getElementById('row-opacity').addEventListener('click', toggleObjectOpacity);
+    document.getElementById('row-dist').addEventListener('click', toggleDistance);
 
-                if (initialPinchDistance) {
-                    let currentDist = Math.hypot(
-                        e.touches[0].clientX - e.touches[1].clientX,
-                        e.touches[0].clientY - e.touches[1].clientY
-                    );
-                    let scaleChange = (currentDist - initialPinchDistance) * 0.005;
-                    currentScale += scaleChange;
-                    currentScale = Math.max(0.3, Math.min(3.0, currentScale));
-                    document.getElementById('zoom-slider').value = currentScale;
-                    document.getElementById('zoom-txt').innerText = currentScale.toFixed(1);
-                    initialPinchDistance = currentDist;
-                }
-            }
-            updateTransform();
-        }, {passive: false});
+    document.getElementById('obj-select').addEventListener('change', function () { changeObject(this.value); });
 
-        window.addEventListener('touchend', (e) => {
-            if (e.touches.length === 0) {
-                isDragging = false;
-                isPanning = false;
-                initialPinchDistance = null;
-            } else if (e.touches.length === 1) {
-                isPanning = false;
-                isDragging = true;
-                previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-            }
-        });
+    PhysLab.ui.bindSlider('dist-slider', 'val-dist', function (v) {
+        updateDistance(v);
+        return v + 'px';
+    });
+    PhysLab.ui.bindSlider('zoom-slider', 'val-zoom', function (v) {
+        updateZoom(v);
+        return v.toFixed(1) + 'x';
+    });
 
-        // 初始化
-        renderDashedLines(160); // 初始化 3D 虛線
-        changeObject('CLOCK');
-        changeView(-15, -45);
-    </script>
-    <a id="home-btn" href="../../../index.html">&#127968; &#20027;&#38913;</a>
+    document.getElementById('btn-view-iso').addEventListener('click', function () { changeView(-15, -45); });
+    document.getElementById('btn-view-front').addEventListener('click', function () { changeView(0, 0); });
+    document.getElementById('btn-view-back').addEventListener('click', function () { changeView(0, 180); });
+    document.getElementById('btn-view-top').addEventListener('click', function () { changeView(-90, 0); });
+    document.getElementById('btn-cam-reset').addEventListener('click', resetCamera);
+
+    // 面板開關／視窗縮放後，鏡面 clip-path 依 tracker 實際座標重算
+    PhysLab.ui.bindPanelToggle('btn-toggle-left', 'left-panel', updateOpticalLogic);
+    window.addEventListener('resize', updateOpticalLogic);
+
+    // 語言切換：data-i18n 靜態文字自動套用；動態開關標籤需手動重繪
+    PhysLab.i18n.onChange(refreshToggleLabels);
+
+    // 初始化
+    changeObject('CLOCK');
+    changeView(-15, -45);
+    refreshToggleLabels();
+</script>
 </body>
 </html>
