@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,286 +11,128 @@
             svg: { fontCache: 'global' }
         };
     </script>
-    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-mml-chtml.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <script>
-        // Three.js 載入守衛
-        window.addEventListener('DOMContentLoaded', function () {
-            if (typeof THREE === 'undefined' || typeof THREE.OrbitControls === 'undefined') {
-                var o = document.createElement('div');
-                o.id = 'sim3d-load-error';
-                o.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;background:#0f172a;color:#fff;font-family:system-ui,sans-serif;font-size:18px;line-height:1.7';
-                o.innerHTML = '⚠️ 無法載入 3D 元件（three.js）<br>請檢查網路連線後重新整理頁面。';
-                document.body.appendChild(o);
-            }
-        });
-    </script>
+
+    <!-- 共用資源（載入順序固定，不可 defer/async）：core → i18n → quiz → sim3d -->
+    <link rel="stylesheet" href="../../../assets/css/tokens.css">
+    <link rel="stylesheet" href="../../../assets/css/labgray.css">
+    <script src="../../../assets/js/core.js"></script>
+    <script src="../../../assets/js/i18n.js"></script>
+    <script src="../../../assets/js/quiz.js"></script>
+    <script src="../../../assets/js/sim3d.js"></script>
+
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        /* ── 頁面獨有樣式（共用 chrome 見 assets/css/labgray.css）── */
 
-        /* --- 實驗室灰 (Lab Gray) 主題 --- */
-        body {
-            font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
-            background: #e2e6eb;
-            color: #334155;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-
-        #topbar {
-            background: #1e293b;
-            border-bottom: 1px solid #0f172a;
-            padding: 10px 20px;
-            display: flex; align-items: center; justify-content: space-between;
-            flex-shrink: 0;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        #topbar .title-block h1 { font-size: 1.2rem; font-weight: 700; color: #f8fafc; letter-spacing: 0.03em; }
-        #topbar .title-block p  { font-size: 0.75rem; color: #94a3b8; margin-top: 2px; }
-
-        .panel-toggle-btn {
-            background: #334155; border: 1px solid #475569; border-radius: 6px;
-            color: #f8fafc; padding: 7px 12px; font-size: 0.8rem; font-weight: 600;
-            cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 6px;
-        }
-        .panel-toggle-btn:hover { background: #475569; border-color: #64748b; }
-        .panel-toggle-btn.inactive { background: #0f172a; color: #64748b; border-color: #1e293b; }
-
-        .panel-hidden { display: none !important; }
-
-        #main { display: flex; flex: 1; min-height: 0; overflow: hidden; }
-
-        #left-panel {
-            width: 300px; flex-shrink: 0; background: #f1f5f9;
-            border-right: 1px solid #cbd5e1; display: flex;
-            flex-direction: column; overflow-y: auto; padding: 14px 12px; gap: 12px;
-        }
-
-        .card { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-        .card-header {
-            background: #e2e8f0;
-            padding: 8px 13px; font-size: 0.75rem; font-weight: 700;
-            color: #475569; text-transform: uppercase; letter-spacing: 0.1em;
-            display: flex; align-items: center; gap: 7px;
-        }
-        .card-body { padding: 11px 13px; }
-
-        .mode-label { font-size: 0.68rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 7px; margin-top: 4px; }
-
-        .dir-btn-group { display: flex; gap: 6px; flex-wrap: wrap; }
-        .dir-btn {
-            flex: 1; min-width: 58px; padding: 8px 5px; border-radius: 8px;
-            border: 1px solid #cbd5e1; background: #f8fafc;
-            color: #475569; font-size: 0.74rem; font-weight: 600;
-            cursor: pointer; transition: all 0.2s; text-align: center;
-        }
-        .dir-btn:hover { border-color: #94a3b8; color: #1e293b; background: #f1f5f9; }
-        .dir-btn.active {
-            border-color: #0284c7; background: #f0f9ff;
-            color: #0369a1; box-shadow: 0 0 0 1px #0284c7;
-        }
+        /* .hl-* 覆寫：本頁高亮色對應 3D 場景配色（磁場藍、電力橙、速度黃）；
+           .hl-force 綠與 labgray 出貨值相同，直接沿用共用規則 */
+        .hl-field { color: #2563eb; }
+        .hl-elec  { color: #ea580c; font-weight: 700; }
+        .hl-vel   { color: #ca8a04; font-weight: 700; }
 
         /* 模式分頁 */
-        #mode-tabs { display: flex; gap: 5px; }
+        #mode-tabs { gap: 5px; }
         #mode-tabs .dir-btn { padding: 9px 4px; font-size: 0.72rem; }
 
-        /* 滑桿 */
-        .slider-row { margin-bottom: 13px; }
-        .slider-row:last-child { margin-bottom: 0; }
-        .slider-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px; }
-        .slider-head label { font-size: 0.74rem; color: #475569; font-weight: 600; }
-        .slider-head .val { font-size: 0.78rem; color: #0369a1; font-weight: 700; font-variant-numeric: tabular-nums; }
-        input[type=range] {
-            -webkit-appearance: none; appearance: none; width: 100%; height: 5px;
-            background: #cbd5e1; border-radius: 3px; outline: none; cursor: pointer;
-        }
-        input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none; appearance: none; width: 16px; height: 16px;
-            border-radius: 50%; background: #3b82f6; border: 2px solid #fff;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.3); cursor: pointer;
-        }
-        input[type=range]::-moz-range-thumb {
-            width: 16px; height: 16px; border-radius: 50%; background: #3b82f6;
-            border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.3); cursor: pointer;
-        }
-
+        /* 數字輸入框（v2 滑桿雙向同步） */
         .num-input {
-            width: 64px; padding: 3px 6px; border: 1px solid #cbd5e1; border-radius: 6px;
-            background: #fff; color: #0369a1; font-size: 0.78rem; font-weight: 700;
+            width: 64px; padding: 3px 6px; border: 1px solid var(--pl-border); border-radius: 6px;
+            background: #fff; color: var(--pl-accent-deep); font-size: 0.78rem; font-weight: 700;
             text-align: right; font-variant-numeric: tabular-nums; outline: none;
         }
-        .num-input:focus { border-color: #0284c7; box-shadow: 0 0 0 1px #0284c7; }
+        .num-input:focus { border-color: var(--pl-accent); box-shadow: 0 0 0 1px var(--pl-accent); }
 
-        .toggle-row {
-            display: flex; align-items: center; gap: 9px; padding: 7px 12px;
-            background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px;
-            cursor: pointer; transition: background 0.2s; user-select: none;
-            margin-bottom: 6px;
-        }
-        .toggle-row:last-child { margin-bottom: 0; }
-        .toggle-row:hover { background: #f8fafc; }
-        .toggle-track {
-            width: 32px; height: 18px; border-radius: 9px; background: #cbd5e1;
-            position: relative; transition: background 0.2s; flex-shrink: 0;
-        }
-        .toggle-track.on { background: #3b82f6; }
-        .toggle-thumb {
-            width: 14px; height: 14px; border-radius: 50%; background: #fff;
-            position: absolute; top: 2px; left: 2px; transition: left 0.2s;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.2);
-        }
-        .toggle-track.on .toggle-thumb { left: 16px; }
-        .toggle-row span { font-size: 0.73rem; color: #475569; font-weight: 500; }
-
+        /* 播放／重置按鈕（單頁動作鈕；含 primary 藍色變體） */
         .btn-row { display: flex; gap: 6px; }
         .ctrl-btn {
-            flex: 1; padding: 8px 4px; border-radius: 8px; border: 1px solid #cbd5e1;
-            background: #f8fafc; color: #475569; font-size: 0.76rem; font-weight: 600;
+            flex: 1; padding: 8px 4px; border-radius: 8px; border: 1px solid var(--pl-border);
+            background: var(--pl-inset); color: var(--pl-text-dim); font-size: 0.76rem; font-weight: 600;
             cursor: pointer; transition: all 0.2s;
         }
-        .ctrl-btn:hover { border-color: #94a3b8; background: #f1f5f9; color: #1e293b; }
-        .ctrl-btn.primary { background: #0284c7; border-color: #0369a1; color: #fff; }
-        .ctrl-btn.primary:hover { background: #0369a1; }
+        .ctrl-btn:hover { border-color: #94a3b8; background: var(--pl-panel); color: var(--pl-text-strong); }
+        .ctrl-btn.primary { background: var(--pl-accent); border-color: var(--pl-accent-deep); color: #fff; }
+        .ctrl-btn.primary:hover { background: var(--pl-accent-deep); }
 
-        .info-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 11px 12px; font-size: 0.76rem; line-height: 1.75; color: #475569; }
-        .hl-force   { color: #16a34a; font-weight: 700; }
-        .hl-elec    { color: #ea580c; font-weight: 700; }
-        .hl-field   { color: #2563eb; font-weight: 700; }
-        .hl-vel     { color: #ca8a04; font-weight: 700; }
-
-        #canvas-wrap { flex: 1; position: relative; min-width: 0; background: #e2e6eb; overflow: hidden; display: flex; }
-        #view3d { flex: 1; position: relative; min-width: 0; }
-        #view3d canvas { display: block; outline: none; }
-
-        /* 懸浮 2D 截面視窗（預設隱藏，可關閉） */
+        /* 懸浮 2D 截面視窗（預設隱藏，可關閉）；.panel-hidden 見 labgray 附錄 */
         #view2d-wrap {
             position: absolute; right: 14px; bottom: 14px; z-index: 20;
             width: 340px; height: 270px;
-            border: 1px solid #cbd5e1; border-radius: 10px;
+            border: 1px solid var(--pl-border); border-radius: 10px;
             background: rgba(248,250,252,0.96); backdrop-filter: blur(6px);
-            box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+            box-shadow: var(--pl-shadow-float);
             display: flex; flex-direction: column; overflow: hidden;
         }
-        #view2d-wrap.panel-hidden { display: none !important; }
         #view2d-head {
-            padding: 7px 12px; font-size: 0.72rem; font-weight: 700; color: #475569;
-            background: #eef2f7; border-bottom: 1px solid #e2e8f0;
+            padding: 7px 12px; font-size: 0.72rem; font-weight: 700; color: var(--pl-text-dim);
+            background: #eef2f7; border-bottom: 1px solid var(--pl-border-soft);
             text-transform: uppercase; letter-spacing: 0.06em;
             display: flex; align-items: center; justify-content: space-between;
         }
         #view2d-close {
-            border: none; background: transparent; color: #64748b; cursor: pointer;
+            border: none; background: transparent; color: var(--pl-text-faint); cursor: pointer;
             font-size: 0.9rem; line-height: 1; padding: 2px 4px; border-radius: 5px;
         }
-        #view2d-close:hover { background: #dbe2ea; color: #1e293b; }
-        #view2d { flex: 1; width: 100%; display: block; min-height: 0; }
+        #view2d-close:hover { background: var(--pl-card-head); color: var(--pl-text-strong); }
+        #view2d { min-height: 0; }
 
-        #status-badge {
-            position: absolute; top: 14px; left: 14px;
-            background: rgba(255,255,255,0.92); border: 1px solid #cbd5e1;
-            border-radius: 22px; padding: 7px 18px; font-size: 0.82rem;
-            font-weight: 600; color: #1e293b; backdrop-filter: blur(8px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-            white-space: nowrap; pointer-events: none; z-index: 10;
-        }
-        #hint {
-            position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
-            background: rgba(255,255,255,0.85); border: 1px solid #cbd5e1;
-            border-radius: 18px; padding: 6px 18px; font-size: 0.75rem;
-            color: #475569; backdrop-filter: blur(4px);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-            pointer-events: none; white-space: nowrap; z-index: 10;
-        }
-
-        #right-panel {
-            width: 280px; flex-shrink: 0; background: #f1f5f9;
-            border-left: 1px solid #cbd5e1; display: flex;
-            flex-direction: column; padding: 14px 12px; gap: 12px; overflow-y: auto;
-        }
-        .formula-box { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-        .formula-box h4 { font-size: 0.7rem; color: #475569; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 9px; }
-        .formula { background: #f8fafc; border-radius: 6px; padding: 5px 10px; color: #0f172a; margin-bottom: 7px; border: 1px solid #e2e8f0; overflow-x: auto; font-size: 1.0rem; }
-        .formula-desc { font-size: 0.71rem; color: #64748b; line-height: 1.8; }
-        .formula-desc span { color: #334155; font-weight: 600; }
-        .readout { margin-top: 8px; padding: 8px 10px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 7px; font-size: 0.82rem; color: #166534; font-weight: 700; text-align: center; font-variant-numeric: tabular-nums; }
+        /* 主讀數列（單一大讀數；labgray 僅收錄 .readout-grid） */
+        .readout { margin-top: 8px; padding: 8px 10px; background: var(--pl-ok-bg); border: 1px solid #bbf7d0; border-radius: 7px; font-size: 0.82rem; color: var(--pl-ok-text); font-weight: 700; text-align: center; font-variant-numeric: tabular-nums; }
         .readout.warn { background: #fff7ed; border-color: #fed7aa; color: #c2410c; }
 
         /* 隔離體圖 (FBD) */
-        #fbd-canvas { width: 100%; height: 170px; display: block; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; }
-        .fbd-note { font-size: 0.71rem; color: #64748b; line-height: 1.7; margin-top: 8px; }
+        #fbd-canvas { width: 100%; height: 170px; display: block; background: var(--pl-inset); border-radius: 8px; border: 1px solid var(--pl-border-soft); }
+        .fbd-note { font-size: 0.71rem; color: var(--pl-text-faint); line-height: 1.7; margin-top: 8px; }
 
-        .quiz-box { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-        .quiz-box h4 { font-size: 0.7rem; color: #0284c7; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 9px; }
-        .quiz-q { font-size: 0.78rem; color: #1e293b; line-height: 1.65; margin-bottom: 10px; font-weight: 500; }
-        .quiz-options { display: flex; flex-direction: column; gap: 5px; }
-        .quiz-opt { padding: 7px 10px; border-radius: 7px; border: 1px solid #cbd5e1; background: #f8fafc; color: #475569; font-size: 0.76rem; cursor: pointer; transition: all 0.2s; text-align: left; }
-        .quiz-opt:hover { border-color: #94a3b8; background: #f1f5f9; color: #1e293b; }
-        .quiz-opt.correct { border-color: #22c55e; background: #f0fdf4; color: #166534; }
-        .quiz-opt.wrong   { border-color: #ef4444; background: #fef2f2; color: #991b1b; }
-        #quiz-feedback { font-size: 0.73rem; margin-top: 8px; min-height: 18px; line-height: 1.55; color: #475569; }
-        #quiz-next { margin-top: 8px; padding: 6px 12px; border-radius: 6px; border: 1px solid #cbd5e1; background: #f1f5f9; color: #475569; font-size: 0.74rem; cursor: pointer; display: none; width: 100%; font-weight: 600; }
-        #quiz-next:hover { background: #e2e8f0; }
-
-        @media (max-width: 1100px) { #right-panel { display: none; } }
-        @media (max-width: 820px) {
+        @media (max-width: 860px) {
             #view2d-wrap { width: min(340px, 88vw); height: min(270px, 46vh); right: 10px; bottom: 10px; }
         }
-
-        #home-btn {
-            position: fixed; bottom: 16px; left: 16px; z-index: 99999;
-            background: rgba(30,41,59,0.85); backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.3);
-            border-radius: 10px; padding: 8px 14px; font-size: 13px; font-weight: bold;
-            color: #fff; text-decoration: none; box-shadow: 0 2px 10px rgba(0,0,0,0.25);
-            transition: background 0.2s, transform 0.2s; display: inline-flex;
-            align-items: center; gap: 6px;
-        }
-        #home-btn:hover { background: rgba(30,41,59,0.95); transform: translateY(-2px); }
     </style>
 </head>
 <body>
 
 <div id="topbar">
     <div style="display: flex; align-items: center; gap: 16px;">
-        <button class="panel-toggle-btn" id="btn-toggle-left" onclick="toggleLeftPanel()">
-            <span>☰</span> 控制
+        <button type="button" class="panel-toggle-btn" id="btn-toggle-left">
+            <span>☰</span> <span data-i18n="topbar.controls">控制</span>
         </button>
         <div class="title-block">
-            <h1>🧲 磁場與電場中的粒子運動 3D 模擬器</h1>
-            <p>HKDSE Physics · Book 4 · 帶電粒子於磁場與電場 · F=BQv · v=E/B</p>
+            <h1 data-i18n="topbar.title">🧲 磁場與電場中的粒子運動 3D 模擬器</h1>
+            <p data-i18n="topbar.subtitle">HKDSE Physics · Book 4 · 帶電粒子於磁場與電場 · F=BQv · v=E/B</p>
         </div>
     </div>
-    <button class="panel-toggle-btn" id="btn-toggle-right" onclick="toggleRightPanel()">
-        <span>📖</span> 資訊
-    </button>
+    <div class="tb-actions">
+        <button type="button" class="panel-toggle-btn" id="btn-toggle-right">
+            <span>📖</span> <span data-i18n="topbar.info">資訊</span>
+        </button>
+    </div>
 </div>
 
 <div id="main">
     <div id="left-panel">
         <!-- 模式切換 -->
         <div class="card">
-            <div class="card-header">🎛️ 模擬模式</div>
+            <div class="card-header">🎛️ <span data-i18n="panel.mode.header">模擬模式</span><span class="chevron">▾</span></div>
             <div class="card-body">
                 <div id="mode-tabs" class="dir-btn-group">
-                    <button class="dir-btn active" id="mode-circular" onclick="setMode('circular')">⭕ 圓周運動</button>
-                    <button class="dir-btn" id="mode-selector" onclick="setMode('selector')">⚖️ 速度選擇器</button>
-                    <button class="dir-btn" id="mode-massspec" onclick="setMode('massspec')">🔬 質譜儀</button>
+                    <button type="button" class="dir-btn active" id="mode-circular" data-i18n="panel.mode.circular">⭕ 圓周運動</button>
+                    <button type="button" class="dir-btn" id="mode-selector" data-i18n="panel.mode.selector">⚖️ 速度選擇器</button>
+                    <button type="button" class="dir-btn" id="mode-massspec" data-i18n="panel.mode.massspec">🔬 質譜儀</button>
                 </div>
             </div>
         </div>
 
         <!-- 共用：播放控制 -->
         <div class="card">
-            <div class="card-header">▶️ 動畫控制</div>
+            <div class="card-header">▶️ <span data-i18n="panel.anim.header">動畫控制</span><span class="chevron">▾</span></div>
             <div class="card-body">
                 <div class="btn-row" style="margin-bottom:10px;">
-                    <button class="ctrl-btn primary" id="btn-play" onclick="togglePlay()">⏸ 暫停</button>
-                    <button class="ctrl-btn" onclick="resetSim()">↺ 重置</button>
+                    <button type="button" class="ctrl-btn primary" id="btn-play">⏸ 暫停</button>
+                    <button type="button" class="ctrl-btn" id="btn-reset" data-i18n="panel.anim.reset">↺ 重置</button>
                 </div>
                 <div class="slider-row">
-                    <div class="slider-head"><label>模擬速度</label><span class="val" id="val-speed">1.0×</span></div>
+                    <div class="slider-head"><label data-i18n="panel.anim.speed">模擬速度</label><span class="val" id="val-speed">1.0×</span></div>
                     <input type="range" id="sld-speed" min="0.2" max="2.5" step="0.1" value="1.0">
                 </div>
             </div>
@@ -298,37 +140,37 @@
 
         <!-- 圓周運動控制 -->
         <div class="card" id="card-circular">
-            <div class="card-header">⚙️ 粒子與磁場</div>
+            <div class="card-header">⚙️ <span data-i18n="panel.circ.header">粒子與磁場</span><span class="chevron">▾</span></div>
             <div class="card-body">
-                <div class="mode-label">電荷正負</div>
+                <div class="mode-label" data-i18n="ctrl.chargeLabel">電荷正負</div>
                 <div class="dir-btn-group" style="margin-bottom:11px;">
-                    <button class="dir-btn active" id="chg-pos" onclick="setCharge(1)">➕ 正電荷</button>
-                    <button class="dir-btn" id="chg-neg" onclick="setCharge(-1)">➖ 負電荷</button>
+                    <button type="button" class="dir-btn active" id="chg-pos" data-i18n="ctrl.pos">➕ 正電荷</button>
+                    <button type="button" class="dir-btn" id="chg-neg" data-i18n="ctrl.neg">➖ 負電荷</button>
                 </div>
-                <div class="mode-label">磁場 B 方向</div>
+                <div class="mode-label" data-i18n="ctrl.bLabel">磁場 B 方向</div>
                 <div class="dir-btn-group" style="margin-bottom:11px;">
-                    <button class="dir-btn active" id="bdir-up" onclick="setBDir(1)">⬆ 向上</button>
-                    <button class="dir-btn" id="bdir-down" onclick="setBDir(-1)">⬇ 向下</button>
+                    <button type="button" class="dir-btn active" id="bdir-up" data-i18n="ctrl.up">⬆ 向上</button>
+                    <button type="button" class="dir-btn" id="bdir-down" data-i18n="ctrl.down">⬇ 向下</button>
                 </div>
-                <div class="mode-label">運動情況</div>
+                <div class="mode-label" data-i18n="panel.circ.motionLabel">運動情況</div>
                 <div class="dir-btn-group" style="margin-bottom:13px;">
-                    <button class="dir-btn active" id="circmode-semi" onclick="setCircMode('semi')">◗ 半圓形</button>
-                    <button class="dir-btn" id="circmode-full" onclick="setCircMode('full')">⭕ 完全圓周</button>
+                    <button type="button" class="dir-btn active" id="circmode-semi" data-i18n="panel.circ.semi">◗ 半圓形</button>
+                    <button type="button" class="dir-btn" id="circmode-full" data-i18n="panel.circ.full">⭕ 完全圓周</button>
                 </div>
                 <div class="slider-row">
-                    <div class="slider-head"><label>質量 m</label><span class="val" id="val-m">3.0</span></div>
+                    <div class="slider-head"><label data-i18n="panel.circ.mass">質量 m</label><span class="val" id="val-m">3.0</span></div>
                     <input type="range" id="sld-m" min="1" max="5" step="0.5" value="3">
                 </div>
                 <div class="slider-row">
-                    <div class="slider-head"><label>電量 |Q|</label><span class="val" id="val-q">2.0</span></div>
+                    <div class="slider-head"><label data-i18n="panel.circ.q">電量 |Q|</label><span class="val" id="val-q">2.0</span></div>
                     <input type="range" id="sld-q" min="1" max="4" step="0.5" value="2">
                 </div>
                 <div class="slider-row">
-                    <div class="slider-head"><label>速率 v</label><span class="val" id="val-v">4.0</span></div>
+                    <div class="slider-head"><label data-i18n="panel.circ.v">速率 v</label><span class="val" id="val-v">4.0</span></div>
                     <input type="range" id="sld-v" min="2" max="5" step="0.5" value="4">
                 </div>
                 <div class="slider-row">
-                    <div class="slider-head"><label>磁場 B</label><span class="val" id="val-b">4.0</span></div>
+                    <div class="slider-head"><label data-i18n="ctrl.bField">磁場 B</label><span class="val" id="val-b">4.0</span></div>
                     <input type="range" id="sld-b" min="3" max="6" step="0.5" value="4">
                 </div>
             </div>
@@ -336,36 +178,36 @@
 
         <!-- 速度選擇器控制 -->
         <div class="card panel-hidden" id="card-selector">
-            <div class="card-header">⚖️ 場與粒子設定</div>
+            <div class="card-header">⚖️ <span data-i18n="panel.sel.header">場與粒子設定</span><span class="chevron">▾</span></div>
             <div class="card-body">
-                <div class="mode-label">電荷正負</div>
+                <div class="mode-label" data-i18n="ctrl.chargeLabel">電荷正負</div>
                 <div class="dir-btn-group" style="margin-bottom:11px;">
-                    <button class="dir-btn active" id="chg2-pos" onclick="setCharge(1)">➕ 正電荷</button>
-                    <button class="dir-btn" id="chg2-neg" onclick="setCharge(-1)">➖ 負電荷</button>
+                    <button type="button" class="dir-btn active" id="chg2-pos" data-i18n="ctrl.pos">➕ 正電荷</button>
+                    <button type="button" class="dir-btn" id="chg2-neg" data-i18n="ctrl.neg">➖ 負電荷</button>
                 </div>
-                <div class="mode-label">電場 E 方向</div>
+                <div class="mode-label" data-i18n="panel.sel.eLabel">電場 E 方向</div>
                 <div class="dir-btn-group" style="margin-bottom:11px;">
-                    <button class="dir-btn active" id="edir-up" onclick="setEDir(1)">⬆ 向上</button>
-                    <button class="dir-btn" id="edir-down" onclick="setEDir(-1)">⬇ 向下</button>
+                    <button type="button" class="dir-btn active" id="edir-up" data-i18n="ctrl.up">⬆ 向上</button>
+                    <button type="button" class="dir-btn" id="edir-down" data-i18n="ctrl.down">⬇ 向下</button>
                 </div>
-                <div class="mode-label">磁場 B 方向</div>
+                <div class="mode-label" data-i18n="ctrl.bLabel">磁場 B 方向</div>
                 <div class="dir-btn-group" style="margin-bottom:13px;">
-                    <button class="dir-btn active" id="bdir2-out" onclick="setBDir2(1)">⊙ 出頁</button>
-                    <button class="dir-btn" id="bdir2-in" onclick="setBDir2(-1)">⊗ 入頁</button>
+                    <button type="button" class="dir-btn active" id="bdir2-out" data-i18n="ctrl.out">⊙ 出頁</button>
+                    <button type="button" class="dir-btn" id="bdir2-in" data-i18n="ctrl.in">⊗ 入頁</button>
                 </div>
                 <div class="slider-row">
-                    <div class="slider-head"><label>板間電壓 V</label><span class="val" id="val-volt">8.0</span></div>
+                    <div class="slider-head"><label data-i18n="panel.sel.volt">板間電壓 V</label><span class="val" id="val-volt">8.0</span></div>
                     <input type="range" id="sld-volt" min="0" max="12" step="0.5" value="8">
                 </div>
                 <div class="slider-row">
-                    <div class="slider-head"><label>磁場 B</label><span class="val" id="val-b2">2.0</span></div>
+                    <div class="slider-head"><label data-i18n="ctrl.bField">磁場 B</label><span class="val" id="val-b2">2.0</span></div>
                     <input type="range" id="sld-b2" min="0.5" max="6" step="0.25" value="2">
                 </div>
                 <div class="slider-row">
-                    <div class="slider-head"><label>粒子速率 v</label><input type="number" id="num-v2" class="num-input" min="0.5" max="5" step="0.25" value="2.0"></div>
+                    <div class="slider-head"><label data-i18n="panel.sel.speed">粒子速率 v</label><input type="number" id="num-v2" class="num-input" min="0.5" max="5" step="0.25" value="2.0"></div>
                     <input type="range" id="sld-v2" min="0.5" max="5" step="0.25" value="2">
                 </div>
-                <div class="info-box" style="margin-top:6px;">
+                <div class="info-box" style="margin-top:6px;" data-i18n-html="panel.sel.challenge">
                     🎯 <b>挑戰：</b>調整電壓 V，使
                     <span class="hl-elec">電力 QE</span> 與
                     <span class="hl-field">磁力 BQv</span> 相消，
@@ -376,31 +218,31 @@
 
         <!-- 質譜儀控制 -->
         <div class="card panel-hidden" id="card-massspec">
-            <div class="card-header">🔬 質譜儀設定</div>
+            <div class="card-header">🔬 <span data-i18n="panel.ms.header">質譜儀設定</span><span class="chevron">▾</span></div>
             <div class="card-body">
-                <div class="mode-label">電荷正負</div>
+                <div class="mode-label" data-i18n="ctrl.chargeLabel">電荷正負</div>
                 <div class="dir-btn-group" style="margin-bottom:11px;">
-                    <button class="dir-btn active" id="chg3-pos" onclick="setCharge(1)">➕ 正電荷</button>
-                    <button class="dir-btn" id="chg3-neg" onclick="setCharge(-1)">➖ 負電荷</button>
+                    <button type="button" class="dir-btn active" id="chg3-pos" data-i18n="ctrl.pos">➕ 正電荷</button>
+                    <button type="button" class="dir-btn" id="chg3-neg" data-i18n="ctrl.neg">➖ 負電荷</button>
                 </div>
-                <div class="mode-label">分析磁場 B′ 方向</div>
+                <div class="mode-label" data-i18n="panel.ms.bLabel">分析磁場 B′ 方向</div>
                 <div class="dir-btn-group" style="margin-bottom:13px;">
-                    <button class="dir-btn active" id="bdirms-out" onclick="setBDirMs(1)">⊙ 出頁</button>
-                    <button class="dir-btn" id="bdirms-in" onclick="setBDirMs(-1)">⊗ 入頁</button>
+                    <button type="button" class="dir-btn active" id="bdirms-out" data-i18n="ctrl.out">⊙ 出頁</button>
+                    <button type="button" class="dir-btn" id="bdirms-in" data-i18n="ctrl.in">⊗ 入頁</button>
                 </div>
                 <div class="slider-row">
-                    <div class="slider-head"><label>選擇器電壓 V</label><span class="val" id="val-volt3">8.0</span></div>
+                    <div class="slider-head"><label data-i18n="panel.ms.volt">選擇器電壓 V</label><span class="val" id="val-volt3">8.0</span></div>
                     <input type="range" id="sld-volt3" min="2" max="12" step="0.5" value="8">
                 </div>
                 <div class="slider-row">
-                    <div class="slider-head"><label>選擇器磁場 B</label><span class="val" id="val-b3">2.0</span></div>
+                    <div class="slider-head"><label data-i18n="panel.ms.b">選擇器磁場 B</label><span class="val" id="val-b3">2.0</span></div>
                     <input type="range" id="sld-b3" min="0.5" max="6" step="0.25" value="2">
                 </div>
                 <div class="slider-row">
-                    <div class="slider-head"><label>分析磁場 B′</label><span class="val" id="val-banalyzer">3.0</span></div>
+                    <div class="slider-head"><label data-i18n="panel.ms.bAnalyzer">分析磁場 B′</label><span class="val" id="val-banalyzer">3.0</span></div>
                     <input type="range" id="sld-banalyzer" min="1.5" max="6" step="0.25" value="3">
                 </div>
-                <div class="info-box" style="margin-top:6px;">
+                <div class="info-box" style="margin-top:6px;" data-i18n-html="panel.ms.info">
                     三種離子（<b style="color:#ef4444;">輕</b> /
                     <b style="color:#f59e0b;">中</b> /
                     <b style="color:#8b5cf6;">重</b>）以相同速率
@@ -412,23 +254,23 @@
 
         <!-- 顯示選項 -->
         <div class="card">
-            <div class="card-header">👁️ 顯示選項</div>
+            <div class="card-header">👁️ <span data-i18n="panel.display.header">顯示選項</span><span class="chevron">▾</span></div>
             <div class="card-body">
-                <div class="toggle-row" onclick="toggleOpt('showVectors')">
+                <div class="toggle-row" id="row-showVectors">
                     <div class="toggle-track on" id="tg-showVectors"><div class="toggle-thumb"></div></div>
-                    <span>力 / 速度向量</span>
+                    <span data-i18n="panel.display.vectors">力 / 速度向量</span>
                 </div>
-                <div class="toggle-row" onclick="toggleOpt('showField')">
+                <div class="toggle-row" id="row-showField">
                     <div class="toggle-track on" id="tg-showField"><div class="toggle-thumb"></div></div>
-                    <span>場方向標記</span>
+                    <span data-i18n="panel.display.field">場方向標記</span>
                 </div>
-                <div class="toggle-row" onclick="toggleOpt('showTrail')">
+                <div class="toggle-row" id="row-showTrail">
                     <div class="toggle-track on" id="tg-showTrail"><div class="toggle-thumb"></div></div>
-                    <span>運動軌跡</span>
+                    <span data-i18n="panel.display.trail">運動軌跡</span>
                 </div>
-                <div class="toggle-row" onclick="toggleOpt('show2D')">
+                <div class="toggle-row" id="row-show2D">
                     <div class="toggle-track" id="tg-show2D"><div class="toggle-thumb"></div></div>
-                    <span>2D 截面視圖</span>
+                    <span data-i18n="panel.display.view2d">2D 截面視圖</span>
                 </div>
             </div>
         </div>
@@ -440,932 +282,1032 @@
             <div id="hint">🖱 左鍵旋轉 · 右鍵平移 · 滾輪縮放</div>
         </div>
         <div id="view2d-wrap" class="panel-hidden">
-            <div id="view2d-head"><span>📐 2D 截面視圖</span><button id="view2d-close" onclick="toggleOpt('show2D')" title="關閉">✕</button></div>
+            <div id="view2d-head"><span data-i18n="view2d.title">📐 2D 截面視圖</span><button type="button" id="view2d-close" title="關閉" data-i18n-title="view2d.closeTitle">✕</button></div>
             <canvas id="view2d"></canvas>
         </div>
     </div>
 
     <div id="right-panel">
         <div class="formula-box">
-            <h4>📊 公式與即時數值</h4>
+            <h4>📊 <span data-i18n="formula.header">公式與即時數值</span></h4>
             <div id="formula-list"></div>
             <div class="readout" id="readout-main">—</div>
         </div>
 
         <div class="formula-box">
-            <h4>🧍 隔離體圖 (Free Body Diagram)</h4>
+            <h4>🧍 <span data-i18n="fbd.header">隔離體圖 (Free Body Diagram)</span></h4>
             <canvas id="fbd-canvas"></canvas>
             <div class="fbd-note" id="fbd-note"></div>
         </div>
 
         <div class="quiz-box">
-            <h4>🧠 小測驗</h4>
+            <h4>🧠 <span data-i18n="quiz.title">小測驗</span></h4>
             <div class="quiz-q" id="quiz-q"></div>
             <div class="quiz-options" id="quiz-options"></div>
             <div id="quiz-feedback"></div>
-            <button id="quiz-next" onclick="nextQuiz()">下一題 →</button>
+            <button id="quiz-next" onclick="nextQuiz()" data-i18n="quiz.nextBtn">下一題 →</button>
         </div>
     </div>
 </div>
 
-<a id="home-btn" href="../../../index.html">🏠 主頁</a>
-
+<!-- ═══════════ 頁面字典（zh 必填；en 缺字自動回退 zh） ═══════════ -->
 <script>
-/* =========================================================================
-   單一物理真值來源 (Single source of truth) — 採無因次教學單位
-   ========================================================================= */
-var state = {
-    mode: 'circular',          // circular | selector | massspec
-    playing: true,
-    simSpeed: 1.0,
-    chargeSign: 1,             // +1 / -1
-    bDir: 1,                   // 圓周模式 B 方向 (+1 上 / -1 下)
-    circMode: 'semi',          // semi 半圓 | full 完全圓周
-    // 圓周
-    m: 3, q: 2, v: 4, B: 4,
-    // 選擇器（預設近平衡：E/d=8/2=4，E/B=4/2=2=v）
-    volt: 8, B2: 2, v2: 2,
-    eDir: 1,                   // 選擇器電場方向 (+1 上 / -1 下)
-    bDir2: 1,                  // 選擇器磁場方向 (+1 出頁 +Z / -1 入頁 -Z)
-    // 質譜儀（v=E/B=8/2/2=2）
-    volt3: 8, B3: 2, Banalyzer: 3,
-    bDirMs: 1,                 // 質譜儀分析場 B′ 方向 (+1 出頁 / -1 入頁)
-    // 顯示
-    showVectors: true, showField: true, showTrail: true, show2D: false
-};
-var PLATE_GAP = 4.0;           // 平行板間距（視覺單位）
-var REGION_X = 6.0;            // 選擇器/質譜場區半長（沿 X）
-var D_PHYS = 2.0;              // 公式 E=V/d 採用的板距（物理單位）
-var FIELD_HALF = 12.0;         // 圓周模式磁場區半邊長（XZ 平面）
+PhysLab.i18n.register({
+    zh: {
+        'topbar.title': '🧲 磁場與電場中的粒子運動 3D 模擬器',
+        'topbar.subtitle': 'HKDSE Physics · Book 4 · 帶電粒子於磁場與電場 · F=BQv · v=E/B',
+        'topbar.controls': '控制',
+        'topbar.info': '資訊',
 
-/* =========================================================================
-   THREE.js 場景
-   ========================================================================= */
-var view3d = document.getElementById('view3d');
-var scene = new THREE.Scene();
-scene.background = new THREE.Color(0xe2e6eb);
+        'panel.mode.header': '模擬模式',
+        'panel.mode.circular': '⭕ 圓周運動',
+        'panel.mode.selector': '⚖️ 速度選擇器',
+        'panel.mode.massspec': '🔬 質譜儀',
 
-var camera = new THREE.PerspectiveCamera(42, 1, 0.1, 300);
-camera.position.set(6, 6, 11);
+        'panel.anim.header': '動畫控制',
+        'panel.anim.pause': '⏸ 暫停',
+        'panel.anim.play': '▶ 播放',
+        'panel.anim.reset': '↺ 重置',
+        'panel.anim.speed': '模擬速度',
 
-var renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(window.devicePixelRatio || 1);
-view3d.appendChild(renderer.domElement);
+        /* 三張控制卡共用控件 */
+        'ctrl.chargeLabel': '電荷正負',
+        'ctrl.pos': '➕ 正電荷',
+        'ctrl.neg': '➖ 負電荷',
+        'ctrl.bLabel': '磁場 B 方向',
+        'ctrl.bField': '磁場 B',
+        'ctrl.up': '⬆ 向上',
+        'ctrl.down': '⬇ 向下',
+        'ctrl.out': '⊙ 出頁',
+        'ctrl.in': '⊗ 入頁',
 
-var controls = new THREE.OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true;
-controls.dampingFactor = 0.08;
-controls.target.set(0, 0, 0);
+        'panel.circ.header': '粒子與磁場',
+        'panel.circ.motionLabel': '運動情況',
+        'panel.circ.semi': '◗ 半圓形',
+        'panel.circ.full': '⭕ 完全圓周',
+        'panel.circ.mass': '質量 m',
+        'panel.circ.q': '電量 |Q|',
+        'panel.circ.v': '速率 v',
 
-scene.add(new THREE.AmbientLight(0xffffff, 0.82));
-var dl = new THREE.DirectionalLight(0xffffff, 0.55);
-dl.position.set(6, 10, 8);
-scene.add(dl);
+        'panel.sel.header': '場與粒子設定',
+        'panel.sel.eLabel': '電場 E 方向',
+        'panel.sel.volt': '板間電壓 V',
+        'panel.sel.speed': '粒子速率 v',
+        'panel.sel.challenge': '🎯 <b>挑戰：</b>調整電壓 V，使 <span class="hl-elec">電力 QE</span> 與 <span class="hl-field">磁力 BQv</span> 相消， 讓粒子沿直線通過（<span class="hl-vel">v = E/B</span>）。',
 
-/* ---------- 文字精靈標籤 ---------- */
-function makeLabel(text, color, scale) {
-    scale = scale || 1;
-    var c = document.createElement('canvas');
-    var ctx = c.getContext('2d');
-    var font = 'bold 72px Segoe UI, Arial';
-    ctx.font = font;
-    var w = Math.ceil(ctx.measureText(text).width) + 28;   // 依文字量測 + 邊距，避免裁切
-    var h = 100;
-    c.width = w; c.height = h;
-    ctx = c.getContext('2d'); ctx.font = font;             // 重設尺寸會清空，需重設 font
-    ctx.fillStyle = color; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(text, w/2, h/2);
-    var tex = new THREE.CanvasTexture(c);
-    var spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false, depthWrite: false }));
-    spr.scale.set(scale * (w/h), scale, 1);                // 依貼圖長寬比，文字不裁切也不變形
-    spr.renderOrder = 999;          // 永遠畫在最上層，不被幾何體遮擋
-    spr.userData.label = true;
-    return spr;
-}
+        'panel.ms.header': '質譜儀設定',
+        'panel.ms.bLabel': '分析磁場 B′ 方向',
+        'panel.ms.volt': '選擇器電壓 V',
+        'panel.ms.b': '選擇器磁場 B',
+        'panel.ms.bAnalyzer': '分析磁場 B′',
+        'panel.ms.info': '三種離子（<b style="color:#ef4444;">輕</b> / <b style="color:#f59e0b;">中</b> / <b style="color:#8b5cf6;">重</b>）以相同速率 <span class="hl-vel">v=E/B</span> 進入分析磁場，依 <span class="hl-field">半徑 r=mv/QB′</span> 分離後打在偵測板。',
 
-/* ---------- 各模式群組 ---------- */
-var gCircular = new THREE.Group();
-var gSelector = new THREE.Group();
-var gMassspec = new THREE.Group();
-scene.add(gCircular); scene.add(gSelector); scene.add(gMassspec);
+        'panel.display.header': '顯示選項',
+        'panel.display.vectors': '力 / 速度向量',
+        'panel.display.field': '場方向標記',
+        'panel.display.trail': '運動軌跡',
+        'panel.display.view2d': '2D 截面視圖',
 
-/* 顏色慣例 */
-var COL_F = 0x16a34a, COL_B = 0x2563eb, COL_E = 0xea580c, COL_V = 0xca8a04;
-var COL_POS = 0xdc2626, COL_NEG = 0x2563eb;
+        'view2d.title': '📐 2D 截面視圖',
+        'view2d.closeTitle': '關閉',
 
-/* ---------- 圓周模式場景 ---------- */
-var circParticle = new THREE.Mesh(
-    new THREE.SphereGeometry(0.32, 24, 24),
-    new THREE.MeshStandardMaterial({ color: COL_POS, metalness: 0.3, roughness: 0.4, emissive: 0x550000, emissiveIntensity: 0.25 })
-);
-gCircular.add(circParticle);
+        'common.up': '上',
+        'common.down': '下',
 
-// 場區半透明地板（標示磁場範圍，位於 XZ 平面 y=0）
-var circFieldPlane = new THREE.Mesh(
-    new THREE.PlaneGeometry(2*FIELD_HALF, 2*FIELD_HALF),
-    new THREE.MeshBasicMaterial({ color: 0xbfdbfe, transparent: true, opacity: 0.18, side: THREE.DoubleSide })
-);
-circFieldPlane.rotation.x = -Math.PI/2;  // 平鋪於水平面
-gCircular.add(circFieldPlane);
-var circFieldEdge = new THREE.LineSegments(
-    new THREE.EdgesGeometry(new THREE.BoxGeometry(2*FIELD_HALF, 0.02, 2*FIELD_HALF)),
-    new THREE.LineBasicMaterial({ color: 0x60a5fa })
-);
-gCircular.add(circFieldEdge);
+        'status.circ': '{sign} 電荷 ｜ B {dir} ｜ r = {r} m',
+        'status.selPass': '✓ 直線通過（v=E/B）',
+        'status.selNet': '淨力偏{dir}',
+        'status.ms': '🔬 v=E/B={v} ｜ 重離子半徑大',
+        'hint.circFull': '粒子在場內持續繞整圈；調 m,Q,v,B 看半徑變化',
+        'hint.circSemi': '粒子直線進入 → 半圓 → 離開；調 m,Q,v,B 看半徑變化',
+        'hint.sel': '調 V、B、v 與場方向，使 v = E/B = {v} 且電/磁力反向',
+        'hint.ms': '輕(紅)/中(橙)/重(紫) 離子依質量分離',
 
-var circFieldArrows = new THREE.Group(); gCircular.add(circFieldArrows);
-function buildCircField() {
-    while (circFieldArrows.children.length) circFieldArrows.remove(circFieldArrows.children[0]);
-    var dir = new THREE.Vector3(0, state.bDir, 0);
-    var span = FIELD_HALF - 1.2;
-    // 箭尾 y 依方向對稱：向上由 -1.4 起、向下由 +1.4 起，兩者皆跨越 y∈[-1.4,1.4]
-    var tailY = state.bDir > 0 ? -1.4 : 1.4;
-    for (var ix = -4; ix <= 4; ix++) {
-        for (var iz = -4; iz <= 4; iz++) {
-            var origin = new THREE.Vector3(ix/4 * span, tailY, iz/4 * span);
-            var ah = new THREE.ArrowHelper(dir, origin, 2.8, COL_B, 0.32, 0.2);
-            circFieldArrows.add(ah);
-        }
-    }
-}
-var circForceArrow = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(0,0,0), 1.5, COL_F, 0.5, 0.34);
-var circVelArrow   = new THREE.ArrowHelper(new THREE.Vector3(0,0,1), new THREE.Vector3(0,0,0), 1.5, COL_V, 0.5, 0.34);
-gCircular.add(circForceArrow); gCircular.add(circVelArrow);
-var lblB = makeLabel('B', '#2563eb', 0.9); gCircular.add(lblB); lblB.position.set(FIELD_HALF-1, 2.2, FIELD_HALF-1);
+        'formula.header': '公式與即時數值',
+        'formula.circForce': '$$F=QvB\\;(\\text{向心力})$$',
+        'formula.circDesc': '<span>m</span> 質量(kg) · <span>Q</span> 電量(C) · <span>v</span> 速率(m/s) · <span>B</span> 磁場(T)',
+        'formula.circReadout': 'r = {r} m ｜ T = {T} s ｜ F = {F} N',
+        'formula.selDesc': '平衡時電力與磁力相消，特定速率 <span>v=E/B</span> 直線通過。',
+        'formula.selBalanced': '✓ v ≈ E/B = {v}，直線通過！',
+        'formula.selSameDir': '電力與磁力同向（無法平衡）→ 偏{dir}',
+        'formula.selOff': 'v={v} {cmp} E/B={vs} → 偏{dir}',
+        'formula.msDesc': '①選擇器選出 <span>v=E/B</span> → ②分析場依 <span>r=mv/QB′</span> 分離；落點距離 = <span>2r</span>。',
+        'formula.msReadout': 'v=E/B={v} ｜ 落點 2r：{list}',
 
-/* 圓周軌跡 */
-var trailMax = 600;
-var trailPos = new Float32Array(trailMax * 3);
-var trailGeo = new THREE.BufferGeometry();
-trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPos, 3));
-trailGeo.setDrawRange(0, 0);
-var circTrail = new THREE.Line(trailGeo, new THREE.LineBasicMaterial({ color: 0xf59e0b, transparent: true, opacity: 0.85 }));
-gCircular.add(circTrail);
-var trailCount = 0;
-function pushTrail(p) {
-    if (trailCount < trailMax) {
-        trailPos[trailCount*3] = p.x; trailPos[trailCount*3+1] = p.y; trailPos[trailCount*3+2] = p.z;
-        trailCount++;
-    } else {
-        trailPos.copyWithin(0, 3);
-        trailPos[(trailMax-1)*3] = p.x; trailPos[(trailMax-1)*3+1] = p.y; trailPos[(trailMax-1)*3+2] = p.z;
-    }
-    trailGeo.attributes.position.needsUpdate = true;
-    trailGeo.setDrawRange(0, trailCount);
-}
-function clearTrail() { trailCount = 0; trailGeo.setDrawRange(0, 0); }
+        'fbd.header': '隔離體圖 (Free Body Diagram)',
+        'fbd.forceMag': '磁力',
+        'fbd.forceElec': '電力',
+        'fbd.selLbl': '①選擇器',
+        'fbd.anaLbl': '②分析場',
+        'fbd.noteCirc': '唯一作用力是<b style="color:#16a34a;">磁力</b>，恆垂直於速度並指向圓心，扮演<b>向心力</b>，使粒子作等速率圓周運動。',
+        'fbd.noteSelBalanced': '<b style="color:#16a34a;">合力為零</b>：<b style="color:#ea580c;">電力</b>與<b style="color:#16a34a;">磁力</b>等大反向 → 粒子直線通過。',
+        'fbd.noteSelSameDir': '<b style="color:#ea580c;">電力</b>與<b style="color:#16a34a;">磁力</b>同向（場方向設定使兩力不相消）→ 粒子必偏轉。',
+        'fbd.noteSelMagBigger': '<b style="color:#16a34a;">磁力</b>較大 → 淨力使粒子偏向該力方向。',
+        'fbd.noteSelElecBigger': '<b style="color:#ea580c;">電力</b>較大 → 淨力使粒子偏向該力方向。',
+        'fbd.noteMs': '<b>①選擇器</b>：<b style="color:#ea580c;">電力</b>與<b style="color:#16a34a;">磁力</b>等大反向（合力為零）→ 只放行 v=E/B。　<b>②分析場</b>：僅一個<b style="color:#2563eb;">磁力</b>作向心力 → 走半圓，質量大者半徑大。兩階段受力結構不同。',
 
-/* ---------- 選擇器 / 質譜儀共用：平行板與場 ---------- */
-function buildPlates(group, lenX) {
-    var plateMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.6, roughness: 0.4 });
-    var top = new THREE.Mesh(new THREE.BoxGeometry(lenX, 0.18, 3), plateMat);
-    top.position.set(lenX/2 - REGION_X, PLATE_GAP/2, 0);
-    var bot = new THREE.Mesh(new THREE.BoxGeometry(lenX, 0.18, 3), plateMat);
-    bot.position.set(lenX/2 - REGION_X, -PLATE_GAP/2, 0);
-    group.add(top); group.add(bot);
-    var lblTop = makeLabel('−', '#1e293b', 1.1); lblTop.position.set(-REGION_X + 0.6, PLATE_GAP/2 + 0.6, 1.6); group.add(lblTop);
-    var lblBot = makeLabel('+', '#1e293b', 1.1); lblBot.position.set(-REGION_X + 0.6, -PLATE_GAP/2 - 0.6, 1.6); group.add(lblBot);
-    return { top: top, bot: bot };
-}
+        'canvas.circTitle': '沿 B 軸俯視（磁場 {b}）',
+        'canvas.selTitle': '側視截面（B {b}，E 向{e}）',
+        'canvas.msTitle': '質譜儀俯視（分析場 {b}）',
+        'canvas.pass': '✓ 直線通過',
+        'canvas.offset': '偏移',
 
-// 選擇器
-var selParticle = new THREE.Mesh(
-    new THREE.SphereGeometry(0.3, 24, 24),
-    new THREE.MeshStandardMaterial({ color: COL_POS, metalness: 0.3, roughness: 0.4, emissive: 0x550000, emissiveIntensity: 0.25 })
-);
-gSelector.add(selParticle);
-var selPlates = buildPlates(gSelector, 2 * REGION_X);
-var selEArrows = new THREE.Group(); gSelector.add(selEArrows);
-var selBArrows = new THREE.Group(); gSelector.add(selBArrows);
-function buildSelectorFields() {
-    while (selEArrows.children.length) selEArrows.remove(selEArrows.children[0]);
-    while (selBArrows.children.length) selBArrows.remove(selBArrows.children[0]);
-    // E 場：板間垂直箭頭，方向跟隨 eDir
-    var eTailY = state.eDir > 0 ? (-PLATE_GAP/2 + 0.3) : (PLATE_GAP/2 - 0.3);
-    for (var i = -2; i <= 2; i++) {
-        var ah = new THREE.ArrowHelper(new THREE.Vector3(0, state.eDir, 0), new THREE.Vector3(i*2, eTailY, 0), PLATE_GAP - 0.6, COL_E, 0.35, 0.22);
-        selEArrows.add(ah);
-    }
-    // B 場：沿 Z，方向跟隨 bDir2（出頁 +Z / 入頁 −Z）
-    var bTailZ = state.bDir2 > 0 ? -1.6 : 1.6;
-    for (var j = -1; j <= 1; j++) {
-        var bh = new THREE.ArrowHelper(new THREE.Vector3(0, 0, state.bDir2), new THREE.Vector3(j*2.4, 0, bTailZ), 3.2, COL_B, 0.35, 0.22);
-        selBArrows.add(bh);
-    }
-}
-var selFE = new THREE.ArrowHelper(new THREE.Vector3(0,1,0), new THREE.Vector3(0,0,0), 1, COL_E, 0.4, 0.26);
-var selFB = new THREE.ArrowHelper(new THREE.Vector3(0,-1,0), new THREE.Vector3(0,0,0), 1, COL_F, 0.4, 0.26);
-var selV  = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(0,0,0), 1.4, COL_V, 0.4, 0.26);
-gSelector.add(selFE); gSelector.add(selFB); gSelector.add(selV);
-var selLblE = makeLabel('E', '#ea580c', 0.8); gSelector.add(selLblE); selLblE.position.set(-4, 0, 1.8);
-var selLblB = makeLabel('B', '#2563eb', 0.8); gSelector.add(selLblB); selLblB.position.set(3.5, 1.6, 0);
+        'label3d.selector': '① 選擇器',
+        'label3d.detector': '偵測板',
+        'label3d.analyzer': '② 分析場 B′',
+        'ion.light': '輕',
+        'ion.mid': '中',
+        'ion.heavy': '重',
 
-/* 選擇器軌跡 */
-var selTrailMax = 400, selTrailPos = new Float32Array(selTrailMax*3);
-var selTrailGeo = new THREE.BufferGeometry();
-selTrailGeo.setAttribute('position', new THREE.BufferAttribute(selTrailPos, 3));
-selTrailGeo.setDrawRange(0,0);
-var selTrail = new THREE.Line(selTrailGeo, new THREE.LineBasicMaterial({ color: 0xf59e0b }));
-gSelector.add(selTrail);
-var selTrailCount = 0;
-function pushSelTrail(p){
-    if (selTrailCount < selTrailMax){ selTrailPos[selTrailCount*3]=p.x; selTrailPos[selTrailCount*3+1]=p.y; selTrailPos[selTrailCount*3+2]=p.z; selTrailCount++; }
-    selTrailGeo.attributes.position.needsUpdate=true; selTrailGeo.setDrawRange(0, selTrailCount);
-}
-function clearSelTrail(){ selTrailCount=0; selTrailGeo.setDrawRange(0,0); }
-
-// 質譜儀
-var msPlates = buildPlates(gMassspec, REGION_X);   // 選擇器段位於 x∈[-REGION_X, 0]
-// 偵測板：位於 x=0 入射平面，自選擇器兩端（±PLATE_GAP/2）向上、向下延伸，中間留出射出狹縫
-var MS_AF = 10;                // 分析場半邊長（x∈[0,MS_AF]、y∈[−MS_AF,MS_AF]）
-var DET_LEN = MS_AF;          // 偵測板高度與分析場等高
-var detHeight = DET_LEN - PLATE_GAP/2;
-var detMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.3, roughness: 0.6 });
-var detTop = new THREE.Mesh(new THREE.BoxGeometry(0.22, detHeight, 2.6), detMat);
-detTop.position.set(0, PLATE_GAP/2 + detHeight/2, 0);
-var detBot = new THREE.Mesh(new THREE.BoxGeometry(0.22, detHeight, 2.6), detMat);
-detBot.position.set(0, -(PLATE_GAP/2 + detHeight/2), 0);
-gMassspec.add(detTop); gMassspec.add(detBot);
-// 三個區域標籤排成頂端一列（皆在鏡頭框內、彼此分開）
-var msLblSel = makeLabel('① 選擇器', '#475569', 0.78); msLblSel.position.set(-3.4, 6.4, 0); gMassspec.add(msLblSel);
-var msLblDet = makeLabel('偵測板', '#334155', 0.62); msLblDet.position.set(1.4, 6.4, 0); gMassspec.add(msLblDet);
-var msLblAna = makeLabel("② 分析場 B′", '#2563eb', 0.78); msLblAna.position.set(5.2, 6.4, 0); gMassspec.add(msLblAna);
-// 3D 圖例（輕/中/重）
-var msLegend = new THREE.Group(); gMassspec.add(msLegend);
-// 分析場半透明區域平面（xy 平面、置於粒子後方），標示磁場範圍
-var msFieldPlane = new THREE.Mesh(
-    new THREE.PlaneGeometry(MS_AF, 2*MS_AF),
-    new THREE.MeshBasicMaterial({ color: 0xbfdbfe, transparent: true, opacity: 0.16, side: THREE.DoubleSide })
-);
-msFieldPlane.position.set(MS_AF/2, 0, -0.2);
-gMassspec.add(msFieldPlane);
-var msFieldEdge = new THREE.LineSegments(
-    new THREE.EdgesGeometry(new THREE.PlaneGeometry(MS_AF, 2*MS_AF)),
-    new THREE.LineBasicMaterial({ color: 0x60a5fa })
-);
-msFieldEdge.position.copy(msFieldPlane.position); gMassspec.add(msFieldEdge);
-// 分析場 ⊙/⊗ 標記（鋪滿放大後的場區）
-var msBArrows = new THREE.Group(); gMassspec.add(msBArrows);
-function buildMsField() {
-    while (msBArrows.children.length) msBArrows.remove(msBArrows.children[0]);
-    var tailZ = state.bDirMs > 0 ? -1.6 : 1.6;
-    for (var ix=1; ix<=9; ix+=2) for(var iy=-9; iy<=9; iy+=3){
-        var bh = new THREE.ArrowHelper(new THREE.Vector3(0,0,state.bDirMs), new THREE.Vector3(ix, iy, tailZ), 3.2, COL_B, 0.3, 0.2);
-        msBArrows.add(bh);
-    }
-}
-// 三種離子（同電量、不同質量）
-function colHex(c){ return '#' + c.toString(16).padStart(6,'0'); }
-var ionDefs = [
-    { mass: 2, color: 0xef4444, name: '輕' },
-    { mass: 4, color: 0xf59e0b, name: '中' },
-    { mass: 6, color: 0x8b5cf6, name: '重' }
-];
-var ions = [];
-ionDefs.forEach(function(d, idx){
-    var mesh = new THREE.Mesh(new THREE.SphereGeometry(0.3, 20, 20),
-        new THREE.MeshStandardMaterial({ color: d.color, metalness: 0.3, roughness: 0.4, emissive: 0x222222, emissiveIntensity: 0.2 }));
-    gMassspec.add(mesh);
-    var tPos = new Float32Array(500*3);
-    var tGeo = new THREE.BufferGeometry(); tGeo.setAttribute('position', new THREE.BufferAttribute(tPos,3)); tGeo.setDrawRange(0,0);
-    var tLine = new THREE.Line(tGeo, new THREE.LineBasicMaterial({ color: d.color, transparent:true, opacity:0.85 }));
-    gMassspec.add(tLine);
-    // 落點標記環 + 標籤
-    var ring = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.09, 8, 22), new THREE.MeshBasicMaterial({ color: d.color }));
-    ring.rotation.y = Math.PI/2; ring.visible = false; gMassspec.add(ring);
-    var llabel = makeLabel(d.name, colHex(d.color), 0.6); llabel.visible = false; gMassspec.add(llabel);
-    // 圖例：小球 + 標籤
-    var lg = new THREE.Mesh(new THREE.SphereGeometry(0.28, 16, 16), new THREE.MeshStandardMaterial({ color: d.color }));
-    lg.position.set(-7.5, 5.4 - idx*0.9, 0); msLegend.add(lg);
-    var lglbl = makeLabel(d.name + '(m=' + d.mass + ')', colHex(d.color), 0.55); lglbl.position.set(-6.0, 5.4 - idx*0.9, 0); msLegend.add(lglbl);
-    ions.push({ def:d, mesh:mesh, pos:new THREE.Vector3(), vel:new THREE.Vector3(), tPos:tPos, tGeo:tGeo, tCount:0, landed:false, landY:0, ring:ring, llabel:llabel });
+        'quiz.title': '小測驗',
+        'quiz.nextBtn': '下一題 →',
+        'quiz.bank.circular': [
+            { q: '速率 v 加倍（其他不變），圓周半徑 r 會如何？', opts: ['變兩倍', '變一半', '不變'], ans: 0, exp: 'r = mv/QB，r 與 v 成正比，故加倍。' },
+            { q: '磁場 B 增強，週期 T 會如何？', opts: ['變長', '變短', '不變'], ans: 1, exp: 'T = 2πm/QB，與 B 成反比，B 增 → T 減。' },
+            { q: '磁力對粒子作的功為何？', opts: ['正功', '負功', '零'], ans: 2, exp: '磁力恆垂直速度，不作功，速率不變。' }
+        ],
+        'quiz.bank.selector': [
+            { q: '能直線通過的粒子，其速率為？', opts: ['v=E/B', 'v=B/E', 'v=EB'], ans: 0, exp: '平衡 QE=QvB → v=E/B。' },
+            { q: '通過條件 v=E/B 與粒子的電量 Q 有關嗎？', opts: ['有關', '無關'], ans: 1, exp: 'Q 同時出現在電力與磁力中，相消後與 Q 無關。' },
+            { q: '若 v 大於 E/B，粒子會偏向？', opts: ['電力方向', '磁力方向', '仍直線'], ans: 1, exp: '磁力 BQv 較大，淨力沿磁力方向。' }
+        ],
+        'quiz.bank.massspec': [
+            { q: '相同速率下，質量較大的離子半徑？', opts: ['較大', '較小', '相同'], ans: 0, exp: 'r=mv/QB′，r 與 m 成正比。' },
+            { q: '質譜儀中速度選擇器的作用是？', opts: ['加速離子', '篩選單一速率', '改變質量'], ans: 1, exp: '只讓 v=E/B 的離子進入分析場，確保同速。' },
+            { q: '落點距離（=2r）較遠者代表？', opts: ['質量較大', '質量較小', '電量較大'], ans: 0, exp: '2r 與 m 成正比，較遠 → 質量較大。' }
+        ]
+    },
+    en: {}
 });
+</script>
 
-/* =========================================================================
-   物理：派生量
-   ========================================================================= */
-function circRadiusTrue() { return state.m * state.v / (state.q * state.B); }            // r = mv/QB
-function circPeriod()     { return 2 * Math.PI * state.m / (state.q * state.B); }          // T = 2πm/QB
-function circOmega()      { return state.q * state.B / state.m; }                          // ω = QB/m
-function selEfield()      { return state.volt / D_PHYS; }                                  // E = V/d
-function selectV()        { return selEfield() / state.B2; }                               // v = E/B
-function selNetY()        { return state.chargeSign * (state.eDir*selEfield() - state.bDir2*state.v2*state.B2); } // 淨垂直力（正=向上）
-function selCanBalance()  { return (state.eDir * state.bDir2) > 0; }                        // 電/磁力是否可能反向相消
-function selBalanced()    { return selCanBalance() && Math.abs(state.v2 - selectV()) < 0.12; }
-function msEfield()       { return state.volt3 / D_PHYS; }
-function msSelV()         { return msEfield() / state.B3; }
+<!-- ═══════════ 頁面邏輯 ═══════════ -->
+<script>
+PhysLab.sim3d.ready(function () {
+    var t = PhysLab.i18n.t;
+    var el = PhysLab.ui.el;
 
-var VIS_SCALE = 1.35;  // 視覺半徑 = 真實半徑 × 固定比例（線性）
-function circVisR() {
-    // 滑桿收窄後最大 r≈8.33 → 視覺≈11.25，落在場區內；全範圍不觸夾值 → 忠實正比
-    return Math.max(0.3, Math.min(FIELD_HALF - 0.5, circRadiusTrue() * VIS_SCALE));
-}
+    /* =========================================================================
+       單一物理真值來源 (Single source of truth) — 採無因次教學單位
+       ========================================================================= */
+    var state = {
+        mode: 'circular',          // circular | selector | massspec
+        playing: true,
+        simSpeed: 1.0,
+        chargeSign: 1,             // +1 / -1
+        bDir: 1,                   // 圓周模式 B 方向 (+1 上 / -1 下)
+        circMode: 'semi',          // semi 半圓 | full 完全圓周
+        // 圓周
+        m: 3, q: 2, v: 4, B: 4,
+        // 選擇器（預設近平衡：E/d=8/2=4，E/B=4/2=2=v）
+        volt: 8, B2: 2, v2: 2,
+        eDir: 1,                   // 選擇器電場方向 (+1 上 / -1 下)
+        bDir2: 1,                  // 選擇器磁場方向 (+1 出頁 +Z / -1 入頁 -Z)
+        // 質譜儀（v=E/B=8/2/2=2）
+        volt3: 8, B3: 2, Banalyzer: 3,
+        bDirMs: 1,                 // 質譜儀分析場 B′ 方向 (+1 出頁 / -1 入頁)
+        // 顯示
+        showVectors: true, showField: true, showTrail: true, show2D: false
+    };
+    var PLATE_GAP = 4.0;           // 平行板間距（視覺單位）
+    var REGION_X = 6.0;            // 選擇器/質譜場區半長（沿 X）
+    var D_PHYS = 2.0;              // 公式 E=V/d 採用的板距（物理單位）
+    var FIELD_HALF = 12.0;         // 圓周模式磁場區半邊長（XZ 平面）
 
-/* =========================================================================
-   動畫狀態
-   ========================================================================= */
-/* 圓周：直線進入 → 半圓 → 直線離開（三階段，等速率） */
-var CIRC_ENTER = 3.0, CIRC_EXIT = 3.0, VS_C = 1.0;
-var circPhase = 'enter';
-var circPos = new THREE.Vector3();
-var circA = 0, circStraightLeft = 0;
-var circEntry = new THREE.Vector3(), circCenter = new THREE.Vector3(), circExit = new THREE.Vector3();
-var circS = 1, circRcur = 1, circZb = 0, circA0 = 0;
-function circGeom() {
-    circS = state.chargeSign * state.bDir;        // 彎向（±1）
-    circRcur = circVisR();
-    if (state.circMode === 'full') {
-        // 完全圓周：圓心置於原點，整圈落在場區內
-        circCenter.set(0, 0, 0);
-        circA0 = 0;
-    } else {
-        circZb = -FIELD_HALF + 0.6;                    // 入射邊界
-        circEntry.set(circRcur*circS, 0, circZb);      // 弦置中於 x=0
-        circCenter.set(0, 0, circZb);
-        circExit.set(-circRcur*circS, 0, circZb);
-        circA0 = (circS > 0 ? 0 : Math.PI);
-    }
-}
-function resetCircular() {
-    circGeom();
-    if (state.circMode === 'full') {
-        circPhase = 'arc';                             // 直接進入持續繞圈
-        circA = circA0;
-        circPos.set(circCenter.x + circRcur*Math.cos(circA), 0, circCenter.z + circRcur*Math.sin(circA));
-    } else {
-        circPhase = 'enter';
-        circPos.set(circEntry.x, 0, circEntry.z - CIRC_ENTER);
-        circStraightLeft = CIRC_ENTER;
-        circA = circA0;
-    }
-    clearTrail();
-}
-
-/* 選擇器：解析運動學（水平等速、垂直拋物線） */
-var SEL_VS = 1.3, SEL_ACC = 0.45;
-var selPos = new THREE.Vector3(), selVelY = 0;
-function resetSelector() {
-    selPos.set(-REGION_X - 1.5, 0, 0);
-    selVelY = 0; clearSelTrail();
-}
-function resetMassspec() {
-    var v = msSelV();
-    ions.forEach(function(io){
-        io.pos.set(-REGION_X - 1.5, 0, 0);
-        io.vel.set(v, 0, 0);
-        io.landed = false; io.tCount = 0; io.tGeo.setDrawRange(0,0);
-        io.ring.visible = false; io.llabel.visible = false;
+    /* =========================================================================
+       THREE.js 場景（共用底座：原頁遠裁 300、damping 0.08、pixelRatio 不設上限、
+       燈光為 Ambient 0.82 + 主光 0.55@(6,10,8) 無補光 → lights:false 自行加燈）
+       ========================================================================= */
+    var sim = PhysLab.sim3d.create(el('view3d'), {
+        background: 0xe2e6eb, fov: 42, near: 0.1, far: 300,
+        views: {
+            default:  { pos: [6, 6, 11],  tgt: [0, 0, 0] },
+            circular: { pos: [5, 24, 21], tgt: [0, 0, 0] },
+            selector: { pos: [0, 3, 13],  tgt: [0, 0, 0] },
+            massspec: { pos: [2, 1, 28],  tgt: [1.5, 0, 0] }
+        },
+        controls: { damping: 0.08 },
+        lights: false,
+        grid: false,
+        pixelRatio: window.devicePixelRatio || 1
     });
-}
-function resetSim() {
-    resetCircular(); resetSelector(); resetMassspec();
-    updateAll();
-}
+    var scene = sim.scene;
+    PhysLab.sim3d.addLabLights(scene, { keyPos: [6, 10, 8], fill: false });
 
-/* Boris 風格的勞侖茲力推進（E、B 為向量） */
-function lorentzStep(pos, vel, E, B, qm, dt) {
-    // 半步電場
-    var vx = vel.x + qm * E.x * dt/2;
-    var vy = vel.y + qm * E.y * dt/2;
-    var vz = vel.z + qm * E.z * dt/2;
-    // 磁場旋轉
-    var tx = qm * B.x * dt/2, ty = qm * B.y * dt/2, tz = qm * B.z * dt/2;
-    var t2 = tx*tx + ty*ty + tz*tz;
-    var sx = 2*tx/(1+t2), sy = 2*ty/(1+t2), sz = 2*tz/(1+t2);
-    // v' = v- + v- × t
-    var vpx = vx + (vy*tz - vz*ty);
-    var vpy = vy + (vz*tx - vx*tz);
-    var vpz = vz + (vx*ty - vy*tx);
-    // v+ = v- + v' × s
-    vx = vx + (vpy*sz - vpz*sy);
-    vy = vy + (vpz*sx - vpx*sz);
-    vz = vz + (vpx*sy - vpy*sx);
-    // 半步電場
-    vel.x = vx + qm * E.x * dt/2;
-    vel.y = vy + qm * E.y * dt/2;
-    vel.z = vz + qm * E.z * dt/2;
-    pos.x += vel.x * dt; pos.y += vel.y * dt; pos.z += vel.z * dt;
-}
-
-/* =========================================================================
-   每幀更新
-   ========================================================================= */
-function stepCircular(dt) {
-    var ds = state.v * VS_C * dt;          // 本幀路程（等速率）
-    var vdir = new THREE.Vector3(0,0,1), fdir = new THREE.Vector3();
-    var inField = false;
-    if (circPhase === 'enter') {
-        circPos.z += ds;
-        vdir.set(0, 0, 1);
-        if (circPos.z >= circEntry.z) { circPos.copy(circEntry); circPhase = 'arc'; }
-    } else if (circPhase === 'arc') {
-        circA += circS * (ds / circRcur);
-        circPos.set(circCenter.x + circRcur*Math.cos(circA), 0, circCenter.z + circRcur*Math.sin(circA));
-        vdir.set(-Math.sin(circA)*circS, 0, Math.cos(circA)*circS).normalize();
-        fdir.set(circCenter.x - circPos.x, 0, circCenter.z - circPos.z).normalize();
-        inField = true;
-        var swept = (circA - circA0) * circS;   // 0 → π
-        if (state.circMode === 'semi' && swept >= Math.PI) { circPos.copy(circExit); circPhase = 'exit'; circStraightLeft = CIRC_EXIT; }
-    } else {  // exit
-        circPos.z -= ds; circStraightLeft -= ds;
-        vdir.set(0, 0, -1);
-        if (circStraightLeft <= 0) { resetCircular(); return; }
-    }
-    circParticle.position.copy(circPos);
-    if (state.showTrail) pushTrail(circPos);
-
-    circVelArrow.position.copy(circPos); circVelArrow.setDirection(vdir); circVelArrow.setLength(1.6, 0.5, 0.34);
-    circVelArrow.visible = state.showVectors;
-    circForceArrow.visible = state.showVectors && inField;
-    if (inField) { circForceArrow.position.copy(circPos); circForceArrow.setDirection(fdir); circForceArrow.setLength(1.4, 0.5, 0.34); }
-}
-
-function stepSelector(dt) {
-    // 水平等速；垂直淨力 F = Q(E + v×B)；E 沿 eDir·Y，B 沿 bDir2·Z，v 沿 +X
-    // F_E_y = Q·eDir·E ；F_B_y = −Q·bDir2·v·B
-    var sgn = state.chargeSign;
-    var fE = sgn * state.eDir * selEfield();
-    var fB = -sgn * state.bDir2 * state.v2 * state.B2;
-    var aY = (fE + fB) * SEL_ACC;
-    selVelY += aY * dt;
-    selPos.x += state.v2 * SEL_VS * dt;
-    selPos.y += selVelY * dt;
-    selParticle.position.copy(selPos);
-    if (state.showTrail) pushSelTrail(selPos);
-    // 離開場區或觸板 → 重生（永不凍結）
-    if (selPos.x > REGION_X + 1.5 || Math.abs(selPos.y) > PLATE_GAP/2) { resetSelector(); }
-
-    // 力向量（電力 vs 磁力），方向依各分量正負
-    var lenE = Math.min(2.0, 0.5 + selEfield()*0.22);
-    var lenB = Math.min(2.0, 0.5 + state.v2*state.B2*0.22);
-    selFE.position.copy(selPos); selFE.setDirection(new THREE.Vector3(0, fE>=0?1:-1, 0)); selFE.setLength(lenE, 0.35, 0.22);
-    selFB.position.copy(selPos); selFB.setDirection(new THREE.Vector3(0, fB>=0?1:-1, 0)); selFB.setLength(lenB, 0.35, 0.22);
-    selV.position.copy(selPos); selV.setLength(1.3, 0.35, 0.22);
-    selFE.visible = state.showVectors; selFB.visible = state.showVectors; selV.visible = state.showVectors;
-}
-
-function stepMassspec(dt) {
-    var qm0 = state.chargeSign;
-    ions.forEach(function(io){
-        if (io.landed) return;
-        var qm = qm0 / io.def.mass;
-        var inSelector = io.pos.x < 0;
-        var E, B;
-        if (inSelector) { E = new THREE.Vector3(0, msEfield(), 0); B = new THREE.Vector3(0,0,state.B3); }
-        else            { E = new THREE.Vector3(0,0,0);            B = new THREE.Vector3(0,0,state.Banalyzer*state.bDirMs); }
-        var sub = 4;
-        for (var s=0;s<sub;s++) lorentzStep(io.pos, io.vel, E, B, qm, dt/sub);
-        io.mesh.position.copy(io.pos);
-        if (io.tCount < 500) { io.tPos[io.tCount*3]=io.pos.x; io.tPos[io.tCount*3+1]=io.pos.y; io.tPos[io.tCount*3+2]=io.pos.z; io.tCount++; io.tGeo.attributes.position.needsUpdate=true; io.tGeo.setDrawRange(0, state.showTrail?io.tCount:0); }
-        // 打到偵測板（回到 x<=0 且在分析場側、向下走）
-        if (!inSelector && io.pos.x <= 0.05 && io.vel.x < 0) {
-            io.landed = true; io.landY = io.pos.y; io.pos.set(0.1, io.landY, 0); io.mesh.position.copy(io.pos);
-            io.ring.position.set(0.1, io.landY, 0); io.ring.visible = true;
-            io.llabel.position.set(1.5, io.landY, 0); io.llabel.visible = true;
+    /* ---------- 文字精靈標籤（頁面本地版本，保留不換共用 makeLabel：
+       本頁多字 CJK 標籤需依文字量測畫布寬度，共用 plain 變體為固定
+       128×128 畫布，多字會被裁切。介面對齊共用版，附 userData.setText。 ---------- */
+    function makeLabel(text, color, scale) {
+        scale = scale || 1;
+        var spr = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthTest: false, depthWrite: false }));
+        spr.renderOrder = 999;          // 永遠畫在最上層，不被幾何體遮擋
+        spr.userData.label = true;
+        function draw(str) {
+            var c = document.createElement('canvas');
+            var cctx = c.getContext('2d');
+            var font = 'bold 72px Segoe UI, Arial';
+            cctx.font = font;
+            var w = Math.ceil(cctx.measureText(str).width) + 28;   // 依文字量測 + 邊距，避免裁切
+            var h = 100;
+            c.width = w; c.height = h;
+            cctx = c.getContext('2d'); cctx.font = font;           // 重設尺寸會清空，需重設 font
+            cctx.fillStyle = color; cctx.textAlign = 'center'; cctx.textBaseline = 'middle';
+            cctx.fillText(str, w / 2, h / 2);
+            if (spr.material.map) spr.material.map.dispose();
+            spr.material.map = new THREE.CanvasTexture(c);
+            spr.material.needsUpdate = true;
+            spr.scale.set(scale * (w / h), scale, 1);              // 依貼圖長寬比，文字不裁切也不變形
         }
-        if (Math.abs(io.pos.y) > REGION_X*2.4) io.landed = true;
-    });
-    if (!msResetting && ions.every(function(io){return io.landed;})) {
-        msResetting = true;
-        setTimeout(function(){ resetMassspec(); msResetting = false; }, 800);
+        draw(text);
+        spr.userData.setText = draw;    // 供語言切換就地改字
+        return spr;
     }
-}
-var msResetting = false;
 
-/* =========================================================================
-   更新 UI / 讀數 / 公式 / FBD / 2D
-   ========================================================================= */
-function tex(latex, disp) { return disp ? ('$$'+latex+'$$') : ('$'+latex+'$'); }
-function typesetMath(el) { if (window.MathJax && MathJax.typesetPromise) MathJax.typesetPromise([el]).catch(function(){}); }
+    /* ---------- 各模式群組 ---------- */
+    var gCircular = new THREE.Group();
+    var gSelector = new THREE.Group();
+    var gMassspec = new THREE.Group();
+    scene.add(gCircular); scene.add(gSelector); scene.add(gMassspec);
 
-function updateFormula() {
-    var fl = document.getElementById('formula-list');
-    var ro = document.getElementById('readout-main');
-    ro.classList.remove('warn');
-    var html = '';
-    if (state.mode === 'circular') {
-        html += '<div class="formula">$$r=\\dfrac{mv}{QB}\\quad T=\\dfrac{2\\pi m}{QB}$$</div>';
-        html += '<div class="formula">$$F=QvB\\;(\\text{向心力})$$</div>';
-        html += '<div class="formula-desc"><span>m</span> 質量(kg) · <span>Q</span> 電量(C) · <span>v</span> 速率(m/s) · <span>B</span> 磁場(T)</div>';
-        var r = circRadiusTrue(), T = circPeriod(), F = state.q*state.v*state.B;
-        ro.innerHTML = 'r = ' + r.toFixed(2) + ' m ｜ T = ' + T.toFixed(2) + ' s ｜ F = ' + F.toFixed(1) + ' N';
-    } else if (state.mode === 'selector') {
-        html += '<div class="formula">$$QE = QvB \\Rightarrow v=\\dfrac{E}{B}$$</div>';
-        html += '<div class="formula">$$E=\\dfrac{V}{d}$$</div>';
-        html += '<div class="formula-desc">平衡時電力與磁力相消，特定速率 <span>v=E/B</span> 直線通過。</div>';
-        var vs = selectV(), netY = selNetY();
-        var msg;
-        if (selBalanced()) { msg = '✓ v ≈ E/B = ' + vs.toFixed(2) + '，直線通過！'; }
-        else if (!selCanBalance()) { msg = '電力與磁力同向（無法平衡）→ 偏' + (netY>0?'上':'下'); ro.classList.add('warn'); }
-        else { msg = 'v=' + state.v2.toFixed(2) + (state.v2>vs?' > ':' < ') + 'E/B=' + vs.toFixed(2) + ' → 偏' + (netY>0?'上':'下'); ro.classList.add('warn'); }
-        ro.innerHTML = msg;
-    } else {
-        html += '<div class="formula">$$v=\\dfrac{E}{B}\\quad r=\\dfrac{mv}{QB\'}$$</div>';
-        html += '<div class="formula">$$\\dfrac{m}{Q}=\\dfrac{B\\,B\'\\,r}{E}$$</div>';
-        html += '<div class="formula-desc">①選擇器選出 <span>v=E/B</span> → ②分析場依 <span>r=mv/QB′</span> 分離；落點距離 = <span>2r</span>。</div>';
-        var v = msSelV();
-        var parts = ionDefs.map(function(d){ return d.name + ' ' + (2*d.mass*v/state.Banalyzer).toFixed(1); });
-        ro.innerHTML = 'v=E/B=' + v.toFixed(2) + ' ｜ 落點 2r：' + parts.join(' < ');
+    /* 顏色慣例 */
+    var COL_F = 0x16a34a, COL_B = 0x2563eb, COL_E = 0xea580c, COL_V = 0xca8a04;
+    var COL_POS = 0xdc2626, COL_NEG = 0x2563eb;
+
+    /* ---------- 圓周模式場景 ---------- */
+    var circParticle = new THREE.Mesh(
+        new THREE.SphereGeometry(0.32, 24, 24),
+        new THREE.MeshStandardMaterial({ color: COL_POS, metalness: 0.3, roughness: 0.4, emissive: 0x550000, emissiveIntensity: 0.25 })
+    );
+    gCircular.add(circParticle);
+
+    // 場區半透明地板（標示磁場範圍，位於 XZ 平面 y=0）
+    var circFieldPlane = new THREE.Mesh(
+        new THREE.PlaneGeometry(2*FIELD_HALF, 2*FIELD_HALF),
+        new THREE.MeshBasicMaterial({ color: 0xbfdbfe, transparent: true, opacity: 0.18, side: THREE.DoubleSide })
+    );
+    circFieldPlane.rotation.x = -Math.PI/2;  // 平鋪於水平面
+    gCircular.add(circFieldPlane);
+    var circFieldEdge = new THREE.LineSegments(
+        new THREE.EdgesGeometry(new THREE.BoxGeometry(2*FIELD_HALF, 0.02, 2*FIELD_HALF)),
+        new THREE.LineBasicMaterial({ color: 0x60a5fa })
+    );
+    gCircular.add(circFieldEdge);
+
+    var circFieldArrows = new THREE.Group(); gCircular.add(circFieldArrows);
+    function buildCircField() {
+        while (circFieldArrows.children.length) circFieldArrows.remove(circFieldArrows.children[0]);
+        var dir = new THREE.Vector3(0, state.bDir, 0);
+        var span = FIELD_HALF - 1.2;
+        // 箭尾 y 依方向對稱：向上由 -1.4 起、向下由 +1.4 起，兩者皆跨越 y∈[-1.4,1.4]
+        var tailY = state.bDir > 0 ? -1.4 : 1.4;
+        for (var ix = -4; ix <= 4; ix++) {
+            for (var iz = -4; iz <= 4; iz++) {
+                var origin = new THREE.Vector3(ix/4 * span, tailY, iz/4 * span);
+                var ah = new THREE.ArrowHelper(dir, origin, 2.8, COL_B, 0.32, 0.2);
+                circFieldArrows.add(ah);
+            }
+        }
     }
-    fl.innerHTML = html;
-    typesetMath(fl);
-}
+    var circForceArrow = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(0,0,0), 1.5, COL_F, 0.5, 0.34);
+    var circVelArrow   = new THREE.ArrowHelper(new THREE.Vector3(0,0,1), new THREE.Vector3(0,0,0), 1.5, COL_V, 0.5, 0.34);
+    gCircular.add(circForceArrow); gCircular.add(circVelArrow);
+    var lblB = makeLabel('B', '#2563eb', 0.9); gCircular.add(lblB); lblB.position.set(FIELD_HALF-1, 2.2, FIELD_HALF-1);
 
-/* ---------- FBD 繪製 ---------- */
-var fbdCanvas = document.getElementById('fbd-canvas');
-var fbdCtx = fbdCanvas.getContext('2d');
-function drawArrow2D(ctx, x0, y0, x1, y1, color, label) {
-    ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x1,y1); ctx.stroke();
-    var ang = Math.atan2(y1-y0, x1-x0), h = 9;
-    ctx.beginPath();
-    ctx.moveTo(x1,y1);
-    ctx.lineTo(x1 - h*Math.cos(ang-0.4), y1 - h*Math.sin(ang-0.4));
-    ctx.lineTo(x1 - h*Math.cos(ang+0.4), y1 - h*Math.sin(ang+0.4));
-    ctx.closePath(); ctx.fill();
-    if (label) {
-        ctx.font = 'bold 13px Segoe UI'; ctx.textAlign='center';
-        ctx.fillText(label, x1 + 12*Math.cos(ang), y1 + 12*Math.sin(ang));
-    }
-}
-function drawFBDParticle(x, y) {  // 畫帶電粒子節點（FBD 只含力，不含速度）
-    var pcol = state.chargeSign>0 ? '#dc2626' : '#2563eb';
-    fbdCtx.fillStyle = pcol; fbdCtx.beginPath(); fbdCtx.arc(x, y, 13, 0, Math.PI*2); fbdCtx.fill();
-    fbdCtx.fillStyle = '#fff'; fbdCtx.font='bold 14px Segoe UI'; fbdCtx.textAlign='center'; fbdCtx.textBaseline='middle';
-    fbdCtx.fillText(state.chargeSign>0?'+':'−', x, y);
-}
-function drawFBD() {
-    var dpr = window.devicePixelRatio || 1;
-    var W = fbdCanvas.clientWidth, H = fbdCanvas.clientHeight || 170;
-    if (fbdCanvas.width !== W*dpr || fbdCanvas.height !== H*dpr) { fbdCanvas.width = W*dpr; fbdCanvas.height = H*dpr; }
-    fbdCtx.setTransform(dpr,0,0,dpr,0,0);
-    fbdCtx.clearRect(0,0,W,H);
-    var cx = W/2, cy = H/2;
-    var note = document.getElementById('fbd-note');
-
-    if (state.mode === 'circular') {
-        drawFBDParticle(cx, cy);
-        // 唯一作用力：向心磁力（指向圓心，畫向左）。FBD 不含速度。
-        drawArrow2D(fbdCtx, cx, cy, cx-72, cy, '#16a34a', '磁力');
-        fbdCtx.strokeStyle='#94a3b8'; fbdCtx.setLineDash([3,4]); fbdCtx.beginPath();
-        fbdCtx.arc(cx-72, cy, 72, -0.5, 0.5); fbdCtx.stroke(); fbdCtx.setLineDash([]);
-        note.innerHTML = '唯一作用力是<b style="color:#16a34a;">磁力</b>，恆垂直於速度並指向圓心，扮演<b>向心力</b>，使粒子作等速率圓周運動。';
-    } else if (state.mode === 'selector') {
-        drawFBDParticle(cx, cy);
-        var FE = selEfield(), FB = state.v2*state.B2;
-        var sFE = Math.min(72, 22 + FE*9), sFB = Math.min(72, 22 + FB*9);
-        // 力方向（3D 上為 +Y）：電力符號 = sgn(Q·eDir)，磁力符號 = sgn(−Q·bDir2)。畫布上：上為負 y
-        var feUp = (state.chargeSign*state.eDir) >= 0 ? 1 : -1;
-        var fbUp = (-state.chargeSign*state.bDir2) >= 0 ? 1 : -1;
-        // 兩力由水平分離的錨點畫出，避免同向時箭頭與標記互相重疊
-        var xE = cx - 15, xB = cx + 15;
-        drawArrow2D(fbdCtx, xE, cy, xE, cy - feUp*sFE, '#ea580c', '電力');
-        drawArrow2D(fbdCtx, xB, cy, xB, cy - fbUp*sFB, '#16a34a', '磁力');
-        if (selBalanced()) note.innerHTML = '<b style="color:#16a34a;">合力為零</b>：<b style="color:#ea580c;">電力</b>與<b style="color:#16a34a;">磁力</b>等大反向 → 粒子直線通過。';
-        else if (!selCanBalance()) note.innerHTML = '<b style="color:#ea580c;">電力</b>與<b style="color:#16a34a;">磁力</b>同向（場方向設定使兩力不相消）→ 粒子必偏轉。';
-        else note.innerHTML = (FB>FE?'<b style="color:#16a34a;">磁力</b>':'<b style="color:#ea580c;">電力</b>') + '較大 → 淨力使粒子偏向該力方向。';
-    } else {
-        // 質譜儀：兩張完全不同結構的 FBD —— ①選擇器（平衡） ②分析場（單一向心力）
-        var lx = W*0.27, rx = W*0.73, my = cy + 8;
-        fbdCtx.strokeStyle='#e2e8f0'; fbdCtx.lineWidth=1; fbdCtx.beginPath(); fbdCtx.moveTo(W/2, 18); fbdCtx.lineTo(W/2, H-6); fbdCtx.stroke();
-        fbdCtx.fillStyle='#475569'; fbdCtx.font='bold 11px Segoe UI'; fbdCtx.textAlign='center'; fbdCtx.textBaseline='alphabetic';
-        fbdCtx.fillText('①選擇器', lx, 15);
-        fbdCtx.fillText('②分析場', rx, 15);
-        // 左：電力 vs 磁力 平衡
-        drawFBDParticle(lx, my);
-        drawArrow2D(fbdCtx, lx, my, lx, my-44, '#ea580c', '電力');
-        drawArrow2D(fbdCtx, lx, my, lx, my+44, '#16a34a', '磁力');
-        // 右：單一向心磁力（指向圓心）
-        drawFBDParticle(rx, my);
-        drawArrow2D(fbdCtx, rx, my, rx-50, my, '#2563eb', '磁力');
-        fbdCtx.strokeStyle='#94a3b8'; fbdCtx.setLineDash([3,4]); fbdCtx.beginPath(); fbdCtx.arc(rx-50, my, 50, -0.6, 0.6); fbdCtx.stroke(); fbdCtx.setLineDash([]);
-        note.innerHTML = '<b>①選擇器</b>：<b style="color:#ea580c;">電力</b>與<b style="color:#16a34a;">磁力</b>等大反向（合力為零）→ 只放行 v=E/B。　<b>②分析場</b>：僅一個<b style="color:#2563eb;">磁力</b>作向心力 → 走半圓，質量大者半徑大。兩階段受力結構不同。';
-    }
-    note.style.display = '';
-}
-
-/* ---------- 2D 截面 ---------- */
-var c2d = document.getElementById('view2d');
-var ctx2 = c2d.getContext('2d');
-function sym(ctx, x, y, into, color) { // ⊗ into / ⊙ out
-    ctx.strokeStyle=color; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(x,y,10,0,Math.PI*2); ctx.stroke();
-    if (into){ ctx.beginPath(); ctx.moveTo(x-6,y-6); ctx.lineTo(x+6,y+6); ctx.moveTo(x+6,y-6); ctx.lineTo(x-6,y+6); ctx.stroke(); }
-    else { ctx.fillStyle=color; ctx.beginPath(); ctx.arc(x,y,3,0,Math.PI*2); ctx.fill(); }
-}
-function draw2D() {
-    var wrap = document.getElementById('view2d-wrap');
-    if (wrap.classList.contains('panel-hidden')) return;
-    var W = c2d.clientWidth, H = c2d.clientHeight;
-    if (!W || !H) return;
-    var dpr = window.devicePixelRatio || 1;
-    if (c2d.width !== W*dpr || c2d.height !== H*dpr){ c2d.width=W*dpr; c2d.height=H*dpr; }
-    ctx2.setTransform(dpr,0,0,dpr,0,0);
-    ctx2.clearRect(0,0,W,H);
-    ctx2.fillStyle = '#f8fafc'; ctx2.fillRect(0,0,W,H);
-    var cx = W/2, cy = H/2;
-
-    if (state.mode === 'circular') {
-        ctx2.fillStyle = '#475569'; ctx2.font='12px Segoe UI'; ctx2.textAlign='left';
-        ctx2.fillText('沿 B 軸俯視（磁場 ' + (state.bDir>0?'⊙ 出頁':'⊗ 入頁') + '）', 10, 18);
-        if (state.circMode === 'full') {
-            var scF = Math.min(W, H) * 0.34 / Math.max(circRcur, 1);
-            var rrF = circRcur * scF;
-            // 場符號背景（佈滿）
-            for (var gxF=35; gxF<W-15; gxF+=52) for (var gyF=34; gyF<H-12; gyF+=46) sym(ctx2, gxF, gyF, state.bDir<0, '#cfe0fb');
-            // 完整圓軌跡（以畫面中心為圓心）
-            ctx2.strokeStyle='#f59e0b'; ctx2.lineWidth=2; ctx2.setLineDash([6,5]);
-            ctx2.beginPath(); ctx2.arc(cx, cy, rrF, 0, 2*Math.PI); ctx2.stroke(); ctx2.setLineDash([]);
-            // 直徑 (=2r)
-            ctx2.strokeStyle='#94a3b8'; ctx2.lineWidth=1; ctx2.beginPath(); ctx2.moveTo(cx-rrF, cy); ctx2.lineTo(cx+rrF, cy); ctx2.stroke();
-            ctx2.fillStyle='#64748b'; ctx2.fillText('2r', cx-8, cy-6);
-            // 粒子（圓心於原點，投影 x/z）
-            var pxF = cx + circPos.x*scF, pyF = cy - circPos.z*scF;
-            ctx2.fillStyle = state.chargeSign>0?'#dc2626':'#2563eb'; ctx2.beginPath(); ctx2.arc(pxF,pyF,7,0,Math.PI*2); ctx2.fill();
+    /* 圓周軌跡 */
+    var trailMax = 600;
+    var trailPos = new Float32Array(trailMax * 3);
+    var trailGeo = new THREE.BufferGeometry();
+    trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPos, 3));
+    trailGeo.setDrawRange(0, 0);
+    var circTrail = new THREE.Line(trailGeo, new THREE.LineBasicMaterial({ color: 0xf59e0b, transparent: true, opacity: 0.85 }));
+    gCircular.add(circTrail);
+    var trailCount = 0;
+    function pushTrail(p) {
+        if (trailCount < trailMax) {
+            trailPos[trailCount*3] = p.x; trailPos[trailCount*3+1] = p.y; trailPos[trailCount*3+2] = p.z;
+            trailCount++;
         } else {
-            var baseY = H*0.74;
-            var sc = (W*0.34) / Math.max(circRcur, 1);
-            // 場符號背景（場區）
-            for (var gx=35; gx<W-15; gx+=52) for (var gy=34; gy<baseY-6; gy+=46) sym(ctx2, gx, gy, state.bDir<0, '#cfe0fb');
-            // 入射邊界線
-            ctx2.strokeStyle='#60a5fa'; ctx2.lineWidth=2; ctx2.beginPath(); ctx2.moveTo(12, baseY); ctx2.lineTo(W-12, baseY); ctx2.stroke();
-            // 半圓軌跡
-            var rr = circRcur*sc;
-            ctx2.strokeStyle='#f59e0b'; ctx2.lineWidth=2; ctx2.setLineDash([6,5]);
-            ctx2.beginPath(); ctx2.arc(cx, baseY, rr, Math.PI, 2*Math.PI); ctx2.stroke(); ctx2.setLineDash([]);
-            // 直徑 (=2r)
-            ctx2.strokeStyle='#94a3b8'; ctx2.lineWidth=1; ctx2.beginPath(); ctx2.moveTo(cx-rr, baseY); ctx2.lineTo(cx+rr, baseY); ctx2.stroke();
-            ctx2.fillStyle='#64748b'; ctx2.fillText('2r', cx-8, baseY+16);
-            // 粒子（投影 3D 位置）
-            var px = cx + circPos.x*sc, py = baseY - (circPos.z - circZb)*sc;
-            ctx2.fillStyle = state.chargeSign>0?'#dc2626':'#2563eb'; ctx2.beginPath(); ctx2.arc(px,py,7,0,Math.PI*2); ctx2.fill();
+            trailPos.copyWithin(0, 3);
+            trailPos[(trailMax-1)*3] = p.x; trailPos[(trailMax-1)*3+1] = p.y; trailPos[(trailMax-1)*3+2] = p.z;
         }
-    } else if (state.mode === 'selector') {
-        ctx2.fillStyle = '#475569'; ctx2.font='12px Segoe UI'; ctx2.textAlign='left';
-        ctx2.fillText('側視截面（B ' + (state.bDir2>0?'⊙ 出頁':'⊗ 入頁') + '，E 向' + (state.eDir>0?'上':'下') + '）', 10, 18);
-        var top = cy - H*0.28, bot = cy + H*0.28;
-        ctx2.fillStyle='#cbd5e1'; ctx2.fillRect(20, top-6, W-40, 6); ctx2.fillRect(20, bot, W-40, 6);
-        // 板極性：E 由 + 指向 −；E 向上 → 下板 +、上板 −
-        ctx2.fillStyle='#1e293b';
-        ctx2.fillText(state.eDir>0?'−':'+', 24, top-10);
-        ctx2.fillText(state.eDir>0?'+':'−', 24, bot+18);
-        // 軌跡（依淨力方向偏轉）
-        var tnorm = (selPos.x + REGION_X + 1.5) / (2*REGION_X+3);
-        var x = 25 + tnorm*(W-50);
-        var ynorm = selPos.y / (PLATE_GAP/2); var y = cy - ynorm*(H*0.28);   // 3D 上 = 螢幕上
-        // 畫理想線
-        ctx2.strokeStyle='#cbd5e1'; ctx2.setLineDash([4,4]); ctx2.beginPath(); ctx2.moveTo(25,cy); ctx2.lineTo(W-25,cy); ctx2.stroke(); ctx2.setLineDash([]);
-        ctx2.fillStyle = state.chargeSign>0?'#dc2626':'#2563eb'; ctx2.beginPath(); ctx2.arc(x, y, 7, 0, Math.PI*2); ctx2.fill();
-        var bal = selBalanced();
-        ctx2.fillStyle = bal ? '#16a34a' : '#c2410c'; ctx2.font='bold 12px Segoe UI';
-        ctx2.fillText(bal?'✓ 直線通過':'偏移', x-20, y-12);
-    } else {
-        ctx2.fillStyle = '#475569'; ctx2.font='12px Segoe UI'; ctx2.textAlign='left';
-        ctx2.fillText('質譜儀俯視（分析場 ' + (state.bDirMs>0?'⊙ 出頁':'⊗ 入頁') + '）', 10, 18);
-        var ox = 40, dir = state.bDirMs;
-        var oy = cy - dir*H*0.24;   // 入射點，留出彎曲側空間
-        ctx2.strokeStyle='#334155'; ctx2.lineWidth=3; ctx2.beginPath(); ctx2.moveTo(ox, 22); ctx2.lineTo(ox, H-22); ctx2.stroke();
-        ctx2.fillStyle='#64748b'; ctx2.fillText('偵測板', ox+6, dir>0?H-26:36);
-        ctx2.fillStyle='#0369a1'; ctx2.beginPath(); ctx2.arc(ox, oy, 3, 0, Math.PI*2); ctx2.fill();   // 入射狹縫
+        trailGeo.attributes.position.needsUpdate = true;
+        trailGeo.setDrawRange(0, trailCount);
+    }
+    function clearTrail() { trailCount = 0; trailGeo.setDrawRange(0, 0); }
+
+    /* ---------- 選擇器 / 質譜儀共用：平行板與場 ---------- */
+    function buildPlates(group, lenX) {
+        var plateMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.6, roughness: 0.4 });
+        var top = new THREE.Mesh(new THREE.BoxGeometry(lenX, 0.18, 3), plateMat);
+        top.position.set(lenX/2 - REGION_X, PLATE_GAP/2, 0);
+        var bot = new THREE.Mesh(new THREE.BoxGeometry(lenX, 0.18, 3), plateMat);
+        bot.position.set(lenX/2 - REGION_X, -PLATE_GAP/2, 0);
+        group.add(top); group.add(bot);
+        var lblTop = makeLabel('−', '#1e293b', 1.1); lblTop.position.set(-REGION_X + 0.6, PLATE_GAP/2 + 0.6, 1.6); group.add(lblTop);
+        var lblBot = makeLabel('+', '#1e293b', 1.1); lblBot.position.set(-REGION_X + 0.6, -PLATE_GAP/2 - 0.6, 1.6); group.add(lblBot);
+        return { top: top, bot: bot };
+    }
+
+    // 選擇器
+    var selParticle = new THREE.Mesh(
+        new THREE.SphereGeometry(0.3, 24, 24),
+        new THREE.MeshStandardMaterial({ color: COL_POS, metalness: 0.3, roughness: 0.4, emissive: 0x550000, emissiveIntensity: 0.25 })
+    );
+    gSelector.add(selParticle);
+    var selPlates = buildPlates(gSelector, 2 * REGION_X);
+    var selEArrows = new THREE.Group(); gSelector.add(selEArrows);
+    var selBArrows = new THREE.Group(); gSelector.add(selBArrows);
+    function buildSelectorFields() {
+        while (selEArrows.children.length) selEArrows.remove(selEArrows.children[0]);
+        while (selBArrows.children.length) selBArrows.remove(selBArrows.children[0]);
+        // E 場：板間垂直箭頭，方向跟隨 eDir
+        var eTailY = state.eDir > 0 ? (-PLATE_GAP/2 + 0.3) : (PLATE_GAP/2 - 0.3);
+        for (var i = -2; i <= 2; i++) {
+            var ah = new THREE.ArrowHelper(new THREE.Vector3(0, state.eDir, 0), new THREE.Vector3(i*2, eTailY, 0), PLATE_GAP - 0.6, COL_E, 0.35, 0.22);
+            selEArrows.add(ah);
+        }
+        // B 場：沿 Z，方向跟隨 bDir2（出頁 +Z / 入頁 −Z）
+        var bTailZ = state.bDir2 > 0 ? -1.6 : 1.6;
+        for (var j = -1; j <= 1; j++) {
+            var bh = new THREE.ArrowHelper(new THREE.Vector3(0, 0, state.bDir2), new THREE.Vector3(j*2.4, 0, bTailZ), 3.2, COL_B, 0.35, 0.22);
+            selBArrows.add(bh);
+        }
+    }
+    var selFE = new THREE.ArrowHelper(new THREE.Vector3(0,1,0), new THREE.Vector3(0,0,0), 1, COL_E, 0.4, 0.26);
+    var selFB = new THREE.ArrowHelper(new THREE.Vector3(0,-1,0), new THREE.Vector3(0,0,0), 1, COL_F, 0.4, 0.26);
+    var selV  = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(0,0,0), 1.4, COL_V, 0.4, 0.26);
+    gSelector.add(selFE); gSelector.add(selFB); gSelector.add(selV);
+    var selLblE = makeLabel('E', '#ea580c', 0.8); gSelector.add(selLblE); selLblE.position.set(-4, 0, 1.8);
+    var selLblB = makeLabel('B', '#2563eb', 0.8); gSelector.add(selLblB); selLblB.position.set(3.5, 1.6, 0);
+
+    /* 選擇器軌跡 */
+    var selTrailMax = 400, selTrailPos = new Float32Array(selTrailMax*3);
+    var selTrailGeo = new THREE.BufferGeometry();
+    selTrailGeo.setAttribute('position', new THREE.BufferAttribute(selTrailPos, 3));
+    selTrailGeo.setDrawRange(0,0);
+    var selTrail = new THREE.Line(selTrailGeo, new THREE.LineBasicMaterial({ color: 0xf59e0b }));
+    gSelector.add(selTrail);
+    var selTrailCount = 0;
+    function pushSelTrail(p){
+        if (selTrailCount < selTrailMax){ selTrailPos[selTrailCount*3]=p.x; selTrailPos[selTrailCount*3+1]=p.y; selTrailPos[selTrailCount*3+2]=p.z; selTrailCount++; }
+        selTrailGeo.attributes.position.needsUpdate=true; selTrailGeo.setDrawRange(0, selTrailCount);
+    }
+    function clearSelTrail(){ selTrailCount=0; selTrailGeo.setDrawRange(0,0); }
+
+    // 質譜儀
+    var msPlates = buildPlates(gMassspec, REGION_X);   // 選擇器段位於 x∈[-REGION_X, 0]
+    // 偵測板：位於 x=0 入射平面，自選擇器兩端（±PLATE_GAP/2）向上、向下延伸，中間留出射出狹縫
+    var MS_AF = 10;                // 分析場半邊長（x∈[0,MS_AF]、y∈[−MS_AF,MS_AF]）
+    var DET_LEN = MS_AF;          // 偵測板高度與分析場等高
+    var detHeight = DET_LEN - PLATE_GAP/2;
+    var detMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.3, roughness: 0.6 });
+    var detTop = new THREE.Mesh(new THREE.BoxGeometry(0.22, detHeight, 2.6), detMat);
+    detTop.position.set(0, PLATE_GAP/2 + detHeight/2, 0);
+    var detBot = new THREE.Mesh(new THREE.BoxGeometry(0.22, detHeight, 2.6), detMat);
+    detBot.position.set(0, -(PLATE_GAP/2 + detHeight/2), 0);
+    gMassspec.add(detTop); gMassspec.add(detBot);
+    // 三個區域標籤排成頂端一列（皆在鏡頭框內、彼此分開）
+    var msLblSel = makeLabel(t('label3d.selector'), '#475569', 0.78); msLblSel.position.set(-3.4, 6.4, 0); gMassspec.add(msLblSel);
+    var msLblDet = makeLabel(t('label3d.detector'), '#334155', 0.62); msLblDet.position.set(1.4, 6.4, 0); gMassspec.add(msLblDet);
+    var msLblAna = makeLabel(t('label3d.analyzer'), '#2563eb', 0.78); msLblAna.position.set(5.2, 6.4, 0); gMassspec.add(msLblAna);
+    // 3D 圖例（輕/中/重）
+    var msLegend = new THREE.Group(); gMassspec.add(msLegend);
+    // 分析場半透明區域平面（xy 平面、置於粒子後方），標示磁場範圍
+    var msFieldPlane = new THREE.Mesh(
+        new THREE.PlaneGeometry(MS_AF, 2*MS_AF),
+        new THREE.MeshBasicMaterial({ color: 0xbfdbfe, transparent: true, opacity: 0.16, side: THREE.DoubleSide })
+    );
+    msFieldPlane.position.set(MS_AF/2, 0, -0.2);
+    gMassspec.add(msFieldPlane);
+    var msFieldEdge = new THREE.LineSegments(
+        new THREE.EdgesGeometry(new THREE.PlaneGeometry(MS_AF, 2*MS_AF)),
+        new THREE.LineBasicMaterial({ color: 0x60a5fa })
+    );
+    msFieldEdge.position.copy(msFieldPlane.position); gMassspec.add(msFieldEdge);
+    // 分析場 ⊙/⊗ 標記（鋪滿放大後的場區）
+    var msBArrows = new THREE.Group(); gMassspec.add(msBArrows);
+    function buildMsField() {
+        while (msBArrows.children.length) msBArrows.remove(msBArrows.children[0]);
+        var tailZ = state.bDirMs > 0 ? -1.6 : 1.6;
+        for (var ix=1; ix<=9; ix+=2) for(var iy=-9; iy<=9; iy+=3){
+            var bh = new THREE.ArrowHelper(new THREE.Vector3(0,0,state.bDirMs), new THREE.Vector3(ix, iy, tailZ), 3.2, COL_B, 0.3, 0.2);
+            msBArrows.add(bh);
+        }
+    }
+    // 三種離子（同電量、不同質量）
+    function colHex(c){ return '#' + c.toString(16).padStart(6,'0'); }
+    var ionDefs = [
+        { mass: 2, color: 0xef4444, nameKey: 'ion.light' },
+        { mass: 4, color: 0xf59e0b, nameKey: 'ion.mid' },
+        { mass: 6, color: 0x8b5cf6, nameKey: 'ion.heavy' }
+    ];
+    var ions = [];
+    ionDefs.forEach(function(d, idx){
+        var mesh = new THREE.Mesh(new THREE.SphereGeometry(0.3, 20, 20),
+            new THREE.MeshStandardMaterial({ color: d.color, metalness: 0.3, roughness: 0.4, emissive: 0x222222, emissiveIntensity: 0.2 }));
+        gMassspec.add(mesh);
+        var tPos = new Float32Array(500*3);
+        var tGeo = new THREE.BufferGeometry(); tGeo.setAttribute('position', new THREE.BufferAttribute(tPos,3)); tGeo.setDrawRange(0,0);
+        var tLine = new THREE.Line(tGeo, new THREE.LineBasicMaterial({ color: d.color, transparent:true, opacity:0.85 }));
+        gMassspec.add(tLine);
+        // 落點標記環 + 標籤
+        var ring = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.09, 8, 22), new THREE.MeshBasicMaterial({ color: d.color }));
+        ring.rotation.y = Math.PI/2; ring.visible = false; gMassspec.add(ring);
+        var llabel = makeLabel(t(d.nameKey), colHex(d.color), 0.6); llabel.visible = false; gMassspec.add(llabel);
+        // 圖例：小球 + 標籤
+        var lg = new THREE.Mesh(new THREE.SphereGeometry(0.28, 16, 16), new THREE.MeshStandardMaterial({ color: d.color }));
+        lg.position.set(-7.5, 5.4 - idx*0.9, 0); msLegend.add(lg);
+        var lglbl = makeLabel(t(d.nameKey) + '(m=' + d.mass + ')', colHex(d.color), 0.55); lglbl.position.set(-6.0, 5.4 - idx*0.9, 0); msLegend.add(lglbl);
+        ions.push({ def:d, mesh:mesh, pos:new THREE.Vector3(), vel:new THREE.Vector3(), tPos:tPos, tGeo:tGeo, tCount:0, landed:false, landY:0, ring:ring, llabel:llabel, lglbl:lglbl });
+    });
+
+    /* =========================================================================
+       物理：派生量
+       ========================================================================= */
+    function circRadiusTrue() { return state.m * state.v / (state.q * state.B); }            // r = mv/QB
+    function circPeriod()     { return 2 * Math.PI * state.m / (state.q * state.B); }          // T = 2πm/QB
+    function circOmega()      { return state.q * state.B / state.m; }                          // ω = QB/m
+    function selEfield()      { return state.volt / D_PHYS; }                                  // E = V/d
+    function selectV()        { return selEfield() / state.B2; }                               // v = E/B
+    function selNetY()        { return state.chargeSign * (state.eDir*selEfield() - state.bDir2*state.v2*state.B2); } // 淨垂直力（正=向上）
+    function selCanBalance()  { return (state.eDir * state.bDir2) > 0; }                        // 電/磁力是否可能反向相消
+    function selBalanced()    { return selCanBalance() && Math.abs(state.v2 - selectV()) < 0.12; }
+    function msEfield()       { return state.volt3 / D_PHYS; }
+    function msSelV()         { return msEfield() / state.B3; }
+
+    var VIS_SCALE = 1.35;  // 視覺半徑 = 真實半徑 × 固定比例（線性）
+    function circVisR() {
+        // 滑桿收窄後最大 r≈8.33 → 視覺≈11.25，落在場區內；全範圍不觸夾值 → 忠實正比
+        return Math.max(0.3, Math.min(FIELD_HALF - 0.5, circRadiusTrue() * VIS_SCALE));
+    }
+
+    /* =========================================================================
+       動畫狀態
+       ========================================================================= */
+    /* 圓周：直線進入 → 半圓 → 直線離開（三階段，等速率） */
+    var CIRC_ENTER = 3.0, CIRC_EXIT = 3.0, VS_C = 1.0;
+    var circPhase = 'enter';
+    var circPos = new THREE.Vector3();
+    var circA = 0, circStraightLeft = 0;
+    var circEntry = new THREE.Vector3(), circCenter = new THREE.Vector3(), circExit = new THREE.Vector3();
+    var circS = 1, circRcur = 1, circZb = 0, circA0 = 0;
+    function circGeom() {
+        circS = state.chargeSign * state.bDir;        // 彎向（±1）
+        circRcur = circVisR();
+        if (state.circMode === 'full') {
+            // 完全圓周：圓心置於原點，整圈落在場區內
+            circCenter.set(0, 0, 0);
+            circA0 = 0;
+        } else {
+            circZb = -FIELD_HALF + 0.6;                    // 入射邊界
+            circEntry.set(circRcur*circS, 0, circZb);      // 弦置中於 x=0
+            circCenter.set(0, 0, circZb);
+            circExit.set(-circRcur*circS, 0, circZb);
+            circA0 = (circS > 0 ? 0 : Math.PI);
+        }
+    }
+    function resetCircular() {
+        circGeom();
+        if (state.circMode === 'full') {
+            circPhase = 'arc';                             // 直接進入持續繞圈
+            circA = circA0;
+            circPos.set(circCenter.x + circRcur*Math.cos(circA), 0, circCenter.z + circRcur*Math.sin(circA));
+        } else {
+            circPhase = 'enter';
+            circPos.set(circEntry.x, 0, circEntry.z - CIRC_ENTER);
+            circStraightLeft = CIRC_ENTER;
+            circA = circA0;
+        }
+        clearTrail();
+    }
+
+    /* 選擇器：解析運動學（水平等速、垂直拋物線） */
+    var SEL_VS = 1.3, SEL_ACC = 0.45;
+    var selPos = new THREE.Vector3(), selVelY = 0;
+    function resetSelector() {
+        selPos.set(-REGION_X - 1.5, 0, 0);
+        selVelY = 0; clearSelTrail();
+    }
+    function resetMassspec() {
         var v = msSelV();
-        ionDefs.forEach(function(d){
-            var r = d.mass * v / state.Banalyzer;   // r = mv/QB′（教學比例，Q 併入常數）
-            var rr = Math.min(H*0.32, 12 + r*6);
-            ctx2.strokeStyle = '#' + d.color.toString(16).padStart(6,'0'); ctx2.lineWidth=2;
-            ctx2.beginPath(); ctx2.arc(ox, oy + dir*rr, rr, -Math.PI/2, Math.PI/2); ctx2.stroke();
-            ctx2.fillStyle = ctx2.strokeStyle; ctx2.beginPath(); ctx2.arc(ox, oy + dir*2*rr, 5, 0, Math.PI*2); ctx2.fill();
+        ions.forEach(function(io){
+            io.pos.set(-REGION_X - 1.5, 0, 0);
+            io.vel.set(v, 0, 0);
+            io.landed = false; io.tCount = 0; io.tGeo.setDrawRange(0,0);
+            io.ring.visible = false; io.llabel.visible = false;
         });
     }
-}
-
-function updateStatus() {
-    var b = document.getElementById('status-badge');
-    var h = document.getElementById('hint');
-    if (state.mode === 'circular') {
-        b.innerHTML = (state.chargeSign>0?'➕':'➖') + ' 電荷 ｜ B ' + (state.bDir>0?'⬆':'⬇') + ' ｜ r = ' + circRadiusTrue().toFixed(2) + ' m';
-        h.textContent = state.circMode==='full' ? '粒子在場內持續繞整圈；調 m,Q,v,B 看半徑變化'
-                                                : '粒子直線進入 → 半圓 → 離開；調 m,Q,v,B 看半徑變化';
-    } else if (state.mode === 'selector') {
-        var vs = selectV(), netY = selNetY();
-        b.innerHTML = selBalanced() ? '✓ 直線通過（v=E/B）' : ('淨力偏' + (netY>0?'上':'下'));
-        h.textContent = '調 V、B、v 與場方向，使 v = E/B = ' + vs.toFixed(2) + ' 且電/磁力反向';
-    } else {
-        b.innerHTML = '🔬 v=E/B=' + msSelV().toFixed(2) + ' ｜ 重離子半徑大';
-        h.textContent = '輕(紅)/中(橙)/重(紫) 離子依質量分離';
-    }
-}
-
-function updateAll() {
-    updateFormula(); drawFBD(); draw2D(); updateStatus();
-}
-
-/* =========================================================================
-   模式切換 / 控制
-   ========================================================================= */
-function setMode(m) {
-    state.mode = m;
-    document.getElementById('mode-circular').classList.toggle('active', m==='circular');
-    document.getElementById('mode-selector').classList.toggle('active', m==='selector');
-    document.getElementById('mode-massspec').classList.toggle('active', m==='massspec');
-    document.getElementById('card-circular').classList.toggle('panel-hidden', m!=='circular');
-    document.getElementById('card-selector').classList.toggle('panel-hidden', m!=='selector');
-    document.getElementById('card-massspec').classList.toggle('panel-hidden', m!=='massspec');
-    gCircular.visible = m==='circular';
-    gSelector.visible = m==='selector';
-    gMassspec.visible = m==='massspec';
-    // 相機視角
-    if (m==='circular') { camera.position.set(5, 24, 21); controls.target.set(0, 0, 0); }
-    else if (m==='selector') { camera.position.set(0, 3, 13); controls.target.set(0, 0, 0); }
-    else { camera.position.set(2, 1, 28); controls.target.set(1.5, 0, 0); }
-    resetSim();
-    buildQuiz();
-}
-function setCharge(s) {
-    state.chargeSign = s;
-    ['chg-pos','chg2-pos','chg3-pos'].forEach(function(id){ var e=document.getElementById(id); if(e) e.classList.toggle('active', s>0); });
-    ['chg-neg','chg2-neg','chg3-neg'].forEach(function(id){ var e=document.getElementById(id); if(e) e.classList.toggle('active', s<0); });
-    var pc = s>0?COL_POS:COL_NEG;
-    circParticle.material.color.setHex(pc); selParticle.material.color.setHex(pc);
-    circParticle.material.emissive.setHex(s>0?0x550000:0x001a44);
-    selParticle.material.emissive.setHex(s>0?0x550000:0x001a44);
-    resetSim();
-}
-function setBDir(d) {
-    state.bDir = d;
-    document.getElementById('bdir-up').classList.toggle('active', d>0);
-    document.getElementById('bdir-down').classList.toggle('active', d<0);
-    buildCircField(); resetSim();
-}
-function setCircMode(m) {
-    state.circMode = m;
-    document.getElementById('circmode-semi').classList.toggle('active', m==='semi');
-    document.getElementById('circmode-full').classList.toggle('active', m==='full');
-    resetCircular(); updateAll();
-}
-function setEDir(d) {
-    state.eDir = d;
-    document.getElementById('edir-up').classList.toggle('active', d>0);
-    document.getElementById('edir-down').classList.toggle('active', d<0);
-    buildSelectorFields(); resetSelector(); updateAll();
-}
-function setBDir2(d) {
-    state.bDir2 = d;
-    document.getElementById('bdir2-out').classList.toggle('active', d>0);
-    document.getElementById('bdir2-in').classList.toggle('active', d<0);
-    buildSelectorFields(); resetSelector(); updateAll();
-}
-function setBDirMs(d) {
-    state.bDirMs = d;
-    document.getElementById('bdirms-out').classList.toggle('active', d>0);
-    document.getElementById('bdirms-in').classList.toggle('active', d<0);
-    buildMsField(); resetMassspec(); updateAll();
-}
-function togglePlay() {
-    state.playing = !state.playing;
-    document.getElementById('btn-play').textContent = state.playing ? '⏸ 暫停' : '▶ 播放';
-}
-function toggleOpt(key) {
-    state[key] = !state[key];
-    document.getElementById('tg-'+key).classList.toggle('on', state[key]);
-    if (key==='show2D') document.getElementById('view2d-wrap').classList.toggle('panel-hidden', !state.show2D);
-    if (key==='showField') { circFieldArrows.visible=state.showField; selEArrows.visible=state.showField; selBArrows.visible=state.showField; msBArrows.visible=state.showField; msFieldPlane.visible=state.showField; msFieldEdge.visible=state.showField; }
-    if (key==='showTrail' && !state.showTrail) { clearTrail(); clearSelTrail(); ions.forEach(function(io){io.tGeo.setDrawRange(0,0);}); }
-    updateAll();
-}
-function toggleLeftPanel(){ document.getElementById('left-panel').classList.toggle('panel-hidden'); document.getElementById('btn-toggle-left').classList.toggle('inactive'); onResize(); }
-function toggleRightPanel(){ document.getElementById('right-panel').classList.toggle('panel-hidden'); document.getElementById('btn-toggle-right').classList.toggle('inactive'); onResize(); }
-
-/* 滑桿綁定 */
-function bindSlider(id, key, valId, fmt, after) {
-    var s = document.getElementById(id);
-    s.addEventListener('input', function(){
-        state[key] = parseFloat(s.value);
-        document.getElementById(valId).textContent = fmt(state[key]);
-        if (after) after();
+    function resetSim() {
+        resetCircular(); resetSelector(); resetMassspec();
         updateAll();
-    });
-}
-var f1 = function(x){return x.toFixed(1);};
-bindSlider('sld-speed','simSpeed','val-speed', function(x){return x.toFixed(1)+'×';});
-bindSlider('sld-m','m','val-m', f1, resetCircular);
-bindSlider('sld-q','q','val-q', f1, resetCircular);
-bindSlider('sld-v','v','val-v', f1, resetCircular);
-bindSlider('sld-b','B','val-b', f1, resetCircular);
-bindSlider('sld-volt','volt','val-volt', f1, resetSelector);
-bindSlider('sld-b2','B2','val-b2', f1, resetSelector);
-// v2：滑桿 ↔ 數字框 雙向同步（可直接輸入速度，超界自動夾值）
-(function(){
-    var sld = document.getElementById('sld-v2');
-    var num = document.getElementById('num-v2');
-    var mn = parseFloat(sld.min), mx = parseFloat(sld.max);
-    function commit(val){
-        if (isNaN(val)) { num.value = state.v2; return; }
-        val = Math.max(mn, Math.min(mx, val));
-        state.v2 = val; sld.value = val; num.value = val;
-        resetSelector(); updateAll();
     }
-    sld.addEventListener('input', function(){ commit(parseFloat(sld.value)); });
-    num.addEventListener('change', function(){ commit(parseFloat(num.value)); });
-})();
-bindSlider('sld-volt3','volt3','val-volt3', f1, resetMassspec);
-bindSlider('sld-b3','B3','val-b3', f1, resetMassspec);
-bindSlider('sld-banalyzer','Banalyzer','val-banalyzer', f1, resetMassspec);
 
-/* =========================================================================
-   測驗
-   ========================================================================= */
-var quizSets = {
-    circular: [
-        { q: '速率 v 加倍（其他不變），圓周半徑 r 會如何？', opts:['變兩倍','變一半','不變'], ans:0, fb:'r = mv/QB，r 與 v 成正比，故加倍。' },
-        { q: '磁場 B 增強，週期 T 會如何？', opts:['變長','變短','不變'], ans:1, fb:'T = 2πm/QB，與 B 成反比，B 增 → T 減。' },
-        { q: '磁力對粒子作的功為何？', opts:['正功','負功','零'], ans:2, fb:'磁力恆垂直速度，不作功，速率不變。' }
-    ],
-    selector: [
-        { q: '能直線通過的粒子，其速率為？', opts:['v=E/B','v=B/E','v=EB'], ans:0, fb:'平衡 QE=QvB → v=E/B。' },
-        { q: '通過條件 v=E/B 與粒子的電量 Q 有關嗎？', opts:['有關','無關'], ans:1, fb:'Q 同時出現在電力與磁力中，相消後與 Q 無關。' },
-        { q: '若 v 大於 E/B，粒子會偏向？', opts:['電力方向','磁力方向','仍直線'], ans:1, fb:'磁力 BQv 較大，淨力沿磁力方向。' }
-    ],
-    massspec: [
-        { q: '相同速率下，質量較大的離子半徑？', opts:['較大','較小','相同'], ans:0, fb:'r=mv/QB′，r 與 m 成正比。' },
-        { q: '質譜儀中速度選擇器的作用是？', opts:['加速離子','篩選單一速率','改變質量'], ans:1, fb:'只讓 v=E/B 的離子進入分析場，確保同速。' },
-        { q: '落點距離（=2r）較遠者代表？', opts:['質量較大','質量較小','電量較大'], ans:0, fb:'2r 與 m 成正比，較遠 → 質量較大。' }
-    ]
-};
-var quizIdx = 0, quizAnswered = false;
-function buildQuiz() {
-    quizIdx = 0; loadQuiz();
-}
-function loadQuiz() {
-    var set = quizSets[state.mode];
-    var qz = set[quizIdx % set.length];
-    quizAnswered = false;
-    document.getElementById('quiz-q').textContent = qz.q;
-    var opts = document.getElementById('quiz-options'); opts.innerHTML = '';
-    qz.opts.forEach(function(opt, i){
-        var btn = document.createElement('button'); btn.className='quiz-opt'; btn.textContent = opt;
-        btn.onclick = function(){ checkAnswer(i, qz); };
-        opts.appendChild(btn);
-    });
-    document.getElementById('quiz-feedback').textContent = '';
-    document.getElementById('quiz-next').style.display = 'none';
-}
-function checkAnswer(sel, qz) {
-    if (quizAnswered) return; quizAnswered = true;
-    var opts = document.querySelectorAll('.quiz-opt');
-    opts[sel].classList.add(sel===qz.ans ? 'correct':'wrong');
-    if (sel!==qz.ans) opts[qz.ans].classList.add('correct');
-    document.getElementById('quiz-feedback').innerHTML = (sel===qz.ans?'✅ 正確！':'❌ 再想想。') + ' ' + qz.fb;
-    document.getElementById('quiz-next').style.display = 'block';
-}
-function nextQuiz() { quizIdx++; loadQuiz(); }
-window.nextQuiz = nextQuiz;
-
-/* =========================================================================
-   迴圈 / 縮放
-   ========================================================================= */
-var lastT = performance.now();
-function animate() {
-    requestAnimationFrame(animate);
-    var now = performance.now();
-    var dt = Math.min(0.05, (now - lastT)/1000) * state.simSpeed;
-    lastT = now;
-    if (state.playing) {
-        if (state.mode === 'circular') stepCircular(dt);
-        else if (state.mode === 'selector') stepSelector(dt);
-        else stepMassspec(dt);
-        // 即時更新讀數（節流：每幀更新狀態列，公式較少變動仍重算）
-        updateStatus();
-        if (state.mode!=='circular') { drawFBD(); }
-        draw2D();
+    /* Boris 風格的勞侖茲力推進（E、B 為向量） */
+    function lorentzStep(pos, vel, E, B, qm, dt) {
+        // 半步電場
+        var vx = vel.x + qm * E.x * dt/2;
+        var vy = vel.y + qm * E.y * dt/2;
+        var vz = vel.z + qm * E.z * dt/2;
+        // 磁場旋轉
+        var tx = qm * B.x * dt/2, ty = qm * B.y * dt/2, tz = qm * B.z * dt/2;
+        var t2 = tx*tx + ty*ty + tz*tz;
+        var sx = 2*tx/(1+t2), sy = 2*ty/(1+t2), sz = 2*tz/(1+t2);
+        // v' = v- + v- × t
+        var vpx = vx + (vy*tz - vz*ty);
+        var vpy = vy + (vz*tx - vx*tz);
+        var vpz = vz + (vx*ty - vy*tx);
+        // v+ = v- + v' × s
+        vx = vx + (vpy*sz - vpz*sy);
+        vy = vy + (vpz*sx - vpx*sz);
+        vz = vz + (vpx*sy - vpy*sx);
+        // 半步電場
+        vel.x = vx + qm * E.x * dt/2;
+        vel.y = vy + qm * E.y * dt/2;
+        vel.z = vz + qm * E.z * dt/2;
+        pos.x += vel.x * dt; pos.y += vel.y * dt; pos.z += vel.z * dt;
     }
-    controls.update();
-    renderer.render(scene, camera);
-}
-function onResize() {
-    var w = view3d.clientWidth, h = view3d.clientHeight;
-    if (!w || !h) return;
-    camera.aspect = w/h; camera.updateProjectionMatrix();
-    renderer.setSize(w, h);
-    draw2D(); drawFBD();
-}
-window.addEventListener('resize', onResize);
 
-/* =========================================================================
-   初始化
-   ========================================================================= */
-function init() {
+    /* =========================================================================
+       每幀更新
+       ========================================================================= */
+    function stepCircular(dt) {
+        var ds = state.v * VS_C * dt;          // 本幀路程（等速率）
+        var vdir = new THREE.Vector3(0,0,1), fdir = new THREE.Vector3();
+        var inField = false;
+        if (circPhase === 'enter') {
+            circPos.z += ds;
+            vdir.set(0, 0, 1);
+            if (circPos.z >= circEntry.z) { circPos.copy(circEntry); circPhase = 'arc'; }
+        } else if (circPhase === 'arc') {
+            circA += circS * (ds / circRcur);
+            circPos.set(circCenter.x + circRcur*Math.cos(circA), 0, circCenter.z + circRcur*Math.sin(circA));
+            vdir.set(-Math.sin(circA)*circS, 0, Math.cos(circA)*circS).normalize();
+            fdir.set(circCenter.x - circPos.x, 0, circCenter.z - circPos.z).normalize();
+            inField = true;
+            var swept = (circA - circA0) * circS;   // 0 → π
+            if (state.circMode === 'semi' && swept >= Math.PI) { circPos.copy(circExit); circPhase = 'exit'; circStraightLeft = CIRC_EXIT; }
+        } else {  // exit
+            circPos.z -= ds; circStraightLeft -= ds;
+            vdir.set(0, 0, -1);
+            if (circStraightLeft <= 0) { resetCircular(); return; }
+        }
+        circParticle.position.copy(circPos);
+        if (state.showTrail) pushTrail(circPos);
+
+        circVelArrow.position.copy(circPos); circVelArrow.setDirection(vdir); circVelArrow.setLength(1.6, 0.5, 0.34);
+        circVelArrow.visible = state.showVectors;
+        circForceArrow.visible = state.showVectors && inField;
+        if (inField) { circForceArrow.position.copy(circPos); circForceArrow.setDirection(fdir); circForceArrow.setLength(1.4, 0.5, 0.34); }
+    }
+
+    function stepSelector(dt) {
+        // 水平等速；垂直淨力 F = Q(E + v×B)；E 沿 eDir·Y，B 沿 bDir2·Z，v 沿 +X
+        // F_E_y = Q·eDir·E ；F_B_y = −Q·bDir2·v·B
+        var sgn = state.chargeSign;
+        var fE = sgn * state.eDir * selEfield();
+        var fB = -sgn * state.bDir2 * state.v2 * state.B2;
+        var aY = (fE + fB) * SEL_ACC;
+        selVelY += aY * dt;
+        selPos.x += state.v2 * SEL_VS * dt;
+        selPos.y += selVelY * dt;
+        selParticle.position.copy(selPos);
+        if (state.showTrail) pushSelTrail(selPos);
+        // 離開場區或觸板 → 重生（永不凍結）
+        if (selPos.x > REGION_X + 1.5 || Math.abs(selPos.y) > PLATE_GAP/2) { resetSelector(); }
+
+        // 力向量（電力 vs 磁力），方向依各分量正負
+        var lenE = Math.min(2.0, 0.5 + selEfield()*0.22);
+        var lenB = Math.min(2.0, 0.5 + state.v2*state.B2*0.22);
+        selFE.position.copy(selPos); selFE.setDirection(new THREE.Vector3(0, fE>=0?1:-1, 0)); selFE.setLength(lenE, 0.35, 0.22);
+        selFB.position.copy(selPos); selFB.setDirection(new THREE.Vector3(0, fB>=0?1:-1, 0)); selFB.setLength(lenB, 0.35, 0.22);
+        selV.position.copy(selPos); selV.setLength(1.3, 0.35, 0.22);
+        selFE.visible = state.showVectors; selFB.visible = state.showVectors; selV.visible = state.showVectors;
+    }
+
+    function stepMassspec(dt) {
+        var qm0 = state.chargeSign;
+        ions.forEach(function(io){
+            if (io.landed) return;
+            var qm = qm0 / io.def.mass;
+            var inSelector = io.pos.x < 0;
+            var E, B;
+            if (inSelector) { E = new THREE.Vector3(0, msEfield(), 0); B = new THREE.Vector3(0,0,state.B3); }
+            else            { E = new THREE.Vector3(0,0,0);            B = new THREE.Vector3(0,0,state.Banalyzer*state.bDirMs); }
+            var sub = 4;
+            for (var s=0;s<sub;s++) lorentzStep(io.pos, io.vel, E, B, qm, dt/sub);
+            io.mesh.position.copy(io.pos);
+            if (io.tCount < 500) { io.tPos[io.tCount*3]=io.pos.x; io.tPos[io.tCount*3+1]=io.pos.y; io.tPos[io.tCount*3+2]=io.pos.z; io.tCount++; io.tGeo.attributes.position.needsUpdate=true; io.tGeo.setDrawRange(0, state.showTrail?io.tCount:0); }
+            // 打到偵測板（回到 x<=0 且在分析場側、向下走）
+            if (!inSelector && io.pos.x <= 0.05 && io.vel.x < 0) {
+                io.landed = true; io.landY = io.pos.y; io.pos.set(0.1, io.landY, 0); io.mesh.position.copy(io.pos);
+                io.ring.position.set(0.1, io.landY, 0); io.ring.visible = true;
+                io.llabel.position.set(1.5, io.landY, 0); io.llabel.visible = true;
+            }
+            if (Math.abs(io.pos.y) > REGION_X*2.4) io.landed = true;
+        });
+        if (!msResetting && ions.every(function(io){return io.landed;})) {
+            msResetting = true;
+            setTimeout(function(){ resetMassspec(); msResetting = false; }, 800);
+        }
+    }
+    var msResetting = false;
+
+    /* =========================================================================
+       更新 UI / 讀數 / 公式 / FBD / 2D
+       ========================================================================= */
+    function typesetMath(node) { if (window.MathJax && MathJax.typesetPromise) MathJax.typesetPromise([node]).catch(function(){}); }
+
+    function updateFormula() {
+        var fl = el('formula-list');
+        var ro = el('readout-main');
+        ro.classList.remove('warn');
+        var html = '';
+        if (state.mode === 'circular') {
+            html += '<div class="formula">$$r=\\dfrac{mv}{QB}\\quad T=\\dfrac{2\\pi m}{QB}$$</div>';
+            html += '<div class="formula">' + t('formula.circForce') + '</div>';
+            html += '<div class="formula-desc">' + t('formula.circDesc') + '</div>';
+            var r = circRadiusTrue(), T = circPeriod(), F = state.q*state.v*state.B;
+            ro.innerHTML = t('formula.circReadout', { r: r.toFixed(2), T: T.toFixed(2), F: F.toFixed(1) });
+        } else if (state.mode === 'selector') {
+            html += '<div class="formula">$$QE = QvB \\Rightarrow v=\\dfrac{E}{B}$$</div>';
+            html += '<div class="formula">$$E=\\dfrac{V}{d}$$</div>';
+            html += '<div class="formula-desc">' + t('formula.selDesc') + '</div>';
+            var vs = selectV(), netY = selNetY();
+            var msg;
+            if (selBalanced()) { msg = t('formula.selBalanced', { v: vs.toFixed(2) }); }
+            else if (!selCanBalance()) { msg = t('formula.selSameDir', { dir: t(netY>0?'common.up':'common.down') }); ro.classList.add('warn'); }
+            else { msg = t('formula.selOff', { v: state.v2.toFixed(2), cmp: (state.v2>vs?'>':'<'), vs: vs.toFixed(2), dir: t(netY>0?'common.up':'common.down') }); ro.classList.add('warn'); }
+            ro.innerHTML = msg;
+        } else {
+            html += '<div class="formula">$$v=\\dfrac{E}{B}\\quad r=\\dfrac{mv}{QB\'}$$</div>';
+            html += '<div class="formula">$$\\dfrac{m}{Q}=\\dfrac{B\\,B\'\\,r}{E}$$</div>';
+            html += '<div class="formula-desc">' + t('formula.msDesc') + '</div>';
+            var v = msSelV();
+            var parts = ionDefs.map(function(d){ return t(d.nameKey) + ' ' + (2*d.mass*v/state.Banalyzer).toFixed(1); });
+            ro.innerHTML = t('formula.msReadout', { v: v.toFixed(2), list: parts.join(' < ') });
+        }
+        fl.innerHTML = html;
+        typesetMath(fl);
+    }
+
+    /* ---------- FBD 繪製 ---------- */
+    var fbdCanvas = el('fbd-canvas');
+    var fbdCtx = fbdCanvas.getContext('2d');
+    function drawArrow2D(ctx, x0, y0, x1, y1, color, label) {
+        ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x1,y1); ctx.stroke();
+        var ang = Math.atan2(y1-y0, x1-x0), h = 9;
+        ctx.beginPath();
+        ctx.moveTo(x1,y1);
+        ctx.lineTo(x1 - h*Math.cos(ang-0.4), y1 - h*Math.sin(ang-0.4));
+        ctx.lineTo(x1 - h*Math.cos(ang+0.4), y1 - h*Math.sin(ang+0.4));
+        ctx.closePath(); ctx.fill();
+        if (label) {
+            ctx.font = 'bold 13px Segoe UI'; ctx.textAlign='center';
+            ctx.fillText(label, x1 + 12*Math.cos(ang), y1 + 12*Math.sin(ang));
+        }
+    }
+    function drawFBDParticle(x, y) {  // 畫帶電粒子節點（FBD 只含力，不含速度）
+        var pcol = state.chargeSign>0 ? '#dc2626' : '#2563eb';
+        fbdCtx.fillStyle = pcol; fbdCtx.beginPath(); fbdCtx.arc(x, y, 13, 0, Math.PI*2); fbdCtx.fill();
+        fbdCtx.fillStyle = '#fff'; fbdCtx.font='bold 14px Segoe UI'; fbdCtx.textAlign='center'; fbdCtx.textBaseline='middle';
+        fbdCtx.fillText(state.chargeSign>0?'+':'−', x, y);
+    }
+    function drawFBD() {
+        var dpr = window.devicePixelRatio || 1;
+        var W = fbdCanvas.clientWidth, H = fbdCanvas.clientHeight || 170;
+        if (fbdCanvas.width !== W*dpr || fbdCanvas.height !== H*dpr) { fbdCanvas.width = W*dpr; fbdCanvas.height = H*dpr; }
+        fbdCtx.setTransform(dpr,0,0,dpr,0,0);
+        fbdCtx.clearRect(0,0,W,H);
+        var cx = W/2, cy = H/2;
+        var note = el('fbd-note');
+
+        if (state.mode === 'circular') {
+            drawFBDParticle(cx, cy);
+            // 唯一作用力：向心磁力（指向圓心，畫向左）。FBD 不含速度。
+            drawArrow2D(fbdCtx, cx, cy, cx-72, cy, '#16a34a', t('fbd.forceMag'));
+            fbdCtx.strokeStyle='#94a3b8'; fbdCtx.setLineDash([3,4]); fbdCtx.beginPath();
+            fbdCtx.arc(cx-72, cy, 72, -0.5, 0.5); fbdCtx.stroke(); fbdCtx.setLineDash([]);
+            note.innerHTML = t('fbd.noteCirc');
+        } else if (state.mode === 'selector') {
+            drawFBDParticle(cx, cy);
+            var FE = selEfield(), FB = state.v2*state.B2;
+            var sFE = Math.min(72, 22 + FE*9), sFB = Math.min(72, 22 + FB*9);
+            // 力方向（3D 上為 +Y）：電力符號 = sgn(Q·eDir)，磁力符號 = sgn(−Q·bDir2)。畫布上：上為負 y
+            var feUp = (state.chargeSign*state.eDir) >= 0 ? 1 : -1;
+            var fbUp = (-state.chargeSign*state.bDir2) >= 0 ? 1 : -1;
+            // 兩力由水平分離的錨點畫出，避免同向時箭頭與標記互相重疊
+            var xE = cx - 15, xB = cx + 15;
+            drawArrow2D(fbdCtx, xE, cy, xE, cy - feUp*sFE, '#ea580c', t('fbd.forceElec'));
+            drawArrow2D(fbdCtx, xB, cy, xB, cy - fbUp*sFB, '#16a34a', t('fbd.forceMag'));
+            if (selBalanced()) note.innerHTML = t('fbd.noteSelBalanced');
+            else if (!selCanBalance()) note.innerHTML = t('fbd.noteSelSameDir');
+            else note.innerHTML = t(FB>FE ? 'fbd.noteSelMagBigger' : 'fbd.noteSelElecBigger');
+        } else {
+            // 質譜儀：兩張完全不同結構的 FBD —— ①選擇器（平衡） ②分析場（單一向心力）
+            var lx = W*0.27, rx = W*0.73, my = cy + 8;
+            fbdCtx.strokeStyle='#e2e8f0'; fbdCtx.lineWidth=1; fbdCtx.beginPath(); fbdCtx.moveTo(W/2, 18); fbdCtx.lineTo(W/2, H-6); fbdCtx.stroke();
+            fbdCtx.fillStyle='#475569'; fbdCtx.font='bold 11px Segoe UI'; fbdCtx.textAlign='center'; fbdCtx.textBaseline='alphabetic';
+            fbdCtx.fillText(t('fbd.selLbl'), lx, 15);
+            fbdCtx.fillText(t('fbd.anaLbl'), rx, 15);
+            // 左：電力 vs 磁力 平衡
+            drawFBDParticle(lx, my);
+            drawArrow2D(fbdCtx, lx, my, lx, my-44, '#ea580c', t('fbd.forceElec'));
+            drawArrow2D(fbdCtx, lx, my, lx, my+44, '#16a34a', t('fbd.forceMag'));
+            // 右：單一向心磁力（指向圓心）
+            drawFBDParticle(rx, my);
+            drawArrow2D(fbdCtx, rx, my, rx-50, my, '#2563eb', t('fbd.forceMag'));
+            fbdCtx.strokeStyle='#94a3b8'; fbdCtx.setLineDash([3,4]); fbdCtx.beginPath(); fbdCtx.arc(rx-50, my, 50, -0.6, 0.6); fbdCtx.stroke(); fbdCtx.setLineDash([]);
+            note.innerHTML = t('fbd.noteMs');
+        }
+        note.style.display = '';
+    }
+
+    /* ---------- 2D 截面 ---------- */
+    var c2d = el('view2d');
+    var ctx2 = c2d.getContext('2d');
+    function sym(ctx, x, y, into, color) { // ⊗ into / ⊙ out
+        ctx.strokeStyle=color; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(x,y,10,0,Math.PI*2); ctx.stroke();
+        if (into){ ctx.beginPath(); ctx.moveTo(x-6,y-6); ctx.lineTo(x+6,y+6); ctx.moveTo(x+6,y-6); ctx.lineTo(x-6,y+6); ctx.stroke(); }
+        else { ctx.fillStyle=color; ctx.beginPath(); ctx.arc(x,y,3,0,Math.PI*2); ctx.fill(); }
+    }
+    function draw2D() {
+        var wrap = el('view2d-wrap');
+        if (wrap.classList.contains('panel-hidden')) return;
+        var W = c2d.clientWidth, H = c2d.clientHeight;
+        if (!W || !H) return;
+        var dpr = window.devicePixelRatio || 1;
+        if (c2d.width !== W*dpr || c2d.height !== H*dpr){ c2d.width=W*dpr; c2d.height=H*dpr; }
+        ctx2.setTransform(dpr,0,0,dpr,0,0);
+        ctx2.clearRect(0,0,W,H);
+        ctx2.fillStyle = '#f8fafc'; ctx2.fillRect(0,0,W,H);
+        var cx = W/2, cy = H/2;
+
+        if (state.mode === 'circular') {
+            ctx2.fillStyle = '#475569'; ctx2.font='12px Segoe UI'; ctx2.textAlign='left';
+            ctx2.fillText(t('canvas.circTitle', { b: t(state.bDir>0?'ctrl.out':'ctrl.in') }), 10, 18);
+            if (state.circMode === 'full') {
+                var scF = Math.min(W, H) * 0.34 / Math.max(circRcur, 1);
+                var rrF = circRcur * scF;
+                // 場符號背景（佈滿）
+                for (var gxF=35; gxF<W-15; gxF+=52) for (var gyF=34; gyF<H-12; gyF+=46) sym(ctx2, gxF, gyF, state.bDir<0, '#cfe0fb');
+                // 完整圓軌跡（以畫面中心為圓心）
+                ctx2.strokeStyle='#f59e0b'; ctx2.lineWidth=2; ctx2.setLineDash([6,5]);
+                ctx2.beginPath(); ctx2.arc(cx, cy, rrF, 0, 2*Math.PI); ctx2.stroke(); ctx2.setLineDash([]);
+                // 直徑 (=2r)
+                ctx2.strokeStyle='#94a3b8'; ctx2.lineWidth=1; ctx2.beginPath(); ctx2.moveTo(cx-rrF, cy); ctx2.lineTo(cx+rrF, cy); ctx2.stroke();
+                ctx2.fillStyle='#64748b'; ctx2.fillText('2r', cx-8, cy-6);
+                // 粒子（圓心於原點，投影 x/z）
+                var pxF = cx + circPos.x*scF, pyF = cy - circPos.z*scF;
+                ctx2.fillStyle = state.chargeSign>0?'#dc2626':'#2563eb'; ctx2.beginPath(); ctx2.arc(pxF,pyF,7,0,Math.PI*2); ctx2.fill();
+            } else {
+                var baseY = H*0.74;
+                var sc = (W*0.34) / Math.max(circRcur, 1);
+                // 場符號背景（場區）
+                for (var gx=35; gx<W-15; gx+=52) for (var gy=34; gy<baseY-6; gy+=46) sym(ctx2, gx, gy, state.bDir<0, '#cfe0fb');
+                // 入射邊界線
+                ctx2.strokeStyle='#60a5fa'; ctx2.lineWidth=2; ctx2.beginPath(); ctx2.moveTo(12, baseY); ctx2.lineTo(W-12, baseY); ctx2.stroke();
+                // 半圓軌跡
+                var rr = circRcur*sc;
+                ctx2.strokeStyle='#f59e0b'; ctx2.lineWidth=2; ctx2.setLineDash([6,5]);
+                ctx2.beginPath(); ctx2.arc(cx, baseY, rr, Math.PI, 2*Math.PI); ctx2.stroke(); ctx2.setLineDash([]);
+                // 直徑 (=2r)
+                ctx2.strokeStyle='#94a3b8'; ctx2.lineWidth=1; ctx2.beginPath(); ctx2.moveTo(cx-rr, baseY); ctx2.lineTo(cx+rr, baseY); ctx2.stroke();
+                ctx2.fillStyle='#64748b'; ctx2.fillText('2r', cx-8, baseY+16);
+                // 粒子（投影 3D 位置）
+                var px = cx + circPos.x*sc, py = baseY - (circPos.z - circZb)*sc;
+                ctx2.fillStyle = state.chargeSign>0?'#dc2626':'#2563eb'; ctx2.beginPath(); ctx2.arc(px,py,7,0,Math.PI*2); ctx2.fill();
+            }
+        } else if (state.mode === 'selector') {
+            ctx2.fillStyle = '#475569'; ctx2.font='12px Segoe UI'; ctx2.textAlign='left';
+            ctx2.fillText(t('canvas.selTitle', { b: t(state.bDir2>0?'ctrl.out':'ctrl.in'), e: t(state.eDir>0?'common.up':'common.down') }), 10, 18);
+            var top = cy - H*0.28, bot = cy + H*0.28;
+            ctx2.fillStyle='#cbd5e1'; ctx2.fillRect(20, top-6, W-40, 6); ctx2.fillRect(20, bot, W-40, 6);
+            // 板極性：E 由 + 指向 −；E 向上 → 下板 +、上板 −
+            ctx2.fillStyle='#1e293b';
+            ctx2.fillText(state.eDir>0?'−':'+', 24, top-10);
+            ctx2.fillText(state.eDir>0?'+':'−', 24, bot+18);
+            // 軌跡（依淨力方向偏轉）
+            var tnorm = (selPos.x + REGION_X + 1.5) / (2*REGION_X+3);
+            var x = 25 + tnorm*(W-50);
+            var ynorm = selPos.y / (PLATE_GAP/2); var y = cy - ynorm*(H*0.28);   // 3D 上 = 螢幕上
+            // 畫理想線
+            ctx2.strokeStyle='#cbd5e1'; ctx2.setLineDash([4,4]); ctx2.beginPath(); ctx2.moveTo(25,cy); ctx2.lineTo(W-25,cy); ctx2.stroke(); ctx2.setLineDash([]);
+            ctx2.fillStyle = state.chargeSign>0?'#dc2626':'#2563eb'; ctx2.beginPath(); ctx2.arc(x, y, 7, 0, Math.PI*2); ctx2.fill();
+            var bal = selBalanced();
+            ctx2.fillStyle = bal ? '#16a34a' : '#c2410c'; ctx2.font='bold 12px Segoe UI';
+            ctx2.fillText(bal ? t('canvas.pass') : t('canvas.offset'), x-20, y-12);
+        } else {
+            ctx2.fillStyle = '#475569'; ctx2.font='12px Segoe UI'; ctx2.textAlign='left';
+            ctx2.fillText(t('canvas.msTitle', { b: t(state.bDirMs>0?'ctrl.out':'ctrl.in') }), 10, 18);
+            var ox = 40, dir = state.bDirMs;
+            var oy = cy - dir*H*0.24;   // 入射點，留出彎曲側空間
+            ctx2.strokeStyle='#334155'; ctx2.lineWidth=3; ctx2.beginPath(); ctx2.moveTo(ox, 22); ctx2.lineTo(ox, H-22); ctx2.stroke();
+            ctx2.fillStyle='#64748b'; ctx2.fillText(t('label3d.detector'), ox+6, dir>0?H-26:36);
+            ctx2.fillStyle='#0369a1'; ctx2.beginPath(); ctx2.arc(ox, oy, 3, 0, Math.PI*2); ctx2.fill();   // 入射狹縫
+            var v = msSelV();
+            ionDefs.forEach(function(d){
+                var r = d.mass * v / state.Banalyzer;   // r = mv/QB′（教學比例，Q 併入常數）
+                var rr = Math.min(H*0.32, 12 + r*6);
+                ctx2.strokeStyle = '#' + d.color.toString(16).padStart(6,'0'); ctx2.lineWidth=2;
+                ctx2.beginPath(); ctx2.arc(ox, oy + dir*rr, rr, -Math.PI/2, Math.PI/2); ctx2.stroke();
+                ctx2.fillStyle = ctx2.strokeStyle; ctx2.beginPath(); ctx2.arc(ox, oy + dir*2*rr, 5, 0, Math.PI*2); ctx2.fill();
+            });
+        }
+    }
+
+    function updateStatus() {
+        var b = el('status-badge');
+        var h = el('hint');
+        if (state.mode === 'circular') {
+            b.innerHTML = t('status.circ', { sign: (state.chargeSign>0?'➕':'➖'), dir: (state.bDir>0?'⬆':'⬇'), r: circRadiusTrue().toFixed(2) });
+            h.textContent = t(state.circMode==='full' ? 'hint.circFull' : 'hint.circSemi');
+        } else if (state.mode === 'selector') {
+            var vs = selectV(), netY = selNetY();
+            b.innerHTML = selBalanced() ? t('status.selPass') : t('status.selNet', { dir: t(netY>0?'common.up':'common.down') });
+            h.textContent = t('hint.sel', { v: vs.toFixed(2) });
+        } else {
+            b.innerHTML = t('status.ms', { v: msSelV().toFixed(2) });
+            h.textContent = t('hint.ms');
+        }
+    }
+
+    function updateAll() {
+        updateFormula(); drawFBD(); draw2D(); updateStatus();
+    }
+
+    /* =========================================================================
+       模式切換 / 控制
+       ========================================================================= */
+    function setMode(m) {
+        state.mode = m;
+        el('mode-circular').classList.toggle('active', m==='circular');
+        el('mode-selector').classList.toggle('active', m==='selector');
+        el('mode-massspec').classList.toggle('active', m==='massspec');
+        el('card-circular').classList.toggle('panel-hidden', m!=='circular');
+        el('card-selector').classList.toggle('panel-hidden', m!=='selector');
+        el('card-massspec').classList.toggle('panel-hidden', m!=='massspec');
+        gCircular.visible = m==='circular';
+        gSelector.visible = m==='selector';
+        gMassspec.visible = m==='massspec';
+        sim.setView(m);   // 相機視角（views 表見 sim3d.create）
+        resetSim();
+        PhysLab.quiz.init({ bankKey: 'quiz.bank.' + m });   // 換題庫並自第 1 題重新出題
+    }
+    function setCharge(s) {
+        state.chargeSign = s;
+        ['chg-pos','chg2-pos','chg3-pos'].forEach(function(id){ var e=el(id); if(e) e.classList.toggle('active', s>0); });
+        ['chg-neg','chg2-neg','chg3-neg'].forEach(function(id){ var e=el(id); if(e) e.classList.toggle('active', s<0); });
+        var pc = s>0?COL_POS:COL_NEG;
+        circParticle.material.color.setHex(pc); selParticle.material.color.setHex(pc);
+        circParticle.material.emissive.setHex(s>0?0x550000:0x001a44);
+        selParticle.material.emissive.setHex(s>0?0x550000:0x001a44);
+        resetSim();
+    }
+    function setBDir(d) {
+        state.bDir = d;
+        el('bdir-up').classList.toggle('active', d>0);
+        el('bdir-down').classList.toggle('active', d<0);
+        buildCircField(); resetSim();
+    }
+    function setCircMode(m) {
+        state.circMode = m;
+        el('circmode-semi').classList.toggle('active', m==='semi');
+        el('circmode-full').classList.toggle('active', m==='full');
+        resetCircular(); updateAll();
+    }
+    function setEDir(d) {
+        state.eDir = d;
+        el('edir-up').classList.toggle('active', d>0);
+        el('edir-down').classList.toggle('active', d<0);
+        buildSelectorFields(); resetSelector(); updateAll();
+    }
+    function setBDir2(d) {
+        state.bDir2 = d;
+        el('bdir2-out').classList.toggle('active', d>0);
+        el('bdir2-in').classList.toggle('active', d<0);
+        buildSelectorFields(); resetSelector(); updateAll();
+    }
+    function setBDirMs(d) {
+        state.bDirMs = d;
+        el('bdirms-out').classList.toggle('active', d>0);
+        el('bdirms-in').classList.toggle('active', d<0);
+        buildMsField(); resetMassspec(); updateAll();
+    }
+    function refreshPlayBtn() {
+        el('btn-play').textContent = t(state.playing ? 'panel.anim.pause' : 'panel.anim.play');
+    }
+    function togglePlay() {
+        state.playing = !state.playing;
+        refreshPlayBtn();
+    }
+    function toggleOpt(key) {
+        state[key] = !state[key];
+        el('tg-'+key).classList.toggle('on', state[key]);
+        if (key==='show2D') el('view2d-wrap').classList.toggle('panel-hidden', !state.show2D);
+        if (key==='showField') { circFieldArrows.visible=state.showField; selEArrows.visible=state.showField; selBArrows.visible=state.showField; msBArrows.visible=state.showField; msFieldPlane.visible=state.showField; msFieldEdge.visible=state.showField; }
+        if (key==='showTrail' && !state.showTrail) { clearTrail(); clearSelTrail(); ions.forEach(function(io){io.tGeo.setDrawRange(0,0);}); }
+        updateAll();
+    }
+
+    /* =========================================================================
+       控件接線（inline onclick 全數改為 addEventListener）
+       ========================================================================= */
+    el('mode-circular').addEventListener('click', function(){ setMode('circular'); });
+    el('mode-selector').addEventListener('click', function(){ setMode('selector'); });
+    el('mode-massspec').addEventListener('click', function(){ setMode('massspec'); });
+    el('btn-play').addEventListener('click', togglePlay);
+    el('btn-reset').addEventListener('click', resetSim);
+    ['chg-pos','chg2-pos','chg3-pos'].forEach(function(id){ el(id).addEventListener('click', function(){ setCharge(1); }); });
+    ['chg-neg','chg2-neg','chg3-neg'].forEach(function(id){ el(id).addEventListener('click', function(){ setCharge(-1); }); });
+    el('bdir-up').addEventListener('click', function(){ setBDir(1); });
+    el('bdir-down').addEventListener('click', function(){ setBDir(-1); });
+    el('circmode-semi').addEventListener('click', function(){ setCircMode('semi'); });
+    el('circmode-full').addEventListener('click', function(){ setCircMode('full'); });
+    el('edir-up').addEventListener('click', function(){ setEDir(1); });
+    el('edir-down').addEventListener('click', function(){ setEDir(-1); });
+    el('bdir2-out').addEventListener('click', function(){ setBDir2(1); });
+    el('bdir2-in').addEventListener('click', function(){ setBDir2(-1); });
+    el('bdirms-out').addEventListener('click', function(){ setBDirMs(1); });
+    el('bdirms-in').addEventListener('click', function(){ setBDirMs(-1); });
+    ['showVectors','showField','showTrail','show2D'].forEach(function(k){
+        el('row-'+k).addEventListener('click', function(){ toggleOpt(k); });
+    });
+    el('view2d-close').addEventListener('click', function(){ toggleOpt('show2D'); });
+
+    /* 滑桿綁定（共用 bindSlider：回傳字串即寫入數值顯示） */
+    function f1(x){ return x.toFixed(1); }
+    PhysLab.ui.bindSlider('sld-speed','val-speed', function(v){ state.simSpeed=v; updateAll(); return v.toFixed(1)+'×'; });
+    PhysLab.ui.bindSlider('sld-m','val-m', function(v){ state.m=v; resetCircular(); updateAll(); return f1(v); });
+    PhysLab.ui.bindSlider('sld-q','val-q', function(v){ state.q=v; resetCircular(); updateAll(); return f1(v); });
+    PhysLab.ui.bindSlider('sld-v','val-v', function(v){ state.v=v; resetCircular(); updateAll(); return f1(v); });
+    PhysLab.ui.bindSlider('sld-b','val-b', function(v){ state.B=v; resetCircular(); updateAll(); return f1(v); });
+    PhysLab.ui.bindSlider('sld-volt','val-volt', function(v){ state.volt=v; resetSelector(); updateAll(); return f1(v); });
+    PhysLab.ui.bindSlider('sld-b2','val-b2', function(v){ state.B2=v; resetSelector(); updateAll(); return f1(v); });
+    // v2：滑桿 ↔ 數字框 雙向同步（可直接輸入速度，超界自動夾值）
+    (function(){
+        var sld = el('sld-v2');
+        var num = el('num-v2');
+        var mn = parseFloat(sld.min), mx = parseFloat(sld.max);
+        function commit(val){
+            if (isNaN(val)) { num.value = state.v2; return; }
+            val = PhysLab.ui.clamp(val, mn, mx);
+            state.v2 = val; sld.value = val; num.value = val;
+            resetSelector(); updateAll();
+        }
+        sld.addEventListener('input', function(){ commit(parseFloat(sld.value)); });
+        num.addEventListener('change', function(){ commit(parseFloat(num.value)); });
+    })();
+    PhysLab.ui.bindSlider('sld-volt3','val-volt3', function(v){ state.volt3=v; resetMassspec(); updateAll(); return f1(v); });
+    PhysLab.ui.bindSlider('sld-b3','val-b3', function(v){ state.B3=v; resetMassspec(); updateAll(); return f1(v); });
+    PhysLab.ui.bindSlider('sld-banalyzer','val-banalyzer', function(v){ state.Banalyzer=v; resetMassspec(); updateAll(); return f1(v); });
+
+    /* 面板開關（切換後重算畫布尺寸與 2D/FBD） */
+    PhysLab.ui.bindPanelToggle('btn-toggle-left', 'left-panel', sim.resize);
+    PhysLab.ui.bindPanelToggle('btn-toggle-right', 'right-panel', sim.resize);
+
+    /* =========================================================================
+       初始化
+       ========================================================================= */
     buildCircField();
     buildSelectorFields();
     buildMsField();
-    setMode('circular');
+    setMode('circular');   // 內含視角、resetSim、quiz.init
     setCharge(1);
-    onResize();
+    sim.onResize(function(){ draw2D(); drawFBD(); });
+    sim.resize();
     updateAll();
-    buildQuiz();
-    animate();
-}
-window.addEventListener('load', function(){
-    if (typeof THREE === 'undefined' || typeof THREE.OrbitControls === 'undefined') return;
-    init();
+    refreshPlayBtn();
+
+    // 語言切換：JS 管理的動態文字與 3D 精靈就地重繪
+    // （狀態徽章/提示/公式/FBD/2D 由 updateAll 以 t() 重寫；quiz 由 quiz.js 自動重繪）
+    PhysLab.i18n.onChange(function () {
+        refreshPlayBtn();
+        msLblSel.userData.setText(t('label3d.selector'));
+        msLblDet.userData.setText(t('label3d.detector'));
+        msLblAna.userData.setText(t('label3d.analyzer'));
+        ions.forEach(function (io) {
+            io.llabel.userData.setText(t(io.def.nameKey));
+            io.lglbl.userData.setText(t(io.def.nameKey) + '(m=' + io.def.mass + ')');
+        });
+        updateAll();
+    });
+
+    /* =========================================================================
+       主迴圈（controls.update + render 由 sim.start 處理；保留 dt 夾值）
+       ========================================================================= */
+    sim.start(function (dtRaw) {
+        var dt = Math.min(0.05, dtRaw) * state.simSpeed;
+        if (state.playing) {
+            if (state.mode === 'circular') stepCircular(dt);
+            else if (state.mode === 'selector') stepSelector(dt);
+            else stepMassspec(dt);
+            // 即時更新讀數（節流：每幀更新狀態列，公式較少變動仍重算）
+            updateStatus();
+            if (state.mode!=='circular') { drawFBD(); }
+            draw2D();
+        }
+    });
 });
 </script>
 </body>
