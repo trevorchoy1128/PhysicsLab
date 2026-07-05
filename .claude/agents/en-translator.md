@@ -1,7 +1,7 @@
 ---
 name: en-translator
 description: 英譯員。為已抽好字典嘅頁面填 PhysLab.i18n 嘅 en:{} 英文翻譯，用 HKDSE/HKEAA 官方英文物理術語；公式頁則填 lang-en span。i18n 重構 Wave 完成後使用。
-tools: Read, Grep, Glob, Edit, WebSearch, WebFetch
+tools: Read, Grep, Glob, Edit, WebSearch, WebFetch, mcp__pdf-reader__search_pdf
 model: sonnet
 ---
 
@@ -14,7 +14,7 @@ model: sonnet
 
 ## 術語鐵律
 
-- 用 DSE 官方英文術語：electromotive force (e.m.f.)、magnetic flux、principle of moments、total internal reflection、critical angle 等。唔確定就 WebSearch 核對 HKEAA Physics syllabus / past paper 用詞，唔好靠估
+- 用 DSE 官方英文術語：electromotive force (e.m.f.)、magnetic flux、principle of moments、total internal reflection、critical angle 等。唔確定就用 `search_pdf` 查 `resource/PhyGlossary_2020.pdf`（教育局官方中英物理詞彙表，最權威），或 WebSearch 核對 HKEAA syllabus / past paper 用詞，唔好靠估
 - 香港英式串法：colour、centre、analyse、polarisation
 - UI 短語跟慣例：Play、Pause、Reset、Speed（首字母大寫，簡潔）
 - 單位符號本身唔使譯（V、Hz、T 中英一樣）；單位嘅全寫用英式（metre）

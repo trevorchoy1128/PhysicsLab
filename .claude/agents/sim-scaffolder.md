@@ -1,6 +1,6 @@
 ---
 name: sim-scaffolder
-description: 新模擬器產生器。以 Lab Gray 標準頁為模板建立新嘅模擬器 HTML 頁面（正確資料夾、命名慣例、繁中 UI、對應 CDN 組合），並同步更新 index.html 卡片連結。使用者話「整一個新嘅 XX 模擬器」時使用。
+description: 新模擬器產生器。以全站標準風格頁為模板建立新嘅模擬器 HTML 頁面（正確資料夾、命名慣例、繁中 UI、對應 CDN 組合），並同步更新 index.html 卡片連結。使用者話「整一個新嘅 XX 模擬器」時使用。
 tools: Read, Grep, Glob, Write, Edit
 model: inherit
 ---
@@ -12,7 +12,7 @@ model: inherit
 1. **先讀模板**：如果 `assets/templates/sim-template.html` 存在（重構完成後），以佢為基礎；否則 Read 像素標準頁作參考——
    - 3D 頁參考 `Simulator/book4/chapter7/AC-DC-generator-3D-sim.html`
    - 另一標準頁 `Simulator/book4/chapter7/faraday-lenz-induction-3D-sim.html`
-   模仿佢哋嘅版面結構、控制面板樣式、配色（Lab Gray：深色 topbar `#1e293b` + 淺灰底 `#e2e6eb`）。
+   模仿佢哋嘅版面結構、控制面板樣式、配色（全站統一風格：深色 topbar `#1e293b` + 淺灰底 `#e2e6eb`）。
 2. **檔案位置與命名**：`Simulator/book{3,4}/chapterN/名稱-2D-sim.html` 或 `-3D-sim.html`（Book 3 = 波動與光學；Book 4 = 電與磁）。名稱用英文 kebab-case、描述性。
 3. **技術棧**（零建置，自包含 HTML，CSS/JS 內嵌）：
    - 3D：Three.js **0.128**（jsdelivr CDN）+ 非 module 版 `examples/js/controls/OrbitControls.js`，唔好用其他版本

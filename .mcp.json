@@ -7,6 +7,10 @@
     "chrome-devtools": {
       "command": "cmd",
       "args": ["/c", "npx", "-y", "chrome-devtools-mcp@latest"]
+    },
+    "pdf-reader": {
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "@sylphx/pdf-reader-mcp"]
     }
   }
 }

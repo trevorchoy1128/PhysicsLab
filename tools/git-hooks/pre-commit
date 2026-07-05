@@ -1,0 +1,16 @@
+#!/bin/sh
+# PhysicsLab pre-commit hook：擋住版權 PDF 入庫（雙重防護的第二層，連 git add -f 都擋）
+# 啟用方法（一次性，新 clone 要重跑）：git config core.hooksPath tools/git-hooks
+
+blocked=$(git diff --cached --name-only -z | tr '\0' '\n' | grep -iE '^resource/|\.pdf$')
+
+if [ -n "$blocked" ]; then
+    echo "❌ Commit 已被擋：以下檔案屬版權資源（resource/ 或 PDF），只限本機存取，絕不可入庫：" >&2
+    echo "$blocked" | sed 's/^/    /' >&2
+    echo "" >&2
+    echo "請先移除 staging：git restore --staged <檔案>" >&2
+    echo "（此規則由 tools/git-hooks/pre-commit 執行；resource/ 內所有教科書 PDF 均不可上 GitHub）" >&2
+    exit 1
+fi
+
+exit 0
