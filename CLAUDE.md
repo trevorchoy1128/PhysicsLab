@@ -28,7 +28,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 設計系統與進行中的重構
 
-- 全站正在統一為「**實驗室灰 Lab Gray**」設計系統（深色 topbar `#1e293b` + 淺灰底 `#e2e6eb`）。像素標準來源：`Simulator/book4/chapter7/AC-DC-generator-3D-sim.html` 與 `faraday-lenz-induction-3D-sim.html`。book4 ch5/6/7 已是此風格，改動這些頁面時須保持像素保真。
+- 全站正在統一為單一設計風格（深色 topbar `#1e293b` + 淺灰底 `#e2e6eb`）。像素標準來源：`Simulator/book4/chapter7/AC-DC-generator-3D-sim.html` 與 `faraday-lenz-induction-3D-sim.html`。book4 ch5/6/7 已是此風格，改動這些頁面時須保持像素保真。
 - 重構在獨立 worktree 進行：`Desktop\PhysicsLab-refactor`（分支 `refactor/lab-gray-unification`）；main 留在本目錄。**熱修規則：先修 main，再立即把 main merge 進重構分支；絕不在兩邊改同一個檔案。**
 - 重構方向已由使用者拍板（勿重新提議）：維持 Vanilla + 共用資產（否決 React/TS 改寫）；模擬器文字抽成 per-page zh 字典（`PhysLab.i18n.register({zh, en:{}})`），命名空間 `window.PhysLab`，CSS token 前綴 `--pl-*`。
 
