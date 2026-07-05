@@ -1,1091 +1,1022 @@
 <!DOCTYPE html>
-<html lang="zh-HK">
+<html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HKDSE 物理繩波與高級圖表模擬器 (極簡流暢版)</title>
+
+    <!-- 共用資源（載入順序固定，不可 defer/async）：core → i18n -->
+    <link rel="stylesheet" href="../../../assets/css/tokens.css">
+    <link rel="stylesheet" href="../../../assets/css/labgray.css">
+    <script src="../../../assets/js/core.js"></script>
+    <script src="../../../assets/js/i18n.js"></script>
+
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f0f4f8;
-            color: #333;
-            margin: 0;
-            padding: 20px;
-        }
-        
-        .app-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-            max-width: 1250px;
-            margin: 0 auto;
-            align-items: flex-start;
-        }
-        
-        .main-content {
-            flex: 1;
-            min-width: 320px;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
+        /* ── 頁面獨有樣式（共用 chrome 見 assets/css/labgray.css）── */
 
-        .sidebar {
-            width: 380px;
-            flex-shrink: 0;
-            background: transparent;
-        }
+        /* 圖表區：兩張圖表卡片垂直堆疊（畫布固定邏輯座標 800×240，CSS 等比縮放） */
+        #canvas-wrap { flex-direction: column; align-items: center; gap: 14px; padding: 16px; overflow-y: auto; }
+        .graph-container { background: var(--pl-card); border: 1px solid var(--pl-border); border-radius: 10px; padding: 12px 14px; width: 100%; max-width: 860px; box-shadow: var(--pl-shadow-card); }
+        .graph-title { text-align: center; font-weight: 700; font-size: 0.82rem; color: var(--pl-text-strong); margin-bottom: 8px; }
+        .graph-container canvas { background: #fafafa; border: 1px solid var(--pl-border-soft); border-radius: 6px; display: block; margin: 0 auto; width: 100%; height: auto; cursor: crosshair; }
 
-        details {
-            background: #fff;
-            margin-bottom: 12px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.08);
-            overflow: hidden;
-            border: 1px solid #e2e8f0;
-        }
-        summary {
-            background: #f8fafc;
-            padding: 12px 15px;
-            font-weight: bold;
-            color: #2c3e50;
-            cursor: pointer;
-            user-select: none;
-            outline: none;
-            transition: background 0.2s;
-            display: flex;
-            align-items: center;
-        }
-        summary:hover {
-            background: #edf2f7;
-        }
-        summary::before {
-            content: "▶";
-            font-size: 10px;
-            margin-right: 10px;
-            color: #718096;
-            transition: transform 0.2s;
-        }
-        details[open] summary::before {
-            transform: rotate(90deg);
-        }
-        .details-content {
-            padding: 15px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            border-top: 1px solid #e2e8f0;
-        }
+        /* 播放／暫停（單頁動作鈕；labgray 僅收錄 .btn-reset） */
+        .btn-play { background: var(--pl-ok); border-color: #15803d; color: #fff; }
+        .btn-play:hover { background: #15803d; }
+        .btn-play.paused { background: var(--pl-warn); border-color: var(--pl-warn-deep); }
+        .btn-play.paused:hover { background: var(--pl-warn-deep); }
 
-        .control-group {
-            display: flex;
-            flex-direction: column;
-        }
-        label {
-            font-size: 13px;
-            font-weight: bold;
-            color: #4a5568;
-            margin-bottom: 5px;
-        }
-        select, input[type="range"] {
-            width: 100%;
-            padding: 6px;
-            cursor: pointer;
-            box-sizing: border-box;
-        }
-        .value-display {
-            font-size: 12px;
-            color: #3498db;
-            margin-top: 4px;
-            font-weight: bold;
-            text-align: right;
-        }
-        .hint-text {
-            font-size: 12px;
-            color: #e67e22;
-            background: #fff3e0;
-            padding: 6px;
-            border-radius: 4px;
-            margin-top: 5px;
-            text-align: center;
-            font-weight: bold;
-        }
+        /* 下拉選單與小標籤（labgray 未收錄 select） */
+        select { width: 100%; padding: 7px 8px; border-radius: 6px; border: 1px solid var(--pl-border); background: var(--pl-card); color: var(--pl-text-strong); font-size: 0.76rem; cursor: pointer; }
+        select:hover { border-color: var(--pl-blue); }
+        .ctl-label { font-size: 0.72rem; font-weight: 600; color: var(--pl-text-dim); margin: 10px 0 5px; }
+        .ctl-label:first-child { margin-top: 0; }
 
-        .target-block {
-            padding: 10px;
-            border-radius: 6px;
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-left-width: 4px;
-            transition: all 0.3s;
-        }
-        .target-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
-        }
-        .target-header label {
-            margin: 0;
-            font-size: 14px;
-            display: flex;
-            align-items: center;
-        }
-        .icon-btn {
-            background: transparent;
-            border: none;
-            cursor: pointer;
-            font-size: 14px;
-            padding: 4px;
-            border-radius: 4px;
-            transition: transform 0.2s, background 0.2s;
-        }
-        .icon-btn:hover {
-            transform: scale(1.1);
-            background: #ffebee;
-        }
-        
-        .add-target-btn {
-            width: 100%;
-            padding: 10px;
-            background: #f8fafc;
-            border: 2px dashed #cbd5e0;
-            color: #4a5568;
-            font-weight: bold;
-            cursor: pointer;
-            border-radius: 6px;
-            transition: all 0.2s;
-        }
-        .add-target-btn:hover {
-            background: #edf2f7;
-            border-color: #a0aec0;
-            color: #2c3e50;
-        }
+        /* 觀察點卡塊（JS 動態生成；左邊框色 = 觀察點顏色） */
+        .target-block { padding: 9px 10px; border-radius: 7px; background: var(--pl-inset); border: 1px solid var(--pl-border-soft); border-left-width: 4px; margin-bottom: 8px; }
+        .target-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+        .target-header label { font-size: 0.76rem; font-weight: 700; }
+        .target-header .val { font-size: 0.74rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+        .icon-btn { background: transparent; border: none; cursor: pointer; font-size: 0.82rem; padding: 2px 4px; border-radius: 4px; }
+        .icon-btn:hover { background: var(--pl-bad-bg); }
+        .target-block input[type="range"] { width: 100%; }
+        .quick-actions { display: flex; gap: 5px; margin-top: 6px; }
+        .quick-actions button { flex: 1; padding: 4px 2px; font-size: 0.66rem; cursor: pointer; border: 1px solid var(--pl-border); background: var(--pl-card); border-radius: 5px; color: var(--pl-text-dim); font-weight: 600; }
+        .quick-actions button:hover { background: var(--pl-panel); border-color: #94a3b8; }
+        .add-target-btn { width: 100%; padding: 8px; background: var(--pl-inset); border: 2px dashed var(--pl-border); color: var(--pl-text-dim); font-weight: 700; font-size: 0.74rem; cursor: pointer; border-radius: 7px; }
+        .add-target-btn:hover { background: var(--pl-panel); border-color: #94a3b8; color: var(--pl-text-strong); }
 
-        .quick-actions {
-            display: flex;
-            gap: 5px;
-            margin-top: 5px;
-        }
-        .quick-actions button {
-            flex: 1;
-            padding: 4px;
-            font-size: 11px;
-            cursor: pointer;
-            border: 1px solid #cbd5e0;
-            background: #fff;
-            border-radius: 4px;
-            color: #2d3748;
-            transition: all 0.2s;
-        }
-        .quick-actions button:hover {
-            background: #edf2f7;
-            border-color: #a0aec0;
-        }
+        /* 自由控制（自訂相位）內嵌區 */
+        #custom-phase-group { display: none; background: var(--pl-inset); padding: 10px; border-radius: 7px; border: 1px dashed var(--pl-border); margin-top: 10px; }
+        .endcap { font-size: 0.68rem; color: var(--pl-text-faint); flex-shrink: 0; }
+        .hint-text { font-size: 0.7rem; color: var(--pl-warn-deep); background: #fff3e0; padding: 6px; border-radius: 5px; margin-top: 8px; text-align: center; font-weight: 700; }
 
-        .action-panel {
-            background: #fff;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            margin-bottom: 12px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-        .btn {
-            padding: 12px;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            font-size: 15px;
-            cursor: pointer;
-            font-weight: bold;
-            text-align: center;
-            transition: all 0.2s ease;
-        }
-        #play-btn { background-color: #2ecc71; } 
-        #play-btn:hover { background-color: #27ae60; }
-        #reset-btn { background-color: #e67e22; }
-        #reset-btn:hover { background-color: #d35400; }
-
-        .physics-values {
-            background: #edf2f7;
-            padding: 12px;
-            border-radius: 6px;
-            font-size: 13px;
-            border-left: 5px solid #3498db;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
-        .graph-container {
-            background: #fff;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        .graph-title {
-            text-align: center;
-            font-weight: bold;
-            margin-bottom: 10px;
-            color: #2c3e50;
-        }
-        canvas {
-            background: #fafafa;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            display: block;
-            width: 100%;
-            max-width: 800px;
-            height: auto;
-            cursor: crosshair; 
-        }
-
-        @media (max-width: 950px) {
-            .sidebar { width: 100%; }
-        }
-    
-    /* Home button */
-    #home-btn {
-        position: fixed;
-        bottom: 16px;
-        left: 16px;
-        z-index: 99999;
-        background: rgba(30,41,59,0.85);
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-        border: 1px solid rgba(255,255,255,0.3);
-        border-radius: 10px;
-        padding: 8px 14px;
-        font-size: 13px;
-        font-weight: bold;
-        color: #fff;
-        text-decoration: none;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.25);
-        transition: background 0.2s, transform 0.2s;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-    #home-btn:hover {
-        background: rgba(30,41,59,0.95);
-        transform: translateY(-2px);
-    }
-</style>
+        /* 讀數格配色（波長橘／週期綠 — 沿用原版數值色系） */
+        .rc-lambda { background: #fff7ed; border-color: #fed7aa; color: #c2410c; }
+        .rc-period { background: var(--pl-ok-bg); border-color: #bbf7d0; color: var(--pl-ok-text); }
+    </style>
 </head>
 <body>
 
+<div id="topbar">
+    <div style="display: flex; align-items: center; gap: 16px;">
+        <button type="button" class="panel-toggle-btn" id="btn-toggle-left">
+            <span>☰</span> <span data-i18n="topbar.controls">控制</span>
+        </button>
+        <div class="title-block">
+            <h1 data-i18n="topbar.title">🌊 繩波與高級圖表模擬器</h1>
+            <p data-i18n="topbar.subtitle">HKDSE Physics · Book 3 · Chapter 4 · 位移-距離圖 (s-d) &amp; 位移-時間圖 (s-t)</p>
+        </div>
+    </div>
+    <div class="tb-actions">
+        <button type="button" class="panel-toggle-btn" id="btn-toggle-right">
+            <span>📖</span> <span data-i18n="topbar.info">資訊</span>
+        </button>
+    </div>
+</div>
 
-    <div class="app-container">
-        <div class="main-content">
-            <div class="graph-container" id="container-sd">
-                <div class="graph-title">位移 - 距離圖 (s-d 圖) — 空間快照</div>
-                <canvas id="sd-graph"></canvas>
-            </div>
-
-            <div class="graph-container" id="container-st">
-                <div class="graph-title">位移 - 時間圖 (s-t 圖) — 觀察點的振動歷史</div>
-                <canvas id="st-graph"></canvas>
+<div id="main">
+    <div id="left-panel">
+        <div class="card">
+            <div class="card-header">🎬 <span data-i18n="panel.actions.title">播放控制</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <div class="action-row">
+                    <button type="button" class="action-btn btn-play paused" id="play-btn">播放 (Play)</button>
+                    <button type="button" class="action-btn btn-reset" id="reset-btn" data-i18n="actions.reset">重設至 t=0 並暫停</button>
+                </div>
             </div>
         </div>
 
-        <div class="sidebar">
-            
-            <div class="action-panel">
-                <button id="play-btn" class="btn">播放 (Play)</button>
-                <button id="reset-btn" class="btn">重設至 t=0 並暫停</button>
+        <div class="card">
+            <div class="card-header">🎯 <span data-i18n="panel.targets.title">動態觀察目標 (Observation Targets)</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <div id="targets-container"></div>
+                <button type="button" id="add-target-btn" class="add-target-btn" data-i18n="targets.add">➕ 新增觀察點</button>
             </div>
+        </div>
 
-            <details open>
-                <summary>動態觀察目標 (Observation Targets)</summary>
-                <div class="details-content">
-                    <div id="targets-container"></div>
-                    <button id="add-target-btn" class="add-target-btn">➕ 新增觀察點</button>
-                </div>
-            </details>
+        <div class="card">
+            <div class="card-header">🌊 <span data-i18n="panel.source.title">波源與初始狀態 (Initial State)</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <div class="ctl-label" data-i18n="source.mode">波形生成模式</div>
+                <select id="wave-mode">
+                    <option value="continuous" selected data-i18n="source.modeContinuous">完整連續波 (DSE 常見預設)</option>
+                    <option value="propagate" data-i18n="source.modePropagate">波源首發傳播 (由左至右)</option>
+                </select>
+                <div class="ctl-label" data-i18n="source.phase">左側波源 起始狀態 (t=0)</div>
+                <select id="wave-phase">
+                    <option value="3.14159" data-i18n="source.phaseEqUp">平衡位置 (s=0)，準備向上</option>
+                    <option value="0" data-i18n="source.phaseEqDown">平衡位置 (s=0)，準備向下</option>
+                    <option value="1.5708" data-i18n="source.phaseCrest">位於波峰 (+A)，準備向下</option>
+                    <option value="-1.5708" data-i18n="source.phaseTrough">位於波谷 (-A)，準備向上</option>
+                    <option value="custom" data-i18n="source.phaseCustom">⚙️ 自由控制 (自訂位置與方向)</option>
+                </select>
 
-            <details open>
-                <summary>波源與初始狀態 (Initial State)</summary>
-                <div class="details-content">
-                    <div class="control-group">
-                        <label>波形生成模式</label>
-                        <select id="wave-mode">
-                            <option value="continuous" selected>完整連續波 (DSE 常見預設)</option>
-                            <option value="propagate">波源首發傳播 (由左至右)</option>
-                        </select>
-                    </div>
-                    <div class="control-group">
-                        <label>左側波源 起始狀態 (t=0)</label>
-                        <select id="wave-phase">
-                            <option value="3.14159">平衡位置 (s=0)，準備向上</option>
-                            <option value="0">平衡位置 (s=0)，準備向下</option>
-                            <option value="1.5708">位於波峰 (+A)，準備向下</option>
-                            <option value="-1.5708">位於波谷 (-A)，準備向上</option>
-                            <option value="custom">⚙️ 自由控制 (自訂位置與方向)</option>
-                        </select>
-                    </div>
-                    
-                    <div class="control-group" id="custom-phase-group" style="display: none; background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px dashed #cbd5e0;">
-                        <label>1. 起點位移 (Y軸位置)</label>
-                        <div style="display: flex; align-items: center; gap: 8px; margin-top: 5px;">
-                            <span style="font-size: 12px; color: #718096; flex-shrink: 0;">波谷</span>
-                            <input type="range" id="custom-y-percent" min="-100" max="100" value="0" style="flex-grow: 1;">
-                            <span style="font-size: 12px; color: #718096; flex-shrink: 0;">波峰</span>
+                <div id="custom-phase-group">
+                    <div class="slider-row">
+                        <div class="slider-head"><label data-i18n="custom.y">1. 起點位移 (Y軸位置)</label><span class="val" id="custom-y-val">0.0 格</span></div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="endcap" data-i18n="custom.trough">波谷</span>
+                            <input type="range" id="custom-y-percent" min="-100" max="100" value="0" style="flex: 1;">
+                            <span class="endcap" data-i18n="custom.crest">波峰</span>
                         </div>
-                        <div class="value-display" id="custom-y-val" style="margin-bottom: 10px;">0.0 格</div>
-
-                        <label>2. 下一瞬間移動方向</label>
-                        <select id="custom-dir" style="margin-top: 5px;">
-                            <option value="up">向 ↑ 上移動</option>
-                            <option value="down" selected>向 ↓ 下移動</option>
-                        </select>
-                        <div class="hint-text" id="phase-hint">狀態計算中...</div>
                     </div>
+                    <div class="ctl-label" data-i18n="custom.dir">2. 下一瞬間移動方向</div>
+                    <select id="custom-dir">
+                        <option value="up" data-i18n="custom.dirUp">向 ↑ 上移動</option>
+                        <option value="down" selected data-i18n="custom.dirDown">向 ↓ 下移動</option>
+                    </select>
+                    <div class="hint-text" id="phase-hint" data-i18n="custom.calculating">狀態計算中...</div>
                 </div>
-            </details>
+            </div>
+        </div>
 
-            <details>
-                <summary>顯示設定 (Display Options)</summary>
-                <div class="details-content">
-                    <label style="display: flex; gap: 8px; font-weight: normal; cursor: pointer;">
-                        <input type="checkbox" id="toggle-minor-grid" checked> 顯示副格線 (空間0.1格 / 時間0.1秒)
-                    </label>
-                    <label style="display: flex; gap: 8px; font-weight: normal; cursor: pointer;">
-                        <input type="checkbox" id="toggle-sd" checked> 顯示位移-距離圖 (s-d 圖)
-                    </label>
-                    <label style="display: flex; gap: 8px; font-weight: normal; cursor: pointer;">
-                        <input type="checkbox" id="toggle-st" checked> 顯示位移-時間圖 (s-t 圖)
-                    </label>
-                    <label style="display: flex; gap: 8px; font-weight: normal; cursor: pointer; color: #e67e22;">
-                        <input type="checkbox" id="toggle-labels"> 顯示波長與週期標記 (可自由拖曳)
-                    </label>
+        <div class="card collapsed">
+            <div class="card-header">👁 <span data-i18n="panel.display.title">顯示設定 (Display Options)</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <div class="toggle-row" id="row-minor">
+                    <div class="toggle-track on" id="opt-minor"><div class="toggle-thumb"></div></div>
+                    <span data-i18n="display.minor">顯示副格線 (空間0.1格 / 時間0.1秒)</span>
                 </div>
-            </details>
-
-            <details open>
-                <summary>物理參數 (Physics Parameters)</summary>
-                <div class="details-content">
-                    <div class="control-group">
-                        <label>振幅 (Amplitude, A)</label>
-                        <input type="range" id="amp" min="0.5" max="2.5" step="0.1" value="1.5">
-                        <div class="value-display" id="amp-val">-</div>
-                    </div>
-                    <div class="control-group">
-                        <label>頻率 (Frequency, f)</label>
-                        <input type="range" id="freq" min="0.2" max="2.0" step="0.1" value="0.8">
-                        <div class="value-display" id="freq-val">-</div>
-                    </div>
-                    <div class="control-group">
-                        <label>波速 (Wave Speed, v)</label>
-                        <input type="range" id="vel" min="40" max="200" step="4" value="100">
-                        <div class="value-display" id="vel-val">-</div>
-                    </div>
-                    <div class="physics-values">
-                        <div><strong>波長 &lambda; :</strong> <span id="calc-lambda" style="color:#e67e22"></span></div>
-                        <div><strong>週期 T :</strong> <span id="calc-period" style="color:#27ae60"></span></div>
-                    </div>
+                <div class="toggle-row" id="row-sd">
+                    <div class="toggle-track on" id="opt-sd"><div class="toggle-thumb"></div></div>
+                    <span data-i18n="display.sd">顯示位移-距離圖 (s-d 圖)</span>
                 </div>
-            </details>
+                <div class="toggle-row" id="row-st">
+                    <div class="toggle-track on" id="opt-st"><div class="toggle-thumb"></div></div>
+                    <span data-i18n="display.st">顯示位移-時間圖 (s-t 圖)</span>
+                </div>
+                <div class="toggle-row" id="row-labels">
+                    <div class="toggle-track" id="opt-labels"><div class="toggle-thumb"></div></div>
+                    <span data-i18n="display.labels">顯示波長與週期標記 (可自由拖曳)</span>
+                </div>
+            </div>
+        </div>
 
+        <div class="card">
+            <div class="card-header">⚙️ <span data-i18n="panel.physics.title">物理參數 (Physics Parameters)</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <div class="slider-row">
+                    <div class="slider-head"><label data-i18n="physics.amp">振幅 (Amplitude, A)</label><span class="val" id="amp-val">-</span></div>
+                    <input type="range" id="amp" min="0.5" max="2.5" step="0.1" value="1.5">
+                </div>
+                <div class="slider-row">
+                    <div class="slider-head"><label data-i18n="physics.freq">頻率 (Frequency, f)</label><span class="val" id="freq-val">-</span></div>
+                    <input type="range" id="freq" min="0.2" max="2.0" step="0.1" value="0.8">
+                </div>
+                <div class="slider-row">
+                    <div class="slider-head"><label data-i18n="physics.vel">波速 (Wave Speed, v)</label><span class="val" id="vel-val">-</span></div>
+                    <input type="range" id="vel" min="40" max="200" step="4" value="100">
+                </div>
+                <div class="readout-grid">
+                    <div class="readout-cell rc-lambda"><small data-i18n="readout.lambda">波長 λ</small><span id="calc-lambda"></span></div>
+                    <div class="readout-cell rc-period"><small data-i18n="readout.period">週期 T</small><span id="calc-period"></span></div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
+    <div id="canvas-wrap">
+        <div class="graph-container" id="container-sd">
+            <div class="graph-title" data-i18n="graph.sdTitle">位移 - 距離圖 (s-d 圖) — 空間快照</div>
+            <canvas id="sd-graph"></canvas>
+        </div>
+        <div class="graph-container" id="container-st">
+            <div class="graph-title" data-i18n="graph.stTitle">位移 - 時間圖 (s-t 圖) — 觀察點的振動歷史</div>
+            <canvas id="st-graph"></canvas>
+        </div>
+    </div>
 
-            const canvasSD = document.getElementById('sd-graph');
-            const ctxSD = canvasSD.getContext('2d');
-            const canvasST = document.getElementById('st-graph');
-            const ctxST = canvasST.getContext('2d');
+    <div id="right-panel">
+        <div class="formula-box">
+            <h4>🌊 <span data-i18n="formula.title">波的基本關係式</span></h4>
+            <div class="formula"><i>v</i> = <i>f λ</i>&emsp;·&emsp;<i>T</i> = 1/<i>f</i></div>
+            <div class="formula-desc" data-i18n-html="formula.desc">
+                <span>v</span> 波速 · <span>f</span> 頻率 · <span>λ</span> 波長 · <span>T</span> 週期 · <span>A</span> 振幅。
+            </div>
+        </div>
 
-            const LOGICAL_W = 800;
-            const LOGICAL_H = 240; 
-            const GRID_SIZE = 40;
-            const MAX_GRIDS = 760 / GRID_SIZE; 
+        <div class="guide-box">
+            <h4>🧭 <span data-i18n="tips.title">操作提示</span></h4>
+            <div class="info-box" data-i18n-html="tips.body">
+                🖱️ 在 s-d 圖<b>拖曳觀察點</b>沿 x 軸移動；<b>點擊</b>圖上任意位置可把最近的觀察點移過去。<br>
+                開啟「波長與週期標記」後，可在兩張圖上<b>自由拖曳</b>量度箭頭。
+            </div>
+        </div>
+    </div>
+</div>
 
-            function prepareCanvas(canvas, ctx) {
-                const dpr = window.devicePixelRatio || 1;
-                if (canvas.width !== LOGICAL_W * dpr || canvas.height !== LOGICAL_H * dpr) {
-                    canvas.width = LOGICAL_W * dpr;
-                    canvas.height = LOGICAL_H * dpr;
-                    canvas.style.maxWidth = LOGICAL_W + 'px';
-                    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); 
-                }
-                ctx.clearRect(0, 0, LOGICAL_W, LOGICAL_H);
+<!-- ═══════════ 頁面字典（zh 必填；en 缺字自動回退 zh） ═══════════ -->
+<script>
+PhysLab.i18n.register({
+    zh: {
+        'topbar.title': '🌊 繩波與高級圖表模擬器',
+        'topbar.subtitle': 'HKDSE Physics · Book 3 · Chapter 4 · 位移-距離圖 (s-d) & 位移-時間圖 (s-t)',
+        'topbar.controls': '控制',
+        'topbar.info': '資訊',
+
+        'panel.actions.title': '播放控制',
+        'actions.play': '播放 (Play)',
+        'actions.pause': '暫停 (Pause)',
+        'actions.reset': '重設至 t=0 並暫停',
+
+        'panel.targets.title': '動態觀察目標 (Observation Targets)',
+        'targets.add': '➕ 新增觀察點',
+        'targets.item': '● 觀察點 {n}',
+        'targets.pos': 'x = {v} 格',
+        'targets.deleteTitle': '刪除此觀察點',
+        'targets.snapCrest': '📍波峰',
+        'targets.snapEq': '📍平衡',
+        'targets.snapTrough': '📍波谷',
+
+        'panel.source.title': '波源與初始狀態 (Initial State)',
+        'source.mode': '波形生成模式',
+        'source.modeContinuous': '完整連續波 (DSE 常見預設)',
+        'source.modePropagate': '波源首發傳播 (由左至右)',
+        'source.phase': '左側波源 起始狀態 (t=0)',
+        'source.phaseEqUp': '平衡位置 (s=0)，準備向上',
+        'source.phaseEqDown': '平衡位置 (s=0)，準備向下',
+        'source.phaseCrest': '位於波峰 (+A)，準備向下',
+        'source.phaseTrough': '位於波谷 (-A)，準備向上',
+        'source.phaseCustom': '⚙️ 自由控制 (自訂位置與方向)',
+
+        'custom.y': '1. 起點位移 (Y軸位置)',
+        'custom.trough': '波谷',
+        'custom.crest': '波峰',
+        'custom.dir': '2. 下一瞬間移動方向',
+        'custom.dirUp': '向 ↑ 上移動',
+        'custom.dirDown': '向 ↓ 下移動',
+        'custom.calculating': '狀態計算中...',
+        'custom.startState': '起點狀態: {s}',
+        'custom.atCrest': '已達波峰，必須向下',
+        'custom.atTrough': '已達波谷，必須向上',
+        'custom.readyUp': '準備向 ↑ 上移動',
+        'custom.readyDown': '準備向 ↓ 下移動',
+
+        'panel.display.title': '顯示設定 (Display Options)',
+        'display.minor': '顯示副格線 (空間0.1格 / 時間0.1秒)',
+        'display.sd': '顯示位移-距離圖 (s-d 圖)',
+        'display.st': '顯示位移-時間圖 (s-t 圖)',
+        'display.labels': '顯示波長與週期標記 (可自由拖曳)',
+
+        'panel.physics.title': '物理參數 (Physics Parameters)',
+        'physics.amp': '振幅 (Amplitude, A)',
+        'physics.freq': '頻率 (Frequency, f)',
+        'physics.vel': '波速 (Wave Speed, v)',
+        'readout.lambda': '波長 λ',
+        'readout.period': '週期 T',
+
+        'unit.grid': '{v} 格',
+        'unit.gridPerSec': '{v} 格/s',
+        'unit.sec': '{v} 秒',
+
+        'alert.maxTargets': '為保持畫面整潔，最多只能加入 5 個觀察點喔！',
+        'alert.minTargets': '至少需要保留 1 個觀察點喔！',
+        'alert.snapNotFound': '在目前畫面狀態下，找不到該特徵點（若設定為傳播模式，請先播放讓波傳遞）。',
+
+        'graph.sdTitle': '位移 - 距離圖 (s-d 圖) — 空間快照',
+        'graph.stTitle': '位移 - 時間圖 (s-t 圖) — 觀察點的振動歷史',
+
+        'canvas.axisS': '位移 s',
+        'canvas.axisD': '距離 d',
+        'canvas.axisT': '時間 t',
+        'canvas.gridUnit': '格',
+        'canvas.lambdaLabel': '波長 λ = {v} 格',
+        'canvas.periodLabel': '週期 T = {v} s',
+        'canvas.elapsed': '經過時間 t = {v} s',
+
+        'formula.title': '波的基本關係式',
+        'formula.desc': '<span>v</span> 波速 · <span>f</span> 頻率 · <span>λ</span> 波長 · <span>T</span> 週期 · <span>A</span> 振幅。',
+        'tips.title': '操作提示',
+        'tips.body': '🖱️ 在 s-d 圖<b>拖曳觀察點</b>沿 x 軸移動；<b>點擊</b>圖上任意位置可把最近的觀察點移過去。<br>開啟「波長與週期標記」後，可在兩張圖上<b>自由拖曳</b>量度箭頭。'
+    },
+    en: {}
+});
+</script>
+
+<!-- ═══════════ 頁面邏輯（運動計算與圖表繪製逐字保留自原版；只換接線） ═══════════ -->
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+
+        const tt = PhysLab.i18n.t;   // 譯名 tt：避免遮蔽下方繪圖迴圈的 let t
+
+        const canvasSD = document.getElementById('sd-graph');
+        const ctxSD = canvasSD.getContext('2d');
+        const canvasST = document.getElementById('st-graph');
+        const ctxST = canvasST.getContext('2d');
+
+        const LOGICAL_W = 800;
+        const LOGICAL_H = 240;
+        const GRID_SIZE = 40;
+        const MAX_GRIDS = 760 / GRID_SIZE;
+
+        function prepareCanvas(canvas, ctx) {
+            const dpr = window.devicePixelRatio || 1;
+            if (canvas.width !== LOGICAL_W * dpr || canvas.height !== LOGICAL_H * dpr) {
+                canvas.width = LOGICAL_W * dpr;
+                canvas.height = LOGICAL_H * dpr;
+                canvas.style.maxWidth = LOGICAL_W + 'px';
+                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
             }
+            ctx.clearRect(0, 0, LOGICAL_W, LOGICAL_H);
+        }
 
-            const ampInput = document.getElementById('amp');
-            const freqInput = document.getElementById('freq');
-            const velInput = document.getElementById('vel');
-            const waveModeInput = document.getElementById('wave-mode');
-            const wavePhaseInput = document.getElementById('wave-phase');
-            const toggleMinorGrid = document.getElementById('toggle-minor-grid');
-            const toggleLabels = document.getElementById('toggle-labels');
-            
-            const customPhaseGroup = document.getElementById('custom-phase-group');
-            const customYPercentInput = document.getElementById('custom-y-percent');
-            const customDirInput = document.getElementById('custom-dir');
-            const customYVal = document.getElementById('custom-y-val');
-            
-            const playBtn = document.getElementById('play-btn');
-            const resetBtn = document.getElementById('reset-btn');
-            
-            const ampVal = document.getElementById('amp-val');
-            const freqVal = document.getElementById('freq-val');
-            const velVal = document.getElementById('vel-val');
-            const phaseHint = document.getElementById('phase-hint');
-            const calcLambda = document.getElementById('calc-lambda');
-            const calcPeriod = document.getElementById('calc-period');
+        const ampInput = document.getElementById('amp');
+        const freqInput = document.getElementById('freq');
+        const velInput = document.getElementById('vel');
+        const waveModeInput = document.getElementById('wave-mode');
+        const wavePhaseInput = document.getElementById('wave-phase');
 
-            const targetsContainer = document.getElementById('targets-container');
-            const addTargetBtn = document.getElementById('add-target-btn');
+        const customPhaseGroup = document.getElementById('custom-phase-group');
+        const customYPercentInput = document.getElementById('custom-y-percent');
+        const customDirInput = document.getElementById('custom-dir');
+        const customYVal = document.getElementById('custom-y-val');
 
-            let time = 0;
-            let isPlaying = false; 
-            let lastTimestamp = 0;
-            const maxTimeWindow = 10; 
+        const playBtn = document.getElementById('play-btn');
+        const resetBtn = document.getElementById('reset-btn');
 
-            let currentCache = { 
-                A: 0, f: 0, v: 0, 
-                omega: 0, k: 0, lambda: 0,
-                mode: '', phase: 0 
-            };
-            
-            let renderPending = false;
+        const ampVal = document.getElementById('amp-val');
+        const freqVal = document.getElementById('freq-val');
+        const velVal = document.getElementById('vel-val');
+        const phaseHint = document.getElementById('phase-hint');
+        const calcLambda = document.getElementById('calc-lambda');
+        const calcPeriod = document.getElementById('calc-period');
 
-            let interactionState = {
-                canvasType: null,
-                isDragging: false,
-                dragType: null,  
-                dragTarget: null,
-                startX: 0,
-                startY: 0,
-                dragOffsetX: 0,
-                dragOffsetY: 0
-            };
+        const targetsContainer = document.getElementById('targets-container');
+        const addTargetBtn = document.getElementById('add-target-btn');
 
-            let labelState = {
-                show: false,
-                sd: { x: 40, y: 35 },
-                st: { x: 40, y: 35 }
-            };
+        let time = 0;
+        let isPlaying = false;
+        let lastTimestamp = 0;
+        const maxTimeWindow = 10;
 
-            let targets = [];
-            let targetIdCounter = 0;
-            const colorPalette = ['#e74c3c', '#3498db', '#9b59b6', '#2ecc71', '#e67e22'];
+        let currentCache = {
+            A: 0, f: 0, v: 0,
+            omega: 0, k: 0, lambda: 0,
+            mode: '', phase: 0
+        };
 
-            function requestRender() {
-                if (!isPlaying && !renderPending) {
-                    renderPending = true;
-                    requestAnimationFrame(() => {
-                        drawFrame();
-                        renderPending = false;
-                    });
-                }
-            }
+        let renderPending = false;
 
-            function getMousePos(canvas, evt) {
-                const rect = canvas.getBoundingClientRect();
-                const scaleX = LOGICAL_W / rect.width;
-                const scaleY = LOGICAL_H / rect.height;
-                return {
-                    x: (evt.clientX - rect.left) * scaleX,
-                    y: (evt.clientY - rect.top) * scaleY
-                };
-            }
+        let interactionState = {
+            canvasType: null,
+            isDragging: false,
+            dragType: null,
+            dragTarget: null,
+            startX: 0,
+            startY: 0,
+            dragOffsetX: 0,
+            dragOffsetY: 0
+        };
 
-            function isHoveringSDLabel(pos) {
-                if (!labelState.show) return false;
-                const lambda_px = currentCache.lambda;
-                return (pos.x >= labelState.sd.x && pos.x <= labelState.sd.x + lambda_px &&
-                        pos.y >= labelState.sd.y - 15 && pos.y <= labelState.sd.y + 15);
-            }
+        let labelState = {
+            show: false,
+            sd: { x: 40, y: 35 },
+            st: { x: 40, y: 35 }
+        };
 
-            function isHoveringSTLabel(pos) {
-                if (!labelState.show) return false;
-                const period_px = (1 / currentCache.f / maxTimeWindow) * (LOGICAL_W - 40);
-                return (pos.x >= labelState.st.x && pos.x <= labelState.st.x + period_px &&
-                        pos.y >= labelState.st.y - 15 && pos.y <= labelState.st.y + 15);
-            }
+        let targets = [];
+        let targetIdCounter = 0;
+        const colorPalette = ['#e74c3c', '#3498db', '#9b59b6', '#2ecc71', '#e67e22'];
 
-            function getHoveredTarget(pos) {
-                const clickPx = pos.x - 40;
-                for (let i = 0; i < targets.length; i++) {
-                    let targetPxX = parseFloat(targets[i].rng.value) * GRID_SIZE;
-                    if (Math.abs(clickPx - targetPxX) <= 15) { 
-                        return targets[i];
-                    }
-                }
-                return null;
-            }
-
-            // SD 圖表互動
-            canvasSD.addEventListener('mousedown', (e) => {
-                const pos = getMousePos(canvasSD, e);
-                interactionState.isDragging = true;
-                interactionState.startX = pos.x;
-                interactionState.startY = pos.y;
-                interactionState.canvasType = 'sd';
-
-                if (isHoveringSDLabel(pos)) {
-                    interactionState.dragType = 'label';
-                    interactionState.dragOffsetX = pos.x - labelState.sd.x;
-                    interactionState.dragOffsetY = pos.y - labelState.sd.y;
-                } else {
-                    let target = getHoveredTarget(pos);
-                    if (target) {
-                        interactionState.dragType = 'target';
-                        interactionState.dragTarget = target;
-                    } else {
-                        interactionState.dragType = 'bg'; 
-                    }
-                }
+        /* .toggle-row 開關接線：回傳 {checked} 狀態物件，
+           讓下方繪圖程式沿用原版 toggleMinorGrid.checked 讀法 */
+        function makeToggle(rowId, trackId, initial, onFlip) {
+            const track = document.getElementById(trackId);
+            const state = { checked: initial };
+            track.classList.toggle('on', initial);
+            document.getElementById(rowId).addEventListener('click', () => {
+                state.checked = !state.checked;
+                track.classList.toggle('on', state.checked);
+                onFlip(state.checked);
             });
+            return state;
+        }
 
-            canvasSD.addEventListener('mousemove', (e) => {
-                const pos = getMousePos(canvasSD, e);
-                
-                if (interactionState.isDragging) {
-                    if (interactionState.dragType === 'label') canvasSD.style.cursor = 'grabbing';
-                    else if (interactionState.dragType === 'target') canvasSD.style.cursor = 'ew-resize';
-                } else {
-                    if (isHoveringSDLabel(pos)) canvasSD.style.cursor = 'grab';
-                    else if (getHoveredTarget(pos)) canvasSD.style.cursor = 'ew-resize';
-                    else canvasSD.style.cursor = 'crosshair';
-                    return; 
-                }
-
-                if (interactionState.dragType === 'label') {
-                    labelState.sd.x = pos.x - interactionState.dragOffsetX;
-                    labelState.sd.y = pos.y - interactionState.dragOffsetY;
-                    requestRender();
-                } else if (interactionState.dragType === 'target') {
-                    let newPx = pos.x - 40;
-                    let newGrid = Math.max(0, Math.min(MAX_GRIDS, newPx / GRID_SIZE));
-                    interactionState.dragTarget.rng.value = newGrid.toFixed(3);
-                    updateTargetDisplays(); 
-                    requestRender();
-                }
-            });
-
-            canvasSD.addEventListener('mouseup', (e) => {
-                if (!interactionState.isDragging) return;
-                const pos = getMousePos(canvasSD, e);
-                
-                const dx = pos.x - interactionState.startX;
-                const dy = pos.y - interactionState.startY;
-                const isClick = Math.sqrt(dx*dx + dy*dy) < 3;
-
-                if (isClick && interactionState.dragType === 'bg' && targets.length > 0) {
-                    const clickPx = pos.x - 40; 
-                    const clickedGrid = Math.max(0, Math.min(MAX_GRIDS, clickPx / GRID_SIZE));
-                    
-                    let closestTarget = targets[0];
-                    let minDx = Math.abs(parseFloat(closestTarget.rng.value) - clickedGrid);
-
-                    for (let i = 1; i < targets.length; i++) {
-                        let tx = Math.abs(parseFloat(targets[i].rng.value) - clickedGrid);
-                        if (tx < minDx) {
-                            minDx = tx;
-                            closestTarget = targets[i];
-                        }
-                    }
-                    closestTarget.rng.value = clickedGrid.toFixed(3);
-                    updateTargetDisplays();
-                    requestRender();
-                }
-
-                interactionState.isDragging = false;
-                interactionState.dragType = null;
-                interactionState.dragTarget = null;
-                canvasSD.style.cursor = 'crosshair';
-            });
-            canvasSD.addEventListener('mouseleave', () => { interactionState.isDragging = false; canvasSD.style.cursor = 'crosshair'; });
-
-            // ST 圖表互動
-            canvasST.addEventListener('mousedown', (e) => {
-                const pos = getMousePos(canvasST, e);
-                if (isHoveringSTLabel(pos)) {
-                    interactionState.isDragging = true;
-                    interactionState.dragType = 'label';
-                    interactionState.canvasType = 'st';
-                    interactionState.dragOffsetX = pos.x - labelState.st.x;
-                    interactionState.dragOffsetY = pos.y - labelState.st.y;
-                }
-            });
-
-            canvasST.addEventListener('mousemove', (e) => {
-                const pos = getMousePos(canvasST, e);
-                if (interactionState.isDragging && interactionState.canvasType === 'st') {
-                    canvasST.style.cursor = 'grabbing';
-                    labelState.st.x = pos.x - interactionState.dragOffsetX;
-                    labelState.st.y = pos.y - interactionState.dragOffsetY;
-                    requestRender();
-                } else {
-                    canvasST.style.cursor = isHoveringSTLabel(pos) ? 'grab' : 'crosshair';
-                }
-            });
-
-            canvasST.addEventListener('mouseup', () => interactionState.isDragging = false);
-            canvasST.addEventListener('mouseleave', () => { interactionState.isDragging = false; canvasST.style.cursor = 'crosshair'; });
-
-            // =========================================================
-
-            window.addTarget = function(initialGridX = 4.0) {
-                if (targets.length >= 5) {
-                    alert("為保持畫面整潔，最多只能加入 5 個觀察點喔！");
-                    return;
-                }
-                targetIdCounter++;
-                const id = targetIdCounter;
-                const color = colorPalette[(id - 1) % colorPalette.length]; 
-                
-                const block = document.createElement('div');
-                block.className = 'target-block';
-                block.id = `block-t${id}`;
-                block.style.borderLeftColor = color;
-                block.style.marginBottom = '10px';
-                
-                block.innerHTML = `
-                    <div class="target-header">
-                        <label style="color: ${color};">● 觀察點 ${id}</label>
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <span class="value-display" id="val-t${id}" style="color: ${color}; margin:0;">-</span>
-                            <button class="icon-btn" onclick="removeTarget(${id})" title="刪除此觀察點">🗑️</button>
-                        </div>
-                    </div>
-                    <input type="range" id="target-${id}" min="0" max="${MAX_GRIDS}" step="0.001" value="${initialGridX}">
-                    <div class="quick-actions">
-                        <button onclick="snapTarget(${id}, 'crest')">📍波峰</button>
-                        <button onclick="snapTarget(${id}, 'eq')">📍平衡</button>
-                        <button onclick="snapTarget(${id}, 'trough')">📍波谷</button>
-                    </div>
-                `;
-                
-                targetsContainer.appendChild(block);
-                
-                const targetObj = {
-                    id: id,
-                    rng: document.getElementById(`target-${id}`),
-                    val: document.getElementById(`val-t${id}`),
-                    block: block,
-                    color: color
-                };
-                
-                targetObj.rng.addEventListener('input', () => {
-                    updateTargetDisplays();
-                    requestRender();
+        function requestRender() {
+            if (!isPlaying && !renderPending) {
+                renderPending = true;
+                requestAnimationFrame(() => {
+                    drawFrame();
+                    renderPending = false;
                 });
-                
-                targets.push(targetObj);
+            }
+        }
+
+        function getMousePos(canvas, evt) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = LOGICAL_W / rect.width;
+            const scaleY = LOGICAL_H / rect.height;
+            return {
+                x: (evt.clientX - rect.left) * scaleX,
+                y: (evt.clientY - rect.top) * scaleY
+            };
+        }
+
+        function isHoveringSDLabel(pos) {
+            if (!labelState.show) return false;
+            const lambda_px = currentCache.lambda;
+            return (pos.x >= labelState.sd.x && pos.x <= labelState.sd.x + lambda_px &&
+                    pos.y >= labelState.sd.y - 15 && pos.y <= labelState.sd.y + 15);
+        }
+
+        function isHoveringSTLabel(pos) {
+            if (!labelState.show) return false;
+            const period_px = (1 / currentCache.f / maxTimeWindow) * (LOGICAL_W - 40);
+            return (pos.x >= labelState.st.x && pos.x <= labelState.st.x + period_px &&
+                    pos.y >= labelState.st.y - 15 && pos.y <= labelState.st.y + 15);
+        }
+
+        function getHoveredTarget(pos) {
+            const clickPx = pos.x - 40;
+            for (let i = 0; i < targets.length; i++) {
+                let targetPxX = parseFloat(targets[i].rng.value) * GRID_SIZE;
+                if (Math.abs(clickPx - targetPxX) <= 15) {
+                    return targets[i];
+                }
+            }
+            return null;
+        }
+
+        // SD 圖表互動
+        canvasSD.addEventListener('mousedown', (e) => {
+            const pos = getMousePos(canvasSD, e);
+            interactionState.isDragging = true;
+            interactionState.startX = pos.x;
+            interactionState.startY = pos.y;
+            interactionState.canvasType = 'sd';
+
+            if (isHoveringSDLabel(pos)) {
+                interactionState.dragType = 'label';
+                interactionState.dragOffsetX = pos.x - labelState.sd.x;
+                interactionState.dragOffsetY = pos.y - labelState.sd.y;
+            } else {
+                let target = getHoveredTarget(pos);
+                if (target) {
+                    interactionState.dragType = 'target';
+                    interactionState.dragTarget = target;
+                } else {
+                    interactionState.dragType = 'bg';
+                }
+            }
+        });
+
+        canvasSD.addEventListener('mousemove', (e) => {
+            const pos = getMousePos(canvasSD, e);
+
+            if (interactionState.isDragging) {
+                if (interactionState.dragType === 'label') canvasSD.style.cursor = 'grabbing';
+                else if (interactionState.dragType === 'target') canvasSD.style.cursor = 'ew-resize';
+            } else {
+                if (isHoveringSDLabel(pos)) canvasSD.style.cursor = 'grab';
+                else if (getHoveredTarget(pos)) canvasSD.style.cursor = 'ew-resize';
+                else canvasSD.style.cursor = 'crosshair';
+                return;
+            }
+
+            if (interactionState.dragType === 'label') {
+                labelState.sd.x = pos.x - interactionState.dragOffsetX;
+                labelState.sd.y = pos.y - interactionState.dragOffsetY;
+                requestRender();
+            } else if (interactionState.dragType === 'target') {
+                let newPx = pos.x - 40;
+                let newGrid = Math.max(0, Math.min(MAX_GRIDS, newPx / GRID_SIZE));
+                interactionState.dragTarget.rng.value = newGrid.toFixed(3);
                 updateTargetDisplays();
                 requestRender();
-            };
-
-            window.removeTarget = function(id) {
-                if (targets.length <= 1) {
-                    alert("至少需要保留 1 個觀察點喔！");
-                    return;
-                }
-                const index = targets.findIndex(t => t.id === id);
-                if (index > -1) {
-                    targets[index].block.remove(); 
-                    targets.splice(index, 1);      
-                    requestRender();
-                }
-            };
-
-            addTargetBtn.addEventListener('click', () => {
-                const newGridX = (2.5 + targets.length * 2.5) % MAX_GRIDS; 
-                addTarget(newGridX.toFixed(1));
-            });
-
-            addTarget(4.0); 
-
-            window.snapTarget = function(id, type) {
-                const targetObj = targets.find(t => t.id === id);
-                if (!targetObj) return;
-
-                const { A, f, v, mode, phase, omega, k } = currentCache;
-                const currentPx = parseFloat(targetObj.rng.value) * GRID_SIZE; 
-
-                let bestPx = currentPx;
-                let minDistance = Infinity;
-                let found = false;
-
-                for(let x = 1; x <= 760; x += 1) {
-                    let y0 = getWaveDisplacement(x - 1, time, A, omega, k, v, mode, phase);
-                    let y1 = getWaveDisplacement(x, time, A, omega, k, v, mode, phase);
-                    let y2 = getWaveDisplacement(x + 1, time, A, omega, k, v, mode, phase);
-
-                    if (mode === 'propagate' && time < x/v) continue;
-
-                    let isMatch = false;
-                    let exactX = x;
-
-                    if (type === 'crest' && y1 >= y0 && y1 >= y2 && y1 > 0.1) {
-                        isMatch = true;
-                        let theta = k * x - omega * time + phase;
-                        let n = Math.round((theta - Math.PI/2) / (2*Math.PI));
-                        exactX = (Math.PI/2 + 2*n*Math.PI + omega * time - phase) / k;
-                    }
-                    
-                    if (type === 'trough' && y1 <= y0 && y1 <= y2 && y1 < -0.1) {
-                        isMatch = true;
-                        let theta = k * x - omega * time + phase;
-                        let n = Math.round((theta - 3*Math.PI/2) / (2*Math.PI));
-                        exactX = (3*Math.PI/2 + 2*n*Math.PI + omega * time - phase) / k;
-                    }
-                    
-                    if (type === 'eq' && y0 * y1 <= 0 && Math.abs(y0) + Math.abs(y1) > 0.001) {
-                        isMatch = true;
-                        let theta = k * x - omega * time + phase;
-                        let n = Math.round(theta / Math.PI);
-                        exactX = (n * Math.PI + omega * time - phase) / k;
-                    }
-
-                    if (isMatch) {
-                        let dist = Math.abs(exactX - currentPx);
-                        if (dist < minDistance) {
-                            minDistance = dist;
-                            bestPx = Math.max(0, Math.min(760, exactX)); 
-                            found = true;
-                        }
-                    }
-                }
-
-                if(found) {
-                    targetObj.rng.value = (bestPx / GRID_SIZE).toFixed(3);
-                    updateTargetDisplays();
-                    requestRender();
-                } else {
-                    alert("在目前畫面狀態下，找不到該特徵點（若設定為傳播模式，請先播放讓波傳遞）。");
-                }
-            };
-
-            document.getElementById('toggle-sd').addEventListener('change', (e) => document.getElementById('container-sd').style.display = e.target.checked ? 'block' : 'none');
-            document.getElementById('toggle-st').addEventListener('change', (e) => document.getElementById('container-st').style.display = e.target.checked ? 'block' : 'none');
-            toggleMinorGrid.addEventListener('change', () => requestRender());
-            toggleLabels.addEventListener('change', (e) => { labelState.show = e.target.checked; requestRender(); });
-
-            function getCurrentPhase() {
-                if (wavePhaseInput.value === 'custom') {
-                    let percent = parseFloat(customYPercentInput.value) / 100;
-                    let dir = customDirInput.value;
-                    let principalAngle = Math.asin(percent); 
-                    if (dir === 'down') return principalAngle;
-                    else return Math.PI - principalAngle;
-                }
-                return parseFloat(wavePhaseInput.value);
             }
+        });
 
-            function updatePhysicsCacheAndDisplays() {
-                const A_grid = parseFloat(ampInput.value);
-                const A = A_grid * GRID_SIZE;
-                const f = parseFloat(freqInput.value);
-                const v = parseFloat(velInput.value);
-                
-                currentCache.A = A;
-                currentCache.f = f;
-                currentCache.v = v;
-                currentCache.lambda = v / f;
-                currentCache.omega = 2 * Math.PI * f;
-                currentCache.k = 2 * Math.PI / currentCache.lambda;
-                currentCache.mode = waveModeInput.value;
-                currentCache.phase = getCurrentPhase();
+        canvasSD.addEventListener('mouseup', (e) => {
+            if (!interactionState.isDragging) return;
+            const pos = getMousePos(canvasSD, e);
 
-                ampVal.innerText = A_grid.toFixed(1) + " 格";
-                freqVal.innerText = f.toFixed(1) + " Hz";
-                velVal.innerText = (v / GRID_SIZE).toFixed(2) + " 格/s";
-                calcLambda.innerText = (currentCache.lambda / GRID_SIZE).toFixed(2) + " 格";
-                calcPeriod.innerText = (1 / f).toFixed(2) + " 秒";
+            const dx = pos.x - interactionState.startX;
+            const dy = pos.y - interactionState.startY;
+            const isClick = Math.sqrt(dx*dx + dy*dy) < 3;
 
-                if (wavePhaseInput.value === 'custom') {
-                    customPhaseGroup.style.display = 'block';
-                    let percent = parseFloat(customYPercentInput.value);
-                    let actualY_grid = A_grid * (percent / 100);
-                    customYVal.innerText = (actualY_grid > 0 ? "+" : "") + actualY_grid.toFixed(2) + " 格";
-                    
-                    let statusText = "";
-                    if (percent >= 99) statusText = "已達波峰，必須向下";
-                    else if (percent <= -99) statusText = "已達波谷，必須向上";
-                    else statusText = customDirInput.value === 'up' ? "準備向 ↑ 上移動" : "準備向 ↓ 下移動";
-                    phaseHint.innerText = `起點狀態: ${statusText}`;
-                } else {
-                    customPhaseGroup.style.display = 'none';
+            if (isClick && interactionState.dragType === 'bg' && targets.length > 0) {
+                const clickPx = pos.x - 40;
+                const clickedGrid = Math.max(0, Math.min(MAX_GRIDS, clickPx / GRID_SIZE));
+
+                let closestTarget = targets[0];
+                let minDx = Math.abs(parseFloat(closestTarget.rng.value) - clickedGrid);
+
+                for (let i = 1; i < targets.length; i++) {
+                    let tx = Math.abs(parseFloat(targets[i].rng.value) - clickedGrid);
+                    if (tx < minDx) {
+                        minDx = tx;
+                        closestTarget = targets[i];
+                    }
                 }
-            }
-
-            function updateTargetDisplays() {
-                targets.forEach(t => {
-                    t.val.innerText = "x = " + parseFloat(t.rng.value).toFixed(2) + " 格";
-                });
-            }
-
-            [ampInput, freqInput, velInput, customYPercentInput, customDirInput].forEach(input => {
-                input.addEventListener('input', () => {
-                    updatePhysicsCacheAndDisplays();
-                    requestRender();
-                });
-            });
-
-            [waveModeInput, wavePhaseInput].forEach(input => {
-                input.addEventListener('change', () => {
-                    updatePhysicsCacheAndDisplays();
-                    resetToZero();
-                });
-            });
-
-            playBtn.addEventListener('click', () => {
-                isPlaying = !isPlaying;
-                updatePlayButtonUI();
-                if (isPlaying) {
-                    lastTimestamp = performance.now();
-                    requestAnimationFrame(animate);
-                }
-            });
-
-            resetBtn.addEventListener('click', resetToZero);
-
-            function resetToZero() {
-                time = 0;
-                isPlaying = false;
-                updatePlayButtonUI();
-                prepareCanvas(canvasST, ctxST); 
+                closestTarget.rng.value = clickedGrid.toFixed(3);
+                updateTargetDisplays();
                 requestRender();
             }
 
-            function updatePlayButtonUI() {
-                if (isPlaying) {
-                    playBtn.innerText = "暫停 (Pause)";
-                    playBtn.style.backgroundColor = "#e74c3c"; 
-                } else {
-                    playBtn.innerText = "播放 (Play)";
-                    playBtn.style.backgroundColor = "#2ecc71"; 
+            interactionState.isDragging = false;
+            interactionState.dragType = null;
+            interactionState.dragTarget = null;
+            canvasSD.style.cursor = 'crosshair';
+        });
+        canvasSD.addEventListener('mouseleave', () => { interactionState.isDragging = false; canvasSD.style.cursor = 'crosshair'; });
+
+        // ST 圖表互動
+        canvasST.addEventListener('mousedown', (e) => {
+            const pos = getMousePos(canvasST, e);
+            if (isHoveringSTLabel(pos)) {
+                interactionState.isDragging = true;
+                interactionState.dragType = 'label';
+                interactionState.canvasType = 'st';
+                interactionState.dragOffsetX = pos.x - labelState.st.x;
+                interactionState.dragOffsetY = pos.y - labelState.st.y;
+            }
+        });
+
+        canvasST.addEventListener('mousemove', (e) => {
+            const pos = getMousePos(canvasST, e);
+            if (interactionState.isDragging && interactionState.canvasType === 'st') {
+                canvasST.style.cursor = 'grabbing';
+                labelState.st.x = pos.x - interactionState.dragOffsetX;
+                labelState.st.y = pos.y - interactionState.dragOffsetY;
+                requestRender();
+            } else {
+                canvasST.style.cursor = isHoveringSTLabel(pos) ? 'grab' : 'crosshair';
+            }
+        });
+
+        canvasST.addEventListener('mouseup', () => interactionState.isDragging = false);
+        canvasST.addEventListener('mouseleave', () => { interactionState.isDragging = false; canvasST.style.cursor = 'crosshair'; });
+
+        // =========================================================
+
+        window.addTarget = function(initialGridX = 4.0) {
+            if (targets.length >= 5) {
+                alert(tt('alert.maxTargets'));
+                return;
+            }
+            targetIdCounter++;
+            const id = targetIdCounter;
+            const color = colorPalette[(id - 1) % colorPalette.length];
+
+            const block = document.createElement('div');
+            block.className = 'target-block';
+            block.id = `block-t${id}`;
+            block.style.borderLeftColor = color;
+
+            block.innerHTML = `
+                <div class="target-header">
+                    <label class="t-name" style="color: ${color};"></label>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span class="val" id="val-t${id}" style="color: ${color};">-</span>
+                        <button type="button" class="icon-btn" onclick="removeTarget(${id})" data-i18n-title="targets.deleteTitle" title="刪除此觀察點">🗑️</button>
+                    </div>
+                </div>
+                <input type="range" id="target-${id}" min="0" max="${MAX_GRIDS}" step="0.001" value="${initialGridX}">
+                <div class="quick-actions">
+                    <button type="button" onclick="snapTarget(${id}, 'crest')" data-i18n="targets.snapCrest">📍波峰</button>
+                    <button type="button" onclick="snapTarget(${id}, 'eq')" data-i18n="targets.snapEq">📍平衡</button>
+                    <button type="button" onclick="snapTarget(${id}, 'trough')" data-i18n="targets.snapTrough">📍波谷</button>
+                </div>
+            `;
+
+            targetsContainer.appendChild(block);
+
+            const targetObj = {
+                id: id,
+                rng: document.getElementById(`target-${id}`),
+                val: document.getElementById(`val-t${id}`),
+                nameEl: block.querySelector('.t-name'),
+                block: block,
+                color: color
+            };
+            targetObj.nameEl.innerText = tt('targets.item', { n: id });
+            PhysLab.i18n.applyTo(block);   // 動態節點套用目前語言
+
+            targetObj.rng.addEventListener('input', () => {
+                updateTargetDisplays();
+                requestRender();
+            });
+
+            targets.push(targetObj);
+            updateTargetDisplays();
+            requestRender();
+        };
+
+        window.removeTarget = function(id) {
+            if (targets.length <= 1) {
+                alert(tt('alert.minTargets'));
+                return;
+            }
+            const index = targets.findIndex(t => t.id === id);
+            if (index > -1) {
+                targets[index].block.remove();
+                targets.splice(index, 1);
+                requestRender();
+            }
+        };
+
+        addTargetBtn.addEventListener('click', () => {
+            const newGridX = (2.5 + targets.length * 2.5) % MAX_GRIDS;
+            addTarget(newGridX.toFixed(1));
+        });
+
+        addTarget(4.0);
+
+        window.snapTarget = function(id, type) {
+            const targetObj = targets.find(t => t.id === id);
+            if (!targetObj) return;
+
+            const { A, f, v, mode, phase, omega, k } = currentCache;
+            const currentPx = parseFloat(targetObj.rng.value) * GRID_SIZE;
+
+            let bestPx = currentPx;
+            let minDistance = Infinity;
+            let found = false;
+
+            for(let x = 1; x <= 760; x += 1) {
+                let y0 = getWaveDisplacement(x - 1, time, A, omega, k, v, mode, phase);
+                let y1 = getWaveDisplacement(x, time, A, omega, k, v, mode, phase);
+                let y2 = getWaveDisplacement(x + 1, time, A, omega, k, v, mode, phase);
+
+                if (mode === 'propagate' && time < x/v) continue;
+
+                let isMatch = false;
+                let exactX = x;
+
+                if (type === 'crest' && y1 >= y0 && y1 >= y2 && y1 > 0.1) {
+                    isMatch = true;
+                    let theta = k * x - omega * time + phase;
+                    let n = Math.round((theta - Math.PI/2) / (2*Math.PI));
+                    exactX = (Math.PI/2 + 2*n*Math.PI + omega * time - phase) / k;
+                }
+
+                if (type === 'trough' && y1 <= y0 && y1 <= y2 && y1 < -0.1) {
+                    isMatch = true;
+                    let theta = k * x - omega * time + phase;
+                    let n = Math.round((theta - 3*Math.PI/2) / (2*Math.PI));
+                    exactX = (3*Math.PI/2 + 2*n*Math.PI + omega * time - phase) / k;
+                }
+
+                if (type === 'eq' && y0 * y1 <= 0 && Math.abs(y0) + Math.abs(y1) > 0.001) {
+                    isMatch = true;
+                    let theta = k * x - omega * time + phase;
+                    let n = Math.round(theta / Math.PI);
+                    exactX = (n * Math.PI + omega * time - phase) / k;
+                }
+
+                if (isMatch) {
+                    let dist = Math.abs(exactX - currentPx);
+                    if (dist < minDistance) {
+                        minDistance = dist;
+                        bestPx = Math.max(0, Math.min(760, exactX));
+                        found = true;
+                    }
                 }
             }
 
-            function getWaveDisplacement(x, t, A, omega, k, v, mode, phase) {
-                if (mode === 'continuous') {
-                    return A * Math.sin(k * x - omega * t + phase);
-                } else {
-                    if (t < x / v) return 0; 
-                    return A * Math.sin(k * x - omega * t + phase);
-                }
+            if(found) {
+                targetObj.rng.value = (bestPx / GRID_SIZE).toFixed(3);
+                updateTargetDisplays();
+                requestRender();
+            } else {
+                alert(tt('alert.snapNotFound'));
             }
+        };
 
-            function drawAxes(ctx, canvas, xAxisLabel, type = 'sd') {
-                const midY = LOGICAL_H / 2; 
-                const startX = 40; 
-                const showMinor = toggleMinorGrid.checked;
+        /* 顯示設定開關（原 checkbox → .toggle-row；狀態物件保留 .checked 讀法） */
+        const toggleMinorGrid = makeToggle('row-minor', 'opt-minor', true, () => requestRender());
+        makeToggle('row-sd', 'opt-sd', true, (on) => document.getElementById('container-sd').style.display = on ? 'block' : 'none');
+        makeToggle('row-st', 'opt-st', true, (on) => document.getElementById('container-st').style.display = on ? 'block' : 'none');
+        makeToggle('row-labels', 'opt-labels', false, (on) => { labelState.show = on; requestRender(); });
 
-                if (showMinor) {
-                    ctx.strokeStyle = '#f1f5f9';
-                    ctx.lineWidth = 1;
-                    const minorStep = GRID_SIZE / 10;
-                    for(let i = 0; i <= LOGICAL_H; i += minorStep) {
-                        ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(LOGICAL_W, i); ctx.stroke();
-                    }
-                }
-                ctx.strokeStyle = '#e2e8f0';
-                ctx.lineWidth = 1;
-                for(let i = 0; i <= LOGICAL_H; i += GRID_SIZE) {
-                    ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(LOGICAL_W, i); ctx.stroke();
-                }
-
-                let pxPerUnit = GRID_SIZE; 
-                let maxUnits = 19; 
-                
-                if (type === 'st') {
-                    pxPerUnit = (LOGICAL_W - startX) / maxTimeWindow; 
-                    maxUnits = maxTimeWindow;
-                }
-
-                if (showMinor) {
-                    ctx.strokeStyle = '#f1f5f9';
-                    ctx.lineWidth = 1;
-                    const minorStep = pxPerUnit / 10;
-                    for(let i = startX; i <= LOGICAL_W; i += minorStep) {
-                        ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, LOGICAL_H); ctx.stroke();
-                    }
-                }
-                ctx.strokeStyle = '#e2e8f0';
-                ctx.lineWidth = 1;
-                for(let i = startX; i <= LOGICAL_W; i += pxPerUnit) {
-                    ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, LOGICAL_H); ctx.stroke();
-                }
-
-                ctx.strokeStyle = '#4a5568';
-                ctx.lineWidth = 2;
-                ctx.beginPath(); ctx.moveTo(0, midY); ctx.lineTo(LOGICAL_W, midY); ctx.stroke(); 
-                ctx.beginPath(); ctx.moveTo(startX, 0); ctx.lineTo(startX, LOGICAL_H); ctx.stroke(); 
-
-                ctx.fillStyle = '#2d3748';
-                ctx.font = 'bold 12px Arial';
-                ctx.textAlign = 'left';
-                ctx.fillText("位移 s", 5, 18);
-                ctx.fillText("0", 25, midY + 15);
-
-                ctx.textAlign = 'right';
-                ctx.fillText(xAxisLabel, LOGICAL_W - 15, midY - 10);
-                
-                ctx.fillStyle = '#4a5568';
-                ctx.font = 'bold 11px Arial';
-                ctx.textAlign = 'center';
-                
-                if (type === 'st') {
-                    for (let t = 1; t <= maxTimeWindow; t++) {
-                        let x = startX + t * pxPerUnit;
-                        ctx.beginPath(); ctx.moveTo(x, midY - 4); ctx.lineTo(x, midY + 4); ctx.stroke();
-                        ctx.fillText(t + "s", x, midY + 18);
-                    }
-                } else if (type === 'sd') {
-                    for (let g = 2; g <= 18; g += 2) {
-                        let x = startX + g * pxPerUnit;
-                        ctx.beginPath(); ctx.moveTo(x, midY - 4); ctx.lineTo(x, midY + 4); ctx.stroke();
-                        ctx.fillText(g + "格", x, midY + 18);
-                    }
-                }
-                ctx.textAlign = 'left'; 
+        function getCurrentPhase() {
+            if (wavePhaseInput.value === 'custom') {
+                let percent = parseFloat(customYPercentInput.value) / 100;
+                let dir = customDirInput.value;
+                let principalAngle = Math.asin(percent);
+                if (dir === 'down') return principalAngle;
+                else return Math.PI - principalAngle;
             }
+            return parseFloat(wavePhaseInput.value);
+        }
 
-            function drawMeasurementArrow(ctx, x1, y1, x2, y2, color, text) {
-                ctx.strokeStyle = color;
-                ctx.fillStyle = color;
-                ctx.lineWidth = 2;
-                
-                ctx.beginPath();
-                ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
-                
-                ctx.moveTo(x1, y1 - 6); ctx.lineTo(x1, y1 + 6);
-                ctx.moveTo(x1 + 8, y1 - 4); ctx.lineTo(x1, y1); ctx.lineTo(x1 + 8, y1 + 4);
-                
-                ctx.moveTo(x2, y2 - 6); ctx.lineTo(x2, y2 + 6);
-                ctx.moveTo(x2 - 8, y2 - 4); ctx.lineTo(x2, y2); ctx.lineTo(x2 - 8, y2 + 4);
-                ctx.stroke();
-                
-                ctx.font = 'bold 13px "Segoe UI", sans-serif';
-                ctx.textAlign = 'center';
-                
-                let textX = (x1 + x2) / 2;
-                if (textX > LOGICAL_W - 60) textX = LOGICAL_W - 60;
-                if (textX < 60) textX = 60;
-                ctx.fillText(text, textX, y1 - 8);
+        function updatePhysicsCacheAndDisplays() {
+            const A_grid = parseFloat(ampInput.value);
+            const A = A_grid * GRID_SIZE;
+            const f = parseFloat(freqInput.value);
+            const v = parseFloat(velInput.value);
+
+            currentCache.A = A;
+            currentCache.f = f;
+            currentCache.v = v;
+            currentCache.lambda = v / f;
+            currentCache.omega = 2 * Math.PI * f;
+            currentCache.k = 2 * Math.PI / currentCache.lambda;
+            currentCache.mode = waveModeInput.value;
+            currentCache.phase = getCurrentPhase();
+
+            ampVal.innerText = tt('unit.grid', { v: A_grid.toFixed(1) });
+            freqVal.innerText = f.toFixed(1) + " Hz";
+            velVal.innerText = tt('unit.gridPerSec', { v: (v / GRID_SIZE).toFixed(2) });
+            calcLambda.innerText = tt('unit.grid', { v: (currentCache.lambda / GRID_SIZE).toFixed(2) });
+            calcPeriod.innerText = tt('unit.sec', { v: (1 / f).toFixed(2) });
+
+            if (wavePhaseInput.value === 'custom') {
+                customPhaseGroup.style.display = 'block';
+                let percent = parseFloat(customYPercentInput.value);
+                let actualY_grid = A_grid * (percent / 100);
+                customYVal.innerText = tt('unit.grid', { v: (actualY_grid > 0 ? "+" : "") + actualY_grid.toFixed(2) });
+
+                let statusText = "";
+                if (percent >= 99) statusText = tt('custom.atCrest');
+                else if (percent <= -99) statusText = tt('custom.atTrough');
+                else statusText = customDirInput.value === 'up' ? tt('custom.readyUp') : tt('custom.readyDown');
+                phaseHint.innerText = tt('custom.startState', { s: statusText });
+            } else {
+                customPhaseGroup.style.display = 'none';
             }
+        }
 
-            function drawFrame() {
-                const { A, f, v, mode, phase, omega, k, lambda } = currentCache;
+        function updateTargetDisplays() {
+            targets.forEach(t => {
+                t.val.innerText = tt('targets.pos', { v: parseFloat(t.rng.value).toFixed(2) });
+            });
+        }
 
-                const midY = LOGICAL_H / 2;
-                const startX = 40; 
-                const availableWidth = LOGICAL_W - startX;
+        function onParamInput() {
+            updatePhysicsCacheAndDisplays();
+            requestRender();
+        }
+        PhysLab.ui.bindSlider('amp', 'amp-val', onParamInput);
+        PhysLab.ui.bindSlider('freq', 'freq-val', onParamInput);
+        PhysLab.ui.bindSlider('vel', 'vel-val', onParamInput);
+        PhysLab.ui.bindSlider('custom-y-percent', 'custom-y-val', onParamInput);
+        customDirInput.addEventListener('input', onParamInput);
 
-                // 1. 繪製 s-d 圖 ==============================================
-                prepareCanvas(canvasSD, ctxSD);
-                drawAxes(ctxSD, canvasSD, "距離 d", 'sd');
+        [waveModeInput, wavePhaseInput].forEach(input => {
+            input.addEventListener('change', () => {
+                updatePhysicsCacheAndDisplays();
+                resetToZero();
+            });
+        });
 
-                ctxSD.strokeStyle = '#b49c82';
-                ctxSD.lineWidth = 3;
-                ctxSD.beginPath();
-                let firstPoint = true;
-                
-                for (let x = startX; x <= LOGICAL_W; x += 2) {
-                    let y = getWaveDisplacement(x - startX, time, A, omega, k, v, mode, phase);
-                    if (firstPoint) { ctxSD.moveTo(x, midY - y); firstPoint = false; } 
-                    else { ctxSD.lineTo(x, midY - y); }
-                }
-                ctxSD.stroke();
-
-                if (labelState.show) {
-                    const lambda_grid = lambda / GRID_SIZE;
-                    drawMeasurementArrow(ctxSD, labelState.sd.x, labelState.sd.y, labelState.sd.x + lambda, labelState.sd.y, '#e67e22', `波長 λ = ${lambda_grid.toFixed(1)} 格`);
-                }
-
-                ctxSD.fillStyle = '#4a3728';
-                for (let x = startX; x <= LOGICAL_W; x += 20) {
-                    let y = getWaveDisplacement(x - startX, time, A, omega, k, v, mode, phase);
-                    ctxSD.beginPath(); ctxSD.arc(x, midY - y, 3, 0, Math.PI * 2); ctxSD.fill();
-                }
-
-                targets.forEach(t => {
-                    let targetGridX = parseFloat(t.rng.value);
-                    let targetPxX = targetGridX * GRID_SIZE; 
-                    let actualX = targetPxX + startX;
-                    let targetY = getWaveDisplacement(targetPxX, time, A, omega, k, v, mode, phase);
-
-                    ctxSD.setLineDash([4, 4]);
-                    ctxSD.strokeStyle = t.color + '88'; 
-                    ctxSD.beginPath(); ctxSD.moveTo(actualX, 0); ctxSD.lineTo(actualX, LOGICAL_H); ctxSD.stroke();
-                    ctxSD.setLineDash([]);
-
-                    ctxSD.fillStyle = t.color;
-                    ctxSD.beginPath(); ctxSD.arc(actualX, midY - targetY, 7, 0, Math.PI * 2); ctxSD.fill();
-                });
-
-
-                // 2. 繪製 s-t 圖 ==============================================
-                prepareCanvas(canvasST, ctxST);
-                drawAxes(ctxST, canvasST, "時間 t", 'st');
-                
-                const timeScale = maxTimeWindow / availableWidth;
-
-                targets.forEach(t => {
-                    let targetPxX = parseFloat(t.rng.value) * GRID_SIZE;
-                    
-                    ctxST.strokeStyle = t.color;
-                    ctxST.lineWidth = 2.5;
-                    ctxST.beginPath();
-
-                    let isFirstPointST = true;
-                    for (let px = startX; px <= LOGICAL_W; px += 2) {
-                        let tPlot = (px - startX) * timeScale;
-                        if (tPlot <= time) {
-                            let y = getWaveDisplacement(targetPxX, tPlot, A, omega, k, v, mode, phase);
-                            if (isFirstPointST) { ctxST.moveTo(px, midY - y); isFirstPointST = false; } 
-                            else { ctxST.lineTo(px, midY - y); }
-                        }
-                    }
-                    ctxST.stroke();
-
-                    if (time <= maxTimeWindow) {
-                        let currentPx = startX + (time / maxTimeWindow) * availableWidth;
-                        let targetY = getWaveDisplacement(targetPxX, time, A, omega, k, v, mode, phase);
-                        ctxST.fillStyle = t.color;
-                        ctxST.beginPath(); ctxST.arc(currentPx, midY - targetY, 6, 0, Math.PI * 2); ctxST.fill();
-                    }
-                });
-
-                if (labelState.show) {
-                    const period = 1 / f;
-                    const period_px = (period / maxTimeWindow) * availableWidth;
-                    drawMeasurementArrow(ctxST, labelState.st.x, labelState.st.y, labelState.st.x + period_px, labelState.st.y, '#27ae60', `週期 T = ${period.toFixed(2)} s`);
-                }
-
-                ctxSD.fillStyle = '#333';
-                ctxSD.font = 'bold 14px monospace';
-                ctxSD.fillText("經過時間 t = " + time.toFixed(2) + " s", LOGICAL_W - 160, 25);
-                ctxST.fillText("經過時間 t = " + time.toFixed(2) + " s", LOGICAL_W - 160, 25);
-            }
-
-            function animate(timestamp) {
-                if (!isPlaying) return;
-
-                if (!lastTimestamp) lastTimestamp = timestamp;
-                const deltaTime = (timestamp - lastTimestamp) / 1000;
-                lastTimestamp = timestamp;
-                time += Math.min(deltaTime, 0.1); 
-
-                drawFrame();
+        playBtn.addEventListener('click', () => {
+            isPlaying = !isPlaying;
+            updatePlayButtonUI();
+            if (isPlaying) {
+                lastTimestamp = performance.now();
                 requestAnimationFrame(animate);
             }
+        });
 
+        resetBtn.addEventListener('click', resetToZero);
+
+        function resetToZero() {
+            time = 0;
+            isPlaying = false;
+            updatePlayButtonUI();
+            prepareCanvas(canvasST, ctxST);
+            requestRender();
+        }
+
+        function updatePlayButtonUI() {
+            playBtn.innerText = tt(isPlaying ? 'actions.pause' : 'actions.play');
+            playBtn.classList.toggle('paused', !isPlaying);
+        }
+
+        function getWaveDisplacement(x, t, A, omega, k, v, mode, phase) {
+            if (mode === 'continuous') {
+                return A * Math.sin(k * x - omega * t + phase);
+            } else {
+                if (t < x / v) return 0;
+                return A * Math.sin(k * x - omega * t + phase);
+            }
+        }
+
+        function drawAxes(ctx, canvas, xAxisLabel, type = 'sd') {
+            const midY = LOGICAL_H / 2;
+            const startX = 40;
+            const showMinor = toggleMinorGrid.checked;
+
+            if (showMinor) {
+                ctx.strokeStyle = '#f1f5f9';
+                ctx.lineWidth = 1;
+                const minorStep = GRID_SIZE / 10;
+                for(let i = 0; i <= LOGICAL_H; i += minorStep) {
+                    ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(LOGICAL_W, i); ctx.stroke();
+                }
+            }
+            ctx.strokeStyle = '#e2e8f0';
+            ctx.lineWidth = 1;
+            for(let i = 0; i <= LOGICAL_H; i += GRID_SIZE) {
+                ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(LOGICAL_W, i); ctx.stroke();
+            }
+
+            let pxPerUnit = GRID_SIZE;
+            let maxUnits = 19;
+
+            if (type === 'st') {
+                pxPerUnit = (LOGICAL_W - startX) / maxTimeWindow;
+                maxUnits = maxTimeWindow;
+            }
+
+            if (showMinor) {
+                ctx.strokeStyle = '#f1f5f9';
+                ctx.lineWidth = 1;
+                const minorStep = pxPerUnit / 10;
+                for(let i = startX; i <= LOGICAL_W; i += minorStep) {
+                    ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, LOGICAL_H); ctx.stroke();
+                }
+            }
+            ctx.strokeStyle = '#e2e8f0';
+            ctx.lineWidth = 1;
+            for(let i = startX; i <= LOGICAL_W; i += pxPerUnit) {
+                ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, LOGICAL_H); ctx.stroke();
+            }
+
+            ctx.strokeStyle = '#4a5568';
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(0, midY); ctx.lineTo(LOGICAL_W, midY); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(startX, 0); ctx.lineTo(startX, LOGICAL_H); ctx.stroke();
+
+            ctx.fillStyle = '#2d3748';
+            ctx.font = 'bold 12px Arial';
+            ctx.textAlign = 'left';
+            ctx.fillText(tt('canvas.axisS'), 5, 18);
+            ctx.fillText("0", 25, midY + 15);
+
+            ctx.textAlign = 'right';
+            ctx.fillText(xAxisLabel, LOGICAL_W - 15, midY - 10);
+
+            ctx.fillStyle = '#4a5568';
+            ctx.font = 'bold 11px Arial';
+            ctx.textAlign = 'center';
+
+            if (type === 'st') {
+                for (let t = 1; t <= maxTimeWindow; t++) {
+                    let x = startX + t * pxPerUnit;
+                    ctx.beginPath(); ctx.moveTo(x, midY - 4); ctx.lineTo(x, midY + 4); ctx.stroke();
+                    ctx.fillText(t + "s", x, midY + 18);
+                }
+            } else if (type === 'sd') {
+                for (let g = 2; g <= 18; g += 2) {
+                    let x = startX + g * pxPerUnit;
+                    ctx.beginPath(); ctx.moveTo(x, midY - 4); ctx.lineTo(x, midY + 4); ctx.stroke();
+                    ctx.fillText(g + tt('canvas.gridUnit'), x, midY + 18);
+                }
+            }
+            ctx.textAlign = 'left';
+        }
+
+        function drawMeasurementArrow(ctx, x1, y1, x2, y2, color, text) {
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            ctx.lineWidth = 2;
+
+            ctx.beginPath();
+            ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
+
+            ctx.moveTo(x1, y1 - 6); ctx.lineTo(x1, y1 + 6);
+            ctx.moveTo(x1 + 8, y1 - 4); ctx.lineTo(x1, y1); ctx.lineTo(x1 + 8, y1 + 4);
+
+            ctx.moveTo(x2, y2 - 6); ctx.lineTo(x2, y2 + 6);
+            ctx.moveTo(x2 - 8, y2 - 4); ctx.lineTo(x2, y2); ctx.lineTo(x2 - 8, y2 + 4);
+            ctx.stroke();
+
+            ctx.font = 'bold 13px "Segoe UI", sans-serif';
+            ctx.textAlign = 'center';
+
+            let textX = (x1 + x2) / 2;
+            if (textX > LOGICAL_W - 60) textX = LOGICAL_W - 60;
+            if (textX < 60) textX = 60;
+            ctx.fillText(text, textX, y1 - 8);
+        }
+
+        function drawFrame() {
+            const { A, f, v, mode, phase, omega, k, lambda } = currentCache;
+
+            const midY = LOGICAL_H / 2;
+            const startX = 40;
+            const availableWidth = LOGICAL_W - startX;
+
+            // 1. 繪製 s-d 圖 ==============================================
+            prepareCanvas(canvasSD, ctxSD);
+            drawAxes(ctxSD, canvasSD, tt('canvas.axisD'), 'sd');
+
+            ctxSD.strokeStyle = '#b49c82';
+            ctxSD.lineWidth = 3;
+            ctxSD.beginPath();
+            let firstPoint = true;
+
+            for (let x = startX; x <= LOGICAL_W; x += 2) {
+                let y = getWaveDisplacement(x - startX, time, A, omega, k, v, mode, phase);
+                if (firstPoint) { ctxSD.moveTo(x, midY - y); firstPoint = false; }
+                else { ctxSD.lineTo(x, midY - y); }
+            }
+            ctxSD.stroke();
+
+            if (labelState.show) {
+                const lambda_grid = lambda / GRID_SIZE;
+                drawMeasurementArrow(ctxSD, labelState.sd.x, labelState.sd.y, labelState.sd.x + lambda, labelState.sd.y, '#e67e22', tt('canvas.lambdaLabel', { v: lambda_grid.toFixed(1) }));
+            }
+
+            ctxSD.fillStyle = '#4a3728';
+            for (let x = startX; x <= LOGICAL_W; x += 20) {
+                let y = getWaveDisplacement(x - startX, time, A, omega, k, v, mode, phase);
+                ctxSD.beginPath(); ctxSD.arc(x, midY - y, 3, 0, Math.PI * 2); ctxSD.fill();
+            }
+
+            targets.forEach(t => {
+                let targetGridX = parseFloat(t.rng.value);
+                let targetPxX = targetGridX * GRID_SIZE;
+                let actualX = targetPxX + startX;
+                let targetY = getWaveDisplacement(targetPxX, time, A, omega, k, v, mode, phase);
+
+                ctxSD.setLineDash([4, 4]);
+                ctxSD.strokeStyle = t.color + '88';
+                ctxSD.beginPath(); ctxSD.moveTo(actualX, 0); ctxSD.lineTo(actualX, LOGICAL_H); ctxSD.stroke();
+                ctxSD.setLineDash([]);
+
+                ctxSD.fillStyle = t.color;
+                ctxSD.beginPath(); ctxSD.arc(actualX, midY - targetY, 7, 0, Math.PI * 2); ctxSD.fill();
+            });
+
+
+            // 2. 繪製 s-t 圖 ==============================================
+            prepareCanvas(canvasST, ctxST);
+            drawAxes(ctxST, canvasST, tt('canvas.axisT'), 'st');
+
+            const timeScale = maxTimeWindow / availableWidth;
+
+            targets.forEach(t => {
+                let targetPxX = parseFloat(t.rng.value) * GRID_SIZE;
+
+                ctxST.strokeStyle = t.color;
+                ctxST.lineWidth = 2.5;
+                ctxST.beginPath();
+
+                let isFirstPointST = true;
+                for (let px = startX; px <= LOGICAL_W; px += 2) {
+                    let tPlot = (px - startX) * timeScale;
+                    if (tPlot <= time) {
+                        let y = getWaveDisplacement(targetPxX, tPlot, A, omega, k, v, mode, phase);
+                        if (isFirstPointST) { ctxST.moveTo(px, midY - y); isFirstPointST = false; }
+                        else { ctxST.lineTo(px, midY - y); }
+                    }
+                }
+                ctxST.stroke();
+
+                if (time <= maxTimeWindow) {
+                    let currentPx = startX + (time / maxTimeWindow) * availableWidth;
+                    let targetY = getWaveDisplacement(targetPxX, time, A, omega, k, v, mode, phase);
+                    ctxST.fillStyle = t.color;
+                    ctxST.beginPath(); ctxST.arc(currentPx, midY - targetY, 6, 0, Math.PI * 2); ctxST.fill();
+                }
+            });
+
+            if (labelState.show) {
+                const period = 1 / f;
+                const period_px = (period / maxTimeWindow) * availableWidth;
+                drawMeasurementArrow(ctxST, labelState.st.x, labelState.st.y, labelState.st.x + period_px, labelState.st.y, '#27ae60', tt('canvas.periodLabel', { v: period.toFixed(2) }));
+            }
+
+            ctxSD.fillStyle = '#333';
+            ctxSD.font = 'bold 14px monospace';
+            ctxSD.fillText(tt('canvas.elapsed', { v: time.toFixed(2) }), LOGICAL_W - 160, 25);
+            ctxST.fillText(tt('canvas.elapsed', { v: time.toFixed(2) }), LOGICAL_W - 160, 25);
+        }
+
+        function animate(timestamp) {
+            if (!isPlaying) return;
+
+            if (!lastTimestamp) lastTimestamp = timestamp;
+            const deltaTime = (timestamp - lastTimestamp) / 1000;
+            lastTimestamp = timestamp;
+            time += Math.min(deltaTime, 0.1);
+
+            drawFrame();
+            requestAnimationFrame(animate);
+        }
+
+        /* topbar 面板開關（畫布為固定邏輯座標＋CSS 縮放，切換後重繪即可） */
+        PhysLab.ui.bindPanelToggle('btn-toggle-left', 'left-panel', requestRender);
+        PhysLab.ui.bindPanelToggle('btn-toggle-right', 'right-panel', requestRender);
+
+        /* 語言切換：重繪兩張圖表＋刷新 JS 生成文字
+           （data-i18n 靜態文字由 i18n 自動套用；播放中由 rAF 迴圈自然重繪） */
+        PhysLab.i18n.onChange(() => {
+            targets.forEach(o => { o.nameEl.innerText = tt('targets.item', { n: o.id }); });
             updatePhysicsCacheAndDisplays();
             updateTargetDisplays();
-            requestRender(); 
+            updatePlayButtonUI();
+            requestRender();
         });
-    </script>
-    <a id="home-btn" href="../../../index.html">&#127968; &#20027;&#38913;</a>
+
+        updatePhysicsCacheAndDisplays();
+        updateTargetDisplays();
+        requestRender();
+    });
+</script>
 </body>
 </html>
