@@ -35,6 +35,8 @@
         .rc-ip  { background: #f0f6ff; border-color: #cdddfa; color: #2563eb; }
         .rc-is  { background: #fff8f1; border-color: #fde3c6; color: #ea580c; }
         .rc-rat { background: #f5f3ff; border-color: #ddd6fe; color: #6d28d9; }
+        /* 極值匝數比（如「2 : 12（= 1 : 6）」）在窄格避免換行 */
+        #ro-rat { font-size: 0.72rem; letter-spacing: -0.01em; white-space: nowrap; }
         .rc-pow { background: #f0fdf4; border-color: #bbf7d0; color: #166534; }
 
         /* 浮動波形視窗（預設隱藏，由 topbar「波形」鈕開關） */
@@ -73,7 +75,7 @@
         </button>
         <div class="title-block">
             <h1 data-i18n="topbar.title">⚡ 理想變壓器 — 3D 互動模擬器</h1>
-            <p data-i18n="topbar.subtitle">HKDSE Physics · Book 4 · 電磁感應 · V<sub>s</sub>/V<sub>p</sub> = N<sub>s</sub>/N<sub>p</sub></p>
+            <p data-i18n-html="topbar.subtitle">HKDSE Physics · Book 4 · 電磁感應 · V<sub>s</sub>/V<sub>p</sub> = N<sub>s</sub>/N<sub>p</sub></p>
         </div>
     </div>
     <div class="tb-actions">
@@ -93,8 +95,8 @@
             <div class="card-header">🔌 <span data-i18n="panel.source.title">電源設定</span><span class="chevron">▾</span></div>
             <div class="card-body">
                 <div class="slider-row">
-                    <div class="slider-head"><label data-i18n="label.vp">初級電壓 Vp</label><span class="val" id="val-vp">12 V</span></div>
-                    <input type="range" id="sld-vp" min="1" max="24" step="1" value="12">
+                    <div class="slider-head"><label data-i18n="label.vp">初級電壓 Vp</label><span class="val" id="val-vp">6 V</span></div>
+                    <input type="range" id="sld-vp" min="1" max="12" step="1" value="6">
                 </div>
                 <div class="mode-label" style="margin-top:10px;" data-i18n="label.mode">電源類型</div>
                 <div class="dir-btn-group">
@@ -108,14 +110,14 @@
             <div class="card-header">🌀 <span data-i18n="panel.turns.title">線圈匝數</span><span class="chevron">▾</span></div>
             <div class="card-body">
                 <div class="slider-row">
-                    <div class="slider-head"><label data-i18n="label.np">初級匝數 Np</label><span class="val" id="val-np">200 匝</span></div>
-                    <input type="range" id="sld-np" min="100" max="1000" step="50" value="200">
+                    <div class="slider-head"><label data-i18n="label.np">初級匝數 Np</label><span class="val" id="val-np">4 匝</span></div>
+                    <input type="range" id="sld-np" min="2" max="12" step="1" value="4">
                 </div>
                 <div class="slider-row">
-                    <div class="slider-head"><label data-i18n="label.ns">次級匝數 Ns</label><span class="val" id="val-ns">400 匝</span></div>
-                    <input type="range" id="sld-ns" min="100" max="1000" step="50" value="400">
+                    <div class="slider-head"><label data-i18n="label.ns">次級匝數 Ns</label><span class="val" id="val-ns">8 匝</span></div>
+                    <input type="range" id="sld-ns" min="2" max="12" step="1" value="8">
                 </div>
-                <div class="mode-label" style="margin-top:4px;" data-i18n="panel.turns.hint">匝數比決定升壓或降壓；繞組視覺圈數會隨匝數變化</div>
+                <div class="mode-label" style="margin-top:4px;" data-i18n="panel.turns.hint">匝數 = 畫面實際圈數（1:1）；匝數比 Ns/Np 決定升壓或降壓</div>
             </div>
         </div>
 
@@ -153,11 +155,15 @@
                 </div>
                 <div class="toggle-row" id="row-current">
                     <div class="toggle-track on" id="opt-current"><div class="toggle-thumb"></div></div>
-                    <span data-i18n="display.current">電流箭頭 ➤</span>
+                    <span data-i18n="display.current">電流箭頭＋流動 ➤●</span>
+                </div>
+                <div class="toggle-row" id="row-lenz">
+                    <div class="toggle-track" id="opt-lenz"><div class="toggle-thumb"></div></div>
+                    <span data-i18n="display.lenz">楞次定律：副線圈反抗磁通 🟢</span>
                 </div>
                 <div class="toggle-row" id="row-labels">
                     <div class="toggle-track on" id="opt-labels"><div class="toggle-thumb"></div></div>
-                    <span data-i18n="display.labels">3D 標籤 🏷️</span>
+                    <span data-i18n="display.labels">名稱標示 🏷️</span>
                 </div>
             </div>
         </div>
@@ -179,22 +185,33 @@
             <h4>⚡ <span data-i18n="formula.title">理想變壓器方程</span></h4>
             <div class="formula">$$\frac{V_s}{V_p}=\frac{N_s}{N_p}\qquad V_pI_p=V_sI_s$$</div>
             <div class="formula-desc" data-i18n-html="formula.desc">
-                <span>V</span> 電壓 · <span>N</span> 匝數 · <span>I</span> 電流；下標 p = 初級、s = 次級。<br>
-                共用鐵芯的磁通 Φ 對每匝相同 → <span>ε = N·dΦ/dt</span>，故電壓與匝數成正比；理想無損耗下功率守恆。
+                <span>V</span> 電壓 · <span>N</span> 匝數 · <span>I</span> 電流；下標 p = 初級（原線圈）、s = 次級（副線圈）。<br>
+                <span>ε = −N·dΦ/dt</span>：ε = 感應電動勢（≈ 次級電壓 Vs）、dΦ/dt = 磁通變化率，負號即<b>楞次定律</b>（感應對抗磁通變化）。共用鐵芯的 Φ 對每匝相同 → 電壓與匝數成正比。<br>
+                <b>初級與次級之間並無電線相連，只靠鐵芯內共用磁通 Φ 聯繫。</b>
             </div>
             <div class="readout-grid">
                 <div class="readout-cell rc-vp"><small data-i18n="readout.vp">初級電壓 Vp</small><span id="ro-vp">0.0 V</span></div>
                 <div class="readout-cell rc-vs"><small data-i18n="readout.vs">次級電壓 Vs</small><span id="ro-vs">0.0 V</span></div>
                 <div class="readout-cell rc-ip"><small data-i18n="readout.ip">初級電流 Ip</small><span id="ro-ip">0.00 A</span></div>
                 <div class="readout-cell rc-is"><small data-i18n="readout.is">次級電流 Is</small><span id="ro-is">0.00 A</span></div>
-                <div class="readout-cell rc-rat"><small data-i18n="readout.ratio">匝數比 Np : Ns</small><span id="ro-rat">1 : 2</span></div>
+                <div class="readout-cell rc-rat"><small data-i18n="readout.ratio">匝數比 Np : Ns</small><span id="ro-rat">4 : 8（= 1 : 2）</span></div>
                 <div class="readout-cell rc-pow"><small data-i18n="readout.power">傳遞功率 P</small><span id="ro-pow">0.0 W</span></div>
+            </div>
+            <div class="readout-grid" style="grid-template-columns:1fr 1fr;">
+                <div class="readout-cell rc-ip"><small data-i18n="readout.pip">初級 Np·Ip</small><span id="ro-nip">0.0</span></div>
+                <div class="readout-cell rc-is"><small data-i18n="readout.pis">次級 Ns·Is</small><span id="ro-nis">0.0</span></div>
             </div>
         </div>
 
         <div class="guide-box">
             <h4>🧭 <span data-i18n="explain.title">即時解說</span></h4>
             <div class="info-box" id="live-explain">調整匝數與電源類型，這裡會即時說明變壓器的行為。</div>
+        </div>
+
+        <div class="guide-box" id="lenz-box" style="display:none;">
+            <h4>🟢 <span data-i18n="lenz.title">楞次定律：副線圈反抗磁通</span></h4>
+            <div class="info-box" id="lenz-live">開啟後，這裡會依交流相位說明副線圈如何反抗磁通變化。</div>
+            <div class="info-box" id="lenz-caveat" style="margin-top:8px;" data-i18n="lenz.caveat">Φₛ 只抗拒 Φ 的「變化」，並非抵消整個 Φ。</div>
         </div>
 
         <div class="guide-box">
@@ -222,7 +239,7 @@
 PhysLab.i18n.register({
     zh: {
         'topbar.title': '⚡ 理想變壓器 — 3D 互動模擬器',
-        'topbar.subtitle': 'HKDSE Physics · Book 4 · 電磁感應 · Vs/Vp = Ns/Np',
+        'topbar.subtitle': 'HKDSE Physics · Book 4 · 電磁感應 · V<sub>s</sub>/V<sub>p</sub> = N<sub>s</sub>/N<sub>p</sub>',
         'topbar.controls': '控制',
         'topbar.waveform': '波形',
         'topbar.info': '資訊',
@@ -236,12 +253,12 @@ PhysLab.i18n.register({
         'panel.turns.title': '線圈匝數',
         'label.np': '初級匝數 Np',
         'label.ns': '次級匝數 Ns',
-        'panel.turns.hint': '匝數比決定升壓或降壓；繞組視覺圈數會隨匝數變化',
+        'panel.turns.hint': '匝數 = 畫面實際圈數（1:1）；匝數比 Ns/Np 決定升壓或降壓',
         'unit.turns': '{n} 匝',
 
         'panel.load.title': '負載',
         'label.rs': '負載電阻 Rs',
-        'panel.load.hint': '燈泡等效電阻（固定值）；電阻越小 → 次級電流越大、燈越亮。升壓時 Vs 上升，同一負載下次級功率亦隨之增加。',
+        'panel.load.hint': '燈泡等效電阻（固定值）；P = Vs²/Rs，故 Rs 越細功率越大、燈越亮。本模型固定負載電阻，故升壓（Vs 上升）會同時提高次級功率。',
 
         'panel.anim.title': '動畫控制',
         'label.play': '播放 / 暫停 ⏯',
@@ -249,8 +266,9 @@ PhysLab.i18n.register({
 
         'panel.display.title': '顯示選項',
         'display.flux': '磁通線 🟣',
-        'display.current': '電流箭頭 ➤',
-        'display.labels': '3D 標籤 🏷️',
+        'display.current': '電流箭頭＋流動 ➤●',
+        'display.lenz': '楞次定律：副線圈反抗磁通 🟢',
+        'display.labels': '名稱標示 🏷️',
 
         'status.hint': '🖱️ 左鍵旋轉視角 · 滾輪縮放 · 右鍵平移',
         'status.stepup': '🔺 升壓（Ns > Np）',
@@ -264,9 +282,18 @@ PhysLab.i18n.register({
         'readout.is': '次級電流 Is',
         'readout.ratio': '匝數比 Np : Ns',
         'readout.power': '傳遞功率 P',
+        'readout.pip': '初級 Np·Ip',
+        'readout.pis': '次級 Ns·Is',
+        'readout.ipDc': '受 R 限流',
 
         'formula.title': '理想變壓器方程',
-        'formula.desc': '<span>V</span> 電壓 · <span>N</span> 匝數 · <span>I</span> 電流；下標 p = 初級、s = 次級。<br>共用鐵芯的磁通 Φ 對每匝相同 → <span>ε = N·dΦ/dt</span>，故電壓與匝數成正比；理想無損耗下功率守恆。',
+        'formula.desc': '<span>V</span> 電壓 · <span>N</span> 匝數 · <span>I</span> 電流；下標 p = 初級（原線圈）、s = 次級（副線圈）。<br><span>ε = −N·dΦ/dt</span>：ε = 感應電動勢（≈ 次級電壓 Vs）、dΦ/dt = 磁通變化率，負號即<b>楞次定律</b>（感應對抗磁通變化）。共用鐵芯的 Φ 對每匝相同 → 電壓與匝數成正比。<br><b>初級與次級之間並無電線相連，只靠鐵芯內共用磁通 Φ 聯繫。</b>',
+
+        'lenz.title': '楞次定律：副線圈反抗磁通',
+        'lenz.caveat': 'Φₛ 只抗拒 Φ 的「變化」，並非抵消整個 Φ。鐵芯淨磁通仍由原線圈維持；副線圈的反抗，正是令原線圈需多抽電流（安匝平衡 Np·Ip = Ns·Is）的原因。',
+        'lenz.increase': 'Φ 正在<b>增強</b>（磁通量值上升中）→ 副線圈感應電流產生的 <span style="color:#0d9488;font-weight:700">Φₛ 與 Φ 反向</span>，抗拒磁通增強。',
+        'lenz.decrease': 'Φ 正在<b>減弱</b>（磁通量值下降中）→ 感應電流<b>反向</b>，<span style="color:#0d9488;font-weight:700">Φₛ 轉為與 Φ 同向</span>，抗拒磁通減弱。',
+        'lenz.peak': 'Φ 到達<b>峰值</b>、瞬間不變（dΦ/dt ≈ 0）→ 感應電流與 <span style="color:#0d9488;font-weight:700">Φₛ 皆為零</span>。這正是「只反抗變化」的關鍵時刻。',
 
         'explain.title': '即時解說',
         'explain.stepup': '目前 <b>Ns &gt; Np</b>：這是<b>升壓變壓器</b>，次級電壓 <b>Vs 高於 Vp</b>（Vs/Vp = Ns/Np）。由功率守恆 Vp·Ip = Vs·Is，同一部變壓器內次級電流 <b>Is 比初級電流 Ip 細</b>（Ip = Is·Ns/Np）。註：本模型固定負載電阻，拉大 Ns 會令 Vs 及次級功率一併上升。',
@@ -281,8 +308,9 @@ PhysLab.i18n.register({
             '步驟 1：交流電源使初級線圈產生<b>交變電流</b>，在共用鐵芯內建立<b>交變磁通 Φ</b>（紫色箭頭週期反向並脈動）。',
             '步驟 2：同一磁通穿過兩組線圈。每匝的 dΦ/dt 相同 → <b>Vp/Np = Vs/Ns</b>，故 <b>Vs/Vp = Ns/Np</b>。',
             '步驟 3：拉大 <b>Ns</b> 使 Ns &gt; Np，狀態徽章顯示<b>升壓</b>，Vs 上升；反之縮小 Ns 得到<b>降壓</b>。',
-            '步驟 4：理想變壓器<b>功率守恆</b>：Vp·Ip = Vs·Is。升壓時電壓變大、電流變小，讀數會同步印證。',
-            '步驟 5：把電源切到 <b>DC 直流</b>：磁通變成恆定、dΦ/dt = 0，次級<b>失去輸出</b>、燈熄 —— 說明變壓器<b>只對交流有效</b>。'
+            '步驟 4：理想變壓器<b>功率守恆</b>＝<b>初級功率 = 次級功率</b>（Vp·Ip = Vs·Is 兩邊相等），並非指功率數值固定不變。升壓時電壓大、電流小，下方 Np·Ip 與 Ns·Is 兩格恆相等。',
+            '步驟 5：開啟<b>「楞次定律」</b>選項，觀察副線圈感應電流產生的青綠 <b>Φₛ</b> 如何<b>反抗磁通的變化</b>；Φ 過零時 Φₛ 最長、Φ 到峰值時 Φₛ 收縮至零。',
+            '步驟 6：把電源切到 <b>DC 直流</b>：磁通變成恆定、dΦ/dt = 0，次級<b>失去輸出</b>、燈熄 —— 說明變壓器<b>只對交流有效</b>。'
         ],
 
         'quiz.title': '概念測驗',
@@ -291,7 +319,8 @@ PhysLab.i18n.register({
             { q: '一個變壓器 Np = 200 匝、Ns = 800 匝。它是？', opts: ['升壓變壓器', '降壓變壓器', '1:1 隔離變壓器', '無法判斷'], ans: 0, exp: 'Ns &gt; Np（800 &gt; 200），Vs/Vp = Ns/Np = 4，次級電壓較高，屬升壓變壓器。' },
             { q: '為甚麼變壓器只能用交流電、不能用穩定直流？', opts: ['直流電壓太低', '直流會燒毀線圈', '直流產生恆定磁通，dΦ/dt = 0，次級無感應電動勢', '直流的匝數比不同'], ans: 2, exp: '變壓依賴電磁感應。穩定直流 → 磁通恆定 → dΦ/dt = 0 → 次級 ε = 0，故無輸出。（直流確實可能令初級因低阻抗而過熱，但變壓器失效的首要原因是次級無感應。）' },
             { q: '理想變壓器 Vp = 10 V、Ip = 2 A，次級 Vs = 40 V。次級電流 Is 為？', opts: ['8 A', '2 A', '0.5 A', '4 A'], ans: 2, exp: '功率守恆 Vp·Ip = Vs·Is：10×2 = 40×Is → Is = 20/40 = 0.5 A。升壓時次級電流 Is 比初級電流 Ip 小。' },
-            { q: '初級 Np = 100 匝、Vp = 6 V，次級 Ns = 500 匝。次級電壓 Vs 為？', opts: ['1.2 V', '30 V', '6 V', '500 V'], ans: 1, exp: 'Vs = Vp × Ns/Np = 6 × 500/100 = 30 V。' }
+            { q: '初級 Np = 100 匝、Vp = 6 V，次級 Ns = 500 匝。次級電壓 Vs 為？', opts: ['1.2 V', '30 V', '6 V', '500 V'], ans: 1, exp: 'Vs = Vp × Ns/Np = 6 × 500/100 = 30 V。' },
+            { q: '副（次級）線圈感應電流所產生的磁場，作用是甚麼？', opts: ['抗拒鐵芯內磁通的「變化」', '完全抵消磁通，令鐵芯內無磁場', '令鐵芯磁通加倍', '與磁通變化無關'], ans: 0, exp: '由楞次定律，副線圈感應電流產生的 Φₛ 只抗拒磁通的「變化」，並非抵消整個 Φ。鐵芯淨磁通仍由原（初級）線圈維持；正是這反抗令原線圈需多抽電流以維持安匝平衡 Np·Ip = Ns·Is。' }
         ],
 
         'label3d.core': '鐵芯（共用磁路）',
@@ -301,10 +330,12 @@ PhysLab.i18n.register({
         'label3d.sourceDc': 'DC 電源',
         'label3d.bulb': '燈泡負載',
         'label3d.flux': '磁通 Φ',
+        'label3d.react': '副線圈反抗磁通 Φₛ',
 
         'canvas.title': '📈 電壓波形 Vp / Vs',
         'canvas.vpLegend': '■ 初級 Vp',
         'canvas.vsLegend': '■ 次級 Vs',
+        'canvas.fluxLegend': '┄ 磁通 Φ (∝sin，與 Vs 差 90°)',
         'canvas.dcNote': '直流：Vp 恆定、Vs = 0（無交變磁通）',
         'canvas.time': '時間 t →',
         'canvas.closeTitle': '關閉'
@@ -326,10 +357,10 @@ PhysLab.sim3d.ready(function () {
     /* ============================================================
        應用狀態
        ============================================================ */
-    var Np = 200, Ns = 400, Vp = 12, Rs = 60;
+    var Np = 4, Ns = 8, Vp = 6, Rs = 60;
     var acMode = true;
     var playing = true, speed = 1.0;
-    var showFlux = true, showCurrent = true, showLabels = true;
+    var showFlux = true, showCurrent = true, showLabels = true, showLenz = false;
 
     var phase = 0;                 // 交流相位（弧度）
     var OMEGA = 2.2;               // 基礎角速度（每秒弧度，未計速率）
@@ -347,12 +378,15 @@ PhysLab.sim3d.ready(function () {
     var ratio = Ns / Np, Vs = 0, Is = 0, Ip = 0, Pw = 0;
 
     var rootGroup, coreGroup, primGroup, secGroup, primCurGroup, secCurGroup;
-    var fluxGroup, sourceGroup, bulbGroup, leadGroup, labelGroup;
-    var primArrows = [], secArrows = [], fluxArrows = [];
+    var fluxGroup, secReactGroup, sourceGroup, bulbGroup, leadGroup, labelGroup, flowGroup;
+    var primArrows = [], secArrows = [], fluxArrows = [], secReactArrows = [];
     var primEnds = null, secEnds = null;      // 繞組實際末端座標（供導線接駁）
+    var primCurve = null, secCurve = null;    // 繞組曲線（供電流流動動畫沿路徑取點）
+    var primFlow = { curve: null, dots: [], offset: 0 };   // 初級迴路流動光點
+    var secFlow  = { curve: null, dots: [], offset: 0 };   // 次級迴路流動光點
     var bulbGlass, bulbFilament, bulbLight;
     var srcFaceMesh;
-    var lblCore, lblPrim, lblSec, lblSource, lblBulb, lblFlux;
+    var lblCore, lblPrim, lblSec, lblSource, lblBulb, lblFlux, lblReact;
 
     /* ============================================================
        場景底座
@@ -373,6 +407,8 @@ PhysLab.sim3d.ready(function () {
     primCurGroup = new THREE.Group(); rootGroup.add(primCurGroup);
     secCurGroup  = new THREE.Group(); rootGroup.add(secCurGroup);
     fluxGroup    = new THREE.Group(); rootGroup.add(fluxGroup);
+    secReactGroup = new THREE.Group(); rootGroup.add(secReactGroup);
+    flowGroup    = new THREE.Group(); rootGroup.add(flowGroup);
     sourceGroup  = new THREE.Group(); rootGroup.add(sourceGroup);
     bulbGroup    = new THREE.Group(); rootGroup.add(bulbGroup);
     leadGroup    = new THREE.Group(); rootGroup.add(leadGroup);
@@ -411,9 +447,8 @@ PhysLab.sim3d.ready(function () {
 
     /* ============================================================
        繞組（沿肢的螺線管）+ 電流箭頭
+       匝數即畫面圈數（loops = N，1:1）；WIND_Y 固定，匝多則螺距密。
        ============================================================ */
-    function visualLoops(N) { return Math.max(4, Math.min(15, Math.round(N / 65))); }
-
     function windingCurve(x0, loops) {
         var pts = [];
         var seg = Math.round(loops * 40);
@@ -430,9 +465,9 @@ PhysLab.sim3d.ready(function () {
     // 回傳實際繞組末端座標（end0 = 下端 tt=0、end1 = 上端 tt=1），供 buildLeads 接駁
     function buildWinding(x0, N, group, color) {
         disposeGroup(group);
-        var loops = visualLoops(N);
+        var loops = N;                       // 匝數 = 畫面圈數（1:1）
         var curve = windingCurve(x0, loops);
-        var seg = Math.round(loops * 40);
+        var seg = Math.max(60, Math.round(loops * 44));
         var mat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.32, metalness: 0.82 });
         var mesh = new THREE.Mesh(new THREE.TubeGeometry(curve, seg, 0.11, 9, false), mat);
         group.add(mesh);
@@ -442,8 +477,9 @@ PhysLab.sim3d.ready(function () {
     function buildCurrentArrows(curve, loops, group, arrList, color) {
         disposeGroup(group);
         arrList.length = 0;
-        var n = Math.max(6, loops);
-        var geo = new THREE.ConeGeometry(0.16, 0.5, 10); geo.rotateX(Math.PI / 2);   // 指向 +Z
+        var n = Math.max(4, loops);          // 約每匝一個
+        // 電流箭頭：幼長圓錐（形狀刻意不同於扁闊的磁通箭頭，避免學生誤以為兩者相連）
+        var geo = new THREE.ConeGeometry(0.12, 0.6, 10); geo.rotateX(Math.PI / 2);   // 指向 +Z
         var mat = new THREE.MeshBasicMaterial({ color: color });
         for (var k = 0; k < n; k++) {
             var tk = (k + 0.5) / n;
@@ -459,6 +495,7 @@ PhysLab.sim3d.ready(function () {
         buildCurrentArrows(w.curve, w.loops, primCurGroup, primArrows, 0x1d4ed8);
         primCurGroup.visible = showCurrent;
         primEnds = { bottom: w.end0, top: w.end1 };
+        primCurve = w.curve;
         if (secEnds) buildLeads();      // 匝數改變後重接導線，確保仍貼住繞組末端
     }
     function rebuildSecondary() {
@@ -466,6 +503,7 @@ PhysLab.sim3d.ready(function () {
         buildCurrentArrows(w.curve, w.loops, secCurGroup, secArrows, 0xea580c);
         secCurGroup.visible = showCurrent;
         secEnds = { bottom: w.end0, top: w.end1 };
+        secCurve = w.curve;
         if (primEnds) buildLeads();
     }
 
@@ -483,7 +521,8 @@ PhysLab.sim3d.ready(function () {
         ];
         var loop = new THREE.CatmullRomCurve3(corners, true, 'catmullrom', 0.0);
         var n = 16;
-        var geo = new THREE.ConeGeometry(0.17, 0.52, 10); geo.rotateX(Math.PI / 2);
+        // 磁通箭頭：扁闊圓錐（形狀刻意不同於幼長的電流箭頭）
+        var geo = new THREE.ConeGeometry(0.26, 0.44, 12); geo.rotateX(Math.PI / 2);
         for (var k = 0; k < n; k++) {
             var tk = k / n;
             var a = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0x7c3aed, transparent: true, opacity: 0.85 }));
@@ -493,6 +532,24 @@ PhysLab.sim3d.ready(function () {
             fluxArrows.push({ mesh: a, tangent: loop.getTangentAt(tk).clone().normalize() });
         }
         fluxGroup.visible = showFlux;
+    }
+
+    /* ============================================================
+       副線圈反抗磁通 Φₛ（楞次）：右肢沿 +Y 軸、青綠、細過主磁通
+       ============================================================ */
+    var PY = new THREE.Vector3(0, 1, 0);
+    function buildReactArrows() {
+        disposeGroup(secReactGroup);
+        secReactArrows.length = 0;
+        var ys = [-0.7 * CORE_Y, -0.23 * CORE_Y, 0.23 * CORE_Y, 0.7 * CORE_Y];
+        var geo = new THREE.ConeGeometry(0.15, 0.4, 10); geo.rotateX(Math.PI / 2);
+        for (var i = 0; i < ys.length; i++) {
+            var a = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0x0d9488, transparent: true, opacity: 0.0 }));
+            a.position.set(CORE_X, ys[i], WIND_R + 0.3);   // 浮出次級繞組表面之外（WIND_R=1.15），免被銅線圈遮住
+            secReactGroup.add(a);
+            secReactArrows.push({ mesh: a });
+        }
+        secReactGroup.visible = showLenz;
     }
 
     /* ============================================================
@@ -579,21 +636,61 @@ PhysLab.sim3d.ready(function () {
         if (!primEnds || !secEnds) return;
         disposeGroup(leadGroup);
         var mat = new THREE.MeshStandardMaterial({ color: 0x9ca3af, roughness: 0.4, metalness: 0.7 });
-        // 電源兩端子 → 初級繞組實際末端（端點在線圈前方 z=+WIND_R）
-        var srcTop = new THREE.Vector3(SRC_X + 1.1, 0.85, WIND_R);
-        var srcBot = new THREE.Vector3(SRC_X + 1.1, -0.85, WIND_R);
+        // 端子貼在裝置表面（z 用裝置本身 z）：電源前圓面 z=0.35、燈座 z=0。
+        // 迴路一：AC 電源 ↔ 初級（兩端子在電源前面朝核心的邊緣）
+        var srcTop = new THREE.Vector3(SRC_X + 1.25, 0.62, 0.35);
+        var srcBot = new THREE.Vector3(SRC_X + 1.25, -0.62, 0.35);
+        // 迴路二：次級 ↔ 燈泡（兩端子貼燈座朝核心一側）
+        var bulbTop = new THREE.Vector3(BULB_X - 0.45, -0.55, 0.15);
+        var bulbBot = new THREE.Vector3(BULB_X - 0.45, -1.05, 0.15);
+
         leadGroup.add(lead(srcTop, primEnds.top, mat));
         leadGroup.add(lead(srcBot, primEnds.bottom, mat));
-        // 次級繞組實際末端 → 燈泡端子
-        var bulbTop = new THREE.Vector3(BULB_X, 0.9, WIND_R);
-        var bulbBot = new THREE.Vector3(BULB_X, -1.35, WIND_R);
         leadGroup.add(lead(secEnds.top, bulbTop, mat));
         leadGroup.add(lead(secEnds.bottom, bulbBot, mat));
-        // 端點銲球（視覺上把導線牢牢接在繞組末端）
-        var nub = new THREE.SphereGeometry(0.12, 10, 10);
-        [primEnds.top, primEnds.bottom, secEnds.top, secEnds.bottom].forEach(function (p) {
-            var s = new THREE.Mesh(nub, mat); s.position.copy(p); leadGroup.add(s);
+
+        // 兩端各加銲球：繞組末端 + 裝置端子，任何角度都清楚見到「實貼」
+        var nubGeo = new THREE.SphereGeometry(0.13, 10, 10);
+        [primEnds.top, primEnds.bottom, secEnds.top, secEnds.bottom,
+         srcTop, srcBot, bulbTop, bulbBot].forEach(function (p) {
+            var s = new THREE.Mesh(nubGeo, mat); s.position.copy(p); leadGroup.add(s);
         });
+
+        // 依同一組座標建立兩個獨立的電流流動閉合迴路
+        buildFlow(srcTop, srcBot, bulbTop, bulbBot);
+    }
+
+    /* ============================================================
+       電流流動動畫（marching dots）
+       初級：電源 ↔ 初級繞組閉合迴路；次級：次級繞組 ↔ 燈泡閉合迴路。
+       兩迴路各自封閉、互不連通 —— 呼應「初級次級無電線相連，只靠磁通聯繫」。
+       ============================================================ */
+    // 由「裝置端子 → 繞組頂端 → 沿繞組到底端 → 裝置端子」串成封閉曲線（closed=true 由底端子接回頂端子，代表裝置內部路徑）
+    function makeLoopCurve(windCurve, endTop, endBot, devTop, devBot) {
+        var pts = [devTop.clone(), endTop.clone()];
+        var M = 44;
+        for (var i = 1; i < M; i++) pts.push(windCurve.getPointAt(1 - i / M));  // 頂→底沿繞組
+        pts.push(endBot.clone(), devBot.clone());
+        return new THREE.CatmullRomCurve3(pts, true, 'catmullrom', 0.0);
+    }
+    function buildFlow(srcTop, srcBot, bulbTop, bulbBot) {
+        if (!primCurve || !secCurve) return;
+        disposeGroup(flowGroup);
+        primFlow.dots.length = 0; secFlow.dots.length = 0;
+        primFlow.curve = makeLoopCurve(primCurve, primEnds.top, primEnds.bottom, srcTop, srcBot);
+        secFlow.curve  = makeLoopCurve(secCurve,  secEnds.top,  secEnds.bottom,  bulbTop, bulbBot);
+        var dotGeo = new THREE.SphereGeometry(0.135, 12, 12);
+        function addDots(flow, color, n) {
+            var mat = new THREE.MeshBasicMaterial({ color: color });
+            for (var k = 0; k < n; k++) {
+                var d = new THREE.Mesh(dotGeo, mat);
+                d.position.copy(flow.curve.getPointAt(k / n));
+                flowGroup.add(d); flow.dots.push(d);
+            }
+        }
+        addDots(primFlow, 0x2563eb, 16);   // 初級藍
+        addDots(secFlow,  0xf97316, 16);   // 次級橙
+        flowGroup.visible = showCurrent;
     }
 
     /* ============================================================
@@ -607,8 +704,10 @@ PhysLab.sim3d.ready(function () {
         lblSource = makePill(t(acMode ? 'label3d.source' : 'label3d.sourceDc'), '#0f172a', 0.95); lblSource.position.set(SRC_X, 2.1, 0);
         lblBulb   = makePill(t('label3d.bulb'), '#b45309', 0.95);   lblBulb.position.set(BULB_X, 1.9, 0);
         lblFlux   = makePill(t('label3d.flux'), '#7c3aed', 0.9);    lblFlux.position.set(0, -CORE_Y - 1.5, 0);
-        labelGroup.add(lblCore, lblPrim, lblSec, lblSource, lblBulb, lblFlux);
+        lblReact  = makePill(t('label3d.react'), '#0d9488', 0.9);   lblReact.position.set(CORE_X + 1.7, CORE_Y - 0.2, FLUX_Z);
+        labelGroup.add(lblCore, lblPrim, lblSec, lblSource, lblBulb, lblFlux, lblReact);
         labelGroup.visible = showLabels;
+        lblReact.visible = showLenz;      // Φₛ 標籤僅 Lenz 模式顯示
     }
     function refreshLabelTexts() {
         if (!lblCore) return;
@@ -618,6 +717,7 @@ PhysLab.sim3d.ready(function () {
         lblSource.userData.setText(t(acMode ? 'label3d.source' : 'label3d.sourceDc'));
         lblBulb.userData.setText(t('label3d.bulb'));
         lblFlux.userData.setText(t('label3d.flux'));
+        lblReact.userData.setText(t('label3d.react'));
     }
 
     /* ============================================================
@@ -644,10 +744,24 @@ PhysLab.sim3d.ready(function () {
         });
         el('row-current').addEventListener('click', function () {
             showCurrent = !showCurrent; el('opt-current').classList.toggle('on', showCurrent);
+            flowGroup.visible = showCurrent;      // 方向箭頭與流動光點同一開關
+        });
+        el('row-lenz').addEventListener('click', function () {
+            showLenz = !showLenz; el('opt-lenz').classList.toggle('on', showLenz);
+            applyLenzVisibility();
         });
         el('row-labels').addEventListener('click', function () {
             showLabels = !showLabels; el('opt-labels').classList.toggle('on', showLabels); labelGroup.visible = showLabels;
+            if (lblReact) lblReact.visible = showLabels && showLenz && acMode;
         });
+    }
+
+    // Lenz 元素可見性：DC 模式（無磁通變化）一律隱藏，免矛盾畫面
+    function applyLenzVisibility() {
+        var on = showLenz && acMode;
+        if (secReactGroup) secReactGroup.visible = on;
+        if (lblReact) lblReact.visible = on && showLabels;
+        el('lenz-box').style.display = on ? '' : 'none';
     }
 
     function setMode(ac) {
@@ -656,6 +770,7 @@ PhysLab.sim3d.ready(function () {
         el('mode-dc').classList.toggle('active', !ac);
         refreshSourceFace();
         if (lblSource) lblSource.userData.setText(t(ac ? 'label3d.source' : 'label3d.sourceDc'));
+        applyLenzVisibility();
     }
 
     /* ============================================================
@@ -683,6 +798,32 @@ PhysLab.sim3d.ready(function () {
         mesh.quaternion.setFromUnitVectors(Z, d);
     }
 
+    // 電流流動光點更新：offset 隨時間累加（正負=方向），沿封閉曲線等距鋪 dots
+    function marchDots(flow, dir, spd, dt, on) {
+        if (!flow.curve) return;
+        if (on && playing) flow.offset += dir * spd * dt;
+        var n = flow.dots.length;
+        for (var k = 0; k < n; k++) {
+            var d = flow.dots[k];
+            d.visible = on;
+            if (on) {
+                var u = (((flow.offset + k / n) % 1) + 1) % 1;
+                d.position.copy(flow.curve.getPointAt(u));
+            }
+        }
+    }
+    function updateFlow(dt, curSign, absEmf) {
+        var pShow = showCurrent;
+        if (acMode) {
+            var spd = 0.10 + 0.55 * absEmf;                 // 振幅越大越快
+            marchDots(primFlow, curSign, spd, dt, pShow);   // 初級：跟 AC 反向
+            marchDots(secFlow,  curSign, spd, dt, pShow);   // 次級：同步反向
+        } else {
+            marchDots(primFlow, 1, 0.32, dt, pShow);        // DC：初級穩定單向流動（直流仍有電流）
+            marchDots(secFlow,  1, 0,    dt, false);        // DC：次級無電流→停流、隱藏
+        }
+    }
+
     function updateVisuals(dt) {
         var fluxSig = acMode ? Math.sin(phase) : 1;        // 磁通 ∝ sin
         var emfSig  = acMode ? Math.cos(phase) : 0;        // 電壓/電流 ∝ dΦ/dt ∝ cos
@@ -699,18 +840,38 @@ PhysLab.sim3d.ready(function () {
             fa.mesh.scale.set(sc, sc, sc);
         }
 
-        // 電流箭頭（DC 或無交變時隱藏）
-        var curActive = acMode;
-        var curMag = 0.55 + 0.85 * Math.abs(emfSig);
+        // 電流箭頭：初級 AC/DC 皆顯示（DC 為受繞組電阻限流的穩定單向電流，與光點一致）；
+        //          次級與 Φₛ 僅 AC（DC→次級無輸出）。
+        var acActive = acMode;
         for (i = 0; i < primArrows.length; i++) {
-            primArrows[i].mesh.visible = showCurrent && curActive;
-            if (curActive) { orientArrow(primArrows[i].mesh, primArrows[i].tangent, curSign); primArrows[i].mesh.scale.setScalar(0.7 + 0.4 * Math.abs(emfSig)); }
+            primArrows[i].mesh.visible = showCurrent;
+            orientArrow(primArrows[i].mesh, primArrows[i].tangent, curSign);   // DC 時 curSign 恆為 +1（穩定單向）
+            primArrows[i].mesh.scale.setScalar(acMode ? (0.7 + 0.4 * Math.abs(emfSig)) : 0.85);
         }
-        // 次級電流：受負載大小影響（相對強度），方向同步
+        // 次級電流：受負載大小影響（相對強度），方向同步；Lenz 模式加 20% 突顯「被感應的電流」
+        var secBoost = showLenz ? 1.2 : 1.0;
         for (i = 0; i < secArrows.length; i++) {
-            secArrows[i].mesh.visible = showCurrent && curActive;
-            if (curActive) { orientArrow(secArrows[i].mesh, secArrows[i].tangent, curSign); secArrows[i].mesh.scale.setScalar(0.7 + 0.4 * Math.abs(emfSig)); }
+            secArrows[i].mesh.visible = showCurrent && acActive;
+            if (acActive) { orientArrow(secArrows[i].mesh, secArrows[i].tangent, curSign); secArrows[i].mesh.scale.setScalar((0.7 + 0.4 * Math.abs(emfSig)) * secBoost); }
         }
+
+        // 副線圈反抗磁通 Φₛ（楞次）：方向 +Y·(−curSign)；|Φₛ|∝|emfSig| → Φ 過零最長、Φ 峰值歸零
+        var reactOn = showLenz && acActive;
+        secReactGroup.visible = reactOn;
+        if (reactOn) {
+            var rMag = Math.abs(emfSig);                       // 峰值(=Φ過零)最大、Φ峰值(=0)最小
+            var rScale = 0.18 + 0.5 * rMag;                    // 峰值高度 ≈ 主磁通的 51%（明顯細過主 Φ）
+            for (i = 0; i < secReactArrows.length; i++) {
+                var rm = secReactArrows[i].mesh;
+                orientArrow(rm, PY, -curSign);
+                rm.scale.set(rScale, rScale, rScale);
+                rm.material.opacity = 0.85 * rMag;
+            }
+        }
+
+        // 電流流動光點（沿封閉迴路 marching）：方向=curSign（DC 恆正），速率∝|瞬時電流|
+        // AC：兩迴路半週期同步反向、振幅越大流越快；DC：初級穩定單向、次級停流
+        updateFlow(dt, curSign, Math.abs(emfSig));
 
         // 燈泡亮度（∝ 傳遞功率，含輕微交流閃爍）
         var bright = 1 - Math.exp(-Pw / P_REF);
@@ -739,22 +900,37 @@ PhysLab.sim3d.ready(function () {
 
         setText('ro-vp', Vp.toFixed(1) + ' V');
         setText('ro-vs', Vs.toFixed(1) + ' V');
-        setText('ro-ip', Ip.toFixed(2) + ' A');
+        setText('ro-ip', acMode ? Ip.toFixed(2) + ' A' : t('readout.ipDc'));
         setText('ro-is', Is.toFixed(2) + ' A');
         setText('ro-rat', ratioText());
         setText('ro-pow', Pw.toFixed(1) + ' W');
+        setText('ro-nip', acMode ? (Np * Ip).toFixed(1) : '—');    // 安匝：初級 Np·Ip（DC 為受繞組電阻限流的大電流，非理想值，不顯示 0）
+        setText('ro-nis', (Ns * Is).toFixed(1));                    // 安匝：次級 Ns·Is
 
         var live = el('live-explain');
         if (!acMode) live.innerHTML = t('explain.dc');
         else if (Ns > Np) live.innerHTML = t('explain.stepup');
         else if (Ns < Np) live.innerHTML = t('explain.stepdown');
         else live.innerHTML = t('explain.equal');
+
+        // Lenz 相位三態解說（僅 AC + Lenz 模式）
+        // 判別以「|Φ| 是否上升」為準：Φ∝sinθ，d|Φ|/dt ∝ sign(sinθ)·cosθ = sinθ·cosθ。
+        // |cosθ|≈0（Φ 達峰值、dΦ/dt=0）→ peak；sinθ·cosθ>0（|Φ|上升）→ Φₛ 與 Φ 反向；否則 Φₛ 與 Φ 同向。
+        if (showLenz && acMode) {
+            var s = Math.sin(phase), c = Math.cos(phase);
+            var lz = el('lenz-live');
+            if (Math.abs(c) < 0.25)   lz.innerHTML = t('lenz.peak');
+            else if (s * c > 0)       lz.innerHTML = t('lenz.increase'); // |Φ|上升 → Φₛ與Φ反向
+            else                      lz.innerHTML = t('lenz.decrease'); // |Φ|下降 → Φₛ與Φ同向
+        }
     }
 
     function gcd(a, b) { while (b) { var tmp = b; b = a % b; a = tmp; } return a; }
     function ratioText() {
         var g = gcd(Np, Ns) || 1;
-        return (Np / g) + ' : ' + (Ns / g);
+        var s = Np + ' : ' + Ns;
+        if (g > 1) s += '（= ' + (Np / g) + ' : ' + (Ns / g) + '）';   // 未約簡 + 約簡
+        return s;
     }
 
     /* ============================================================
@@ -807,6 +983,16 @@ PhysLab.sim3d.ready(function () {
         }
 
         if (acMode) {
+            // Lenz 模式：灰色虛線 Φ ∝ sin（與 Vs 的 cos 差 90°，示範相位關係）
+            if (showLenz) {
+                ctx2d.strokeStyle = '#94a3b8'; ctx2d.lineWidth = 1.5; ctx2d.setLineDash([4, 4]); ctx2d.beginPath();
+                for (var qx = 0; qx <= gw; qx++) {
+                    var qa = (qx / gw) * cycles * Math.PI * 2 - phase;
+                    var qy = midY - (half * 0.5) * Math.sin(qa);
+                    if (qx === 0) ctx2d.moveTo(gx + qx, qy); else ctx2d.lineTo(gx + qx, qy);
+                }
+                ctx2d.stroke(); ctx2d.setLineDash([]);
+            }
             plotWave(vpPx, '#2563eb');
             plotWave(vsPx, '#ea580c');
         } else {
@@ -821,7 +1007,11 @@ PhysLab.sim3d.ready(function () {
 
         ctx2d.textAlign = 'left'; ctx2d.font = 'bold 11px Segoe UI';
         ctx2d.fillStyle = '#2563eb'; ctx2d.fillText(t('canvas.vpLegend'), gx + 4, gy - 8);
-        ctx2d.fillStyle = '#ea580c'; ctx2d.fillText(t('canvas.vsLegend'), gx + 92, gy - 8);
+        ctx2d.fillStyle = '#ea580c'; ctx2d.fillText(t('canvas.vsLegend'), gx + 78, gy - 8);
+        if (acMode && showLenz) {
+            ctx2d.fillStyle = '#64748b'; ctx2d.font = '10px Segoe UI';
+            ctx2d.fillText(t('canvas.fluxLegend'), gx + 4, gy + gh + 15);
+        }
         ctx2d.fillStyle = '#94a3b8'; ctx2d.font = '10px Segoe UI'; ctx2d.textAlign = 'right';
         ctx2d.fillText(t('canvas.time'), gx + gw - 2, gy + gh + 15);
     }
@@ -833,6 +1023,7 @@ PhysLab.sim3d.ready(function () {
     rebuildPrimary();
     rebuildSecondary();
     buildFluxArrows();
+    buildReactArrows();
     buildSource();
     buildBulb();
     buildLeads();
@@ -840,6 +1031,7 @@ PhysLab.sim3d.ready(function () {
 
     bindControls();
     setMode(true);
+    applyLenzVisibility();      // 依 showLenz(預設 false) 設定 Φₛ / 標籤 / 解說框
 
     PhysLab.ui.bindPanelToggle('btn-toggle-left', 'left-panel', ctx.resize);
     PhysLab.ui.bindPanelToggle('btn-toggle-right', 'right-panel', ctx.resize);
