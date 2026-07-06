@@ -1,1363 +1,1285 @@
 <!DOCTYPE html>
-<html lang="zh-HK">
+<html lang="zh-Hant">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>庫侖定律力學實驗室 | HK DSE Physics</title>
-    
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
-    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>庫侖定律力學實驗室 | HK DSE Physics</title>
 
-    <style>
-        :root {
-            --bg-main: #eef2f5;
-            --panel-bg: rgba(33, 37, 43, 0.95);
-            --accent-blue: #4da6ff;
-            --accent-pink: #ff66ff;
-            --text-main: #abb2bf;
-            --border-light: rgba(255, 255, 255, 0.1);
-        }
+<!-- ═══════════ CDN 外部資源 ═══════════ -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/DragControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.2/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 
-        body {
-            margin: 0; overflow: hidden;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg-main); color: #ffffff;
-        }
+<!-- ═══════════ 共用資源（載入順序固定，不可 defer/async） ═══════════ -->
+<link rel="stylesheet" href="../../../assets/css/tokens.css">
+<link rel="stylesheet" href="../../../assets/css/labgray.css">
+<script src="../../../assets/js/core.js"></script>
+<script src="../../../assets/js/i18n.js"></script>
+<script src="../../../assets/js/sim3d.js"></script>
 
-        /* 頂部懸浮控制按鈕 */
-        #floating-controls {
-            position: absolute; top: 15px; left: 50%;
-            transform: translateX(-50%); z-index: 50;
-            display: flex; gap: 12px;
-        }
-        .float-btn {
-            background: rgba(33, 37, 43, 0.7); border: 1px solid var(--border-light);
-            color: var(--text-main); padding: 8px 16px; border-radius: 20px;
-            cursor: pointer; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-            font-size: 13px; font-weight: bold; transition: all 0.3s ease;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
-        }
-        .float-btn:hover { color: #fff; background: rgba(77, 166, 255, 0.4); border-color: var(--accent-blue); }
-        .float-btn.active { background: var(--accent-blue); color: #000; border-color: var(--accent-blue); }
-        .float-btn.active-pink { background: var(--accent-pink); color: #000; border-color: var(--accent-pink); }
+<style>
+    /* ── 頁面獨有 CSS ── */
+    body { height: 100vh; overflow: hidden; }
+    #left-panel > *, #right-panel > * { flex-shrink: 0; }
+    #left-panel { width: 320px; }
+    #right-panel { width: 340px; }
+    .hidden { display: none !important; }
 
-        /* 左側 UI 面板 */
-        #ui-panel {
-            position: absolute; top: 0; left: 0;
-            width: 350px; height: 100vh; background: var(--panel-bg);
-            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-            padding: 25px 20px; box-sizing: border-box;
-            box-shadow: 5px 0 20px rgba(0,0,0,0.15);
-            border-right: 1px solid var(--border-light);
-            z-index: 30; overflow-y: auto;
-            transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
-        }
+    #mode-btns .dir-btn { min-width: 46%; }
+    .earth-btn { width: 100%; margin-top: 6px; font-size: 0.7rem; padding: 6px; }
 
-        /* 右側 數學面板 */
-        #math-panel-right {
-            position: absolute; top: 0; right: 0;
-            width: 585px; height: 100vh; background: var(--panel-bg);
-            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-            padding: 30px 25px; box-sizing: border-box;
-            box-shadow: -5px 0 20px rgba(0,0,0,0.15);
-            border-left: 3px solid var(--accent-pink);
-            z-index: 30; overflow-y: auto;
-            transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
-        }
+    /* 3D 視圖 HTML 標籤 overlay（座標由 JS 投影計算） */
+    #labels-container { position: absolute; inset: 0; pointer-events: none; z-index: 20; overflow: hidden; }
+    .force-label {
+        position: absolute; background: rgba(255,255,255,0.92); padding: 4px 8px; border-radius: 6px;
+        border: 1px solid var(--pl-border); font-size: 12px; font-weight: bold; letter-spacing: 0.5px;
+        white-space: nowrap; transform: translate(-50%, -50%); box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+    }
+    .sphere-label {
+        position: absolute; color: var(--pl-text-strong); font-size: 18px; font-weight: 800;
+        text-shadow: 0 1px 3px rgba(255,255,255,0.85); transform: translate(-50%, -100%); z-index: 25;
+    }
+    .dist-label {
+        position: absolute; color: var(--pl-text-dim); font-size: 12px; font-weight: bold;
+        background: rgba(255,255,255,0.9); padding: 3px 8px; border-radius: 4px;
+        transform: translate(-50%, -50%); z-index: 15; border: 1px solid var(--pl-border);
+        box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+    }
+    .angle-label {
+        position: absolute; padding: 2px 6px; background: rgba(255,255,255,0.9); border-radius: 4px;
+        font-size: 12px; font-weight: bold; transform: translate(-50%, -50%);
+        border: 1px solid var(--pl-border); box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        z-index: 25; transition: opacity 0.2s;
+    }
 
-        h1 {
-            font-size: 22px; color: var(--accent-blue);
-            border-bottom: 2px solid var(--border-light);
-            padding-bottom: 12px; margin-top: 0; letter-spacing: 1px;
-        }
+    /* 圖表與數學面板 */
+    #chart-container { position: relative; height: 210px; }
+    .math-note { font-size: 0.72rem; color: var(--pl-text-faint); line-height: 1.7; margin-bottom: 8px; }
+    .math-eq { margin-bottom: 12px; font-size: 15px; color: #0f172a; overflow-x: auto; overflow-y: hidden; padding-bottom: 4px; }
+    .math-divider { border-top: 1px solid var(--pl-border-soft); margin: 14px 0; }
 
-        .control-group { margin-bottom: 18px; }
-        label { font-size: 13px; color: var(--text-main); display: block; margin-bottom: 6px; }
-
-        select {
-            width: 100%; padding: 10px; background: rgba(0, 0, 0, 0.3); color: white;
-            border: 1px solid var(--border-light); border-radius: 6px;
-            outline: none; font-size: 13px;
-        }
-
-        input[type="range"] { -webkit-appearance: none; width: 100%; background: transparent; margin-top: 5px; }
-        input[type="range"]:focus { outline: none; }
-        input[type="range"]::-webkit-slider-runnable-track {
-            width: 100%; height: 6px; cursor: pointer; background: rgba(255,255,255,0.1); border-radius: 3px;
-        }
-        input[type="range"]::-webkit-slider-thumb {
-            height: 18px; width: 18px; border-radius: 50%; background: var(--accent-blue); cursor: pointer;
-            -webkit-appearance: none; margin-top: -6px; box-shadow: 0 0 10px rgba(77, 166, 255, 0.5);
-        }
-
-        .btn-group { display: flex; gap: 8px; margin-top: 10px; margin-bottom: 10px; }
-        button {
-            flex: 1; padding: 10px 5px; background: linear-gradient(135deg, #4da6ff 0%, #2980b9 100%); 
-            color: #fff; border: none; border-radius: 6px; cursor: pointer;
-            font-weight: bold; font-size: 12px; text-shadow: 0 1px 2px rgba(0,0,0,0.3);
-            transition: all 0.2s ease; box-shadow: 0 4px 6px rgba(0,0,0,0.2);
-        }
-        button:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.3); }
-        button:active { transform: translateY(0); }
-        .toggle-btn { background: linear-gradient(135deg, #555 0%, #333 100%); }
-
-        .data-display {
-            background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px;
-            font-size: 14px; margin-bottom: 15px; border: 1px solid var(--border-light);
-        }
-        .data-display span { font-weight: bold; color: #e5c07b; font-size: 16px; }
-        
-        .math-eq { margin-bottom: 15px; font-size: 16px; overflow-x: auto; overflow-y: hidden; padding-bottom: 5px; }
-        .math-divider { border-top: 1px solid var(--border-light); margin: 20px 0; }
-
-        #canvas-container, #labels-container {
-            position: absolute; top: 0; left: 350px;
-            width: calc(100vw - 935px); height: 100vh;
-            transition: left 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), width 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
-        }
-        #canvas-container { z-index: 10; }
-        #labels-container { pointer-events: none; z-index: 20; }
-        
-        .force-label {
-            position: absolute; background: rgba(33, 37, 43, 0.9); padding: 4px 8px; border-radius: 6px;
-            border: 1px solid rgba(255, 255, 255, 0.15); font-size: 12px; font-weight: bold; letter-spacing: 0.5px;
-            pointer-events: none; white-space: nowrap; transform: translate(-50%, -50%); box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        }
-        .sphere-label {
-            position: absolute; color: #ffffff; font-size: 18px; font-weight: 800; pointer-events: none;
-            text-shadow: 0px 2px 4px rgba(0,0,0,0.6), 0px 0px 8px rgba(255,255,255,0.4);
-            transform: translate(-50%, -100%); z-index: 25;
-        }
-        .dist-label {
-            position: absolute; color: #abb2bf; font-size: 12px; font-weight: bold;
-            background: rgba(40, 44, 52, 0.9); padding: 3px 8px; border-radius: 4px; pointer-events: none;
-            transform: translate(-50%, -50%); z-index: 15; border: 1px solid rgba(255,255,255,0.2);
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        
-        .angle-label {
-            position: absolute; padding: 2px 6px; background: rgba(33, 37, 43, 0.85); 
-            border-radius: 4px; font-size: 12px; font-weight: bold; color: #4da6ff;
-            pointer-events: none; transform: translate(-50%, -50%); border: 1px solid rgba(255,255,255,0.15);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2); z-index: 25; transition: opacity 0.2s;
-        }
-
-        #chart-container {
-            margin-top: 20px; background: rgba(255,255,255,0.95); border-radius: 8px;
-            padding: 10px; height: 280px; position: relative; box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-        }
-        .hidden { display: none !important; }
-        
-        #instruction-text {
-            font-size: 13px; color: #98c379; margin-top: 15px; margin-bottom: 15px;
-            background: rgba(152, 195, 121, 0.1); padding: 12px; border-radius: 6px;
-            line-height: 1.5; border-left: 4px solid #98c379;
-        }
-    
-        #home-btn {
-            position: fixed; bottom: 16px; left: 16px; z-index: 99999;
-            background: rgba(30,41,59,0.85); backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.3);
-            border-radius: 10px; padding: 8px 14px; font-size: 13px; font-weight: bold;
-            color: #fff; text-decoration: none; box-shadow: 0 2px 10px rgba(0,0,0,0.25);
-            transition: background 0.2s, transform 0.2s; display: inline-flex; align-items: center; gap: 6px;
-        }
-        #home-btn:hover { background: rgba(30,41,59,0.95); transform: translateY(-2px); }
-
-        /* ── Responsive ── */
-        @media (max-width: 768px) {
-            body { overflow-y: auto; }
-            #ui-panel {
-                position: relative; width: 100% !important; height: auto;
-                transform: none !important; border-right: none; border-bottom: 1px solid var(--border-light);
-            }
-            #math-panel-right { display: none !important; }
-            #canvas-container, #labels-container {
-                position: relative; left: auto !important; width: 100% !important; height: 60vw;
-                min-height: 220px; max-height: 60vh;
-            }
-            #floating-controls { top: auto; bottom: 60px; left: 50%; transform: translateX(-50%); flex-wrap: wrap; justify-content: center; }
-        }
-        @media (min-width: 769px) and (max-width: 1200px) {
-            #math-panel-right { width: 320px; }
-            #canvas-container, #labels-container {
-                left: 350px; width: calc(100vw - 670px);
-            }
-        }
-    </style>
-    
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/DragControls.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- sim3d-load-guard: three.js 載入失敗提示 -->
-    <script>
-      window.addEventListener('DOMContentLoaded', function () {
-        if (typeof THREE === 'undefined' || typeof THREE.OrbitControls === 'undefined') {
-          var o = document.createElement('div');
-          o.id = 'sim3d-load-error';
-          o.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;background:#0f172a;color:#fff;font-family:system-ui,\'Noto Sans HK\',sans-serif;font-size:18px;line-height:1.7';
-          o.innerHTML = '⚠️ 無法載入 3D 元件（three.js）<br>請檢查網路連線後重新整理頁面。';
-          document.body.appendChild(o);
-        }
-      });
-    </script>
+    /* 讀數格配色 */
+    .readout-grid { margin-top: 0; }
+    .rc-dist  { background: var(--pl-inset); border-color: var(--pl-border); color: var(--pl-text); }
+    .rc-force { background: #fffbeb; border-color: #fcd34d; color: #b45309; }
+</style>
 </head>
 <body>
 
-    <div id="floating-controls">
-        <button id="btn-toggle-ui" class="float-btn active" onclick="toggleUIPanel()">◧ 顯示/隱藏 控制面板</button>
-        <button id="btn-toggle-math" class="float-btn active-pink" onclick="toggleMathPanel()">◨ 顯示/隱藏 數學面板</button>
-    </div>
-
-    <div id="ui-panel">
-        <h1>庫侖定律力學實驗室</h1>
-        
-        <div class="control-group">
-            <label for="mode-select">實驗模式：</label>
-            <select id="mode-select">
-                <option value="A">雙電荷實驗</option>
-                <option value="B">疊加原理挑戰</option>
-                <option value="C">懸掛小球 (兩個相同)</option>
-                <option value="D">懸掛小球 (單一與固定)</option>
-            </select>
+<!-- ═══════════ 頂欄 ═══════════ -->
+<div id="topbar">
+    <div style="display:flex;align-items:center;gap:16px;">
+        <button type="button" class="panel-toggle-btn" id="btn-toggle-left"><span>☰</span> <span data-i18n="topbar.controls">控制</span></button>
+        <div class="title-block">
+            <h1 data-i18n="topbar.title">庫侖定律力學實驗室</h1>
+            <p data-i18n="topbar.subtitle">HKDSE Physics · Book 4 · Chapter 1 · 庫侖定律</p>
         </div>
+    </div>
+    <div class="tb-actions">
+        <!-- #lang-btn（i18n.js）與 #home-btn（core.js）自動注入此容器 -->
+        <button type="button" class="panel-toggle-btn" id="btn-toggle-right"><span>📖</span> <span data-i18n="topbar.info">資訊</span></button>
+    </div>
+</div>
 
-        <div id="instruction-text">💡 提示載入中...</div>
+<div id="main">
 
-        <div id="mode-b-tools" class="control-group hidden">
-            <label>顯示開關與排列：</label>
-            <div class="btn-group">
-                <button id="toggle-para-btn" class="toggle-btn" onclick="toggleParallelogram()">平行四邊形 (Off)</button>
-                <button id="toggle-decomp-btn" class="toggle-btn" onclick="toggleDecomp()">X-Y 虛線拆力 (Off)</button>
+    <!-- ═══════════ 左側控制面板 ═══════════ -->
+    <div id="left-panel">
+
+        <div class="card">
+            <div class="card-header">🧪 <span data-i18n="panel.mode.header">實驗模式</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <div class="dir-btn-group" id="mode-btns">
+                    <button type="button" class="dir-btn active" data-mode="A" data-i18n="mode.A">雙電荷實驗</button>
+                    <button type="button" class="dir-btn" data-mode="B" data-i18n="mode.B">疊加原理挑戰</button>
+                    <button type="button" class="dir-btn" data-mode="C" data-i18n="mode.C">懸掛小球 (兩個相同)</button>
+                    <button type="button" class="dir-btn" data-mode="D" data-i18n="mode.D">懸掛小球 (單一與固定)</button>
+                </div>
+                <div class="info-box" id="instruction-text" style="margin-top:10px;" data-i18n-html="status.loading">💡 提示載入中...</div>
             </div>
-            <div class="btn-group">
-                <button onclick="setTriangle('equilateral')">等邊三角形</button>
-                <button onclick="setTriangle('isosceles')">等腰三角形</button>
-                <button onclick="setTriangle('right')">直角三角形</button>
+        </div>
+
+        <div class="card hidden" id="mode-b-tools">
+            <div class="card-header">🧰 <span data-i18n="panel.modeB.header">顯示開關與排列</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <div class="toggle-row" id="row-para">
+                    <div class="toggle-track" id="opt-para"><div class="toggle-thumb"></div></div>
+                    <span data-i18n="toggle.para">平行四邊形</span>
+                </div>
+                <div class="toggle-row" id="row-decomp">
+                    <div class="toggle-track" id="opt-decomp"><div class="toggle-thumb"></div></div>
+                    <span data-i18n="toggle.decomp">X-Y 虛線拆力</span>
+                </div>
+                <div class="dir-btn-group" style="margin-top:8px;">
+                    <button type="button" class="dir-btn" data-tri="equilateral" data-i18n="tri.eq">等邊三角形</button>
+                    <button type="button" class="dir-btn" data-tri="isosceles" data-i18n="tri.iso">等腰三角形</button>
+                    <button type="button" class="dir-btn" data-tri="right" data-i18n="tri.right">直角三角形</button>
+                </div>
             </div>
         </div>
 
-        <div id="controls" class="control-group">
-            <label>Q₁ 電荷量 (<span id="q1-val">5.0</span> μC):</label>
-            <input type="range" id="q1-slider" min="-10" max="10" step="0.1" value="5">
-            <button id="earth-btn-1" class="hidden toggle-btn" onclick="earthSphere(1)" style="margin-top:6px; font-size:11px; width:100%; padding:6px; margin-bottom:10px;">⚡ 將 Q₁ 接地 (變成中性 0 μC)</button>
-            
-            <label class="q2-group">Q₂ 電荷量 (<span id="q2-val">-5.0</span> μC):</label>
-            <input type="range" id="q2-slider" class="q2-group" min="-10" max="10" step="0.1" value="-5">
-            <button id="earth-btn-2" class="hidden toggle-btn" onclick="earthSphere(2)" style="margin-top:6px; font-size:11px; width:100%; padding:6px;">⚡ 將 Q₂ 接地 (變成中性 0 μC)</button>
-            
-            <label class="q3-group hidden" style="margin-top: 15px;">Q₃ 電荷量 (<span id="q3-val">3.0</span> μC):</label>
-            <input type="range" id="q3-slider" class="q3-group hidden" min="-10" max="10" step="0.1" value="3">
+        <div class="card" id="controls">
+            <div class="card-header">⚡ <span data-i18n="panel.charge.header">電荷量</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <div class="slider-row">
+                    <div class="slider-head"><label data-i18n="slider.q1">Q₁ 電荷量 (μC)</label><span class="val" id="q1-val">5.0</span></div>
+                    <input type="range" id="q1-slider" min="-10" max="10" step="0.1" value="5">
+                </div>
+                <button type="button" id="earth-btn-1" class="action-btn btn-reset earth-btn hidden" data-i18n="btn.earth1">⚡ 將 Q₁ 接地 (變成中性 0 μC)</button>
+                <div class="slider-row" style="margin-top:10px;">
+                    <div class="slider-head"><label data-i18n="slider.q2">Q₂ 電荷量 (μC)</label><span class="val" id="q2-val">-5.0</span></div>
+                    <input type="range" id="q2-slider" min="-10" max="10" step="0.1" value="-5">
+                </div>
+                <button type="button" id="earth-btn-2" class="action-btn btn-reset earth-btn hidden" data-i18n="btn.earth2">⚡ 將 Q₂ 接地 (變成中性 0 μC)</button>
+                <div class="slider-row q3-group hidden" style="margin-top:10px;">
+                    <div class="slider-head"><label data-i18n="slider.q3">Q₃ 電荷量 (μC)</label><span class="val" id="q3-val">3.0</span></div>
+                    <input type="range" id="q3-slider" min="-10" max="10" step="0.1" value="3">
+                </div>
+            </div>
         </div>
 
-        <div id="mode-cd-tools" class="control-group hidden" style="border-top: 1px solid rgba(255,255,255,0.1); padding-top:15px;">
-            <label>懸掛點間距 d₀ (<span id="val-d0">0.20</span> m):</label>
-            <input type="range" id="d0-slider" min="0.12" max="0.5" step="0.01" value="0.2">
-            
-            <label style="margin-top:10px;">小球質量 m (<span id="val-mass">0.50</span> kg):</label>
-            <input type="range" id="mass-slider" min="0.05" max="5.0" step="0.05" value="0.50">
-
-            <label class="flex items-center space-x-2 cursor-pointer mt-3" style="display:flex; align-items:center; gap:8px; margin-top: 12px;">
-                <input type="checkbox" id="fbd-checkbox" checked style="width:auto; margin:0;">
-                <span style="font-size:13px; color:var(--text-main);">顯示受力圖與角度標籤</span>
-            </label>
+        <div class="card hidden" id="mode-cd-tools">
+            <div class="card-header">🪢 <span data-i18n="panel.cd.header">懸掛小球</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <div class="slider-row">
+                    <div class="slider-head"><label data-i18n="slider.d0">懸掛點間距 d₀ (m)</label><span class="val" id="val-d0">0.20</span></div>
+                    <input type="range" id="d0-slider" min="0.12" max="0.5" step="0.01" value="0.2">
+                </div>
+                <div class="slider-row">
+                    <div class="slider-head"><label data-i18n="slider.mass">小球質量 m (kg)</label><span class="val" id="val-mass">0.50</span></div>
+                    <input type="range" id="mass-slider" min="0.05" max="5.0" step="0.05" value="0.50">
+                </div>
+                <div class="toggle-row" id="row-fbd" style="margin-top:4px;">
+                    <div class="toggle-track on" id="opt-fbd"><div class="toggle-thumb"></div></div>
+                    <span data-i18n="toggle.fbd">顯示受力圖與角度標籤</span>
+                </div>
+            </div>
         </div>
 
-        <div class="data-display" id="data-panel">
-            <div style="color:var(--text-main); font-size:12px; margin-bottom:4px;">距離 r (m):</div>
-            <span id="dist-val">5.00</span><br><br>
-            <div id="force-title" style="color:var(--text-main); font-size:12px; margin-bottom:4px;">靜電力 F (N):</div>
-            <span id="force-val">0.090 N</span>
+        <div class="card" id="data-panel">
+            <div class="card-header">📊 <span data-i18n="panel.data.header">即時數據</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <div class="readout-grid">
+                    <div class="readout-cell rc-dist"><small data-i18n="readout.dist">距離 r (m)</small><span id="dist-val">5.00</span></div>
+                    <div class="readout-cell rc-force"><small id="force-title" data-i18n="readout.force">靜電力 F (N)</small><span id="force-val">0.090 N</span></div>
+                </div>
+            </div>
         </div>
 
-        <div id="chart-container">
-            <canvas id="f-r-chart"></canvas>
-        </div>
-    </div>
-
-    <div id="math-panel-right">
-        
-        <div id="math-mode-A" class="hidden">
-            <h3 style="color:var(--accent-blue); margin-top:0; letter-spacing:1px;">數學運算面板</h3>
-            <div style="color:var(--text-main); font-size:13px; margin-bottom:15px;">庫侖定律代入計算 (Q₁ 與 Q₂ 之間的作用力):</div>
-            <div id="math-f12" class="math-eq"></div>
-        </div>
-
-        <div id="math-mode-B" class="hidden">
-            <h3 style="color:var(--accent-pink); margin-top:0; letter-spacing:1px;">數學運算面板</h3>
-            <div style="color:var(--text-main); font-size:13px; margin-bottom:15px;">庫侖定律純量計算 (Q₃ 受力):</div>
-            <div id="math-f31" class="math-eq"></div>
-            <div id="math-f32" class="math-eq"></div>
-            
-            <div class="math-divider"></div>
-            <div style="color:var(--text-main); font-size:13px; margin-bottom:15px;">利用 sin / cos 將力分解至 X 軸與 Y 軸方向:</div>
-            <div id="math-decomp1" class="math-eq"></div>
-            <div id="math-decomp2" class="math-eq"></div>
-            
-            <div class="math-divider"></div>
-            <div style="color:var(--text-main); font-size:13px; margin-bottom:15px;">畢氏定理求最終合力 (Pythagorean Theorem):</div>
-            <div id="math-sumx" class="math-eq"></div>
-            <div id="math-sumy" class="math-eq"></div>
-            <div id="math-fres" class="math-eq"></div>
-        </div>
-
-        <div id="math-mode-CD" class="hidden">
-            <h3 style="color:var(--accent-blue); margin-top:0; letter-spacing:1px;">力學與靜電平衡分析</h3>
-            <div style="color:var(--text-main); font-size:13px; margin-bottom:15px;">考慮懸掛小球的自由體受力圖 (FBD)，在最終平衡狀態下：</div>
-            
-            <div style="color:#e5c07b; font-size:12px; margin-bottom:4px;">1. 垂直方向 (Y軸) 平衡：重力 (W) 與張力垂直分量抵消</div>
-            <div id="math-cd-y" class="math-eq"></div>
-            
-            <div style="color:#4da6ff; font-size:12px; margin-bottom:4px;">2. 水平方向 (X軸) 平衡：靜電力 (Fe) 與張力水平分量抵消</div>
-            <div id="math-cd-x" class="math-eq"></div>
-            
-            <div class="math-divider"></div>
-            
-            <div style="color:#98c379; font-size:13px; margin-bottom:15px;">3. 計算繩子張力 (T)：</div>
-            <div id="math-cd-t1" class="math-eq"></div>
-            <div id="math-cd-t2" class="math-eq" style="margin-top: 15px;"></div>
+        <div class="card" id="chart-card">
+            <div class="card-header">📈 <span data-i18n="panel.chart.header">F–r 關係圖</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <div id="chart-container"><canvas id="f-r-chart"></canvas></div>
+            </div>
         </div>
 
     </div>
 
-    <div id="labels-container">
-        <div id="lbl-theta1" class="angle-label" style="display:none; color: #4da6ff;"></div>
-        <div id="lbl-theta2" class="angle-label" style="display:none; color: #ff66ff;"></div>
+    <!-- ═══════════ 中央 3D 視圖 ═══════════ -->
+    <div id="canvas-wrap">
+        <div id="view3d">
+            <div id="labels-container">
+                <div id="lbl-theta1" class="angle-label" style="display:none; color:#0284c7;"></div>
+                <div id="lbl-theta2" class="angle-label" style="display:none; color:#c026d3;"></div>
+            </div>
+            <div id="hint" data-i18n="status.hint">🖱️ 拖曳小球移動 · 左鍵旋轉 · 滾輪縮放</div>
+        </div>
     </div>
-    <div id="canvas-container"></div>
 
-    <script>
-        const k = 9e9; 
-        const micro = 1e-6; 
-        const G = 9.81; 
-        
-        const FORCE_SCALE_FACTOR = 45; 
-        const MAX_ARROW_LENGTH = 6;
-        let currentMinDist = 1.0; 
+    <!-- ═══════════ 右側數學面板 ═══════════ -->
+    <div id="right-panel">
 
-        let scene, camera, renderer, orbitControls, dragControls;
-        let charges = [], arrows = [], strings = [], sphereLabels = []; 
-        let distLabels = [], distanceLines = [], parallelogramLines = [], decompArrows = []; 
-        
-        // Mode C/D Gemini variables
-        let geminiState = { d0: 0.2, mass: 0.5, theta1: 0, theta2: 0, showFBD: true, isInductionActive: false };
-        let cdExtras = [];
-        let fbd1 = null, fbd2 = null;
-        let arc1 = null, arc2 = null;
-        let normal1 = null, normal2 = null;
-        let stand = null;
+        <div class="card hidden" id="math-mode-A">
+            <div class="card-header">🧮 <span data-i18n="panel.mathA.header">數學運算面板</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <div class="math-note" data-i18n="math.A.desc">庫侖定律代入計算 (Q₁ 與 Q₂ 之間的作用力):</div>
+                <div id="math-f12" class="math-eq"></div>
+            </div>
+        </div>
 
-        let currentMode = 'A';
-        let isParallelogramVisible = false;
-        let isDecompVisible = false; 
+        <div class="card hidden" id="math-mode-B">
+            <div class="card-header">🧮 <span data-i18n="panel.mathB.header">數學運算面板</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <div class="math-note" data-i18n="math.B.desc1">庫侖定律純量計算 (Q₃ 受力):</div>
+                <div id="math-f31" class="math-eq"></div>
+                <div id="math-f32" class="math-eq"></div>
+                <div class="math-divider"></div>
+                <div class="math-note" data-i18n="math.B.desc2">利用 sin / cos 將力分解至 X 軸與 Y 軸方向:</div>
+                <div id="math-decomp1" class="math-eq"></div>
+                <div id="math-decomp2" class="math-eq"></div>
+                <div class="math-divider"></div>
+                <div class="math-note" data-i18n="math.B.desc3">畢氏定理求最終合力 (Pythagorean Theorem):</div>
+                <div id="math-sumx" class="math-eq"></div>
+                <div id="math-sumy" class="math-eq"></div>
+                <div id="math-fres" class="math-eq"></div>
+            </div>
+        </div>
 
-        let uiPanelVisible = true;
-        let mathPanelVisible = true;
+        <div class="card hidden" id="math-mode-CD">
+            <div class="card-header">🧮 <span data-i18n="panel.mathCD.header">力學與靜電平衡分析</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <div class="math-note" data-i18n="math.CD.desc">考慮懸掛小球的自由體受力圖 (FBD)，在最終平衡狀態下：</div>
+                <div class="math-note" style="color:#b45309;" data-i18n="math.CD.y">1. 垂直方向 (Y軸) 平衡：重力 (W) 與張力垂直分量抵消</div>
+                <div id="math-cd-y" class="math-eq"></div>
+                <div class="math-note" style="color:#0284c7;" data-i18n="math.CD.x">2. 水平方向 (X軸) 平衡：靜電力 (Fe) 與張力水平分量抵消</div>
+                <div id="math-cd-x" class="math-eq"></div>
+                <div class="math-divider"></div>
+                <div class="math-note" style="color:#16a34a;" data-i18n="math.CD.t">3. 計算繩子張力 (T)：</div>
+                <div id="math-cd-t1" class="math-eq"></div>
+                <div id="math-cd-t2" class="math-eq" style="margin-top:15px;"></div>
+            </div>
+        </div>
 
-        const q1Slider = document.getElementById('q1-slider'), q2Slider = document.getElementById('q2-slider'), q3Slider = document.getElementById('q3-slider');
-        const q1Val = document.getElementById('q1-val'), q2Val = document.getElementById('q2-val'), q3Val = document.getElementById('q3-val');
-        const distVal = document.getElementById('dist-val'), forceTitle = document.getElementById('force-title'), forceVal = document.getElementById('force-val');
-        const modeSelect = document.getElementById('mode-select'), instructionText = document.getElementById('instruction-text');
-        const labelsContainer = document.getElementById('labels-container');
+    </div>
+</div>
 
-        let frChart;
+<!-- ═══════════ 頁面字典（zh 必填；en 缺字自動回退 zh） ═══════════ -->
+<script>
+PhysLab.i18n.register({
+    zh: {
+        'topbar.title': '庫侖定律力學實驗室',
+        'topbar.subtitle': 'HKDSE Physics · Book 4 · Chapter 1 · 庫侖定律',
+        'topbar.controls': '控制',
+        'topbar.info': '資訊',
+        'panel.mode.header': '實驗模式',
+        'mode.A': '雙電荷實驗',
+        'mode.B': '疊加原理挑戰',
+        'mode.C': '懸掛小球 (兩個相同)',
+        'mode.D': '懸掛小球 (單一與固定)',
+        'status.loading': '💡 提示載入中...',
+        'status.hint': '🖱️ 拖曳小球移動 · 左鍵旋轉 · 滾輪縮放',
+        'panel.modeB.header': '顯示開關與排列',
+        'toggle.para': '平行四邊形',
+        'toggle.decomp': 'X-Y 虛線拆力',
+        'tri.eq': '等邊三角形',
+        'tri.iso': '等腰三角形',
+        'tri.right': '直角三角形',
+        'panel.charge.header': '電荷量',
+        'slider.q1': 'Q₁ 電荷量 (μC)',
+        'slider.q2': 'Q₂ 電荷量 (μC)',
+        'slider.q3': 'Q₃ 電荷量 (μC)',
+        'btn.earth1': '⚡ 將 Q₁ 接地 (變成中性 0 μC)',
+        'btn.earth2': '⚡ 將 Q₂ 接地 (變成中性 0 μC)',
+        'panel.cd.header': '懸掛小球',
+        'slider.d0': '懸掛點間距 d₀ (m)',
+        'slider.mass': '小球質量 m (kg)',
+        'toggle.fbd': '顯示受力圖與角度標籤',
+        'panel.data.header': '即時數據',
+        'readout.dist': '距離 r (m)',
+        'readout.force': '靜電力 F (N)',
+        'readout.forceE': '靜電力 F_e (N)',
+        'panel.chart.header': 'F–r 關係圖',
+        'chart.curve': '平方反比曲線',
+        'chart.current': '當前數值',
+        'chart.x': '距離 r (m)',
+        'chart.y': '靜電力 F (N)',
+        'panel.mathA.header': '數學運算面板',
+        'panel.mathB.header': '數學運算面板',
+        'panel.mathCD.header': '力學與靜電平衡分析',
+        'math.A.desc': '庫侖定律代入計算 (Q₁ 與 Q₂ 之間的作用力):',
+        'math.B.desc1': '庫侖定律純量計算 (Q₃ 受力):',
+        'math.B.desc2': '利用 sin / cos 將力分解至 X 軸與 Y 軸方向:',
+        'math.B.desc3': '畢氏定理求最終合力 (Pythagorean Theorem):',
+        'math.CD.desc': '考慮懸掛小球的自由體受力圖 (FBD)，在最終平衡狀態下：',
+        'math.CD.y': '1. 垂直方向 (Y軸) 平衡：重力 (W) 與張力垂直分量抵消',
+        'math.CD.x': '2. 水平方向 (X軸) 平衡：靜電力 (Fe) 與張力水平分量抵消',
+        'math.CD.t': '3. 計算繩子張力 (T)：',
+        'hint.A': '💡 <b>提示：</b>小球中央的黑點代表「質點/點電荷」。注意下方量度線是從「中心到中心」進行測量。',
+        'hint.B': '💡 <b>提示：</b>已將小球縮小，以便更直觀地觀察點電荷在 2D 平面上的受力。',
+        'hint.cdBalance': '💡 <b>提示：</b>觀察重力、繩子張力與靜電力的平衡狀態。動態平衡受小球質量與電荷量影響。',
+        'hint.cdInduction': '💡 <b>提示：</b>中性小球因靜電極化而與帶電體相吸。',
+        'label3d.fres': 'F₃ 合力',
+        'math.induced': ' \\text{ (感應)}',
+        'math.tAlt': '\\text{或 } T = \\sqrt{(mg)^2 + F_e^2} = {T}\\text{ N}'
+    },
+    en: {}
+});
+</script>
 
-        window.onload = () => {
-            init();
-            animate();
-        };
+<!-- ═══════════ 頁面邏輯 ═══════════ -->
+<script>
+PhysLab.sim3d.ready(function () {
+    const tt = PhysLab.i18n.t;
 
-        function init() {
-            const container = document.getElementById('canvas-container');
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0xeef2f5); 
+    const k = 9e9;
+    const micro = 1e-6;
+    const G = 9.81;
 
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-            scene.add(ambientLight);
-            
-            const hemiLight = new THREE.HemisphereLight(0xffffff, 0xc0c4c8, 0.6);
-            hemiLight.position.set(0, 20, 0);
-            scene.add(hemiLight);
+    const FORCE_SCALE_FACTOR = 45;
+    const MAX_ARROW_LENGTH = 6;
+    let currentMinDist = 1.0;
 
-            const dirLight = new THREE.DirectionalLight(0xffffff, 0.7);
-            dirLight.position.set(5, 10, 10);
-            scene.add(dirLight);
+    let scene, camera, renderer, orbitControls, dragControls;
+    let charges = [], arrows = [], strings = [], sphereLabels = [];
+    let distLabels = [], distanceLines = [], parallelogramLines = [], decompArrows = [];
 
-            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
-            camera.position.set(0, 0, 20); 
+    // Mode C/D Gemini variables
+    let geminiState = { d0: 0.2, mass: 0.5, theta1: 0, theta2: 0, showFBD: true, isInductionActive: false };
+    let cdExtras = [];
+    let fbd1 = null, fbd2 = null;
+    let arc1 = null, arc2 = null;
+    let normal1 = null, normal2 = null;
+    let stand = null;
 
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(container.clientWidth, container.clientHeight);
-            container.appendChild(renderer.domElement);
+    let currentMode = 'A';
+    let isParallelogramVisible = false;
+    let isDecompVisible = false;
 
-            orbitControls = new THREE.OrbitControls(camera, renderer.domElement);
-            orbitControls.enableDamping = true;
-            orbitControls.target.set(0, 0, 0);
+    const q1Slider = document.getElementById('q1-slider'), q2Slider = document.getElementById('q2-slider'), q3Slider = document.getElementById('q3-slider');
+    const q1Val = document.getElementById('q1-val'), q2Val = document.getElementById('q2-val'), q3Val = document.getElementById('q3-val');
+    const distVal = document.getElementById('dist-val'), forceTitle = document.getElementById('force-title'), forceVal = document.getElementById('force-val');
+    const instructionText = document.getElementById('instruction-text');
+    const labelsContainer = document.getElementById('labels-container');
+    const viewEl = document.getElementById('view3d');
 
-            initChart();
+    let frChart;
 
-            window.addEventListener('resize', onWindowResize);
-            q1Slider.addEventListener('input', updatePhysics);
-            q2Slider.addEventListener('input', updatePhysics);
-            q3Slider.addEventListener('input', updatePhysics);
-            
-            document.getElementById('d0-slider').addEventListener('input', updatePhysics);
-            document.getElementById('mass-slider').addEventListener('input', updatePhysics);
-            document.getElementById('fbd-checkbox').addEventListener('change', updatePhysics);
+    // 動態文字追蹤（語言切換時以同一 key 重寫）
+    let instrKey = '';
+    function setInstr(key) { instrKey = key; instructionText.innerHTML = tt(key); }
+    let forceTitleKey = 'readout.force';
+    function setForceTitle(key) { forceTitleKey = key; forceTitle.textContent = tt(key); }
 
-            modeSelect.addEventListener('change', (e) => switchMode(e.target.value));
+    /* ── 場景底座（原頁精確值：fov 45 / near 0.1 / far 1000 / cam (0,0,20)；
+          背景由深色系 0xeef2f5 改統一淺灰 0xe2e6eb；燈光沿用原頁自建三燈組） ── */
+    const ctx = PhysLab.sim3d.create(viewEl, {
+        background: 0xe2e6eb, fov: 45, near: 0.1, far: 1000,
+        views: { default: { pos: [0, 0, 20], tgt: [0, 0, 0] } },
+        controls: { damping: 0.05 },
+        lights: false, grid: false
+    });
+    scene = ctx.scene; camera = ctx.camera; renderer = ctx.renderer; orbitControls = ctx.controls;
 
-            switchMode('A');
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
+
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0xc0c4c8, 0.6);
+    hemiLight.position.set(0, 20, 0);
+    scene.add(hemiLight);
+
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.7);
+    dirLight.position.set(5, 10, 10);
+    scene.add(dirLight);
+
+    // ---------- Gemini Mode C/D Math Core ----------
+    function solveTheta(m_kg, q1_c, q2_c, mode, d0_m) {
+        let L = 0.2;
+        let R = 0.05;
+        let Fe = 0;
+        let repulsive = true;
+        let qProd = q1_c * q2_c;
+        let qSum = q1_c + q2_c;
+        geminiState.isInductionActive = false;
+
+        if (qProd !== 0) {
+            repulsive = qProd > 0;
+        } else if (qSum !== 0) {
+            repulsive = false;
+            geminiState.isInductionActive = true;
+        } else {
+            return 0;
         }
 
-        function toggleUIPanel() {
-            uiPanelVisible = !uiPanelVisible;
-            const btn = document.getElementById('btn-toggle-ui');
-            const panel = document.getElementById('ui-panel');
-            if (uiPanelVisible) {
-                btn.classList.add('active');
-                panel.style.transform = 'translateX(0)';
-            } else {
-                btn.classList.remove('active');
-                panel.style.transform = 'translateX(-100%)';
-            }
-            updateCanvasLayout();
-        }
+        let low = 0, high = Math.PI / 2.2, mid = 0;
+        let minGap = 2.05 * R;
+        let isTwo = (mode === 'C');
 
-        function toggleMathPanel() {
-            mathPanelVisible = !mathPanelVisible;
-            const btn = document.getElementById('btn-toggle-math');
-            const panel = document.getElementById('math-panel-right');
-            if (mathPanelVisible) {
-                btn.classList.add('active-pink');
-                panel.style.transform = 'translateX(0)';
-            } else {
-                btn.classList.remove('active-pink');
-                panel.style.transform = 'translateX(100%)';
-            }
-            updateCanvasLayout();
-        }
-
-        function updateCanvasLayout() {
-            const container = document.getElementById('canvas-container');
-            const labels = document.getElementById('labels-container');
-            const mathBtn = document.getElementById('btn-toggle-math');
-            
-            // Allow math panel to always be visible globally
-            mathBtn.style.display = 'block';
-            if (mathPanelVisible) {
-                document.getElementById('math-panel-right').style.transform = 'translateX(0)';
-            }
-
-            let leftW = uiPanelVisible ? 350 : 0;
-            let rightW = mathPanelVisible ? 585 : 0;
-
-            container.style.left = leftW + 'px';
-            container.style.width = `calc(100vw - ${leftW + rightW}px)`;
-            labels.style.left = leftW + 'px';
-            labels.style.width = `calc(100vw - ${leftW + rightW}px)`;
-
-            setTimeout(onWindowResize, 400);
-        }
-
-        function earthSphere(index) {
-            if (index === 1) {
-                q1Slider.value = 0;
-                q1Val.innerText = "0.0";
-            } else {
-                q2Slider.value = 0;
-                q2Val.innerText = "0.0";
-            }
-            updatePhysics();
-        }
-
-        // ---------- Gemini Mode C/D Math Core ----------
-        function solveTheta(m_kg, q1_c, q2_c, mode, d0_m) {
-            let L = 0.2;
-            let R = 0.05;
-            let Fe = 0;
-            let repulsive = true;
-            let qProd = q1_c * q2_c;
-            let qSum = q1_c + q2_c;
-            geminiState.isInductionActive = false;
-
-            if (qProd !== 0) {
-                repulsive = qProd > 0;
-            } else if (qSum !== 0) {
-                repulsive = false;
-                geminiState.isInductionActive = true;
+        if (!repulsive) {
+            if (d0_m > minGap) {
+                high = isTwo ? Math.asin((d0_m - minGap) / (2 * L)) : Math.asin((d0_m - minGap) / L);
             } else {
                 return 0;
             }
+        }
 
-            let low = 0, high = Math.PI / 2.2, mid = 0; 
-            let minGap = 2.05 * R; 
-            let isTwo = (mode === 'C');
+        for (let i = 0; i < 50; i++) {
+            mid = (low + high) / 2;
+            let dx = isTwo ? (d0_m + 2 * L * Math.sin(mid)) : (d0_m + L * Math.sin(mid));
 
             if (!repulsive) {
-                if (d0_m > minGap) {
-                    high = isTwo ? Math.asin((d0_m - minGap) / (2 * L)) : Math.asin((d0_m - minGap) / L);
-                } else {
-                    return 0; 
-                }
+                dx = isTwo ? (d0_m - 2 * L * Math.sin(mid)) : (d0_m - L * Math.sin(mid));
             }
 
-            for (let i = 0; i < 50; i++) {
-                mid = (low + high) / 2;
-                let dx = isTwo ? (d0_m + 2 * L * Math.sin(mid)) : (d0_m + L * Math.sin(mid));
-                
-                if (!repulsive) {
-                    dx = isTwo ? (d0_m - 2 * L * Math.sin(mid)) : (d0_m - L * Math.sin(mid));
-                }
-                
-                if (dx < 0.01) dx = 0.01;
+            if (dx < 0.01) dx = 0.01;
 
-                if (qProd !== 0) {
-                    Fe = (k * Math.abs(qProd)) / (dx * dx);
-                } else {
-                    let qActive = Math.abs(qSum);
-                    // 微調極化引力常數適應 μC 範圍
-                    Fe = (k * qActive * (qActive * 0.05)) / (dx * dx); 
-                }
-
-                let tanTheta = Fe / (m_kg * G);
-
-                if (Math.tan(mid) > tanTheta) high = mid;
-                else low = mid;
-            }
-
-            return repulsive ? mid : -mid; 
-        }
-
-        // ---------- Mode A/B Utilities ----------
-        function toggleParallelogram() {
-            isParallelogramVisible = !isParallelogramVisible;
-            const btn = document.getElementById('toggle-para-btn');
-            if (isParallelogramVisible) {
-                btn.innerText = "平行四邊形 (On)";
-                btn.style.background = "linear-gradient(135deg, #ff66ff 0%, #c832c8 100%)";
-                btn.style.color = "#fff";
+            if (qProd !== 0) {
+                Fe = (k * Math.abs(qProd)) / (dx * dx);
             } else {
-                btn.innerText = "平行四邊形 (Off)";
-                btn.style.background = "linear-gradient(135deg, #555 0%, #333 100%)";
-                btn.style.color = "#fff";
+                let qActive = Math.abs(qSum);
+                // 微調極化引力常數適應 μC 範圍
+                Fe = (k * qActive * (qActive * 0.05)) / (dx * dx);
             }
-            updatePhysics();
+
+            let tanTheta = Fe / (m_kg * G);
+
+            if (Math.tan(mid) > tanTheta) high = mid;
+            else low = mid;
         }
 
-        function toggleDecomp() {
-            isDecompVisible = !isDecompVisible;
-            const btn = document.getElementById('toggle-decomp-btn');
-            if (isDecompVisible) {
-                btn.innerText = "X-Y 虛線拆力 (On)";
-                btn.style.background = "linear-gradient(135deg, #00bbff 0%, #0088cc 100%)";
-                btn.style.color = "#fff";
-            } else {
-                btn.innerText = "X-Y 虛線拆力 (Off)";
-                btn.style.background = "linear-gradient(135deg, #555 0%, #333 100%)";
-                btn.style.color = "#fff";
-            }
-            updatePhysics();
+        return repulsive ? mid : -mid;
+    }
+
+    // ---------- Mode A/B Utilities ----------
+    function createDashedLine(colorHex, dSize, gSize) {
+        const mat = new THREE.LineDashedMaterial({ color: colorHex, dashSize: dSize, gapSize: gSize });
+        const geo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
+        const line = new THREE.Line(geo, mat);
+        scene.add(line);
+        return line;
+    }
+
+    function createCustomDashedArrow(colorHex) {
+        const group = new THREE.Group();
+        const matLine = new THREE.LineDashedMaterial({ color: colorHex, dashSize: 0.15, gapSize: 0.1 });
+        const geoLine = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0), new THREE.Vector3(0,1,0)]);
+        const line = new THREE.Line(geoLine, matLine);
+
+        const geoCone = new THREE.ConeGeometry(1, 1, 16);
+        geoCone.translate(0, 0.5, 0);
+        const matCone = new THREE.MeshBasicMaterial({ color: colorHex });
+        const cone = new THREE.Mesh(geoCone, matCone);
+
+        group.add(line);
+        group.add(cone);
+        scene.add(group);
+        return { group, line, cone };
+    }
+
+    function updateCustomDashedArrow(aObj, origin, dir, length, visible) {
+        aObj.group.visible = visible && length > 0.05;
+        if (!aObj.group.visible) return;
+
+        aObj.group.position.copy(origin);
+        const axis = new THREE.Vector3(0, 1, 0);
+        aObj.group.quaternion.setFromUnitVectors(axis, dir);
+
+        const headLen = Math.min(0.2, length * 0.25);
+        const headWidth = Math.min(0.12, headLen * 0.6);
+        const lineLen = length - headLen;
+
+        aObj.line.geometry.setFromPoints([new THREE.Vector3(0,0,0), new THREE.Vector3(0, lineLen, 0)]);
+        aObj.line.computeLineDistances();
+
+        aObj.cone.scale.set(headWidth, headLen, headWidth);
+        aObj.cone.position.set(0, lineLen, 0);
+    }
+
+    function calculateCoulombForce(q1, q2, r) {
+        if (q1 === 0 && q2 === 0) return { magnitude: 0, isRepulsive: true };
+        const rSqBounded = Math.max(r * r, currentMinDist * currentMinDist);
+
+        if (q1 === 0 || q2 === 0) {
+            const q_charged = q1 === 0 ? q2 : q1;
+            const F_induced = (k * Math.abs(q_charged * micro * 0.05 * micro) / rSqBounded);
+            return { magnitude: F_induced, isRepulsive: false };
         }
+        const F_mag = (k * Math.abs(q1 * micro * q2 * micro) / rSqBounded);
+        return { magnitude: F_mag, isRepulsive: (q1 * q2) > 0 };
+    }
 
-        function createDashedLine(colorHex, dSize, gSize) {
-            const mat = new THREE.LineDashedMaterial({ color: colorHex, dashSize: dSize, gapSize: gSize });
-            const geo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
-            const line = new THREE.Line(geo, mat);
-            scene.add(line);
-            return line;
+    function createCharge(x, y, z, qValue, name, radius = 0.5) {
+        const geometry = new THREE.SphereGeometry(radius, 32, 32);
+        const material = new THREE.MeshPhysicalMaterial({
+            roughness: 0.15, metalness: 0.1, clearcoat: 0.8, clearcoatRoughness: 0.1,
+            transparent: true, opacity: 0.82
+        });
+        const sphere = new THREE.Mesh(geometry, material);
+
+        const coreGeo = new THREE.SphereGeometry(radius * 0.15, 16, 16);
+        const coreMat = new THREE.MeshBasicMaterial({ color: 0x222222 });
+        const coreDot = new THREE.Mesh(coreGeo, coreMat);
+        sphere.add(coreDot);
+
+        sphere.position.set(x, y, z);
+        sphere.userData = { q: qValue, radius: radius };
+        scene.add(sphere);
+        charges.push(sphere);
+
+        const labelEl = document.createElement('div');
+        labelEl.className = 'sphere-label';
+        labelEl.innerText = name;
+        labelsContainer.appendChild(labelEl);
+        sphereLabels.push(labelEl);
+
+        return sphere;
+    }
+
+    function createLabeledArrow(colorHex, labelText, textColorStr) {
+        const arrowHelper = new THREE.ArrowHelper(
+            new THREE.Vector3(1,0,0), new THREE.Vector3(0,0,0), 1, colorHex, 0.25, 0.15
+        );
+        scene.add(arrowHelper);
+
+        const labelEl = document.createElement('div');
+        labelEl.className = 'force-label';
+        labelEl.innerText = labelText;
+        labelEl.style.color = textColorStr;
+        labelEl.style.borderColor = textColorStr;
+        labelsContainer.appendChild(labelEl);
+
+        const arrowObj = { helper: arrowHelper, label: labelEl, dir: new THREE.Vector3(), visualLength: 0 };
+        arrows.push(arrowObj);
+        return arrowObj;
+    }
+
+    // ---------- Mode Core Controller ----------
+    function switchMode(mode) {
+        currentMode = mode;
+
+        charges.forEach(c => scene.remove(c));
+        arrows.forEach(a => { scene.remove(a.helper); a.label.remove(); });
+        sphereLabels.forEach(el => el.remove());
+        distLabels.forEach(el => el.remove());
+        distanceLines.forEach(l => scene.remove(l));
+        parallelogramLines.forEach(l => scene.remove(l));
+        decompArrows.forEach(a => scene.remove(a.group));
+        strings.forEach(s => scene.remove(s));
+
+        cdExtras.forEach(obj => scene.remove(obj));
+        cdExtras = [];
+
+        document.getElementById('lbl-theta1').style.display = 'none';
+        document.getElementById('lbl-theta2').style.display = 'none';
+
+        charges = []; arrows = []; sphereLabels = []; distLabels = [];
+        distanceLines = []; parallelogramLines = []; decompArrows = []; strings = [];
+
+        if(dragControls) dragControls.dispose();
+
+        document.querySelectorAll('.q3-group').forEach(el => el.classList.add('hidden'));
+        document.getElementById('chart-card').classList.add('hidden');
+        document.getElementById('mode-b-tools').classList.add('hidden');
+        document.getElementById('mode-cd-tools').classList.add('hidden');
+        document.getElementById('earth-btn-1').classList.add('hidden');
+        document.getElementById('earth-btn-2').classList.add('hidden');
+        document.getElementById('data-panel').classList.remove('hidden');
+
+        document.getElementById('math-mode-A').classList.add('hidden');
+        document.getElementById('math-mode-B').classList.add('hidden');
+        document.getElementById('math-mode-CD').classList.add('hidden');
+
+        orbitControls.enableRotate = true;
+        orbitControls.enablePan = true;
+
+        if (mode === 'A') {
+            currentMinDist = 1.0;
+            camera.position.set(0, 0, 18);
+            setInstr('hint.A');
+            document.getElementById('chart-card').classList.remove('hidden');
+            setForceTitle('readout.force');
+
+            document.getElementById('math-mode-A').classList.remove('hidden');
+
+            let c1 = createCharge(-3.5, 0, 0, parseFloat(q1Slider.value), "Q₁", 0.5);
+            let c2 = createCharge(3.5, 0, 0, parseFloat(q2Slider.value), "Q₂", 0.5);
+
+            createLabeledArrow(0x00bbff, "F₁₂", "#00bbff");
+            createLabeledArrow(0xff8800, "F₂₁", "#ff8800");
+
+            distanceLines.push(createDashedLine(0x777777, 0.2, 0.15));
+            distanceLines.push(createDashedLine(0x94a3b8, 0.1, 0.1));
+            distanceLines.push(createDashedLine(0x94a3b8, 0.1, 0.1));
+
+            const el = document.createElement('div');
+            el.className = 'dist-label';
+            labelsContainer.appendChild(el);
+            distLabels.push(el);
+
+            setupDragControls([c1, c2]);
         }
+        else if (mode === 'B') {
+            currentMinDist = 0.6;
+            orbitControls.enableRotate = false;
+            orbitControls.enablePan = false;
+            camera.position.set(0, 0, 22);
 
-        function createCustomDashedArrow(colorHex) {
-            const group = new THREE.Group();
-            const matLine = new THREE.LineDashedMaterial({ color: colorHex, dashSize: 0.15, gapSize: 0.1 });
-            const geoLine = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0), new THREE.Vector3(0,1,0)]);
-            const line = new THREE.Line(geoLine, matLine);
-            
-            const geoCone = new THREE.ConeGeometry(1, 1, 16);
-            geoCone.translate(0, 0.5, 0); 
-            const matCone = new THREE.MeshBasicMaterial({ color: colorHex });
-            const cone = new THREE.Mesh(geoCone, matCone);
-            
-            group.add(line);
-            group.add(cone);
-            scene.add(group);
-            return { group, line, cone };
-        }
+            setInstr('hint.B');
+            document.querySelectorAll('.q3-group').forEach(el => el.classList.remove('hidden'));
+            document.getElementById('mode-b-tools').classList.remove('hidden');
+            document.getElementById('data-panel').classList.add('hidden');
 
-        function updateCustomDashedArrow(aObj, origin, dir, length, visible) {
-            aObj.group.visible = visible && length > 0.05;
-            if (!aObj.group.visible) return;
+            document.getElementById('math-mode-B').classList.remove('hidden');
 
-            aObj.group.position.copy(origin);
-            const axis = new THREE.Vector3(0, 1, 0);
-            aObj.group.quaternion.setFromUnitVectors(axis, dir);
+            let c1 = createCharge(-2, -1.15, 0, parseFloat(q1Slider.value), "Q₁", 0.25);
+            let c2 = createCharge(2, -1.15, 0, parseFloat(q2Slider.value), "Q₂", 0.25);
+            let c3 = createCharge(0, 2.31, 0, parseFloat(q3Slider.value), "Q₃", 0.25);
 
-            const headLen = Math.min(0.2, length * 0.25);
-            const headWidth = Math.min(0.12, headLen * 0.6);
-            const lineLen = length - headLen;
+            createLabeledArrow(0xff8800, "F₃₁", "#ff8800");
+            createLabeledArrow(0x00bbff, "F₃₂", "#00bbff");
+            createLabeledArrow(0xd124d1, tt('label3d.fres'), "#d124d1");
 
-            aObj.line.geometry.setFromPoints([new THREE.Vector3(0,0,0), new THREE.Vector3(0, lineLen, 0)]);
-            aObj.line.computeLineDistances();
-
-            aObj.cone.scale.set(headWidth, headLen, headWidth);
-            aObj.cone.position.set(0, lineLen, 0); 
-        }
-
-        function calculateCoulombForce(q1, q2, r) {
-            if (q1 === 0 && q2 === 0) return { magnitude: 0, isRepulsive: true };
-            const rSqBounded = Math.max(r * r, currentMinDist * currentMinDist);
-
-            if (q1 === 0 || q2 === 0) {
-                const q_charged = q1 === 0 ? q2 : q1;
-                const F_induced = (k * Math.abs(q_charged * micro * 0.05 * micro) / rSqBounded);
-                return { magnitude: F_induced, isRepulsive: false }; 
-            }
-            const F_mag = (k * Math.abs(q1 * micro * q2 * micro) / rSqBounded);
-            return { magnitude: F_mag, isRepulsive: (q1 * q2) > 0 };
-        }
-
-        function createCharge(x, y, z, qValue, name, radius = 0.5) {
-            const geometry = new THREE.SphereGeometry(radius, 32, 32);
-            const material = new THREE.MeshPhysicalMaterial({ 
-                roughness: 0.15, metalness: 0.1, clearcoat: 0.8, clearcoatRoughness: 0.1,
-                transparent: true, opacity: 0.82 
-            });
-            const sphere = new THREE.Mesh(geometry, material);
-            
-            const coreGeo = new THREE.SphereGeometry(radius * 0.15, 16, 16);
-            const coreMat = new THREE.MeshBasicMaterial({ color: 0x222222 });
-            const coreDot = new THREE.Mesh(coreGeo, coreMat);
-            sphere.add(coreDot); 
-
-            sphere.position.set(x, y, z);
-            sphere.userData = { q: qValue, radius: radius };
-            scene.add(sphere);
-            charges.push(sphere);
-
-            const labelEl = document.createElement('div');
-            labelEl.className = 'sphere-label';
-            labelEl.innerText = name;
-            labelsContainer.appendChild(labelEl);
-            sphereLabels.push(labelEl);
-
-            return sphere;
-        }
-
-        function createLabeledArrow(colorHex, labelText, textColorStr) {
-            const arrowHelper = new THREE.ArrowHelper(
-                new THREE.Vector3(1,0,0), new THREE.Vector3(0,0,0), 1, colorHex, 0.25, 0.15
-            );
-            scene.add(arrowHelper);
-
-            const labelEl = document.createElement('div');
-            labelEl.className = 'force-label';
-            labelEl.innerText = labelText;
-            labelEl.style.color = textColorStr;
-            labelEl.style.borderColor = textColorStr;
-            labelsContainer.appendChild(labelEl);
-
-            const arrowObj = { helper: arrowHelper, label: labelEl, dir: new THREE.Vector3(), visualLength: 0 };
-            arrows.push(arrowObj);
-            return arrowObj;
-        }
-
-        // ---------- Mode Core Controller ----------
-        function switchMode(mode) {
-            currentMode = mode;
-            
-            charges.forEach(c => scene.remove(c));
-            arrows.forEach(a => { scene.remove(a.helper); a.label.remove(); });
-            sphereLabels.forEach(el => el.remove());
-            distLabels.forEach(el => el.remove());
-            distanceLines.forEach(l => scene.remove(l));
-            parallelogramLines.forEach(l => scene.remove(l));
-            decompArrows.forEach(a => scene.remove(a.group));
-            strings.forEach(s => scene.remove(s));
-            
-            cdExtras.forEach(obj => scene.remove(obj));
-            cdExtras = [];
-            
-            document.getElementById('lbl-theta1').style.display = 'none';
-            document.getElementById('lbl-theta2').style.display = 'none';
-
-            charges = []; arrows = []; sphereLabels = []; distLabels = []; 
-            distanceLines = []; parallelogramLines = []; decompArrows = []; strings = [];
-            
-            if(dragControls) dragControls.dispose();
-
-            document.querySelectorAll('.q3-group').forEach(el => el.classList.add('hidden'));
-            document.getElementById('chart-container').classList.add('hidden');
-            document.getElementById('mode-b-tools').classList.add('hidden');
-            document.getElementById('mode-cd-tools').classList.add('hidden');
-            document.getElementById('earth-btn-1').classList.add('hidden');
-            document.getElementById('earth-btn-2').classList.add('hidden');
-            document.getElementById('data-panel').classList.remove('hidden');
-
-            document.getElementById('math-mode-A').classList.add('hidden');
-            document.getElementById('math-mode-B').classList.add('hidden');
-            document.getElementById('math-mode-CD').classList.add('hidden');
-
-            orbitControls.enableRotate = true;
-            orbitControls.enablePan = true;
-
-            if (mode === 'A') {
-                currentMinDist = 1.0; 
-                camera.position.set(0, 0, 18);
-                instructionText.innerHTML = "💡 <b>提示：</b>小球中央的黑點代表「質點/點電荷」。注意下方量度線是從「中心到中心」進行測量。";
-                document.getElementById('chart-container').classList.remove('hidden');
-                forceTitle.innerText = "靜電力 F (N):";
-                
-                document.getElementById('math-mode-A').classList.remove('hidden');
-                updateCanvasLayout();
-
-                let c1 = createCharge(-3.5, 0, 0, parseFloat(q1Slider.value), "Q₁", 0.5); 
-                let c2 = createCharge(3.5, 0, 0, parseFloat(q2Slider.value), "Q₂", 0.5);  
-                
-                createLabeledArrow(0x00bbff, "F₁₂", "#00bbff"); 
-                createLabeledArrow(0xff8800, "F₂₁", "#ff8800"); 
-
-                distanceLines.push(createDashedLine(0x777777, 0.2, 0.15)); 
-                distanceLines.push(createDashedLine(0xaaaaaa, 0.1, 0.1));  
-                distanceLines.push(createDashedLine(0xaaaaaa, 0.1, 0.1));  
-                
+            for(let i=0; i<3; i++) {
+                distanceLines.push(createDashedLine(0x777777, 0.15, 0.15));
                 const el = document.createElement('div');
                 el.className = 'dist-label';
                 labelsContainer.appendChild(el);
                 distLabels.push(el);
-
-                setupDragControls([c1, c2]);
-            } 
-            else if (mode === 'B') {
-                currentMinDist = 0.6; 
-                orbitControls.enableRotate = false;
-                orbitControls.enablePan = false;
-                camera.position.set(0, 0, 22);
-
-                instructionText.innerHTML = "💡 <b>提示：</b>已將小球縮小，以便更直觀地觀察點電荷在 2D 平面上的受力。";
-                document.querySelectorAll('.q3-group').forEach(el => el.classList.remove('hidden'));
-                document.getElementById('mode-b-tools').classList.remove('hidden'); 
-                document.getElementById('data-panel').classList.add('hidden');
-                
-                document.getElementById('math-mode-B').classList.remove('hidden');
-                updateCanvasLayout();
-                
-                let c1 = createCharge(-2, -1.15, 0, parseFloat(q1Slider.value), "Q₁", 0.25); 
-                let c2 = createCharge(2, -1.15, 0, parseFloat(q2Slider.value), "Q₂", 0.25);  
-                let c3 = createCharge(0, 2.31, 0, parseFloat(q3Slider.value), "Q₃", 0.25);   
-                
-                createLabeledArrow(0xff8800, "F₃₁", "#ff8800"); 
-                createLabeledArrow(0x00bbff, "F₃₂", "#00bbff"); 
-                createLabeledArrow(0xd124d1, "F₃ 合力", "#d124d1"); 
-                
-                for(let i=0; i<3; i++) {
-                    distanceLines.push(createDashedLine(0x777777, 0.15, 0.15));
-                    const el = document.createElement('div');
-                    el.className = 'dist-label';
-                    labelsContainer.appendChild(el);
-                    distLabels.push(el);
-                }
-
-                parallelogramLines.push(createDashedLine(0x888888, 0.15, 0.1));
-                parallelogramLines.push(createDashedLine(0x888888, 0.15, 0.1));
-
-                decompArrows.push(createCustomDashedArrow(0xff8800)); 
-                decompArrows.push(createCustomDashedArrow(0xff8800)); 
-                decompArrows.push(createCustomDashedArrow(0x00bbff)); 
-                decompArrows.push(createCustomDashedArrow(0x00bbff)); 
-
-                setupDragControls([c1, c2, c3]);
-            }
-            else if (mode === 'C' || mode === 'D') {
-                currentMinDist = 0.05;
-                camera.position.set(0, -1, 12);
-                orbitControls.enableRotate = true;
-                orbitControls.enablePan = true;
-
-                document.getElementById('mode-cd-tools').classList.remove('hidden');
-                document.getElementById('earth-btn-1').classList.remove('hidden');
-                document.getElementById('earth-btn-2').classList.remove('hidden');
-                document.getElementById('math-mode-CD').classList.remove('hidden');
-                forceTitle.innerText = "靜電力 F_e (N):";
-                
-                updateCanvasLayout();
-
-                const ceilingMat = new THREE.MeshLambertMaterial({ color: 0x4a5568 });
-                const ceiling = new THREE.Mesh(new THREE.BoxGeometry(10, 0.2, 2), ceilingMat);
-                ceiling.position.y = 0.1;
-                scene.add(ceiling); cdExtras.push(ceiling);
-
-                // 移除了地板 (Floor)
-
-                const standGeo = new THREE.CylinderGeometry(0.05, 0.05, 3, 16);
-                stand = new THREE.Mesh(standGeo, new THREE.MeshLambertMaterial({ color: 0x8b5a2b }));
-                scene.add(stand); cdExtras.push(stand);
-
-                const lineMat = new THREE.LineBasicMaterial({ color: 0xabb2bf, linewidth: 2 });
-                const string1 = new THREE.Line(new THREE.BufferGeometry(), lineMat);
-                const string2 = new THREE.Line(new THREE.BufferGeometry(), lineMat);
-                scene.add(string1); scene.add(string2);
-                cdExtras.push(string1, string2);
-                strings = [string1, string2];
-
-                const dashedMat = new THREE.LineDashedMaterial({ color: 0x7f848e, dashSize: 0.3, gapSize: 0.2 });
-                normal1 = new THREE.Line(new THREE.BufferGeometry(), dashedMat);
-                normal2 = new THREE.Line(new THREE.BufferGeometry(), dashedMat);
-                scene.add(normal1); scene.add(normal2);
-                cdExtras.push(normal1, normal2);
-
-                const arcMat1 = new THREE.LineBasicMaterial({ color: 0x4da6ff, linewidth: 2 });
-                const arcMat2 = new THREE.LineBasicMaterial({ color: 0xff66ff, linewidth: 2 });
-                arc1 = new THREE.Line(new THREE.BufferGeometry(), arcMat1);
-                arc2 = new THREE.Line(new THREE.BufferGeometry(), arcMat2);
-                scene.add(arc1); scene.add(arc2);
-                cdExtras.push(arc1, arc2);
-
-                const createFBD = () => ({
-                    mg: new THREE.ArrowHelper(new THREE.Vector3(0,-1,0), new THREE.Vector3(), 1.2, 0xe5c07b, 0.3, 0.2),
-                    t: new THREE.ArrowHelper(new THREE.Vector3(0,1,0), new THREE.Vector3(), 1.2, 0x98c379, 0.3, 0.2),
-                    fe: new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(), 1.2, 0x4da6ff, 0.3, 0.2)
-                });
-                fbd1 = createFBD(); fbd2 = createFBD();
-                Object.values(fbd1).forEach(a => { scene.add(a); cdExtras.push(a); });
-                Object.values(fbd2).forEach(a => { scene.add(a); cdExtras.push(a); });
-
-                // 小球半徑從 0.75 縮小至 0.35
-                let c1 = createCharge(-1.5, -3, 0, parseFloat(q1Slider.value), "Q₁", 0.35); 
-                let c2 = createCharge(1.5, -3, 0, parseFloat(q2Slider.value), "Q₂", 0.35);
             }
 
-            charges.forEach(c => { gsap.from(c.scale, {x: 0, y: 0, z: 0, duration: 0.4, ease: "back.out(1.5)"}); });
-            updatePhysics();
+            parallelogramLines.push(createDashedLine(0x888888, 0.15, 0.1));
+            parallelogramLines.push(createDashedLine(0x888888, 0.15, 0.1));
+
+            decompArrows.push(createCustomDashedArrow(0xff8800));
+            decompArrows.push(createCustomDashedArrow(0xff8800));
+            decompArrows.push(createCustomDashedArrow(0x00bbff));
+            decompArrows.push(createCustomDashedArrow(0x00bbff));
+
+            setupDragControls([c1, c2, c3]);
         }
+        else if (mode === 'C' || mode === 'D') {
+            currentMinDist = 0.05;
+            camera.position.set(0, -1, 12);
+            orbitControls.enableRotate = true;
+            orbitControls.enablePan = true;
 
-        function setTriangle(type) {
-            if(currentMode !== 'B' || charges.length < 3) return;
-            if(type === 'equilateral') {
-                charges[0].position.set(-2.5, -1.44, 0); charges[1].position.set(2.5, -1.44, 0); charges[2].position.set(0, 2.88, 0);
-            } else if(type === 'isosceles') {
-                charges[0].position.set(-2, -2, 0); charges[1].position.set(2, -2, 0); charges[2].position.set(0, 2, 0);
-            } else if(type === 'right') {
-                charges[0].position.set(-2, -2, 0); charges[1].position.set(2, -2, 0); charges[2].position.set(-2, 2, 0);
-            }
-            updatePhysics();
-        }
+            document.getElementById('mode-cd-tools').classList.remove('hidden');
+            document.getElementById('earth-btn-1').classList.remove('hidden');
+            document.getElementById('earth-btn-2').classList.remove('hidden');
+            document.getElementById('math-mode-CD').classList.remove('hidden');
+            setForceTitle('readout.forceE');
 
-        function setupDragControls(objects) {
-            dragControls = new THREE.DragControls(objects, camera, renderer.domElement);
-            dragControls.addEventListener('dragstart', function () { if(currentMode !== 'B') orbitControls.enabled = false; });
-            
-            dragControls.addEventListener('drag', function(event) {
-                const dragged = event.object;
-                if (currentMode === 'A') { dragged.position.y = 0; dragged.position.z = 0; } 
-                else if (currentMode === 'B') { dragged.position.z = 0; }
+            const ceilingMat = new THREE.MeshLambertMaterial({ color: 0x4a5568 });
+            const ceiling = new THREE.Mesh(new THREE.BoxGeometry(10, 0.2, 2), ceilingMat);
+            ceiling.position.y = 0.1;
+            scene.add(ceiling); cdExtras.push(ceiling);
 
-                charges.forEach(other => {
-                    if (other !== dragged) {
-                        const distVec = new THREE.Vector3().subVectors(dragged.position, other.position);
-                        if (distVec.length() < currentMinDist) {
-                            if(distVec.length() === 0) distVec.set(1,0,0);
-                            distVec.normalize().multiplyScalar(currentMinDist);
-                            dragged.position.copy(other.position).add(distVec);
-                            
-                            if (currentMode === 'A') { dragged.position.y = 0; dragged.position.z = 0; } 
-                            else if (currentMode === 'B') { dragged.position.z = 0; }
-                        }
-                    }
-                });
-                updatePhysics();
+            // 移除了地板 (Floor)
+
+            const standGeo = new THREE.CylinderGeometry(0.05, 0.05, 3, 16);
+            stand = new THREE.Mesh(standGeo, new THREE.MeshLambertMaterial({ color: 0x8b5a2b }));
+            scene.add(stand); cdExtras.push(stand);
+
+            const lineMat = new THREE.LineBasicMaterial({ color: 0x64748b, linewidth: 2 });
+            const string1 = new THREE.Line(new THREE.BufferGeometry(), lineMat);
+            const string2 = new THREE.Line(new THREE.BufferGeometry(), lineMat);
+            scene.add(string1); scene.add(string2);
+            cdExtras.push(string1, string2);
+            strings = [string1, string2];
+
+            const dashedMat = new THREE.LineDashedMaterial({ color: 0x7f848e, dashSize: 0.3, gapSize: 0.2 });
+            normal1 = new THREE.Line(new THREE.BufferGeometry(), dashedMat);
+            normal2 = new THREE.Line(new THREE.BufferGeometry(), dashedMat);
+            scene.add(normal1); scene.add(normal2);
+            cdExtras.push(normal1, normal2);
+
+            const arcMat1 = new THREE.LineBasicMaterial({ color: 0x4da6ff, linewidth: 2 });
+            const arcMat2 = new THREE.LineBasicMaterial({ color: 0xff66ff, linewidth: 2 });
+            arc1 = new THREE.Line(new THREE.BufferGeometry(), arcMat1);
+            arc2 = new THREE.Line(new THREE.BufferGeometry(), arcMat2);
+            scene.add(arc1); scene.add(arc2);
+            cdExtras.push(arc1, arc2);
+
+            const createFBD = () => ({
+                mg: new THREE.ArrowHelper(new THREE.Vector3(0,-1,0), new THREE.Vector3(), 1.2, 0xd97706, 0.3, 0.2),
+                t: new THREE.ArrowHelper(new THREE.Vector3(0,1,0), new THREE.Vector3(), 1.2, 0x16a34a, 0.3, 0.2),
+                fe: new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(), 1.2, 0x4da6ff, 0.3, 0.2)
             });
-            dragControls.addEventListener('dragend', function () { if(currentMode !== 'B') orbitControls.enabled = true; });
+            fbd1 = createFBD(); fbd2 = createFBD();
+            Object.values(fbd1).forEach(a => { scene.add(a); cdExtras.push(a); });
+            Object.values(fbd2).forEach(a => { scene.add(a); cdExtras.push(a); });
+
+            // 小球半徑從 0.75 縮小至 0.35
+            let c1 = createCharge(-1.5, -3, 0, parseFloat(q1Slider.value), "Q₁", 0.35);
+            let c2 = createCharge(1.5, -3, 0, parseFloat(q2Slider.value), "Q₂", 0.35);
         }
 
-        function getForceLatex(qA, qB, r, mag, subscript, labelA, labelB) {
-            if (qA === 0 && qB === 0) return `F_{${subscript}} = 0 \\text{ N}`;
-            let qA_val = qA !== 0 ? Math.abs(qA) : 0.05;
-            let qB_val = qB !== 0 ? Math.abs(qB) : 0.05;
-            let isInduction = (qA === 0 || qB === 0) && !(qA === 0 && qB === 0);
-            
-            let tex = `F_{${subscript}} = \\frac{Q_${labelA} Q_${labelB}}{4\\pi\\varepsilon_0 r^2} = \\frac{1}{4\\pi\\varepsilon_0} \\frac{(${qA_val}{\\times}10^{-6})(${qB_val}{\\times}10^{-6})}{${r.toFixed(2)}^2}`;
-            tex += ` = ${mag.toFixed(3)}\\text{ N}`;
-            if(isInduction) tex += ` \\text{ (感應)}`;
-            return tex;
+        charges.forEach(c => { gsap.from(c.scale, {x: 0, y: 0, z: 0, duration: 0.4, ease: "back.out(1.5)"}); });
+        updatePhysics();
+    }
+
+    function setTriangle(type) {
+        if(currentMode !== 'B' || charges.length < 3) return;
+        if(type === 'equilateral') {
+            charges[0].position.set(-2.5, -1.44, 0); charges[1].position.set(2.5, -1.44, 0); charges[2].position.set(0, 2.88, 0);
+        } else if(type === 'isosceles') {
+            charges[0].position.set(-2, -2, 0); charges[1].position.set(2, -2, 0); charges[2].position.set(0, 2, 0);
+        } else if(type === 'right') {
+            charges[0].position.set(-2, -2, 0); charges[1].position.set(2, -2, 0); charges[2].position.set(-2, 2, 0);
         }
+        updatePhysics();
+    }
 
-        function updatePhysics() {
-            const q1 = parseFloat(q1Slider.value);
-            const q2 = parseFloat(q2Slider.value);
-            const q3 = parseFloat(q3Slider.value);
-            
-            q1Val.innerText = q1.toFixed(1); 
-            q2Val.innerText = q2.toFixed(1); 
-            q3Val.innerText = q3.toFixed(1);
+    function setupDragControls(objects) {
+        dragControls = new THREE.DragControls(objects, camera, renderer.domElement);
+        dragControls.addEventListener('dragstart', function () { if(currentMode !== 'B') orbitControls.enabled = false; });
 
-            if(charges[0]) updateChargeColor(charges[0], q1);
-            if(charges[1]) updateChargeColor(charges[1], q2);
-            if(charges[2] && currentMode === 'B') updateChargeColor(charges[2], q3);
+        dragControls.addEventListener('drag', function(event) {
+            const dragged = event.object;
+            if (currentMode === 'A') { dragged.position.y = 0; dragged.position.z = 0; }
+            else if (currentMode === 'B') { dragged.position.z = 0; }
 
-            if (currentMode === 'A') {
-                const c1 = charges[0], c2 = charges[1];
-                const rVec = new THREE.Vector3().subVectors(c2.position, c1.position);
-                let r = Math.max(rVec.length(), currentMinDist); 
+            charges.forEach(other => {
+                if (other !== dragged) {
+                    const distVec = new THREE.Vector3().subVectors(dragged.position, other.position);
+                    if (distVec.length() < currentMinDist) {
+                        if(distVec.length() === 0) distVec.set(1,0,0);
+                        distVec.normalize().multiplyScalar(currentMinDist);
+                        dragged.position.copy(other.position).add(distVec);
 
-                const res = calculateCoulombForce(q1, q2, r);
-                const dir1 = rVec.clone().normalize().multiplyScalar(res.isRepulsive ? -1 : 1);
-                const dir2 = rVec.clone().normalize().multiplyScalar(res.isRepulsive ? 1 : -1);
-
-                updateArrowVisual(arrows[0], c1.position, dir1, res.magnitude, (q1 !== 0 || q2 !== 0));
-                updateArrowVisual(arrows[1], c2.position, dir2, res.magnitude, (q1 !== 0 || q2 !== 0));
-
-                const offsetY = -1.5;
-                const p1 = c1.position;
-                const p2 = c2.position;
-                
-                distanceLines[0].geometry.setFromPoints([
-                    new THREE.Vector3(p1.x, p1.y + offsetY, p1.z), 
-                    new THREE.Vector3(p2.x, p2.y + offsetY, p2.z)
-                ]);
-                distanceLines[0].computeLineDistances();
-                
-                distanceLines[1].geometry.setFromPoints([p1, new THREE.Vector3(p1.x, p1.y + offsetY, p1.z)]);
-                distanceLines[1].computeLineDistances();
-                distanceLines[2].geometry.setFromPoints([p2, new THREE.Vector3(p2.x, p2.y + offsetY, p2.z)]);
-                distanceLines[2].computeLineDistances();
-
-                distLabels[0].innerText = `r = ${r.toFixed(2)} m`;
-
-                distVal.innerText = r.toFixed(2);
-                forceVal.innerText = `${res.magnitude.toFixed(3)} N`;
-                updateChartData(r, res.magnitude);
-
-                if (typeof katex !== 'undefined') {
-                    katex.render(getForceLatex(q1, q2, r, res.magnitude, "12", "1", "2"), document.getElementById('math-f12'), {throwOnError: false, displayMode: true});
+                        if (currentMode === 'A') { dragged.position.y = 0; dragged.position.z = 0; }
+                        else if (currentMode === 'B') { dragged.position.z = 0; }
+                    }
                 }
-            } 
-            else if (currentMode === 'B') {
-                const c1 = charges[0], c2 = charges[1], c3 = charges[2];
-                const r31Vec = new THREE.Vector3().subVectors(c3.position, c1.position);
-                const r32Vec = new THREE.Vector3().subVectors(c3.position, c2.position);
-                const r12Vec = new THREE.Vector3().subVectors(c2.position, c1.position);
-                
-                let r31 = Math.max(r31Vec.length(), currentMinDist);
-                let r32 = Math.max(r32Vec.length(), currentMinDist);
-                let r12 = Math.max(r12Vec.length(), currentMinDist);
+            });
+            updatePhysics();
+        });
+        dragControls.addEventListener('dragend', function () { if(currentMode !== 'B') orbitControls.enabled = true; });
+    }
 
-                distanceLines[0].geometry.setFromPoints([c1.position, c2.position]); distanceLines[0].computeLineDistances();
-                distanceLines[1].geometry.setFromPoints([c2.position, c3.position]); distanceLines[1].computeLineDistances();
-                distanceLines[2].geometry.setFromPoints([c1.position, c3.position]); distanceLines[2].computeLineDistances();
-                distLabels[0].innerText = `r₁₂ = ${r12.toFixed(2)}m`;
-                distLabels[1].innerText = `r₂₃ = ${r32.toFixed(2)}m`;
-                distLabels[2].innerText = `r₁₃ = ${r31.toFixed(2)}m`;
+    function getForceLatex(qA, qB, r, mag, subscript, labelA, labelB) {
+        if (qA === 0 && qB === 0) return `F_{${subscript}} = 0 \\text{ N}`;
+        let qA_val = qA !== 0 ? Math.abs(qA) : 0.05;
+        let qB_val = qB !== 0 ? Math.abs(qB) : 0.05;
+        let isInduction = (qA === 0 || qB === 0) && !(qA === 0 && qB === 0);
 
-                const res31 = calculateCoulombForce(q1, q3, r31);
-                const res32 = calculateCoulombForce(q2, q3, r32);
+        let tex = `F_{${subscript}} = \\frac{Q_${labelA} Q_${labelB}}{4\\pi\\varepsilon_0 r^2} = \\frac{1}{4\\pi\\varepsilon_0} \\frac{(${qA_val}{\\times}10^{-6})(${qB_val}{\\times}10^{-6})}{${r.toFixed(2)}^2}`;
+        tex += ` = ${mag.toFixed(3)}\\text{ N}`;
+        if(isInduction) tex += tt('math.induced');
+        return tex;
+    }
 
-                const dir31 = r31Vec.clone().normalize().multiplyScalar(res31.isRepulsive ? 1 : -1);
-                const dir32 = r32Vec.clone().normalize().multiplyScalar(res32.isRepulsive ? 1 : -1);
+    function updatePhysics() {
+        const q1 = parseFloat(q1Slider.value);
+        const q2 = parseFloat(q2Slider.value);
+        const q3 = parseFloat(q3Slider.value);
 
-                updateArrowVisual(arrows[0], c3.position, dir31, res31.magnitude, (q1 !== 0 || q3 !== 0));
-                updateArrowVisual(arrows[1], c3.position, dir32, res32.magnitude, (q2 !== 0 || q3 !== 0));
+        q1Val.innerText = q1.toFixed(1);
+        q2Val.innerText = q2.toFixed(1);
+        q3Val.innerText = q3.toFixed(1);
 
-                let v31 = dir31.clone().multiplyScalar(arrows[0].visualLength);
-                let v32 = dir32.clone().multiplyScalar(arrows[1].visualLength);
-                let vRes = new THREE.Vector3().addVectors(v31, v32);
-                
-                let f31_vec = dir31.clone().multiplyScalar(res31.magnitude);
-                let f32_vec = dir32.clone().multiplyScalar(res32.magnitude);
-                let forceRes = new THREE.Vector3().addVectors(f31_vec, f32_vec);
-                let resultantMag = forceRes.length();
+        if(charges[0]) updateChargeColor(charges[0], q1);
+        if(charges[1]) updateChargeColor(charges[1], q2);
+        if(charges[2] && currentMode === 'B') updateChargeColor(charges[2], q3);
 
-                arrows[2].helper.position.copy(c3.position);
-                if (vRes.lengthSq() > 0.001 && (arrows[0].helper.visible || arrows[1].helper.visible)) {
-                    arrows[2].helper.setDirection(vRes.clone().normalize());
-                    arrows[2].visualLength = vRes.length();
-                    let headLen = Math.min(0.25, vRes.length() * 0.25);
-                    let headWidth = Math.min(0.15, headLen * 0.6);
-                    arrows[2].helper.setLength(vRes.length(), headLen, headWidth);
-                    arrows[2].helper.visible = true;
-                } else {
-                    arrows[2].helper.visible = false;
-                }
+        if (currentMode === 'A') {
+            const c1 = charges[0], c2 = charges[1];
+            const rVec = new THREE.Vector3().subVectors(c2.position, c1.position);
+            let r = Math.max(rVec.length(), currentMinDist);
 
-                const pEnd = c3.position.clone().add(vRes);
-                parallelogramLines[0].geometry.setFromPoints([c3.position.clone().add(v31), pEnd]);
-                parallelogramLines[1].geometry.setFromPoints([c3.position.clone().add(v32), pEnd]);
-                parallelogramLines[0].computeLineDistances();
-                parallelogramLines[1].computeLineDistances();
-                
-                const bothArrowsVisible = arrows[0].helper.visible && arrows[1].helper.visible;
-                parallelogramLines[0].visible = isParallelogramVisible && bothArrowsVisible;
-                parallelogramLines[1].visible = isParallelogramVisible && bothArrowsVisible;
+            const res = calculateCoulombForce(q1, q2, r);
+            const dir1 = rVec.clone().normalize().multiplyScalar(res.isRepulsive ? -1 : 1);
+            const dir2 = rVec.clone().normalize().multiplyScalar(res.isRepulsive ? 1 : -1);
 
-                let v31x = new THREE.Vector3(v31.x, 0, 0);
-                let v31y = new THREE.Vector3(0, v31.y, 0);
-                
-                updateCustomDashedArrow(decompArrows[0], c3.position, v31x.clone().normalize(), v31x.length(), isDecompVisible && arrows[0].helper.visible);
-                updateCustomDashedArrow(decompArrows[1], c3.position, v31y.clone().normalize(), v31y.length(), isDecompVisible && arrows[0].helper.visible);
-                
-                let v32y = new THREE.Vector3(0, v32.y, 0);
-                let v32x = new THREE.Vector3(v32.x, 0, 0);
-                
-                updateCustomDashedArrow(decompArrows[2], c3.position, v32y.clone().normalize(), v32y.length(), isDecompVisible && arrows[1].helper.visible);
-                updateCustomDashedArrow(decompArrows[3], c3.position, v32x.clone().normalize(), v32x.length(), isDecompVisible && arrows[1].helper.visible);
+            updateArrowVisual(arrows[0], c1.position, dir1, res.magnitude, (q1 !== 0 || q2 !== 0));
+            updateArrowVisual(arrows[1], c2.position, dir2, res.magnitude, (q1 !== 0 || q2 !== 0));
 
-                if (typeof katex !== 'undefined') {
-                    katex.render(getForceLatex(q1, q3, r31, res31.magnitude, "31", "1", "3"), document.getElementById('math-f31'), {throwOnError: false, displayMode: true});
-                    katex.render(getForceLatex(q2, q3, r32, res32.magnitude, "32", "2", "3"), document.getElementById('math-f32'), {throwOnError: false, displayMode: true});
-                    
-                    let a1 = Math.atan2(f31_vec.y, f31_vec.x) * 180 / Math.PI;
-                    let a2 = Math.atan2(f32_vec.y, f32_vec.x) * 180 / Math.PI;
-                    let a1_s = a1 < 0 ? `(${a1.toFixed(1)}^\\circ)` : `${a1.toFixed(1)}^\\circ`;
-                    let a2_s = a2 < 0 ? `(${a2.toFixed(1)}^\\circ)` : `${a2.toFixed(1)}^\\circ`;
+            const offsetY = -1.5;
+            const p1 = c1.position;
+            const p2 = c2.position;
 
-                    let decomp1Str = `\\begin{aligned} 
-                    F_{31,x} &= F_{31} \\cos ${a1_s} = ${f31_vec.x.toFixed(3)}\\text{ N} \\\\ 
-                    F_{31,y} &= F_{31} \\sin ${a1_s} = ${f31_vec.y.toFixed(3)}\\text{ N} 
-                    \\end{aligned}`;
-                    let decomp2Str = `\\begin{aligned} 
-                    F_{32,x} &= F_{32} \\cos ${a2_s} = ${f32_vec.x.toFixed(3)}\\text{ N} \\\\ 
-                    F_{32,y} &= F_{32} \\sin ${a2_s} = ${f32_vec.y.toFixed(3)}\\text{ N} 
-                    \\end{aligned}`;
+            distanceLines[0].geometry.setFromPoints([
+                new THREE.Vector3(p1.x, p1.y + offsetY, p1.z),
+                new THREE.Vector3(p2.x, p2.y + offsetY, p2.z)
+            ]);
+            distanceLines[0].computeLineDistances();
 
-                    katex.render(decomp1Str, document.getElementById('math-decomp1'), {throwOnError: false, displayMode: true});
-                    katex.render(decomp2Str, document.getElementById('math-decomp2'), {throwOnError: false, displayMode: true});
+            distanceLines[1].geometry.setFromPoints([p1, new THREE.Vector3(p1.x, p1.y + offsetY, p1.z)]);
+            distanceLines[1].computeLineDistances();
+            distanceLines[2].geometry.setFromPoints([p2, new THREE.Vector3(p2.x, p2.y + offsetY, p2.z)]);
+            distanceLines[2].computeLineDistances();
 
-                    let sumxStr = `F_x = F_{31,x} + F_{32,x} = ${f31_vec.x.toFixed(3)} + (${f32_vec.x.toFixed(3)}) = ${forceRes.x.toFixed(3)}\\text{ N}`;
-                    let sumyStr = `F_y = F_{31,y} + F_{32,y} = ${f31_vec.y.toFixed(3)} + (${f32_vec.y.toFixed(3)}) = ${forceRes.y.toFixed(3)}\\text{ N}`;
-                    katex.render(sumxStr, document.getElementById('math-sumx'), {throwOnError: false, displayMode: true});
-                    katex.render(sumyStr, document.getElementById('math-sumy'), {throwOnError: false, displayMode: true});
+            distLabels[0].innerText = `r = ${r.toFixed(2)} m`;
 
-                    let FresStr = `F_3 = \\sqrt{F_x^2 + F_y^2} = \\sqrt{(${forceRes.x.toFixed(3)})^2 + (${forceRes.y.toFixed(3)})^2} = ${resultantMag.toFixed(3)}\\text{ N}`;
-                    katex.render(FresStr, document.getElementById('math-fres'), {throwOnError: false, displayMode: true});
-                }
-            }
-            else if (currentMode === 'C' || currentMode === 'D') {
-                geminiState.d0 = parseFloat(document.getElementById('d0-slider').value);
-                geminiState.mass = parseFloat(document.getElementById('mass-slider').value);
-                geminiState.showFBD = document.getElementById('fbd-checkbox').checked;
+            distVal.innerText = r.toFixed(2);
+            forceVal.innerText = `${res.magnitude.toFixed(3)} N`;
+            updateChartData(r, res.magnitude);
 
-                document.getElementById('val-d0').innerText = geminiState.d0.toFixed(2);
-                document.getElementById('val-mass').innerText = geminiState.mass.toFixed(2);
-
-                let t = solveTheta(geminiState.mass, q1 * 1e-6, q2 * 1e-6, currentMode, geminiState.d0);
-
-                if (geminiState.isInductionActive) {
-                    instructionText.innerHTML = "💡 <b>提示：</b>中性小球因靜電極化而與帶電體相吸。";
-                } else {
-                    instructionText.innerHTML = "💡 <b>提示：</b>觀察重力、繩子張力與靜電力的平衡狀態。動態平衡受小球質量與電荷量影響。";
-                }
-
-                gsap.to(geminiState, {
-                    theta1: (currentMode === 'C') ? t : 0,
-                    theta2: t,
-                    duration: 0.8,
-                    ease: "elastic.out(1, 0.5)"
-                });
-
-                // 更新右側數學面版的 FBD 力學解析
-                let theta_rad = Math.abs(t);
-                let theta_deg = theta_rad * 180 / Math.PI;
-                let m = geminiState.mass;
-                let w = m * G; 
-                let fe_math = w * Math.tan(theta_rad); // 基於平衡方程 T sin(t) = mg tan(t)
-                let T = w / Math.cos(theta_rad);
-
-                if (typeof katex !== 'undefined') {
-                    let yStr = `T \\cos\\theta = W = mg = (${m.toFixed(2)})(9.81) = ${w.toFixed(3)}\\text{ N}`;
-                    let xStr = `T \\sin\\theta = F_e = ${fe_math.toFixed(3)}\\text{ N}`;
-                    let t1Str = `T = \\frac{mg}{\\cos\\theta} = \\frac{${w.toFixed(3)}}{\\cos(${theta_deg.toFixed(1)}^\\circ)} = ${T.toFixed(3)}\\text{ N}`;
-                    let t2Str = `\\text{或 } T = \\sqrt{(mg)^2 + F_e^2} = ${T.toFixed(3)}\\text{ N}`;
-
-                    katex.render(yStr, document.getElementById('math-cd-y'), {throwOnError: false, displayMode: true});
-                    katex.render(xStr, document.getElementById('math-cd-x'), {throwOnError: false, displayMode: true});
-                    katex.render(t1Str, document.getElementById('math-cd-t1'), {throwOnError: false, displayMode: true});
-                    katex.render(t2Str, document.getElementById('math-cd-t2'), {throwOnError: false, displayMode: true});
-                }
+            if (typeof katex !== 'undefined') {
+                katex.render(getForceLatex(q1, q2, r, res.magnitude, "12", "1", "2"), document.getElementById('math-f12'), {throwOnError: false, displayMode: true});
             }
         }
+        else if (currentMode === 'B') {
+            const c1 = charges[0], c2 = charges[1], c3 = charges[2];
+            const r31Vec = new THREE.Vector3().subVectors(c3.position, c1.position);
+            const r32Vec = new THREE.Vector3().subVectors(c3.position, c2.position);
+            const r12Vec = new THREE.Vector3().subVectors(c2.position, c1.position);
 
-        function updateChargeColor(mesh, q) {
-            mesh.userData.q = q;
-            if (q > 0) mesh.material.color.setHex(0xff4757); 
-            else if (q < 0) mesh.material.color.setHex(0x3a82f7); 
-            else mesh.material.color.setHex(0x8c92a0); 
-        }
+            let r31 = Math.max(r31Vec.length(), currentMinDist);
+            let r32 = Math.max(r32Vec.length(), currentMinDist);
+            let r12 = Math.max(r12Vec.length(), currentMinDist);
 
-        function updateArrowVisual(aObj, origin, dir, magnitude, visible) {
-            aObj.helper.position.copy(origin);
-            if(dir.lengthSq() > 0) aObj.helper.setDirection(dir);
-            aObj.dir.copy(dir); 
-            
-            let visualLength = magnitude * FORCE_SCALE_FACTOR;
-            if (visualLength > MAX_ARROW_LENGTH) visualLength = MAX_ARROW_LENGTH;
-            if (magnitude > 0.00001 && visualLength < 1.0) visualLength = 1.0;
-            
-            aObj.visualLength = visible ? visualLength : 0;
+            distanceLines[0].geometry.setFromPoints([c1.position, c2.position]); distanceLines[0].computeLineDistances();
+            distanceLines[1].geometry.setFromPoints([c2.position, c3.position]); distanceLines[1].computeLineDistances();
+            distanceLines[2].geometry.setFromPoints([c1.position, c3.position]); distanceLines[2].computeLineDistances();
+            distLabels[0].innerText = `r₁₂ = ${r12.toFixed(2)}m`;
+            distLabels[1].innerText = `r₂₃ = ${r32.toFixed(2)}m`;
+            distLabels[2].innerText = `r₁₃ = ${r31.toFixed(2)}m`;
 
-            const headLen = Math.min(0.25, visualLength * 0.25);
-            const headWidth = Math.min(0.15, headLen * 0.6);
-            
-            aObj.helper.setLength(visualLength, headLen, headWidth); 
-            aObj.helper.visible = visible && magnitude > 0.00001;
-        }
+            const res31 = calculateCoulombForce(q1, q3, r31);
+            const res32 = calculateCoulombForce(q2, q3, r32);
 
-        // ---------- Gemini C/D Visuals Core ----------
-        function updateVisualsCD() {
-            if (currentMode !== 'C' && currentMode !== 'D') return;
+            const dir31 = r31Vec.clone().normalize().multiplyScalar(res31.isRepulsive ? 1 : -1);
+            const dir32 = r32Vec.clone().normalize().multiplyScalar(res32.isRepulsive ? 1 : -1);
 
-            const scale = 15;
-            const L = 0.2;
-            const L_vis = L * scale;
-            let d0_vis = geminiState.d0 * scale;
+            updateArrowVisual(arrows[0], c3.position, dir31, res31.magnitude, (q1 !== 0 || q3 !== 0));
+            updateArrowVisual(arrows[1], c3.position, dir32, res32.magnitude, (q2 !== 0 || q3 !== 0));
 
-            let pivot1 = new THREE.Vector3(-d0_vis/2, 0, 0);
-            let pivot2 = new THREE.Vector3(d0_vis/2, 0, 0);
+            let v31 = dir31.clone().multiplyScalar(arrows[0].visualLength);
+            let v32 = dir32.clone().multiplyScalar(arrows[1].visualLength);
+            let vRes = new THREE.Vector3().addVectors(v31, v32);
 
-            let p1 = new THREE.Vector3(pivot1.x - L_vis * Math.sin(geminiState.theta1), -L_vis * Math.cos(geminiState.theta1), 0);
-            let p2 = new THREE.Vector3(pivot2.x + L_vis * Math.sin(geminiState.theta2), -L_vis * Math.cos(geminiState.theta2), 0);
+            let f31_vec = dir31.clone().multiplyScalar(res31.magnitude);
+            let f32_vec = dir32.clone().multiplyScalar(res32.magnitude);
+            let forceRes = new THREE.Vector3().addVectors(f31_vec, f32_vec);
+            let resultantMag = forceRes.length();
 
-            let normalLength = L_vis * 0.4;
-
-            if (currentMode === 'D') {
-                p1.set(-d0_vis/2, -L_vis, 0);
-                stand.position.set(-d0_vis/2, -L_vis - 1.5, 0);
-                stand.visible = true;
-                strings[0].visible = false;
-                normal1.visible = false;
+            arrows[2].helper.position.copy(c3.position);
+            if (vRes.lengthSq() > 0.001 && (arrows[0].helper.visible || arrows[1].helper.visible)) {
+                arrows[2].helper.setDirection(vRes.clone().normalize());
+                arrows[2].visualLength = vRes.length();
+                let headLen = Math.min(0.25, vRes.length() * 0.25);
+                let headWidth = Math.min(0.15, headLen * 0.6);
+                arrows[2].helper.setLength(vRes.length(), headLen, headWidth);
+                arrows[2].helper.visible = true;
             } else {
-                stand.visible = false;
-                strings[0].visible = true;
-                strings[0].geometry.setFromPoints([pivot1, p1]);
-                normal1.geometry.setFromPoints([pivot1, new THREE.Vector3(pivot1.x, -normalLength, 0)]);
-                normal1.computeLineDistances();
-                normal1.visible = geminiState.showFBD;
+                arrows[2].helper.visible = false;
             }
 
-            charges[0].position.copy(p1);
-            charges[1].position.copy(p2);
-            strings[1].geometry.setFromPoints([pivot2, p2]);
+            const pEnd = c3.position.clone().add(vRes);
+            parallelogramLines[0].geometry.setFromPoints([c3.position.clone().add(v31), pEnd]);
+            parallelogramLines[1].geometry.setFromPoints([c3.position.clone().add(v32), pEnd]);
+            parallelogramLines[0].computeLineDistances();
+            parallelogramLines[1].computeLineDistances();
 
-            normal2.geometry.setFromPoints([pivot2, new THREE.Vector3(pivot2.x, -normalLength, 0)]);
-            normal2.computeLineDistances();
-            normal2.visible = geminiState.showFBD;
+            const bothArrowsVisible = arrows[0].helper.visible && arrows[1].helper.visible;
+            parallelogramLines[0].visible = isParallelogramVisible && bothArrowsVisible;
+            parallelogramLines[1].visible = isParallelogramVisible && bothArrowsVisible;
 
-            // Arcs
-            const drawArc = (arcMesh, pivot, theta, isLeft) => {
-                if (Math.abs(theta) < 0.02 || !geminiState.showFBD) { arcMesh.visible = false; return; }
-                arcMesh.visible = true;
-                const points = [];
-                const segments = 16;
-                const r = L_vis * 0.25; 
-                for (let i = 0; i <= segments; i++) {
-                    let t = (i / segments) * Math.abs(theta);
-                    let sign = isLeft ? -1 : 1;
-                    if (theta < 0) sign *= -1; 
-                    points.push(new THREE.Vector3(pivot.x + sign * r * Math.sin(t), -r * Math.cos(t), 0));
-                }
-                arcMesh.geometry.setFromPoints(points);
-            };
+            let v31x = new THREE.Vector3(v31.x, 0, 0);
+            let v31y = new THREE.Vector3(0, v31.y, 0);
 
-            if (currentMode === 'C') drawArc(arc1, pivot1, geminiState.theta1, true);
-            else arc1.visible = false;
-            drawArc(arc2, pivot2, geminiState.theta2, false);
+            updateCustomDashedArrow(decompArrows[0], c3.position, v31x.clone().normalize(), v31x.length(), isDecompVisible && arrows[0].helper.visible);
+            updateCustomDashedArrow(decompArrows[1], c3.position, v31y.clone().normalize(), v31y.length(), isDecompVisible && arrows[0].helper.visible);
 
-            // FBD Check & Update
-            const toggle = (fbd, show) => Object.values(fbd).forEach(a => a.visible = show);
-            if (!geminiState.showFBD) { 
-                toggle(fbd1, false); toggle(fbd2, false); 
+            let v32y = new THREE.Vector3(0, v32.y, 0);
+            let v32x = new THREE.Vector3(v32.x, 0, 0);
+
+            updateCustomDashedArrow(decompArrows[2], c3.position, v32y.clone().normalize(), v32y.length(), isDecompVisible && arrows[1].helper.visible);
+            updateCustomDashedArrow(decompArrows[3], c3.position, v32x.clone().normalize(), v32x.length(), isDecompVisible && arrows[1].helper.visible);
+
+            if (typeof katex !== 'undefined') {
+                katex.render(getForceLatex(q1, q3, r31, res31.magnitude, "31", "1", "3"), document.getElementById('math-f31'), {throwOnError: false, displayMode: true});
+                katex.render(getForceLatex(q2, q3, r32, res32.magnitude, "32", "2", "3"), document.getElementById('math-f32'), {throwOnError: false, displayMode: true});
+
+                let a1 = Math.atan2(f31_vec.y, f31_vec.x) * 180 / Math.PI;
+                let a2 = Math.atan2(f32_vec.y, f32_vec.x) * 180 / Math.PI;
+                let a1_s = a1 < 0 ? `(${a1.toFixed(1)}^\\circ)` : `${a1.toFixed(1)}^\\circ`;
+                let a2_s = a2 < 0 ? `(${a2.toFixed(1)}^\\circ)` : `${a2.toFixed(1)}^\\circ`;
+
+                let decomp1Str = `\\begin{aligned}
+                F_{31,x} &= F_{31} \\cos ${a1_s} = ${f31_vec.x.toFixed(3)}\\text{ N} \\\\
+                F_{31,y} &= F_{31} \\sin ${a1_s} = ${f31_vec.y.toFixed(3)}\\text{ N}
+                \\end{aligned}`;
+                let decomp2Str = `\\begin{aligned}
+                F_{32,x} &= F_{32} \\cos ${a2_s} = ${f32_vec.x.toFixed(3)}\\text{ N} \\\\
+                F_{32,y} &= F_{32} \\sin ${a2_s} = ${f32_vec.y.toFixed(3)}\\text{ N}
+                \\end{aligned}`;
+
+                katex.render(decomp1Str, document.getElementById('math-decomp1'), {throwOnError: false, displayMode: true});
+                katex.render(decomp2Str, document.getElementById('math-decomp2'), {throwOnError: false, displayMode: true});
+
+                let sumxStr = `F_x = F_{31,x} + F_{32,x} = ${f31_vec.x.toFixed(3)} + (${f32_vec.x.toFixed(3)}) = ${forceRes.x.toFixed(3)}\\text{ N}`;
+                let sumyStr = `F_y = F_{31,y} + F_{32,y} = ${f31_vec.y.toFixed(3)} + (${f32_vec.y.toFixed(3)}) = ${forceRes.y.toFixed(3)}\\text{ N}`;
+                katex.render(sumxStr, document.getElementById('math-sumx'), {throwOnError: false, displayMode: true});
+                katex.render(sumyStr, document.getElementById('math-sumy'), {throwOnError: false, displayMode: true});
+
+                let FresStr = `F_3 = \\sqrt{F_x^2 + F_y^2} = \\sqrt{(${forceRes.x.toFixed(3)})^2 + (${forceRes.y.toFixed(3)})^2} = ${resultantMag.toFixed(3)}\\text{ N}`;
+                katex.render(FresStr, document.getElementById('math-fres'), {throwOnError: false, displayMode: true});
+            }
+        }
+        else if (currentMode === 'C' || currentMode === 'D') {
+            geminiState.d0 = parseFloat(document.getElementById('d0-slider').value);
+            geminiState.mass = parseFloat(document.getElementById('mass-slider').value);
+            geminiState.showFBD = document.getElementById('opt-fbd').classList.contains('on');
+
+            document.getElementById('val-d0').innerText = geminiState.d0.toFixed(2);
+            document.getElementById('val-mass').innerText = geminiState.mass.toFixed(2);
+
+            let t = solveTheta(geminiState.mass, q1 * 1e-6, q2 * 1e-6, currentMode, geminiState.d0);
+
+            if (geminiState.isInductionActive) {
+                setInstr('hint.cdInduction');
             } else {
-                const mgLength = 1.5;
-                toggle(fbd2, true);
-                fbd2.mg.position.copy(p2);
-                fbd2.mg.setLength(mgLength);
-                let tDir2 = new THREE.Vector3(d0_vis/2, 0, 0).sub(p2).normalize();
-                fbd2.t.position.copy(p2);
-                fbd2.t.setDirection(tDir2);
-                fbd2.t.setLength(mgLength / Math.cos(geminiState.theta2));
-                
-                let feLength = mgLength * Math.tan(Math.abs(geminiState.theta2));
+                setInstr('hint.cdBalance');
+            }
+
+            gsap.to(geminiState, {
+                theta1: (currentMode === 'C') ? t : 0,
+                theta2: t,
+                duration: 0.8,
+                ease: "elastic.out(1, 0.5)"
+            });
+
+            // 更新右側數學面版的 FBD 力學解析
+            let theta_rad = Math.abs(t);
+            let theta_deg = theta_rad * 180 / Math.PI;
+            let m = geminiState.mass;
+            let w = m * G;
+            let fe_math = w * Math.tan(theta_rad); // 基於平衡方程 T sin(t) = mg tan(t)
+            let T = w / Math.cos(theta_rad);
+
+            if (typeof katex !== 'undefined') {
+                let yStr = `T \\cos\\theta = W = mg = (${m.toFixed(2)})(9.81) = ${w.toFixed(3)}\\text{ N}`;
+                let xStr = `T \\sin\\theta = F_e = ${fe_math.toFixed(3)}\\text{ N}`;
+                let t1Str = `T = \\frac{mg}{\\cos\\theta} = \\frac{${w.toFixed(3)}}{\\cos(${theta_deg.toFixed(1)}^\\circ)} = ${T.toFixed(3)}\\text{ N}`;
+                let t2Str = tt('math.tAlt', { T: T.toFixed(3) });
+
+                katex.render(yStr, document.getElementById('math-cd-y'), {throwOnError: false, displayMode: true});
+                katex.render(xStr, document.getElementById('math-cd-x'), {throwOnError: false, displayMode: true});
+                katex.render(t1Str, document.getElementById('math-cd-t1'), {throwOnError: false, displayMode: true});
+                katex.render(t2Str, document.getElementById('math-cd-t2'), {throwOnError: false, displayMode: true});
+            }
+        }
+    }
+
+    function updateChargeColor(mesh, q) {
+        mesh.userData.q = q;
+        if (q > 0) mesh.material.color.setHex(0xff4757);
+        else if (q < 0) mesh.material.color.setHex(0x3a82f7);
+        else mesh.material.color.setHex(0x8c92a0);
+    }
+
+    function updateArrowVisual(aObj, origin, dir, magnitude, visible) {
+        aObj.helper.position.copy(origin);
+        if(dir.lengthSq() > 0) aObj.helper.setDirection(dir);
+        aObj.dir.copy(dir);
+
+        let visualLength = magnitude * FORCE_SCALE_FACTOR;
+        if (visualLength > MAX_ARROW_LENGTH) visualLength = MAX_ARROW_LENGTH;
+        if (magnitude > 0.00001 && visualLength < 1.0) visualLength = 1.0;
+
+        aObj.visualLength = visible ? visualLength : 0;
+
+        const headLen = Math.min(0.25, visualLength * 0.25);
+        const headWidth = Math.min(0.15, headLen * 0.6);
+
+        aObj.helper.setLength(visualLength, headLen, headWidth);
+        aObj.helper.visible = visible && magnitude > 0.00001;
+    }
+
+    // ---------- Gemini C/D Visuals Core ----------
+    function updateVisualsCD() {
+        if (currentMode !== 'C' && currentMode !== 'D') return;
+
+        const scale = 15;
+        const L = 0.2;
+        const L_vis = L * scale;
+        let d0_vis = geminiState.d0 * scale;
+
+        let pivot1 = new THREE.Vector3(-d0_vis/2, 0, 0);
+        let pivot2 = new THREE.Vector3(d0_vis/2, 0, 0);
+
+        let p1 = new THREE.Vector3(pivot1.x - L_vis * Math.sin(geminiState.theta1), -L_vis * Math.cos(geminiState.theta1), 0);
+        let p2 = new THREE.Vector3(pivot2.x + L_vis * Math.sin(geminiState.theta2), -L_vis * Math.cos(geminiState.theta2), 0);
+
+        let normalLength = L_vis * 0.4;
+
+        if (currentMode === 'D') {
+            p1.set(-d0_vis/2, -L_vis, 0);
+            stand.position.set(-d0_vis/2, -L_vis - 1.5, 0);
+            stand.visible = true;
+            strings[0].visible = false;
+            normal1.visible = false;
+        } else {
+            stand.visible = false;
+            strings[0].visible = true;
+            strings[0].geometry.setFromPoints([pivot1, p1]);
+            normal1.geometry.setFromPoints([pivot1, new THREE.Vector3(pivot1.x, -normalLength, 0)]);
+            normal1.computeLineDistances();
+            normal1.visible = geminiState.showFBD;
+        }
+
+        charges[0].position.copy(p1);
+        charges[1].position.copy(p2);
+        strings[1].geometry.setFromPoints([pivot2, p2]);
+
+        normal2.geometry.setFromPoints([pivot2, new THREE.Vector3(pivot2.x, -normalLength, 0)]);
+        normal2.computeLineDistances();
+        normal2.visible = geminiState.showFBD;
+
+        // Arcs
+        const drawArc = (arcMesh, pivot, theta, isLeft) => {
+            if (Math.abs(theta) < 0.02 || !geminiState.showFBD) { arcMesh.visible = false; return; }
+            arcMesh.visible = true;
+            const points = [];
+            const segments = 16;
+            const r = L_vis * 0.25;
+            for (let i = 0; i <= segments; i++) {
+                let t = (i / segments) * Math.abs(theta);
+                let sign = isLeft ? -1 : 1;
+                if (theta < 0) sign *= -1;
+                points.push(new THREE.Vector3(pivot.x + sign * r * Math.sin(t), -r * Math.cos(t), 0));
+            }
+            arcMesh.geometry.setFromPoints(points);
+        };
+
+        if (currentMode === 'C') drawArc(arc1, pivot1, geminiState.theta1, true);
+        else arc1.visible = false;
+        drawArc(arc2, pivot2, geminiState.theta2, false);
+
+        // FBD Check & Update
+        const toggle = (fbd, show) => Object.values(fbd).forEach(a => a.visible = show);
+        if (!geminiState.showFBD) {
+            toggle(fbd1, false); toggle(fbd2, false);
+        } else {
+            const mgLength = 1.5;
+            toggle(fbd2, true);
+            fbd2.mg.position.copy(p2);
+            fbd2.mg.setLength(mgLength);
+            let tDir2 = new THREE.Vector3(d0_vis/2, 0, 0).sub(p2).normalize();
+            fbd2.t.position.copy(p2);
+            fbd2.t.setDirection(tDir2);
+            fbd2.t.setLength(mgLength / Math.cos(geminiState.theta2));
+
+            let feLength = mgLength * Math.tan(Math.abs(geminiState.theta2));
+            if (feLength > 0.05) {
+                let feDir2 = Math.sign(geminiState.theta2);
+                fbd2.fe.position.copy(p2);
+                fbd2.fe.setDirection(new THREE.Vector3(feDir2, 0, 0));
+                fbd2.fe.setLength(feLength);
+                fbd2.fe.visible = true;
+            } else fbd2.fe.visible = false;
+
+            if (currentMode === 'C') {
+                toggle(fbd1, true);
+                fbd1.mg.position.copy(p1);
+                fbd1.mg.setLength(mgLength);
+                let tDir1 = new THREE.Vector3(-d0_vis/2, 0, 0).sub(p1).normalize();
+                fbd1.t.position.copy(p1);
+                fbd1.t.setDirection(tDir1);
+                fbd1.t.setLength(mgLength / Math.cos(geminiState.theta1));
+
                 if (feLength > 0.05) {
-                    let feDir2 = Math.sign(geminiState.theta2); 
-                    fbd2.fe.position.copy(p2);
-                    fbd2.fe.setDirection(new THREE.Vector3(feDir2, 0, 0));
-                    fbd2.fe.setLength(feLength);
-                    fbd2.fe.visible = true;
-                } else fbd2.fe.visible = false;
-
-                if (currentMode === 'C') {
-                    toggle(fbd1, true);
-                    fbd1.mg.position.copy(p1);
-                    fbd1.mg.setLength(mgLength);
-                    let tDir1 = new THREE.Vector3(-d0_vis/2, 0, 0).sub(p1).normalize();
-                    fbd1.t.position.copy(p1);
-                    fbd1.t.setDirection(tDir1);
-                    fbd1.t.setLength(mgLength / Math.cos(geminiState.theta1));
-                    
-                    if (feLength > 0.05) {
-                        let feDir1 = Math.sign(geminiState.theta1) * -1;
-                        fbd1.fe.position.copy(p1);
-                        fbd1.fe.setDirection(new THREE.Vector3(feDir1, 0, 0));
-                        fbd1.fe.setLength(feLength);
-                        fbd1.fe.visible = true;
-                    } else fbd1.fe.visible = false;
-                } else {
-                    toggle(fbd1, false);
-                }
+                    let feDir1 = Math.sign(geminiState.theta1) * -1;
+                    fbd1.fe.position.copy(p1);
+                    fbd1.fe.setDirection(new THREE.Vector3(feDir1, 0, 0));
+                    fbd1.fe.setLength(feLength);
+                    fbd1.fe.visible = true;
+                } else fbd1.fe.visible = false;
+            } else {
+                toggle(fbd1, false);
             }
-
-            // CSS Angle Labels
-            const updateSingleLabel = (id, theta, pivot, isLeft) => {
-                const el = document.getElementById(id);
-                if (Math.abs(theta) < 0.02 || !geminiState.showFBD) {
-                    el.style.display = 'none'; return;
-                }
-                let offsetY = -L_vis * 0.35;
-                let offsetX = L_vis * 0.35 * Math.sin(Math.abs(theta));
-                if (isLeft) offsetX *= -1; 
-                if (theta < 0) offsetX *= -1; 
-
-                let pos = new THREE.Vector3(pivot.x + offsetX, pivot.y + offsetY, 0);
-                pos.project(camera);
-                const container = document.getElementById('canvas-container');
-                let x = (pos.x * 0.5 + 0.5) * container.clientWidth;
-                let y = -(pos.y * 0.5 - 0.5) * container.clientHeight;
-                
-                el.style.display = 'block';
-                el.innerText = Math.abs(theta * 180 / Math.PI).toFixed(1) + '°';
-                el.style.left = `${x}px`;
-                el.style.top = `${y}px`;
-            };
-
-            if (currentMode === 'C') updateSingleLabel('lbl-theta1', geminiState.theta1, pivot1, true);
-            else document.getElementById('lbl-theta1').style.display = 'none';
-            updateSingleLabel('lbl-theta2', geminiState.theta2, pivot2, false);
-
-            // Overlay Data
-            let dist_m = p1.distanceTo(p2) / scale;
-            let q1 = parseFloat(q1Slider.value);
-            let q2 = parseFloat(q2Slider.value);
-            let fe = 0;
-            if (q1 !== 0 && q2 !== 0) {
-                fe = (k * Math.abs(q1 * 1e-6 * q2 * 1e-6)) / (dist_m * dist_m);
-            } else if (geminiState.isInductionActive) {
-                let qActive = Math.abs(q1 + q2) * 1e-6;
-                fe = (k * qActive * (qActive * 0.05)) / (dist_m * dist_m);
-            }
-
-            distVal.innerText = dist_m.toFixed(3);
-            forceVal.innerText = `${fe.toFixed(3)} N`;
         }
 
-        // ---------- Chart Logic ----------
-        function initChart() {
-            const ctx = document.getElementById('f-r-chart').getContext('2d');
-            frChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    datasets: [{
-                        label: '平方反比曲線',
-                        data: [], borderColor: '#4da6ff', borderWidth: 2, fill: false, pointRadius: 0
-                    }, {
-                        label: '當前數值',
-                        data: [], backgroundColor: '#ffcc00', pointRadius: 6
-                    }]
+        // CSS Angle Labels
+        const updateSingleLabel = (id, theta, pivot, isLeft) => {
+            const el = document.getElementById(id);
+            if (Math.abs(theta) < 0.02 || !geminiState.showFBD) {
+                el.style.display = 'none'; return;
+            }
+            let offsetY = -L_vis * 0.35;
+            let offsetX = L_vis * 0.35 * Math.sin(Math.abs(theta));
+            if (isLeft) offsetX *= -1;
+            if (theta < 0) offsetX *= -1;
+
+            let pos = new THREE.Vector3(pivot.x + offsetX, pivot.y + offsetY, 0);
+            pos.project(camera);
+            let x = (pos.x * 0.5 + 0.5) * viewEl.clientWidth;
+            let y = -(pos.y * 0.5 - 0.5) * viewEl.clientHeight;
+
+            el.style.display = 'block';
+            el.innerText = Math.abs(theta * 180 / Math.PI).toFixed(1) + '°';
+            el.style.left = `${x}px`;
+            el.style.top = `${y}px`;
+        };
+
+        if (currentMode === 'C') updateSingleLabel('lbl-theta1', geminiState.theta1, pivot1, true);
+        else document.getElementById('lbl-theta1').style.display = 'none';
+        updateSingleLabel('lbl-theta2', geminiState.theta2, pivot2, false);
+
+        // Overlay Data
+        let dist_m = p1.distanceTo(p2) / scale;
+        let q1 = parseFloat(q1Slider.value);
+        let q2 = parseFloat(q2Slider.value);
+        let fe = 0;
+        if (q1 !== 0 && q2 !== 0) {
+            fe = (k * Math.abs(q1 * 1e-6 * q2 * 1e-6)) / (dist_m * dist_m);
+        } else if (geminiState.isInductionActive) {
+            let qActive = Math.abs(q1 + q2) * 1e-6;
+            fe = (k * qActive * (qActive * 0.05)) / (dist_m * dist_m);
+        }
+
+        distVal.innerText = dist_m.toFixed(3);
+        forceVal.innerText = `${fe.toFixed(3)} N`;
+    }
+
+    // ---------- Chart Logic ----------
+    function initChart() {
+        const c2 = document.getElementById('f-r-chart').getContext('2d');
+        frChart = new Chart(c2, {
+            type: 'line',
+            data: {
+                datasets: [{
+                    label: tt('chart.curve'),
+                    data: [], borderColor: '#4da6ff', borderWidth: 2, fill: false, pointRadius: 0
+                }, {
+                    label: tt('chart.current'),
+                    data: [], backgroundColor: '#ffcc00', pointRadius: 6
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                scales: {
+                    x: { type: 'linear', title: { display: true, text: tt('chart.x'), color: '#64748b' },
+                         ticks: { color: '#64748b' }, grid: { color: '#e2e8f0' }, min: 1, max: 12 },
+                    y: { title: { display: true, text: tt('chart.y'), color: '#64748b' },
+                         ticks: { color: '#64748b' }, grid: { color: '#e2e8f0' }, beginAtZero: true, max: 0.5 }
                 },
-                options: {
-                    responsive: true, maintainAspectRatio: false, 
-                    scales: {
-                        x: { type: 'linear', title: { display: true, text: '距離 r (m)', color:'#999' }, min: 1, max: 12 },
-                        y: { title: { display: true, text: '靜電力 F (N)', color:'#999' }, beginAtZero: true, max: 0.5 }
-                    },
-                    animation: false
+                plugins: { legend: { labels: { color: '#475569' } } },
+                animation: false
+            }
+        });
+    }
+
+    function updateChartData(currentR, currentF) {
+        const q1 = parseFloat(q1Slider.value);
+        const q2 = parseFloat(q2Slider.value);
+        const curveData = [];
+
+        for (let r = 1; r <= 12; r += 0.2) {
+            const res = calculateCoulombForce(q1, q2, r);
+            curveData.push({ x: r, y: res.magnitude });
+        }
+        frChart.data.datasets[0].data = curveData;
+        frChart.data.datasets[1].data = [{ x: currentR, y: currentF }];
+
+        let maxF = 0.5;
+        if(currentF > maxF) frChart.options.scales.y.max = Math.ceil(currentF * 1.2 * 100) / 100;
+        else frChart.options.scales.y.max = maxF;
+
+        frChart.update();
+    }
+
+    function earthSphere(index) {
+        if (index === 1) {
+            q1Slider.value = 0;
+            q1Val.innerText = "0.0";
+        } else {
+            q2Slider.value = 0;
+            q2Val.innerText = "0.0";
+        }
+        updatePhysics();
+    }
+
+    /* ── UI 接線 ── */
+    initChart();
+
+    q1Slider.addEventListener('input', updatePhysics);
+    q2Slider.addEventListener('input', updatePhysics);
+    q3Slider.addEventListener('input', updatePhysics);
+    document.getElementById('d0-slider').addEventListener('input', updatePhysics);
+    document.getElementById('mass-slider').addEventListener('input', updatePhysics);
+
+    document.getElementById('earth-btn-1').addEventListener('click', function () { earthSphere(1); });
+    document.getElementById('earth-btn-2').addEventListener('click', function () { earthSphere(2); });
+
+    // 模式切換（原 <select> → dir-btn-group）
+    document.querySelectorAll('#mode-btns .dir-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            document.querySelectorAll('#mode-btns .dir-btn').forEach(function (b) { b.classList.remove('active'); });
+            btn.classList.add('active');
+            switchMode(btn.getAttribute('data-mode'));
+        });
+    });
+
+    // 三角形排列
+    document.querySelectorAll('[data-tri]').forEach(function (btn) {
+        btn.addEventListener('click', function () { setTriangle(btn.getAttribute('data-tri')); });
+    });
+
+    // 顯示開關（原 On/Off 文字按鈕 → toggle-row）
+    document.getElementById('row-para').addEventListener('click', function () {
+        const track = document.getElementById('opt-para');
+        track.classList.toggle('on');
+        isParallelogramVisible = track.classList.contains('on');
+        updatePhysics();
+    });
+    document.getElementById('row-decomp').addEventListener('click', function () {
+        const track = document.getElementById('opt-decomp');
+        track.classList.toggle('on');
+        isDecompVisible = track.classList.contains('on');
+        updatePhysics();
+    });
+    document.getElementById('row-fbd').addEventListener('click', function () {
+        document.getElementById('opt-fbd').classList.toggle('on');
+        updatePhysics();
+    });
+
+    // 面板開關（切換後重算畫布尺寸；圖表由 Chart.js v4 ResizeObserver 自理）
+    PhysLab.ui.bindPanelToggle('btn-toggle-left', 'left-panel', ctx.resize);
+    PhysLab.ui.bindPanelToggle('btn-toggle-right', 'right-panel', ctx.resize);
+
+    // 語言切換：重寫 data-i18n 涵蓋不到的動態文字（提示、讀數標題、
+    // F₃ 合力 overlay 標籤、圖表文字），並重排含中文的 KaTeX 公式
+    PhysLab.i18n.onChange(function () {
+        if (instrKey) instructionText.innerHTML = tt(instrKey);
+        forceTitle.textContent = tt(forceTitleKey);
+        if (currentMode === 'B' && arrows[2]) arrows[2].label.innerText = tt('label3d.fres');
+        frChart.data.datasets[0].label = tt('chart.curve');
+        frChart.data.datasets[1].label = tt('chart.current');
+        frChart.options.scales.x.title.text = tt('chart.x');
+        frChart.options.scales.y.title.text = tt('chart.y');
+        frChart.update();
+        updatePhysics();
+    });
+
+    switchMode('A');
+
+    /* ── 主迴圈（HTML 標籤投影跟隨；controls.update 與 render 由 ctx 處理） ── */
+    ctx.start(function () {
+        if (currentMode === 'C' || currentMode === 'D') {
+            updateVisualsCD();
+        }
+
+        arrows.forEach(a => {
+            if (a.helper.visible) {
+                a.label.style.display = 'block';
+                const midPoint = a.helper.position.clone().addScaledVector(a.dir, a.visualLength + 0.4);
+                midPoint.project(camera);
+                const x = (midPoint.x * 0.5 + 0.5) * viewEl.clientWidth;
+                const y = (midPoint.y * -0.5 + 0.5) * viewEl.clientHeight;
+                a.label.style.left = `${x}px`;
+                a.label.style.top = `${y}px`;
+            } else {
+                a.label.style.display = 'none';
+            }
+        });
+
+        charges.forEach((c, i) => {
+            if (sphereLabels[i]) {
+                const pos = c.position.clone();
+                pos.y += c.userData.radius + 0.4;
+                pos.project(camera);
+                const x = (pos.x * 0.5 + 0.5) * viewEl.clientWidth;
+                const y = (pos.y * -0.5 + 0.5) * viewEl.clientHeight;
+                sphereLabels[i].style.left = `${x}px`;
+                sphereLabels[i].style.top = `${y}px`;
+            }
+        });
+
+        if (currentMode === 'A' && charges.length === 2) {
+            const mid = new THREE.Vector3().addVectors(charges[0].position, charges[1].position).multiplyScalar(0.5);
+            mid.y -= 1.5;
+            mid.project(camera);
+            distLabels[0].style.left = `${(mid.x * 0.5 + 0.5) * viewEl.clientWidth}px`;
+            distLabels[0].style.top = `${(mid.y * -0.5 + 0.5) * viewEl.clientHeight}px`;
+        } else if (currentMode === 'B' && charges.length === 3) {
+            const pairs = [[0,1], [1,2], [0,2]];
+            pairs.forEach((p, idx) => {
+                if(distLabels[idx]) {
+                    const mid = new THREE.Vector3().addVectors(charges[p[0]].position, charges[p[1]].position).multiplyScalar(0.5);
+                    mid.project(camera);
+                    distLabels[idx].style.left = `${(mid.x * 0.5 + 0.5) * viewEl.clientWidth}px`;
+                    distLabels[idx].style.top = `${(mid.y * -0.5 + 0.5) * viewEl.clientHeight}px`;
                 }
             });
         }
-
-        function updateChartData(currentR, currentF) {
-            const q1 = parseFloat(q1Slider.value);
-            const q2 = parseFloat(q2Slider.value);
-            const curveData = [];
-
-            for (let r = 1; r <= 12; r += 0.2) {
-                const res = calculateCoulombForce(q1, q2, r);
-                curveData.push({ x: r, y: res.magnitude });
-            }
-            frChart.data.datasets[0].data = curveData;
-            frChart.data.datasets[1].data = [{ x: currentR, y: currentF }];
-            
-            let maxF = 0.5;
-            if(currentF > maxF) frChart.options.scales.y.max = Math.ceil(currentF * 1.2 * 100) / 100;
-            else frChart.options.scales.y.max = maxF;
-
-            frChart.update();
-        }
-
-        function onWindowResize() {
-            const container = document.getElementById('canvas-container');
-            camera.aspect = container.clientWidth / container.clientHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(container.clientWidth, container.clientHeight);
-        }
-
-        function animate() {
-            requestAnimationFrame(animate);
-            if(currentMode !== 'B') orbitControls.update(); 
-
-            if (currentMode === 'C' || currentMode === 'D') {
-                updateVisualsCD();
-            }
-
-            const container = document.getElementById('canvas-container');
-            
-            arrows.forEach(a => {
-                if (a.helper.visible) {
-                    a.label.style.display = 'block';
-                    const midPoint = a.helper.position.clone().addScaledVector(a.dir, a.visualLength + 0.4);
-                    midPoint.project(camera);
-                    const x = (midPoint.x * 0.5 + 0.5) * container.clientWidth;
-                    const y = (midPoint.y * -0.5 + 0.5) * container.clientHeight;
-                    a.label.style.left = `${x}px`;
-                    a.label.style.top = `${y}px`;
-                } else {
-                    a.label.style.display = 'none';
-                }
-            });
-
-            charges.forEach((c, i) => {
-                if (sphereLabels[i]) {
-                    const pos = c.position.clone();
-                    pos.y += c.userData.radius + 0.4; 
-                    pos.project(camera);
-                    const x = (pos.x * 0.5 + 0.5) * container.clientWidth;
-                    const y = (pos.y * -0.5 + 0.5) * container.clientHeight;
-                    sphereLabels[i].style.left = `${x}px`;
-                    sphereLabels[i].style.top = `${y}px`;
-                }
-            });
-            
-            if (currentMode === 'A' && charges.length === 2) {
-                const mid = new THREE.Vector3().addVectors(charges[0].position, charges[1].position).multiplyScalar(0.5);
-                mid.y -= 1.5; 
-                mid.project(camera);
-                distLabels[0].style.left = `${(mid.x * 0.5 + 0.5) * container.clientWidth}px`;
-                distLabels[0].style.top = `${(mid.y * -0.5 + 0.5) * container.clientHeight}px`;
-            } else if (currentMode === 'B' && charges.length === 3) {
-                const pairs = [[0,1], [1,2], [0,2]];
-                pairs.forEach((p, idx) => {
-                    if(distLabels[idx]) {
-                        const mid = new THREE.Vector3().addVectors(charges[p[0]].position, charges[p[1]].position).multiplyScalar(0.5);
-                        mid.project(camera);
-                        distLabels[idx].style.left = `${(mid.x * 0.5 + 0.5) * container.clientWidth}px`;
-                        distLabels[idx].style.top = `${(mid.y * -0.5 + 0.5) * container.clientHeight}px`;
-                    }
-                });
-            }
-
-            renderer.render(scene, camera);
-        }
-    </script>
-    <a id="home-btn" href="../../../index.html">&#127968; &#20027;&#38913;</a>
+    });
+});
+</script>
 </body>
 </html>
