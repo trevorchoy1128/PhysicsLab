@@ -1,829 +1,899 @@
-﻿<!DOCTYPE html>
-<html lang="zh-HK">
+<!DOCTYPE html>
+<html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>嚴謹靜電學模擬器：授受、感應與接地起電</title>
-    <style>
-        body { margin: 0; overflow: hidden; font-family: 'PingFang HK', sans-serif; background-color: #1a1a1a; color: #fff; }
-        #canvas-container { width: 100vw; height: 100vh; display: block; }
-        #ui-overlay { position: absolute; top: 0; left: 0; width: 100%; padding: 20px; box-sizing: border-box; pointer-events: none; display: flex; justify-content: space-between; align-items: flex-start; z-index: 10; }
-        
-        /* 控制面板樣式 */
-        .panel { background: rgba(30, 30, 30, 0.85); padding: 15px 20px; border-radius: 8px; border: 1px solid #444; pointer-events: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.3); max-width: 380px; transition: opacity 0.3s, transform 0.3s; }
-        /* 用於隱藏面板的 CSS class */
-        .panel-hidden { opacity: 0; transform: translateX(-20px); pointer-events: none !important; }
 
-        h1 { margin: 0 0 15px 0; font-size: 1.2rem; color: #4da6ff; }
-        button { background: #333; color: #fff; border: 1px solid #555; padding: 8px 12px; margin-right: 5px; margin-bottom: 5px; border-radius: 4px; cursor: pointer; transition: all 0.2s; font-size: 0.85rem; width: 100%; text-align: left; }
-        button:hover { background: #4da6ff; color: #000; }
-        button.active { background: #4da6ff; color: #000; font-weight: bold; border-color: #4da6ff; }
-        
-        /* 隱藏/顯示面板按鈕樣式 (固定在右上角) */
-        #btn-toggle-ui { position: absolute; top: 20px; right: 20px; background: rgba(51, 51, 51, 0.7); color: white; border: 1px solid #666; padding: 10px 15px; border-radius: 4px; cursor: pointer; z-index: 100; pointer-events: auto; font-size: 0.9rem; transition: background 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.2); width: auto; text-align: center;}
-        #btn-toggle-ui:hover { background: rgba(77, 166, 255, 0.8); color: #000; border-color: #4da6ff; }
-
-        /* 底部 UI 容器 */
-        #bottom-bar { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 12px; z-index: 20; }
-        #instruction { background: rgba(0, 0, 0, 0.9); padding: 15px 25px; border-radius: 12px; font-size: 1.1rem; border: 1px solid #4da6ff; text-align: center; min-width: 550px; line-height: 1.6; box-shadow: 0 4px 15px rgba(0,0,0,0.5); pointer-events: none; white-space: pre-line; }
-        
-        #btn-next { background: #27ae60; color: white; border: none; padding: 12px 30px; border-radius: 25px; font-size: 1.1rem; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.4); pointer-events: auto; font-weight: bold; transition: all 0.2s; letter-spacing: 1px; width: auto; text-align: center;}
-        #btn-next:hover { background: #2ecc71; transform: scale(1.05); }
-        #btn-next:disabled { background: #555; color: #888; cursor: not-allowed; transform: none; box-shadow: none; }
-
-        /* 新增：錯誤步驟按鈕樣式 */
-        #btn-next-wrong { background: #c0392b; color: white; border: none; padding: 12px 30px; border-radius: 25px; font-size: 1.1rem; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.4); pointer-events: auto; font-weight: bold; transition: all 0.2s; letter-spacing: 1px; width: auto; text-align: center; display: none;}
-        #btn-next-wrong:hover { background: #e74c3c; transform: scale(1.05); }
-        #btn-next-wrong:disabled { background: #555; color: #888; cursor: not-allowed; transform: none; box-shadow: none; }
-
-        .checkbox-container { margin-top: 10px; font-size: 0.9rem; display: flex; align-items: center; }
-        .checkbox-container input { margin-right: 8px; }
-        .label { position: absolute; background: rgba(0, 0, 0, 0.8); color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; pointer-events: none; transform: translate(-50%, -50%); display: none; border: 1px solid #777; }
-        
-        #custom-panel { margin-top: 15px; padding: 12px; background: rgba(0,0,0,0.5); border: 1px solid #555; border-radius: 6px; }
-        #custom-panel label { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.95rem; align-items: center;}
-        #custom-panel input { width: 60px; background: #222; color: #fff; border: 1px solid #666; padding: 4px; text-align: center; border-radius: 3px; }
-        
-        .view-mode-box { margin-top: 15px; border-top: 1px solid #555; padding-top: 10px; }
-        .view-mode-box div { margin-bottom: 5px; color: #4da6ff; font-weight: bold; font-size: 0.85rem; }
-        .view-mode-box label { display: block; margin-bottom: 5px; font-size: 0.9rem; cursor: pointer; }
-        .view-mode-box select { background: #222; color: #fff; border: 1px solid #666; padding: 3px 8px; border-radius: 4px; }
-    
-    /* Home button */
-    #home-btn {
-        position: fixed;
-        bottom: 16px;
-        left: 16px;
-        z-index: 99999;
-        background: rgba(30,41,59,0.85);
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-        border: 1px solid rgba(255,255,255,0.3);
-        border-radius: 10px;
-        padding: 8px 14px;
-        font-size: 13px;
-        font-weight: bold;
-        color: #fff;
-        text-decoration: none;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.25);
-        transition: background 0.2s, transform 0.2s;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-    #home-btn:hover {
-        background: rgba(30,41,59,0.95);
-        transform: translateY(-2px);
-    }
-
-        /* -- Responsive (Mobile / Tablet) -- */
-        @media (max-width: 768px) {
-            #ui-panel, .ui-panel {
-                width: calc(100vw - 20px) !important;
-                max-width: 100vw !important;
-                max-height: 45vh !important;
-                overflow-y: auto !important;
-                top: auto !important;
-                bottom: 0 !important;
-                left: 0 !important;
-                right: 0 !important;
-                border-radius: 12px 12px 0 0 !important;
-                padding: 12px !important;
-                font-size: 12px !important;
-            }
-            #ui-panel h2, .ui-panel h2 { font-size: 14px !important; margin: 0 0 6px 0 !important; }
-            #ui-panel h3, .ui-panel h3 { font-size: 13px !important; }
-            #ui-panel label, .ui-panel label { font-size: 11px !important; }
-            #ui-panel input[type=range], .ui-panel input[type=range] { height: 20px !important; }
-            #ui-panel .btn, .ui-panel .btn { padding: 7px 4px !important; font-size: 11px !important; }
-        }
-        @media (min-width: 769px) and (max-width: 1024px) {
-            #ui-panel, .ui-panel {
-                width: 260px !important;
-                font-size: 13px !important;
-            }
-        }
-    </style>
-    
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-    <!-- sim3d-load-guard: three.js 載入失敗提示 -->
-    <script>
-      window.addEventListener('DOMContentLoaded', function () {
-        if (typeof THREE === 'undefined' || typeof THREE.OrbitControls === 'undefined') {
-          var o = document.createElement('div');
-          o.id = 'sim3d-load-error';
-          o.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;background:#0f172a;color:#fff;font-family:system-ui,\'Noto Sans HK\',sans-serif;font-size:18px;line-height:1.7';
-          o.innerHTML = '⚠️ 無法載入 3D 元件（three.js）<br>請檢查網路連線後重新整理頁面。';
-          document.body.appendChild(o);
+
+    <link rel="stylesheet" href="../../../assets/css/tokens.css">
+    <link rel="stylesheet" href="../../../assets/css/labgray.css">
+    <script src="../../../assets/js/core.js"></script>
+    <script src="../../../assets/js/i18n.js"></script>
+    <script src="../../../assets/js/sim3d.js"></script>
+
+    <style>
+        /* ── 頁面獨有樣式（共用 chrome 見 assets/css/labgray.css）── */
+
+        /* 版面鐵律：滿版三欄、面板內卡片不被壓縮（成對使用） */
+        body { height: 100vh; overflow: hidden; }
+        #left-panel > *, #right-panel > * { flex-shrink: 0; }
+
+        /* 實驗模式按鈕：直向堆疊（原版面板縱向長按鈕） */
+        #mode-group { flex-direction: column; }
+        #mode-group .dir-btn { text-align: left; width: 100%; }
+
+        /* 重置／步驟按鈕（沿用原版紅綠語意色） */
+        #btn-reset { display: block; width: 100%; margin-top: 10px; background: #dc2626; border-color: #dc2626; color: #fff; }
+        #btn-next { display: block; width: 100%; background: #16a34a; border-color: #16a34a; color: #fff; }
+        #btn-next-wrong { display: none; width: 100%; margin-top: 6px; background: #dc2626; border-color: #dc2626; color: #fff; }
+        #btn-reset:hover, #btn-next:hover, #btn-next-wrong:hover, #btn-apply:hover { filter: brightness(0.92); }
+        #btn-next:disabled, #btn-next-wrong:disabled {
+            background: var(--pl-border); border-color: var(--pl-border);
+            color: var(--pl-text-faint); cursor: not-allowed; filter: none;
         }
-      });
-    </script>
+
+        /* 電荷顯示模式（radio；labgray 無 radio 樣式） */
+        .radio-title { font-size: 0.74rem; color: var(--pl-blue); font-weight: 700; margin: 10px 0 5px; }
+        .radio-label { display: flex; align-items: center; gap: 6px; font-size: 0.73rem; color: var(--pl-text-dim); margin-bottom: 5px; cursor: pointer; }
+
+        /* 自訂初始數值（number input 列） */
+        .num-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 0.76rem; color: var(--pl-text-dim); }
+        .num-row input {
+            width: 60px; background: var(--pl-inset); color: var(--pl-text);
+            border: 1px solid var(--pl-border); padding: 4px; text-align: center;
+            border-radius: 5px; font-family: inherit;
+        }
+        #inputs-rod { border-top: 1px dashed var(--pl-border); padding-top: 10px; margin-top: 10px; }
+        #btn-apply { display: block; width: 100%; margin-top: 4px; background: #2563eb; border-color: #2563eb; color: #fff; }
+
+        /* 右欄實驗指示（原底部 #instruction；保留 \n 換行） */
+        #instruction { white-space: pre-line; font-size: 0.78rem; line-height: 1.7; color: var(--pl-text-dim); }
+
+        /* 3D 部件標籤（DOM 投影 chip；原版樣式值） */
+        .obj-label {
+            position: absolute; background: rgba(0,0,0,0.8); color: #fff;
+            padding: 4px 8px; border-radius: 4px; font-size: 12px;
+            pointer-events: none; transform: translate(-50%, -50%);
+            display: none; border: 1px solid #777; white-space: nowrap; z-index: 5;
+        }
+    </style>
 </head>
 <body>
 
-    <button id="btn-toggle-ui">隱藏面板</button>
-
-    <div id="ui-overlay">
-        <div class="panel">
-            <h1>靜電學實驗模式</h1>
-            <button id="btn-sharing" class="active">① 授受起電 (導體接觸)</button>
-            <button id="btn-induction">② 感應起電 (雙金屬球分離)</button>
-            <button id="btn-earthing">③ 感應與接地起電 (單球接地球)</button>
-            
-            <button id="btn-reset" style="margin-top: 10px; background: #662222; text-align: center;">重置當前實驗</button>
-            
-            <div class="checkbox-container">
-                <input type="checkbox" id="toggle-labels" checked>
-                <label for="toggle-labels">顯示部件標籤</label>
+    <div id="topbar">
+        <div style="display: flex; align-items: center; gap: 16px;">
+            <button type="button" class="panel-toggle-btn" id="btn-toggle-left">
+                <span>☰</span> <span data-i18n="topbar.controls">控制</span>
+            </button>
+            <div class="title-block">
+                <h1 data-i18n="topbar.title">⚡ 嚴謹靜電學模擬器：授受、感應與接地起電</h1>
+                <p data-i18n="topbar.subtitle">HKDSE Physics · Book 4 · Chapter 1 · 靜電感應</p>
             </div>
-            <div class="checkbox-container" style="margin-bottom: 5px;">
-                <input type="checkbox" id="toggle-transparent">
-                <label for="toggle-transparent" style="color: #f39c12; font-weight: bold;">開啟金屬球半透明模式</label>
-            </div>
+        </div>
+        <div class="tb-actions">
+            <button type="button" class="panel-toggle-btn" id="btn-toggle-right">
+                <span>📖</span> <span data-i18n="topbar.info">資訊</span>
+            </button>
+        </div>
+    </div>
 
-            <div class="view-mode-box">
-                <div>電荷顯示模式：</div>
-                <label><input type="radio" name="chargeView" value="all" checked> 顯示所有電荷 (展示金屬晶格本質)</label>
-                <label><input type="radio" name="chargeView" value="net"> 僅顯示淨電荷 (教學簡化模式)</label>
-            </div>
-
-            <div id="custom-panel">
-                <div style="font-size: 0.8rem; color: #aaa; margin-bottom: 10px;">自訂初始數值 (正數為正電)</div>
-                <div id="inputs-spheres">
-                    <label id="lbl-inputA">球 A 淨電荷: <input type="number" id="inputA" value="8" step="1"></label>
-                    <label id="lbl-inputB">球 B 淨電荷: <input type="number" id="inputB" value="-4" step="1"></label>
+    <div id="main">
+        <div id="left-panel">
+            <div class="card">
+                <div class="card-header">⚡ <span data-i18n="panel.mode.header">靜電學實驗模式</span><span class="chevron">▾</span></div>
+                <div class="card-body">
+                    <div class="dir-btn-group" id="mode-group">
+                        <button type="button" class="dir-btn active" id="btn-sharing" data-i18n="panel.mode.sharing">① 授受起電 (導體接觸)</button>
+                        <button type="button" class="dir-btn" id="btn-induction" data-i18n="panel.mode.induction">② 感應起電 (雙金屬球分離)</button>
+                        <button type="button" class="dir-btn" id="btn-earthing" data-i18n="panel.mode.earthing">③ 感應與接地起電 (單球接地球)</button>
+                    </div>
+                    <button type="button" class="action-btn" id="btn-reset" data-i18n="panel.mode.reset">重置當前實驗</button>
                 </div>
-                <div id="inputs-rod" style="display:none; border-top: 1px dashed #555; padding-top: 10px; margin-top: 10px;">
-                    <label style="color:#e67e22;">帶電棒 電荷量: <input type="number" id="inputRod" value="6" step="1"></label>
+            </div>
+
+            <div class="card">
+                <div class="card-header">👁️ <span data-i18n="panel.view.header">顯示選項</span><span class="chevron">▾</span></div>
+                <div class="card-body">
+                    <div class="toggle-row" id="row-labels">
+                        <div class="toggle-track on" id="opt-labels"><div class="toggle-thumb"></div></div>
+                        <span data-i18n="panel.view.labels">顯示部件標籤</span>
+                    </div>
+                    <div class="toggle-row" id="row-transparent">
+                        <div class="toggle-track" id="opt-transparent"><div class="toggle-thumb"></div></div>
+                        <span style="color:#f39c12; font-weight:700;" data-i18n="panel.view.transparent">開啟金屬球半透明模式</span>
+                    </div>
+                    <div class="radio-title" data-i18n="panel.view.chargeMode">電荷顯示模式：</div>
+                    <label class="radio-label"><input type="radio" name="chargeView" value="all" checked> <span data-i18n="panel.view.chargeAll">顯示所有電荷 (展示金屬晶格本質)</span></label>
+                    <label class="radio-label"><input type="radio" name="chargeView" value="net"> <span data-i18n="panel.view.chargeNet">僅顯示淨電荷 (教學簡化模式)</span></label>
                 </div>
-                <button id="btn-apply" style="margin-top: 10px; width: 100%; background: #2b5b84; text-align: center;">套用設定</button>
+            </div>
+
+            <div class="card">
+                <div class="card-header">🔧 <span data-i18n="panel.custom.header">自訂初始數值 (正數為正電)</span><span class="chevron">▾</span></div>
+                <div class="card-body">
+                    <label class="num-row" id="lbl-inputA"><span data-i18n="panel.custom.qA">球 A 淨電荷:</span> <input type="number" id="inputA" value="8" step="1"></label>
+                    <label class="num-row" id="lbl-inputB"><span data-i18n="panel.custom.qB">球 B 淨電荷:</span> <input type="number" id="inputB" value="-4" step="1"></label>
+                    <div id="inputs-rod" style="display:none;">
+                        <label class="num-row"><span style="color:#e67e22;" data-i18n="panel.custom.qRod">帶電棒 電荷量:</span> <input type="number" id="inputRod" value="6" step="1"></label>
+                    </div>
+                    <button type="button" class="action-btn" id="btn-apply" data-i18n="panel.custom.apply">套用設定</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">⏭️ <span data-i18n="panel.step.header">步驟操作</span><span class="chevron">▾</span></div>
+                <div class="card-body">
+                    <button type="button" class="action-btn" id="btn-next">自動執行下一步 ⏭️</button>
+                    <button type="button" class="action-btn" id="btn-next-wrong" data-i18n="btn.wrong">模擬錯誤步驟 (先移走帶電棒) ⚠️</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="canvas-wrap">
+            <div id="view3d">
+                <div id="label-sphereA" class="obj-label" data-i18n="label3d.sphereA">金屬球 A (絕緣支架)</div>
+                <div id="label-sphereB" class="obj-label" data-i18n="label3d.sphereB">金屬球 B (絕緣支架)</div>
+                <div id="label-rod" class="obj-label" data-i18n="label3d.rod">絕緣帶電棒</div>
+                <div id="label-earth" class="obj-label" data-i18n="label3d.earth">接地線 ⏚</div>
+            </div>
+        </div>
+
+        <div id="right-panel">
+            <div class="guide-box">
+                <h4>🧪 <span data-i18n="info.inst.header">實驗指示</span></h4>
+                <div id="instruction">系統載入中...</div>
             </div>
         </div>
     </div>
 
-    <div id="bottom-bar">
-        <div id="instruction">系統載入中...</div>
-        <div style="display: flex; gap: 15px; justify-content: center; align-items: center; pointer-events: auto;">
-            <button id="btn-next">自動執行下一步 ⏭️</button>
-            <button id="btn-next-wrong">模擬錯誤步驟 (先移走帶電棒) ⚠️</button>
-        </div>
-    </div>
+<script>
+    /* ── 頁面字典：學生可見字串集中於此（en 暫缺 → 自動回退 zh） ── */
+    PhysLab.i18n.register({
+        zh: {
+            'topbar.title': '⚡ 嚴謹靜電學模擬器：授受、感應與接地起電',
+            'topbar.subtitle': 'HKDSE Physics · Book 4 · Chapter 1 · 靜電感應',
+            'topbar.controls': '控制',
+            'topbar.info': '資訊',
+            'panel.mode.header': '靜電學實驗模式',
+            'panel.mode.sharing': '① 授受起電 (導體接觸)',
+            'panel.mode.induction': '② 感應起電 (雙金屬球分離)',
+            'panel.mode.earthing': '③ 感應與接地起電 (單球接地球)',
+            'panel.mode.reset': '重置當前實驗',
+            'panel.view.header': '顯示選項',
+            'panel.view.labels': '顯示部件標籤',
+            'panel.view.transparent': '開啟金屬球半透明模式',
+            'panel.view.chargeMode': '電荷顯示模式：',
+            'panel.view.chargeAll': '顯示所有電荷 (展示金屬晶格本質)',
+            'panel.view.chargeNet': '僅顯示淨電荷 (教學簡化模式)',
+            'panel.custom.header': '自訂初始數值 (正數為正電)',
+            'panel.custom.qA': '球 A 淨電荷:',
+            'panel.custom.qB': '球 B 淨電荷:',
+            'panel.custom.qRod': '帶電棒 電荷量:',
+            'panel.custom.apply': '套用設定',
+            'panel.step.header': '步驟操作',
+            'info.inst.header': '實驗指示',
+            'label3d.sphereA': '金屬球 A (絕緣支架)',
+            'label3d.sphereB': '金屬球 B (絕緣支架)',
+            'label3d.rod': '絕緣帶電棒',
+            'label3d.earth': '接地線 ⏚',
+            'btn.next': '自動執行下一步 ⏭️',
+            'btn.nextEarthCorrect': '先移走接地線 (正確路徑) ⏭️',
+            'btn.removeRod': '移走帶電棒 ⏭️',
+            'btn.removeEarth': '移走接地線 ⏭️',
+            'btn.wrong': '模擬錯誤步驟 (先移走帶電棒) ⚠️',
+            'rod.pos': '正電棒',
+            'rod.neg': '負電棒',
+            'sign.pos': '正電',
+            'sign.neg': '負電',
+            'sign.neutral': '電中性',
+            'inst.aCharge': '淨電荷 [{a}]',
+            'inst.sharing.intro': '【授受起電】球 A 淨電荷 [{a}]，球 B 淨電荷 [{b}]。\n👉 請接觸兩球，或點擊「自動下一步」。',
+            'inst.sharing.flow': '接觸中！電子互相排斥，從球 {from} 流向球 {to}！',
+            'inst.sharing.balanced': '接觸中！電荷已平衡。',
+            'inst.sharing.done': '完成轉移！兩球最終皆為{sign}{repel}。',
+            'inst.sharing.repelYes': '並互相排斥',
+            'inst.sharing.repelNo': '不再相斥',
+            'inst.induction.intro': '【感應起電 (雙球)】球體接觸中。\n👉 請將【{rod}】靠近球 A，或點擊「下一步」。',
+            'inst.induction.polarPos': '①：感應極化\n棒吸引電子飛向近端球 A！',
+            'inst.induction.polarNeg': '①：感應極化\n棒排斥電子退至遠端球 B！',
+            'inst.induction.separated': '① 完成：電荷已分離。\n👉 請分離【球 B】，或點擊「下一步」。',
+            'inst.induction.step2': '②：分離球體\n棒維持作用。\n👉 請移走【帶電棒】，或點擊「下一步」。',
+            'inst.induction.step3': '③：移走帶電棒\n電荷重新均勻包覆球 A。\n🎉 實驗完成！',
+            'inst.earthing.intro': '【感應與接地起電】球 A 現為{state}。\n👉 ①：請將【{rod}】靠近，或點擊「下一步」。',
+            'inst.earthing.step1': '①：靠近棒 (感應極化)\n球內電子分佈改變。\n👉 ②：請將【接地線】觸碰球右側，或點擊「下一步」。',
+            'inst.earthing.noFlow': '②：短暫接地\n無電子流動。',
+            'inst.earthing.inFlow': '②：短暫接地\n棒鎖住電荷。地球電子流入球體中和！',
+            'inst.earthing.outFlow': '②：短暫接地\n棒鎖住正核。電子流入地球！',
+            'inst.earthing.branch': '② 接地完成！球體遠端已中和。\n💡 【重要分歧點】請做選擇：\n👉 拖曳[接地線]往右移(正確步驟) 或 拖曳[帶電棒]往左移(錯誤步驟)。',
+            'inst.earthing.step3': '③：斷開接地 (正確步驟)\n接地線已斷開，感應電荷成功鎖定在球體上！\n👉 ④：最後，移走【帶電棒】，或點擊「下一步」。',
+            'inst.earthing.step4': '④：移走帶電棒\n電荷重新均勻包覆球 A。\n🎉 正確步驟完成！球體順利完成了感應起電。',
+            'inst.earthing.wrongStart': '❌ 錯誤步驟！在斷開接地前先移走了帶電棒！\n失去帶電棒的靜電約束力，電荷重新均勻分佈，並開始經由接地流失回地球...',
+            'inst.earthing.wrongStartDrag': '❌ 錯誤步驟！在斷開接地前先移走了帶電棒！\n失去約束力，電荷重新均勻分佈，並正在流失...',
+            'inst.earthing.wrongLeaked': '❌ 錯誤步驟！帶電棒已移走，感應電荷已全數漏回地球，金屬球 A 變回【電中性】！\n👉 請移走【接地線】以結束此流程並查看總結。',
+            'inst.earthing.wrongNeutral': '❌ 錯誤步驟！帶電棒已移走，金屬球 A 變回【電中性】！\n👉 請移走【接地線】以結束此流程並查看總結。',
+            'inst.earthing.wrongEnd': '完成（錯誤流程）。球體完全未帶電。\n💡 教學總結：必須「先斷開接地，再移走帶電棒」，電荷才不會流失！點擊「重置當前實驗」重新嘗試。'
+        },
+        en: {}
+    });
+</script>
 
-    <div id="label-sphereA" class="label">金屬球 A (絕緣支架)</div>
-    <div id="label-sphereB" class="label">金屬球 B (絕緣支架)</div>
-    <div id="label-rod" class="label">絕緣帶電棒</div>
-    <div id="label-earth" class="label">接地線 ⏚</div>
+<script>
+PhysLab.sim3d.ready(function () {
+    const t = PhysLab.i18n.t;
 
-    <div id="canvas-container"></div>
+    // ==========================================
+    // 1. 場景與基礎設定（PhysLab.sim3d.create：頁面精確值）
+    // ==========================================
+    // 原版值：fov 45、near 0.1、far 100、相機 (0,5,15)→(0,0,0)、
+    //   damping 0.05（three 預設；非共用 0.07）、無網格、
+    //   pixelRatio 1（原版未呼叫 setPixelRatio）。
+    //   背景由原深色 0x888888 統一為淺灰（共用預設 0xe2e6eb）。
+    const view3dEl = document.getElementById('view3d');
+    const sim = PhysLab.sim3d.create(view3dEl, {
+        fov: 45, near: 0.1, far: 100,
+        views: { default: { pos: [0, 5, 15], tgt: [0, 0, 0] } },
+        controls: { damping: 0.05 },
+        lights: false,
+        grid: false,
+        pixelRatio: 1
+    });
+    const scene = sim.scene, camera = sim.camera, renderer = sim.renderer, controls = sim.controls;
+    renderer.shadowMap.enabled = true;
+    controls.maxPolarAngle = Math.PI / 2 + 0.1;
+    controls.minDistance = 5; controls.maxDistance = 20;
 
-    <script>
-        // ==========================================
-        // 1. 場景與基礎設定
-        // ==========================================
-        const container = document.getElementById('canvas-container');
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x888888);
+    // 原版光源：Ambient 0.7 ＋ 主光 0.8 @ (5,10,5)（無補光）
+    PhysLab.sim3d.addLabLights(scene, { ambient: 0.7, key: 0.8, keyPos: [5, 10, 5], fill: false });
 
-        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
-        camera.position.set(0, 5, 15);
+    // ==========================================
+    // 2. 材質與模型建構
+    // ==========================================
+    function createChargeTexture(sign, color) {
+        const canvas = document.createElement('canvas'); canvas.width = 64; canvas.height = 64;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = color; ctx.beginPath(); ctx.arc(32, 32, 30, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'white'; ctx.font = 'bold 40px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(sign, 32, 36);
+        return new THREE.CanvasTexture(canvas);
+    }
+    const matPos = new THREE.SpriteMaterial({ map: createChargeTexture('+', '#e74c3c'), transparent: true, depthTest: false });
+    const matNeg = new THREE.SpriteMaterial({ map: createChargeTexture('-', '#3498db'), transparent: true, depthTest: false });
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.shadowMap.enabled = true;
-        container.appendChild(renderer.domElement);
+    const metalMat = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, metalness: 0.9, roughness: 0.2, transparent: true, opacity: 1.0, depthWrite: true });
+    document.getElementById('row-transparent').addEventListener('click', () => {
+        const on = document.getElementById('opt-transparent').classList.toggle('on');
+        metalMat.opacity = on ? 0.35 : 1.0; metalMat.depthWrite = !on;
+    });
 
-        const controls = new THREE.OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true; controls.maxPolarAngle = Math.PI / 2 + 0.1; 
-        controls.minDistance = 5; controls.maxDistance = 20;
+    function createStand() {
+        const standGroup = new THREE.Group();
+        const base = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.1, 1.2), new THREE.MeshStandardMaterial({ color: 0x111111 })); base.position.y = -1.95;
+        const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.0), new THREE.MeshStandardMaterial({ color: 0xdddddd })); pillar.position.y = -1.4;
+        standGroup.add(base, pillar); return standGroup;
+    }
 
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.7); scene.add(ambientLight);
-        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8); dirLight.position.set(5, 10, 5); scene.add(dirLight);
+    const groupA = new THREE.Group(); groupA.add(new THREE.Mesh(new THREE.SphereGeometry(1, 32, 32), metalMat), createStand());
+    const chargesAllA = new THREE.Group(); const chargesNetA = new THREE.Group(); groupA.add(chargesAllA, chargesNetA); scene.add(groupA);
 
-        // ==========================================
-        // 2. 材質與模型建構
-        // ==========================================
-        function createChargeTexture(sign, color) {
-            const canvas = document.createElement('canvas'); canvas.width = 64; canvas.height = 64;
-            const ctx = canvas.getContext('2d');
-            ctx.fillStyle = color; ctx.beginPath(); ctx.arc(32, 32, 30, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = 'white'; ctx.font = 'bold 40px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(sign, 32, 36);
-            return new THREE.CanvasTexture(canvas);
+    const groupB = new THREE.Group(); groupB.add(new THREE.Mesh(new THREE.SphereGeometry(1, 32, 32), metalMat), createStand());
+    const chargesAllB = new THREE.Group(); const chargesNetB = new THREE.Group(); groupB.add(chargesAllB, chargesNetB); scene.add(groupB);
+
+    const groupRod = new THREE.Group();
+    const rodMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 4), new THREE.MeshStandardMaterial({ color: 0xe67e22, transparent: true, opacity: 0.9 })); rodMesh.rotation.z = Math.PI / 2; rodMesh.position.x = -2.0;
+    const rodHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 1.5), new THREE.MeshStandardMaterial({ color: 0x222222 })); rodHandle.rotation.z = Math.PI / 2; rodHandle.position.x = -3.25;
+    const chargesRod = new THREE.Group(); groupRod.add(rodMesh, rodHandle, chargesRod); scene.add(groupRod);
+
+    const groupEarth = new THREE.Group();
+    const wireMat = new THREE.MeshStandardMaterial({ color: 0x27ae60 });
+    const tipMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.5), new THREE.MeshStandardMaterial({ color: 0xaaaaaa, metalness: 0.8 })); tipMesh.rotation.z = Math.PI / 2; tipMesh.position.x = 0.25;
+    const wireMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 3.0), wireMat); wireMesh.rotation.z = Math.PI / 2; wireMesh.position.x = 2.0;
+    const vWire = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.5), wireMat); vWire.position.set(3.5, -0.75, 0);
+    const g1 = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.2), wireMat); g1.rotation.z = Math.PI / 2; g1.position.set(3.5, -1.5, 0);
+    const g2 = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.8), wireMat); g2.rotation.z = Math.PI / 2; g2.position.set(3.5, -1.8, 0);
+    const g3 = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.4), wireMat); g3.rotation.z = Math.PI / 2; g3.position.set(3.5, -2.1, 0);
+    groupEarth.add(tipMesh, wireMesh, vWire, g1, g2, g3); scene.add(groupEarth);
+
+    // ==========================================
+    // 3. 全新核心：物理狀態與持久化粒子追蹤
+    // ==========================================
+    let logicalState = { qA_net: 0, qB_net: 0, rodQ: 6, distA_net: 'even', distB_net: 'even', distA_e: 'even', distB_e: 'even' };
+    let memory = { protonsA: [], electronsA: [], protonsB: [], electronsB: [] };
+
+    function clearGroup(group) { while(group.children.length > 0) group.remove(group.children[0]); }
+
+    function applyFibonacciDirect(spritesArray, type, distType) {
+        const count = spritesArray.length; if (count === 0) return;
+        const goldenRatio = (1 + Math.sqrt(5)) / 2;
+        for (let i = 0; i < count; i++) {
+            let sprite = spritesArray[i]; if (sprite.userData.isMoving) continue;
+            let u; if (distType === 'left') u = -(i + 0.5) / count; else if (distType === 'right') u = 1 - (i + 0.5) / count; else u = 1 - (2 * i + 1) / count;
+            let radiusAtU = Math.sqrt(1 - u * u); let theta = 2 * Math.PI * i / goldenRatio;
+            let x = u, y = Math.cos(theta) * radiusAtU, z = Math.sin(theta) * radiusAtU;
+            let r = type === '-' ? 1.06 : 1.04;
+            let targetPos = new THREE.Vector3(x * r, y * r, z * r);
+
+            if (!sprite.userData.initialized) { sprite.position.copy(targetPos); sprite.userData.initialized = true; }
+            else { gsap.to(sprite.position, { x: targetPos.x, y: targetPos.y, z: targetPos.z, duration: 1.0, ease: "power2.out" }); }
         }
-        const matPos = new THREE.SpriteMaterial({ map: createChargeTexture('+', '#e74c3c'), transparent: true, depthTest: false });
-        const matNeg = new THREE.SpriteMaterial({ map: createChargeTexture('-', '#3498db'), transparent: true, depthTest: false });
+    }
 
-        const metalMat = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, metalness: 0.9, roughness: 0.2, transparent: true, opacity: 1.0, depthWrite: true });
-        document.getElementById('toggle-transparent').addEventListener('change', (e) => {
-            metalMat.opacity = e.target.checked ? 0.35 : 1.0; metalMat.depthWrite = !e.target.checked; 
-        });
+    function updateLatticePositions(sphereID, eDistType) {
+        let protons = sphereID === 'A' ? memory.protonsA : memory.protonsB;
+        let electrons = sphereID === 'A' ? memory.electronsA : memory.electronsB;
+        applyFibonacciDirect(protons, '+', 'even'); applyFibonacciDirect(electrons, '-', eDistType);
+    }
 
-        function createStand() {
-            const standGroup = new THREE.Group();
-            const base = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.1, 1.2), new THREE.MeshStandardMaterial({ color: 0x111111 })); base.position.y = -1.95; 
-            const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.0), new THREE.MeshStandardMaterial({ color: 0xdddddd })); pillar.position.y = -1.4; 
-            standGroup.add(base, pillar); return standGroup;
-        }
+    function updateNetCharges() {
+        clearGroup(chargesNetA); clearGroup(chargesNetB);
+        const createNetSprites = (group, q_net, distType) => {
+            if (q_net === 0) return;
+            let type = q_net > 0 ? '+' : '-'; let tex = type === '+' ? matPos : matNeg; let arr = [];
+            for(let i=0; i<Math.abs(q_net); i++) { let s = new THREE.Sprite(tex.clone()); s.scale.set(0.35,0.35,0.35); s.userData = { initialized: false }; group.add(s); arr.push(s); }
+            applyFibonacciDirect(arr, type, distType);
+        };
+        createNetSprites(chargesNetA, logicalState.qA_net, logicalState.distA_net);
+        createNetSprites(chargesNetB, logicalState.qB_net, logicalState.distB_net);
+        updateChargeVisibility();
+    }
 
-        const groupA = new THREE.Group(); groupA.add(new THREE.Mesh(new THREE.SphereGeometry(1, 32, 32), metalMat), createStand());
-        const chargesAllA = new THREE.Group(); const chargesNetA = new THREE.Group(); groupA.add(chargesAllA, chargesNetA); scene.add(groupA);
+    function initSimulation() {
+        gsap.killTweensOf(groupA.position); gsap.killTweensOf(groupB.position); gsap.killTweensOf(groupRod.position); gsap.killTweensOf(groupEarth.position);
+        clearGroup(chargesAllA); clearGroup(chargesAllB); clearGroup(chargesRod);
+        memory = { protonsA: [], electronsA: [], protonsB: [], electronsB: [] };
 
-        const groupB = new THREE.Group(); groupB.add(new THREE.Mesh(new THREE.SphereGeometry(1, 32, 32), metalMat), createStand());
-        const chargesAllB = new THREE.Group(); const chargesNetB = new THREE.Group(); groupB.add(chargesAllB, chargesNetB); scene.add(groupB);
+        let maxExpectedQ = Math.max(Math.abs(logicalState.qA_net), Math.abs(logicalState.qB_net), Math.abs(logicalState.rodQ));
+        let baseProtons = maxExpectedQ + 16;
 
-        const groupRod = new THREE.Group();
-        const rodMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 4), new THREE.MeshStandardMaterial({ color: 0xe67e22, transparent: true, opacity: 0.9 })); rodMesh.rotation.z = Math.PI / 2; rodMesh.position.x = -2.0; 
-        const rodHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 1.5), new THREE.MeshStandardMaterial({ color: 0x222222 })); rodHandle.rotation.z = Math.PI / 2; rodHandle.position.x = -3.25; 
-        const chargesRod = new THREE.Group(); groupRod.add(rodMesh, rodHandle, chargesRod); scene.add(groupRod);
+        const populateSphere = (groupAll, protonsArr, electronsArr, q_net) => {
+            let eCount = baseProtons - q_net;
+            for(let i=0; i<baseProtons; i++) { let s = new THREE.Sprite(matPos.clone()); s.scale.set(0.35,0.35,0.35); s.userData = {type: '+', initialized: false}; groupAll.add(s); protonsArr.push(s); }
+            for(let i=0; i<eCount; i++) { let s = new THREE.Sprite(matNeg.clone()); s.scale.set(0.35,0.35,0.35); s.userData = {type: '-', initialized: false, isMoving: false}; groupAll.add(s); electronsArr.push(s); }
+        };
 
-        const groupEarth = new THREE.Group();
-        const wireMat = new THREE.MeshStandardMaterial({ color: 0x27ae60 });
-        const tipMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.5), new THREE.MeshStandardMaterial({ color: 0xaaaaaa, metalness: 0.8 })); tipMesh.rotation.z = Math.PI / 2; tipMesh.position.x = 0.25;
-        const wireMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 3.0), wireMat); wireMesh.rotation.z = Math.PI / 2; wireMesh.position.x = 2.0;
-        const vWire = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.5), wireMat); vWire.position.set(3.5, -0.75, 0);
-        const g1 = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.2), wireMat); g1.rotation.z = Math.PI / 2; g1.position.set(3.5, -1.5, 0);
-        const g2 = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.8), wireMat); g2.rotation.z = Math.PI / 2; g2.position.set(3.5, -1.8, 0);
-        const g3 = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.4), wireMat); g3.rotation.z = Math.PI / 2; g3.position.set(3.5, -2.1, 0);
-        groupEarth.add(tipMesh, wireMesh, vWire, g1, g2, g3); scene.add(groupEarth);
+        populateSphere(chargesAllA, memory.protonsA, memory.electronsA, logicalState.qA_net);
+        if(currentMode !== 'earthing') populateSphere(chargesAllB, memory.protonsB, memory.electronsB, logicalState.qB_net);
 
-        // ==========================================
-        // 3. 全新核心：物理狀態與持久化粒子追蹤
-        // ==========================================
-        let logicalState = { qA_net: 0, qB_net: 0, rodQ: 6, distA_net: 'even', distB_net: 'even', distA_e: 'even', distB_e: 'even' };
-        let memory = { protonsA: [], electronsA: [], protonsB: [], electronsB: [] };
+        updateLatticePositions('A', logicalState.distA_e);
+        if(currentMode !== 'earthing') updateLatticePositions('B', logicalState.distB_e);
+        updateNetCharges();
 
-        function clearGroup(group) { while(group.children.length > 0) group.remove(group.children[0]); }
-
-        function applyFibonacciDirect(spritesArray, type, distType) {
-            const count = spritesArray.length; if (count === 0) return;
-            const goldenRatio = (1 + Math.sqrt(5)) / 2;
-            for (let i = 0; i < count; i++) {
-                let sprite = spritesArray[i]; if (sprite.userData.isMoving) continue;
-                let u; if (distType === 'left') u = -(i + 0.5) / count; else if (distType === 'right') u = 1 - (i + 0.5) / count; else u = 1 - (2 * i + 1) / count; 
-                let radiusAtU = Math.sqrt(1 - u * u); let theta = 2 * Math.PI * i / goldenRatio;
-                let x = u, y = Math.cos(theta) * radiusAtU, z = Math.sin(theta) * radiusAtU;
-                let r = type === '-' ? 1.06 : 1.04; 
-                let targetPos = new THREE.Vector3(x * r, y * r, z * r);
-
-                if (!sprite.userData.initialized) { sprite.position.copy(targetPos); sprite.userData.initialized = true; } 
-                else { gsap.to(sprite.position, { x: targetPos.x, y: targetPos.y, z: targetPos.z, duration: 1.0, ease: "power2.out" }); }
+        if (logicalState.rodQ !== 0) {
+            let type = logicalState.rodQ > 0 ? '+' : '-'; let tex = type === '+' ? matPos : matNeg;
+            for(let i=0; i<Math.abs(logicalState.rodQ); i++) {
+                let s = new THREE.Sprite(tex.clone()); s.scale.set(0.35,0.35,0.35); s.position.set(-Math.random() * 3.5 - 0.2, 0.5, (Math.random() - 0.5) * 0.4); chargesRod.add(s);
             }
         }
+    }
 
-        function updateLatticePositions(sphereID, eDistType) {
-            let protons = sphereID === 'A' ? memory.protonsA : memory.protonsB;
-            let electrons = sphereID === 'A' ? memory.electronsA : memory.electronsB;
-            applyFibonacciDirect(protons, '+', 'even'); applyFibonacciDirect(electrons, '-', eDistType);
-        }
+    function updateChargeVisibility() {
+        const mode = document.querySelector('input[name="chargeView"]:checked').value;
+        chargesAllA.visible = (mode === 'all'); chargesAllB.visible = (mode === 'all');
+        chargesNetA.visible = (mode === 'net'); chargesNetB.visible = (mode === 'net');
+        scene.children.forEach(c => { if (c.userData && c.userData.isMoving) c.visible = true; });
+    }
+    document.querySelectorAll('input[name="chargeView"]').forEach(r => r.addEventListener('change', updateChargeVisibility));
 
-        function updateNetCharges() {
-            clearGroup(chargesNetA); clearGroup(chargesNetB);
-            const createNetSprites = (group, q_net, distType) => {
-                if (q_net === 0) return;
-                let type = q_net > 0 ? '+' : '-'; let tex = type === '+' ? matPos : matNeg; let arr = [];
-                for(let i=0; i<Math.abs(q_net); i++) { let s = new THREE.Sprite(tex.clone()); s.scale.set(0.35,0.35,0.35); s.userData = { initialized: false }; group.add(s); arr.push(s); }
-                applyFibonacciDirect(arr, type, distType);
-            };
-            createNetSprites(chargesNetA, logicalState.qA_net, logicalState.distA_net);
-            createNetSprites(chargesNetB, logicalState.qB_net, logicalState.distB_net);
-            updateChargeVisibility();
-        }
+    // ==========================================
+    // 4. ★ 物理核心動畫：球體傳導 與 接地傳導 ★
+    // ==========================================
+    function playPhysicalTransfer(fromID, toID, amount, onComplete) {
+        let fromGroup = fromID === 'A' ? groupA : groupB; let toGroup = toID === 'A' ? groupA : groupB;
+        let fromElectrons = fromID === 'A' ? memory.electronsA : memory.electronsB;
+        let toChargesGroup = toID === 'A' ? chargesAllA : chargesAllB;
+        fromGroup.updateMatrixWorld(true); toGroup.updateMatrixWorld(true);
 
-        function initSimulation() {
-            gsap.killTweensOf(groupA.position); gsap.killTweensOf(groupB.position); gsap.killTweensOf(groupRod.position); gsap.killTweensOf(groupEarth.position);
-            clearGroup(chargesAllA); clearGroup(chargesAllB); clearGroup(chargesRod);
-            memory = { protonsA: [], electronsA: [], protonsB: [], electronsB: [] };
+        let available = fromElectrons.filter(e => !e.userData.isMoving);
+        let toMove = available.slice(0, amount); let count = toMove.length;
+        if (count === 0) { if(onComplete) onComplete(); return; }
 
-            let maxExpectedQ = Math.max(Math.abs(logicalState.qA_net), Math.abs(logicalState.qB_net), Math.abs(logicalState.rodQ));
-            let baseProtons = maxExpectedQ + 16; 
+        if(fromID === 'A') memory.electronsA = memory.electronsA.filter(e => !toMove.includes(e)); else memory.electronsB = memory.electronsB.filter(e => !toMove.includes(e));
+        if(toID === 'A') memory.electronsA.push(...toMove); else memory.electronsB.push(...toMove);
 
-            const populateSphere = (groupAll, protonsArr, electronsArr, q_net) => {
-                let eCount = baseProtons - q_net;
-                for(let i=0; i<baseProtons; i++) { let s = new THREE.Sprite(matPos.clone()); s.scale.set(0.35,0.35,0.35); s.userData = {type: '+', initialized: false}; groupAll.add(s); protonsArr.push(s); }
-                for(let i=0; i<eCount; i++) { let s = new THREE.Sprite(matNeg.clone()); s.scale.set(0.35,0.35,0.35); s.userData = {type: '-', initialized: false, isMoving: false}; groupAll.add(s); electronsArr.push(s); }
-            };
+        let completed = 0;
+        let worldFrom = new THREE.Vector3(); fromGroup.getWorldPosition(worldFrom); let worldTo = new THREE.Vector3(); toGroup.getWorldPosition(worldTo);
+        let contactX = (worldFrom.x + worldTo.x) / 2;
 
-            populateSphere(chargesAllA, memory.protonsA, memory.electronsA, logicalState.qA_net);
-            if(currentMode !== 'earthing') populateSphere(chargesAllB, memory.protonsB, memory.electronsB, logicalState.qB_net);
+        toMove.forEach((sprite, i) => {
+            sprite.userData.isMoving = true; scene.attach(sprite);
+            let targetLocal = new THREE.Vector3((Math.random()-0.5)*1.5, (Math.random()-0.5)*1.5, (Math.random()-0.5)*1.5).normalize().multiplyScalar(1.06);
+            let targetWorld = targetLocal.clone().applyMatrix4(toGroup.matrixWorld);
 
-            updateLatticePositions('A', logicalState.distA_e); 
-            if(currentMode !== 'earthing') updateLatticePositions('B', logicalState.distB_e);
-            updateNetCharges();
-
-            if (logicalState.rodQ !== 0) {
-                let type = logicalState.rodQ > 0 ? '+' : '-'; let tex = type === '+' ? matPos : matNeg;
-                for(let i=0; i<Math.abs(logicalState.rodQ); i++) {
-                    let s = new THREE.Sprite(tex.clone()); s.scale.set(0.35,0.35,0.35); s.position.set(-Math.random() * 3.5 - 0.2, 0.5, (Math.random() - 0.5) * 0.4); chargesRod.add(s);
+            let tl = gsap.timeline({
+                delay: i * 0.1, onComplete: () => {
+                    toChargesGroup.attach(sprite); sprite.userData.isMoving = false; completed++;
+                    if (completed === count) { updateLatticePositions(toID, logicalState[`dist${toID}_e`]); if (onComplete) onComplete(); }
                 }
-            }
-        }
+            });
+            tl.to(sprite.position, { x: contactX, y: 1.0, z: 0, duration: 0.5, ease: "power1.in" });
+            tl.to(sprite.position, { x: targetWorld.x, y: targetWorld.y, z: targetWorld.z, duration: 0.5, ease: "power1.out" });
+        });
+        updateLatticePositions(fromID, logicalState[`dist${fromID}_e`]);
+    }
 
-        function updateChargeVisibility() {
-            const mode = document.querySelector('input[name="chargeView"]:checked').value;
-            chargesAllA.visible = (mode === 'all'); chargesAllB.visible = (mode === 'all');
-            chargesNetA.visible = (mode === 'net'); chargesNetB.visible = (mode === 'net');
-            scene.children.forEach(c => { if (c.userData && c.userData.isMoving) c.visible = true; });
-        }
-        document.querySelectorAll('input[name="chargeView"]').forEach(r => r.addEventListener('change', updateChargeVisibility));
+    // 修改點 2：接地轉移採用 L 型導線路徑移動
+    function playEarthTransfer(direction, amount, onComplete) {
+        let completed = 0;
+        let worldEarth = new THREE.Vector3(); groupEarth.getWorldPosition(worldEarth);
+        let worldA = new THREE.Vector3(); groupA.getWorldPosition(worldA);
 
-        // ==========================================
-        // 4. ★ 物理核心動畫：球體傳導 與 接地傳導 ★
-        // ==========================================
-        function playPhysicalTransfer(fromID, toID, amount, onComplete) {
-            let fromGroup = fromID === 'A' ? groupA : groupB; let toGroup = toID === 'A' ? groupA : groupB;
-            let fromElectrons = fromID === 'A' ? memory.electronsA : memory.electronsB;
-            let toChargesGroup = toID === 'A' ? chargesAllA : chargesAllB;
-            fromGroup.updateMatrixWorld(true); toGroup.updateMatrixWorld(true);
+        // 定義導線上的三個關鍵節點，讓電子沿著直角行進
+        let p1 = { x: worldA.x + 1.0, y: worldEarth.y, z: 0 };           // 節點 1：球體接觸點
+        let p2 = { x: worldEarth.x + 3.5, y: worldEarth.y, z: 0 };       // 節點 2：導線直角彎折處
+        let p3 = { x: worldEarth.x + 3.5, y: worldEarth.y - 2.5, z: 0 }; // 節點 3：地球端 (最下方)
 
-            let available = fromElectrons.filter(e => !e.userData.isMoving);
-            let toMove = available.slice(0, amount); let count = toMove.length;
-            if (count === 0) { if(onComplete) onComplete(); return; }
+        if (direction === 'in') {
+            for (let i = 0; i < amount; i++) {
+                let s = new THREE.Sprite(matNeg.clone()); s.scale.set(0.35, 0.35, 0.35); s.userData = { type: '-', initialized: true, isMoving: true };
+                s.position.set(p3.x, p3.y, p3.z); scene.add(s); // 從地球端生成
 
-            if(fromID === 'A') memory.electronsA = memory.electronsA.filter(e => !toMove.includes(e)); else memory.electronsB = memory.electronsB.filter(e => !toMove.includes(e));
-            if(toID === 'A') memory.electronsA.push(...toMove); else memory.electronsB.push(...toMove);
-
-            let completed = 0;
-            let worldFrom = new THREE.Vector3(); fromGroup.getWorldPosition(worldFrom); let worldTo = new THREE.Vector3(); toGroup.getWorldPosition(worldTo);
-            let contactX = (worldFrom.x + worldTo.x) / 2;
-
-            toMove.forEach((sprite, i) => {
-                sprite.userData.isMoving = true; scene.attach(sprite);
                 let targetLocal = new THREE.Vector3((Math.random()-0.5)*1.5, (Math.random()-0.5)*1.5, (Math.random()-0.5)*1.5).normalize().multiplyScalar(1.06);
-                let targetWorld = targetLocal.clone().applyMatrix4(toGroup.matrixWorld);
+                let targetWorld = targetLocal.clone().applyMatrix4(groupA.matrixWorld);
 
                 let tl = gsap.timeline({
                     delay: i * 0.1, onComplete: () => {
-                        toChargesGroup.attach(sprite); sprite.userData.isMoving = false; completed++;
-                        if (completed === count) { updateLatticePositions(toID, logicalState[`dist${toID}_e`]); if (onComplete) onComplete(); }
+                        chargesAllA.attach(s); s.userData.isMoving = false; memory.electronsA.push(s); completed++;
+                        if (completed === amount) { updateLatticePositions('A', logicalState.distA_e); if (onComplete) onComplete(); }
                     }
                 });
-                tl.to(sprite.position, { x: contactX, y: 1.0, z: 0, duration: 0.5, ease: "power1.in" });
-                tl.to(sprite.position, { x: targetWorld.x, y: targetWorld.y, z: targetWorld.z, duration: 0.5, ease: "power1.out" });
+
+                // 順序：沿直線上滑 -> 沿橫線左滑 -> 進入球體
+                tl.to(s.position, { x: p2.x, y: p2.y, z: p2.z, duration: 0.3, ease: "none" });
+                tl.to(s.position, { x: p1.x, y: p1.y, z: p1.z, duration: 0.3, ease: "none" });
+                tl.to(s.position, { x: targetWorld.x, y: targetWorld.y, z: targetWorld.z, duration: 0.3, ease: "power1.out" });
+            }
+        } else {
+            let available = memory.electronsA.filter(e => !e.userData.isMoving);
+            let toMove = available.slice(0, amount);
+            memory.electronsA = memory.electronsA.filter(e => !toMove.includes(e));
+
+            toMove.forEach((sprite, i) => {
+                sprite.userData.isMoving = true; scene.attach(sprite);
+                let tl = gsap.timeline({
+                    delay: i * 0.1, onComplete: () => {
+                        scene.remove(sprite); completed++;
+                        if (completed === amount) { updateLatticePositions('A', logicalState.distA_e); if (onComplete) onComplete(); }
+                    }
+                });
+
+                // 順序：出球體到接觸點 -> 沿橫線右滑 -> 沿直線下滑
+                tl.to(sprite.position, { x: p1.x, y: p1.y, z: p1.z, duration: 0.3, ease: "power1.in" });
+                tl.to(sprite.position, { x: p2.x, y: p2.y, z: p2.z, duration: 0.3, ease: "none" });
+                tl.to(sprite.position, { x: p3.x, y: p3.y, z: p3.z, duration: 0.3, ease: "none" });
             });
-            updateLatticePositions(fromID, logicalState[`dist${fromID}_e`]);
         }
+    }
 
-        // 修改點 2：接地轉移採用 L 型導線路徑移動
-        function playEarthTransfer(direction, amount, onComplete) {
-            let completed = 0;
-            let worldEarth = new THREE.Vector3(); groupEarth.getWorldPosition(worldEarth);
-            let worldA = new THREE.Vector3(); groupA.getWorldPosition(worldA);
-            
-            // 定義導線上的三個關鍵節點，讓電子沿著直角行進
-            let p1 = { x: worldA.x + 1.0, y: worldEarth.y, z: 0 };           // 節點 1：球體接觸點
-            let p2 = { x: worldEarth.x + 3.5, y: worldEarth.y, z: 0 };       // 節點 2：導線直角彎折處
-            let p3 = { x: worldEarth.x + 3.5, y: worldEarth.y - 2.5, z: 0 }; // 節點 3：地球端 (最下方)
+    // ==========================================
+    // 5. UI、狀態機、按鈕與面板控制
+    // ==========================================
+    let currentMode = 'sharing'; let step = 0; let isDraggingEnabled = true;
+    const uiInstruction = document.getElementById('instruction');
+    const btnNext = document.getElementById('btn-next');
+    const btnNextWrong = document.getElementById('btn-next-wrong');
 
-            if (direction === 'in') { 
-                for (let i = 0; i < amount; i++) {
-                    let s = new THREE.Sprite(matNeg.clone()); s.scale.set(0.35, 0.35, 0.35); s.userData = { type: '-', initialized: true, isMoving: true };
-                    s.position.set(p3.x, p3.y, p3.z); scene.add(s); // 從地球端生成
+    /* 指示文字經 t() 輸出；lastInst 記住 key/params，語言切換時重繪。
+       params 可為函式（延遲求值，令內嵌的 t() 片段一併跟隨語言）。 */
+    let lastInst = null;
+    function renderInst() {
+        if (!lastInst) return;
+        const p = (typeof lastInst.params === 'function') ? lastInst.params() : lastInst.params;
+        uiInstruction.innerText = t(lastInst.key, p);
+    }
+    function showInst(key, params) { lastInst = { key: key, params: params }; renderInst(); }
 
-                    let targetLocal = new THREE.Vector3((Math.random()-0.5)*1.5, (Math.random()-0.5)*1.5, (Math.random()-0.5)*1.5).normalize().multiplyScalar(1.06);
-                    let targetWorld = targetLocal.clone().applyMatrix4(groupA.matrixWorld);
+    /* 顯示部件標籤開關（原 checkbox → toggle-row） */
+    let showLabels = true;
+    document.getElementById('row-labels').addEventListener('click', () => {
+        showLabels = document.getElementById('opt-labels').classList.toggle('on');
+    });
 
-                    let tl = gsap.timeline({
-                        delay: i * 0.1, onComplete: () => {
-                            chargesAllA.attach(s); s.userData.isMoving = false; memory.electronsA.push(s); completed++;
-                            if (completed === amount) { updateLatticePositions('A', logicalState.distA_e); if (onComplete) onComplete(); }
-                        }
-                    });
-                    
-                    // 順序：沿直線上滑 -> 沿橫線左滑 -> 進入球體
-                    tl.to(s.position, { x: p2.x, y: p2.y, z: p2.z, duration: 0.3, ease: "none" });
-                    tl.to(s.position, { x: p1.x, y: p1.y, z: p1.z, duration: 0.3, ease: "none" });
-                    tl.to(s.position, { x: targetWorld.x, y: targetWorld.y, z: targetWorld.z, duration: 0.3, ease: "power1.out" });
-                }
-            } else { 
-                let available = memory.electronsA.filter(e => !e.userData.isMoving);
-                let toMove = available.slice(0, amount);
-                memory.electronsA = memory.electronsA.filter(e => !toMove.includes(e)); 
+    /* 面板開關（topbar 標準鈕；切換後重算畫布尺寸） */
+    PhysLab.ui.bindPanelToggle('btn-toggle-left', 'left-panel', sim.resize);
+    PhysLab.ui.bindPanelToggle('btn-toggle-right', 'right-panel', sim.resize);
 
-                toMove.forEach((sprite, i) => {
-                    sprite.userData.isMoving = true; scene.attach(sprite);
-                    let tl = gsap.timeline({
-                        delay: i * 0.1, onComplete: () => {
-                            scene.remove(sprite); completed++; 
-                            if (completed === amount) { updateLatticePositions('A', logicalState.distA_e); if (onComplete) onComplete(); }
-                        }
-                    });
-                    
-                    // 順序：出球體到接觸點 -> 沿橫線右滑 -> 沿直線下滑
-                    tl.to(sprite.position, { x: p1.x, y: p1.y, z: p1.z, duration: 0.3, ease: "power1.in" });
-                    tl.to(sprite.position, { x: p2.x, y: p2.y, z: p2.z, duration: 0.3, ease: "none" });
-                    tl.to(sprite.position, { x: p3.x, y: p3.y, z: p3.z, duration: 0.3, ease: "none" });
-                });
-            }
-        }
+    function setDraggingStatus(status) {
+        isDraggingEnabled = status;
+        btnNext.disabled = !status;
+        btnNextWrong.disabled = !status;
 
-        // ==========================================
-        // 5. UI、狀態機、按鈕與面板控制
-        // ==========================================
-        let currentMode = 'sharing'; let step = 0; let isDraggingEnabled = true;
-        const uiOverlay = document.getElementById('ui-overlay');
-        const uiPanel = document.querySelector('.panel');
-        const uiInstruction = document.getElementById('instruction');
-        const btnNext = document.getElementById('btn-next');
-        const btnNextWrong = document.getElementById('btn-next-wrong');
-        
-        const btnToggleUi = document.getElementById('btn-toggle-ui');
-        let isPanelVisible = true;
+        let isFinished = false;
+        if (currentMode === 'sharing' && step >= 1) isFinished = true;
+        if (currentMode === 'induction' && step >= 3) isFinished = true;
+        if (currentMode === 'earthing' && (step === 4 || step === 6)) isFinished = true;
 
-        btnToggleUi.addEventListener('click', () => {
-            isPanelVisible = !isPanelVisible;
-            if (isPanelVisible) {
-                uiPanel.classList.remove('panel-hidden');
-                btnToggleUi.innerText = '隱藏面板';
+        if (isFinished) {
+            btnNext.style.display = 'none';
+            btnNextWrong.style.display = 'none';
+        } else {
+            if (currentMode === 'earthing' && step === 2) {
+                btnNext.style.display = 'block';
+                btnNext.innerText = t('btn.nextEarthCorrect');
+                btnNextWrong.style.display = 'block';
             } else {
-                uiPanel.classList.add('panel-hidden');
-                btnToggleUi.innerText = '顯示面板';
-            }
-        });
-
-        function setDraggingStatus(status) {
-            isDraggingEnabled = status;
-            btnNext.disabled = !status;
-            btnNextWrong.disabled = !status;
-            
-            let isFinished = false;
-            if (currentMode === 'sharing' && step >= 1) isFinished = true;
-            if (currentMode === 'induction' && step >= 3) isFinished = true;
-            if (currentMode === 'earthing' && (step === 4 || step === 6)) isFinished = true;
-            
-            if (isFinished) {
-                btnNext.style.display = 'none';
+                btnNext.style.display = 'block';
                 btnNextWrong.style.display = 'none';
-            } else {
-                if (currentMode === 'earthing' && step === 2) {
-                    btnNext.style.display = 'block';
-                    btnNext.innerText = '先移走接地線 (正確路徑) ⏭️';
-                    btnNextWrong.style.display = 'block';
+                if (currentMode === 'earthing') {
+                    if (step === 0) btnNext.innerText = t('btn.next');
+                    if (step === 1) btnNext.innerText = t('btn.next');
+                    if (step === 3) btnNext.innerText = t('btn.removeRod');
+                    if (step === 5) btnNext.innerText = t('btn.removeEarth');
                 } else {
-                    btnNext.style.display = 'block';
-                    btnNextWrong.style.display = 'none';
-                    if (currentMode === 'earthing') {
-                        if (step === 0) btnNext.innerText = '自動執行下一步 ⏭️';
-                        if (step === 1) btnNext.innerText = '自動執行下一步 ⏭️';
-                        if (step === 3) btnNext.innerText = '移走帶電棒 ⏭️';
-                        if (step === 5) btnNext.innerText = '移走接地線 ⏭️';
-                    } else {
-                        btnNext.innerText = '自動執行下一步 ⏭️';
-                    }
+                    btnNext.innerText = t('btn.next');
                 }
             }
         }
+    }
 
-        btnNext.addEventListener('click', () => {
-            if (!isDraggingEnabled) return;
-            setDraggingStatus(false); 
+    btnNext.addEventListener('click', () => {
+        if (!isDraggingEnabled) return;
+        setDraggingStatus(false);
 
-            if (currentMode === 'sharing') {
-                if (step === 0) gsap.to(groupA.position, { x: groupB.position.x - 2.05, duration: 1, onComplete: checkPhysicsLogic });
+        if (currentMode === 'sharing') {
+            if (step === 0) gsap.to(groupA.position, { x: groupB.position.x - 2.05, duration: 1, onComplete: checkPhysicsLogic });
+        }
+        else if (currentMode === 'induction') {
+            if (step === 0) gsap.to(groupRod.position, { x: groupA.position.x - 1.25, duration: 1, onComplete: checkPhysicsLogic });
+            else if (step === 1) gsap.to(groupB.position, { x: groupA.position.x + 3.0, duration: 1, onComplete: checkPhysicsLogic });
+            else if (step === 2) gsap.to(groupRod.position, { x: groupA.position.x - 6.0, duration: 1, onComplete: checkPhysicsLogic });
+        }
+        else if (currentMode === 'earthing') {
+            if (step === 0) gsap.to(groupRod.position, { x: groupA.position.x - 1.25, duration: 1, onComplete: checkPhysicsLogic });
+            else if (step === 1) gsap.to(groupEarth.position, { x: groupA.position.x + 1.0, duration: 1, onComplete: checkPhysicsLogic });
+            else if (step === 2) {
+                gsap.to(groupEarth.position, { x: groupA.position.x + 3.0, duration: 1, onComplete: () => {
+                    step = 3;
+                    groupEarth.position.x = groupA.position.x + 3.0;
+                    showInst('inst.earthing.step3');
+                    setDraggingStatus(true);
+                }});
             }
-            else if (currentMode === 'induction') {
-                if (step === 0) gsap.to(groupRod.position, { x: groupA.position.x - 1.25, duration: 1, onComplete: checkPhysicsLogic });
-                else if (step === 1) gsap.to(groupB.position, { x: groupA.position.x + 3.0, duration: 1, onComplete: checkPhysicsLogic });
-                else if (step === 2) gsap.to(groupRod.position, { x: groupA.position.x - 6.0, duration: 1, onComplete: checkPhysicsLogic });
+            else if (step === 3) gsap.to(groupRod.position, { x: groupA.position.x - 6.0, duration: 1, onComplete: checkPhysicsLogic });
+            else if (step === 5) {
+                gsap.to(groupEarth.position, { x: groupA.position.x + 3.0, duration: 1, onComplete: () => {
+                    step = 6;
+                    groupEarth.position.x = groupA.position.x + 3.0;
+                    showInst('inst.earthing.wrongEnd');
+                    setDraggingStatus(true);
+                }});
             }
-            else if (currentMode === 'earthing') {
-                if (step === 0) gsap.to(groupRod.position, { x: groupA.position.x - 1.25, duration: 1, onComplete: checkPhysicsLogic });
-                else if (step === 1) gsap.to(groupEarth.position, { x: groupA.position.x + 1.0, duration: 1, onComplete: checkPhysicsLogic });
-                else if (step === 2) {
-                    gsap.to(groupEarth.position, { x: groupA.position.x + 3.0, duration: 1, onComplete: () => {
-                        step = 3;
-                        groupEarth.position.x = groupA.position.x + 3.0;
-                        uiInstruction.innerText = "③：斷開接地 (正確步驟)\n接地線已斷開，感應電荷成功鎖定在球體上！\n👉 ④：最後，移走【帶電棒】，或點擊「下一步」。";
-                        setDraggingStatus(true);
-                    }});
-                }
-                else if (step === 3) gsap.to(groupRod.position, { x: groupA.position.x - 6.0, duration: 1, onComplete: checkPhysicsLogic });
-                else if (step === 5) {
-                    gsap.to(groupEarth.position, { x: groupA.position.x + 3.0, duration: 1, onComplete: () => {
-                        step = 6;
-                        groupEarth.position.x = groupA.position.x + 3.0;
-                        uiInstruction.innerText = "完成（錯誤流程）。球體完全未帶電。\n💡 教學總結：必須「先斷開接地，再移走帶電棒」，電荷才不會流失！點擊「重置當前實驗」重新嘗試。";
-                        setDraggingStatus(true);
-                    }});
-                }
-            }
-        });
+        }
+    });
 
-        btnNextWrong.addEventListener('click', () => {
-            if (!isDraggingEnabled || currentMode !== 'earthing' || step !== 2) return;
-            setDraggingStatus(false);
-            
-            gsap.to(groupRod.position, { x: groupA.position.x - 6.0, duration: 1, onComplete: () => {
-                step = 5;
-                groupRod.position.x = groupA.position.x - 6.0;
-                
-                // 修改點 1 (自動執行版)：因為移走了帶電棒，立刻將球體狀態設為「均勻分佈」，並強迫剩下的電荷立刻散開
-                logicalState.distA_net = 'even'; logicalState.distA_e = 'even';
-                updateLatticePositions('A', 'even');
-                
-                let currentQ = logicalState.qA_net;
-                let direction = currentQ > 0 ? 'in' : 'out'; 
-                let eAmount = Math.abs(currentQ);
-                
-                uiInstruction.innerText = "❌ 錯誤步驟！在斷開接地前先移走了帶電棒！\n失去帶電棒的靜電約束力，電荷重新均勻分佈，並開始經由接地流失回地球...";
-                
-                if (eAmount > 0) {
-                    playEarthTransfer(direction, eAmount, () => {
-                        logicalState.qA_net = 0;
-                        updateNetCharges();
-                        uiInstruction.innerText = "❌ 錯誤步驟！帶電棒已移走，感應電荷已全數漏回地球，金屬球 A 變回【電中性】！\n👉 請移走【接地線】以結束此流程並查看總結。";
-                        setDraggingStatus(true);
-                    });
-                } else {
+    btnNextWrong.addEventListener('click', () => {
+        if (!isDraggingEnabled || currentMode !== 'earthing' || step !== 2) return;
+        setDraggingStatus(false);
+
+        gsap.to(groupRod.position, { x: groupA.position.x - 6.0, duration: 1, onComplete: () => {
+            step = 5;
+            groupRod.position.x = groupA.position.x - 6.0;
+
+            // 修改點 1 (自動執行版)：因為移走了帶電棒，立刻將球體狀態設為「均勻分佈」，並強迫剩下的電荷立刻散開
+            logicalState.distA_net = 'even'; logicalState.distA_e = 'even';
+            updateLatticePositions('A', 'even');
+
+            let currentQ = logicalState.qA_net;
+            let direction = currentQ > 0 ? 'in' : 'out';
+            let eAmount = Math.abs(currentQ);
+
+            showInst('inst.earthing.wrongStart');
+
+            if (eAmount > 0) {
+                playEarthTransfer(direction, eAmount, () => {
                     logicalState.qA_net = 0;
                     updateNetCharges();
-                    uiInstruction.innerText = "❌ 錯誤步驟！帶電棒已移走，金屬球 A 變回【電中性】！\n👉 請移走【接地線】以結束此流程並查看總結。";
+                    showInst('inst.earthing.wrongLeaked');
                     setDraggingStatus(true);
-                }
-            }});
-        });
-
-        function setMode(modeId) {
-            document.querySelectorAll('#ui-overlay button').forEach(b => b.classList.remove('active'));
-            document.getElementById(`btn-${modeId}`).classList.add('active');
-            currentMode = modeId; applyCustomInputs();
-        }
-        document.getElementById('btn-sharing').addEventListener('click', () => setMode('sharing'));
-        document.getElementById('btn-induction').addEventListener('click', () => setMode('induction'));
-        document.getElementById('btn-earthing').addEventListener('click', () => setMode('earthing'));
-        document.getElementById('btn-apply').addEventListener('click', applyCustomInputs);
-        document.getElementById('btn-reset').addEventListener('click', applyCustomInputs);
-
-        function applyCustomInputs() {
-            let valA = parseInt(document.getElementById('inputA').value) || 0;
-            let valB = parseInt(document.getElementById('inputB').value) || 0;
-            let valRod = parseInt(document.getElementById('inputRod').value) || 0;
-            if (valRod === 0) valRod = 6; document.getElementById('inputRod').value = valRod;
-
-            document.getElementById('lbl-inputA').style.display = 'block';
-
-            if (currentMode === 'sharing') {
-                document.getElementById('inputs-rod').style.display = 'none'; document.getElementById('lbl-inputB').style.display = 'block';
-                groupA.position.set(-3, 1, 0); groupB.position.set(2, 1, 0); 
-                
-                groupB.visible = true; groupA.visible = true;
-                groupRod.visible = false; groupEarth.visible = false;
-                
-                logicalState = { qA_net: valA, qB_net: valB, rodQ: 0, distA_net: 'even', distB_net: 'even', distA_e: 'even', distB_e: 'even' };
-                uiInstruction.innerText = `【授受起電】球 A 淨電荷 [${valA}]，球 B 淨電荷 [${valB}]。\n👉 請接觸兩球，或點擊「自動下一步」。`;
-            } 
-            else if (currentMode === 'induction') {
-                document.getElementById('inputs-rod').style.display = 'block'; document.getElementById('lbl-inputB').style.display = 'none';
-                valA = 0; document.getElementById('inputA').value = 0; 
-                groupA.position.set(-1, 1, 0); groupB.position.set(1, 1, 0); groupRod.position.set(-8, 1, 0); 
-                
-                groupB.visible = true; groupA.visible = true; groupRod.visible = true;
-                groupEarth.visible = false;
-                
-                logicalState = { qA_net: 0, qB_net: 0, rodQ: valRod, distA_net: 'even', distB_net: 'even', distA_e: 'even', distB_e: 'even' };
-                let rStr = valRod > 0 ? "正電棒" : "負電棒";
-                uiInstruction.innerText = `【感應起電 (雙球)】球體接觸中。\n👉 請將【${rStr}】靠近球 A，或點擊「下一步」。`;
+                });
+            } else {
+                logicalState.qA_net = 0;
+                updateNetCharges();
+                showInst('inst.earthing.wrongNeutral');
+                setDraggingStatus(true);
             }
-            else if (currentMode === 'earthing') {
-                document.getElementById('inputs-rod').style.display = 'block'; document.getElementById('lbl-inputB').style.display = 'none';
-                groupA.position.set(0, 1, 0); groupRod.position.set(-8, 1, 0); groupEarth.position.set(8, 1, 0);
-                
-                groupB.visible = false; groupA.visible = true; groupRod.visible = true; groupEarth.visible = true;
-                
-                logicalState = { qA_net: valA, qB_net: 0, rodQ: valRod, distA_net: 'even', distB_net: 'even', distA_e: 'even', distB_e: 'even' };
-                let rStr = valRod > 0 ? "正電棒" : "負電棒"; let aStr = valA === 0 ? "電中性" : `淨電荷 [${valA}]`;
-                uiInstruction.innerText = `【感應與接地起電】球 A 現為${aStr}。\n👉 ①：請將【${rStr}】靠近，或點擊「下一步」。`;
+        }});
+    });
+
+    function setMode(modeId) {
+        document.querySelectorAll('#mode-group .dir-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(`btn-${modeId}`).classList.add('active');
+        currentMode = modeId; applyCustomInputs();
+    }
+    document.getElementById('btn-sharing').addEventListener('click', () => setMode('sharing'));
+    document.getElementById('btn-induction').addEventListener('click', () => setMode('induction'));
+    document.getElementById('btn-earthing').addEventListener('click', () => setMode('earthing'));
+    document.getElementById('btn-apply').addEventListener('click', applyCustomInputs);
+    document.getElementById('btn-reset').addEventListener('click', applyCustomInputs);
+
+    function applyCustomInputs() {
+        let valA = parseInt(document.getElementById('inputA').value) || 0;
+        let valB = parseInt(document.getElementById('inputB').value) || 0;
+        let valRod = parseInt(document.getElementById('inputRod').value) || 0;
+        if (valRod === 0) valRod = 6; document.getElementById('inputRod').value = valRod;
+
+        document.getElementById('lbl-inputA').style.display = 'flex';
+
+        if (currentMode === 'sharing') {
+            document.getElementById('inputs-rod').style.display = 'none'; document.getElementById('lbl-inputB').style.display = 'flex';
+            groupA.position.set(-3, 1, 0); groupB.position.set(2, 1, 0);
+
+            groupB.visible = true; groupA.visible = true;
+            groupRod.visible = false; groupEarth.visible = false;
+
+            logicalState = { qA_net: valA, qB_net: valB, rodQ: 0, distA_net: 'even', distB_net: 'even', distA_e: 'even', distB_e: 'even' };
+            showInst('inst.sharing.intro', { a: valA, b: valB });
+        }
+        else if (currentMode === 'induction') {
+            document.getElementById('inputs-rod').style.display = 'block'; document.getElementById('lbl-inputB').style.display = 'none';
+            valA = 0; document.getElementById('inputA').value = 0;
+            groupA.position.set(-1, 1, 0); groupB.position.set(1, 1, 0); groupRod.position.set(-8, 1, 0);
+
+            groupB.visible = true; groupA.visible = true; groupRod.visible = true;
+            groupEarth.visible = false;
+
+            logicalState = { qA_net: 0, qB_net: 0, rodQ: valRod, distA_net: 'even', distB_net: 'even', distA_e: 'even', distB_e: 'even' };
+            showInst('inst.induction.intro', () => ({ rod: t(valRod > 0 ? 'rod.pos' : 'rod.neg') }));
+        }
+        else if (currentMode === 'earthing') {
+            document.getElementById('inputs-rod').style.display = 'block'; document.getElementById('lbl-inputB').style.display = 'none';
+            groupA.position.set(0, 1, 0); groupRod.position.set(-8, 1, 0); groupEarth.position.set(8, 1, 0);
+
+            groupB.visible = false; groupA.visible = true; groupRod.visible = true; groupEarth.visible = true;
+
+            logicalState = { qA_net: valA, qB_net: 0, rodQ: valRod, distA_net: 'even', distB_net: 'even', distA_e: 'even', distB_e: 'even' };
+            showInst('inst.earthing.intro', () => ({
+                rod: t(valRod > 0 ? 'rod.pos' : 'rod.neg'),
+                state: valA === 0 ? t('sign.neutral') : t('inst.aCharge', { a: valA })
+            }));
+        }
+        step = 0; initSimulation(); setDraggingStatus(true);
+    }
+
+    // ==========================================
+    // 6. 拖曳防穿模系統
+    // ==========================================
+    const raycaster = new THREE.Raycaster(); const mouse = new THREE.Vector2();
+    let draggedObject = null; let dragOffset = 0;
+
+    /* 畫布不再滿版（原版用 window.innerWidth/Height）：
+       NDC 座標改以 renderer canvas 的實際版面矩形換算 */
+    function setMouseFromEvent(event) {
+        const rect = renderer.domElement.getBoundingClientRect();
+        mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    }
+
+    window.addEventListener('pointerdown', (event) => {
+        if (!isDraggingEnabled) return;
+        setMouseFromEvent(event);
+        raycaster.setFromCamera(mouse, camera);
+
+        let interactables = [];
+        if (currentMode === 'sharing' && step === 0) interactables.push(groupA.children[0], groupA.children[1]);
+        if (currentMode === 'induction') {
+            if (step === 0 || step === 2) interactables.push(...groupRod.children.filter(c => c.isMesh));
+            if (step === 1) interactables.push(groupB.children[0], groupB.children[1]);
+        }
+        if (currentMode === 'earthing') {
+            if (step === 0) interactables.push(...groupRod.children.filter(c => c.isMesh));
+            if (step === 1) interactables.push(...groupEarth.children.filter(c => c.isMesh));
+            if (step === 2) {
+                interactables.push(...groupRod.children.filter(c => c.isMesh));
+                interactables.push(...groupEarth.children.filter(c => c.isMesh));
             }
-            step = 0; initSimulation(); setDraggingStatus(true);
+            if (step === 3) interactables.push(...groupRod.children.filter(c => c.isMesh));
+            if (step === 5) interactables.push(...groupEarth.children.filter(c => c.isMesh));
         }
 
-        // ==========================================
-        // 6. 拖曳防穿模系統
-        // ==========================================
-        const raycaster = new THREE.Raycaster(); const mouse = new THREE.Vector2();
-        let draggedObject = null; let dragOffset = 0;
+        const intersects = raycaster.intersectObjects(interactables);
+        if (intersects.length > 0) {
+            controls.enabled = false; draggedObject = intersects[0].object.parent;
+            const plane = new THREE.Plane(new THREE.Vector3(0,0,1), 0); const point = new THREE.Vector3();
+            raycaster.ray.intersectPlane(plane, point); dragOffset = draggedObject.position.x - point.x;
+        }
+    });
 
-        window.addEventListener('pointerdown', (event) => {
-            if (!isDraggingEnabled) return;
-            mouse.x = (event.clientX / window.innerWidth) * 2 - 1; mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    window.addEventListener('pointermove', (event) => {
+        if (draggedObject) {
+            setMouseFromEvent(event);
             raycaster.setFromCamera(mouse, camera);
+            const plane = new THREE.Plane(new THREE.Vector3(0,0,1), 0); const point = new THREE.Vector3();
 
-            let interactables = [];
-            if (currentMode === 'sharing' && step === 0) interactables.push(groupA.children[0], groupA.children[1]); 
-            if (currentMode === 'induction') {
-                if (step === 0 || step === 2) interactables.push(...groupRod.children.filter(c => c.isMesh));     
-                if (step === 1) interactables.push(groupB.children[0], groupB.children[1]); 
-            }
-            if (currentMode === 'earthing') {
-                if (step === 0) interactables.push(...groupRod.children.filter(c => c.isMesh)); 
-                if (step === 1) interactables.push(...groupEarth.children.filter(c => c.isMesh)); 
-                if (step === 2) {
-                    interactables.push(...groupRod.children.filter(c => c.isMesh));
-                    interactables.push(...groupEarth.children.filter(c => c.isMesh));
+            if (raycaster.ray.intersectPlane(plane, point)) {
+                let newX = point.x + dragOffset;
+                if (currentMode === 'sharing' && draggedObject === groupA && newX > groupB.position.x - 2.05) newX = groupB.position.x - 2.05;
+                else if (currentMode === 'induction') {
+                    if (draggedObject === groupRod && newX > groupA.position.x - 1.25) newX = groupA.position.x - 1.25;
+                    if (step === 1 && draggedObject === groupB && newX < groupA.position.x + 2.05) newX = groupA.position.x + 2.05;
                 }
-                if (step === 3) interactables.push(...groupRod.children.filter(c => c.isMesh)); 
-                if (step === 5) interactables.push(...groupEarth.children.filter(c => c.isMesh));
-            }
-
-            const intersects = raycaster.intersectObjects(interactables);
-            if (intersects.length > 0) {
-                controls.enabled = false; draggedObject = intersects[0].object.parent; 
-                const plane = new THREE.Plane(new THREE.Vector3(0,0,1), 0); const point = new THREE.Vector3();
-                raycaster.ray.intersectPlane(plane, point); dragOffset = draggedObject.position.x - point.x;
-            }
-        });
-
-        window.addEventListener('pointermove', (event) => {
-            if (draggedObject) {
-                mouse.x = (event.clientX / window.innerWidth) * 2 - 1; mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-                raycaster.setFromCamera(mouse, camera);
-                const plane = new THREE.Plane(new THREE.Vector3(0,0,1), 0); const point = new THREE.Vector3();
-                
-                if (raycaster.ray.intersectPlane(plane, point)) {
-                    let newX = point.x + dragOffset;
-                    if (currentMode === 'sharing' && draggedObject === groupA && newX > groupB.position.x - 2.05) newX = groupB.position.x - 2.05;
-                    else if (currentMode === 'induction') {
-                        if (draggedObject === groupRod && newX > groupA.position.x - 1.25) newX = groupA.position.x - 1.25;
-                        if (step === 1 && draggedObject === groupB && newX < groupA.position.x + 2.05) newX = groupA.position.x + 2.05;
-                    }
-                    else if (currentMode === 'earthing') {
-                        if (draggedObject === groupRod && newX > groupA.position.x - 1.25) newX = groupA.position.x - 1.25;
-                        if (draggedObject === groupEarth && newX < groupA.position.x + 1.0) newX = groupA.position.x + 1.0; 
-                    }
-                    draggedObject.position.x = newX; checkPhysicsLogic();
+                else if (currentMode === 'earthing') {
+                    if (draggedObject === groupRod && newX > groupA.position.x - 1.25) newX = groupA.position.x - 1.25;
+                    if (draggedObject === groupEarth && newX < groupA.position.x + 1.0) newX = groupA.position.x + 1.0;
                 }
+                draggedObject.position.x = newX; checkPhysicsLogic();
             }
-        });
+        }
+    });
 
-        window.addEventListener('pointerup', () => { draggedObject = null; controls.enabled = true; });
+    window.addEventListener('pointerup', () => { draggedObject = null; controls.enabled = true; });
 
-        // ==========================================
-        // 7. ★ 核心物理邏輯演算 ★
-        // ==========================================
-        function checkPhysicsLogic() {
-            if (currentMode === 'sharing' && step === 0) {
-                if (groupB.position.x - groupA.position.x <= 2.05) {
-                    step = 1; draggedObject = null; setDraggingStatus(false); groupA.position.x = groupB.position.x - 2.05; 
-                    let totalCharge = logicalState.qA_net + logicalState.qB_net;
-                    let target_qA = Math.floor(totalCharge / 2), target_qB = Math.ceil(totalCharge / 2);
-                    let delta_A = target_qA - logicalState.qA_net; let eFlowAmount = Math.abs(delta_A);
-                    let fromID = delta_A < 0 ? 'B' : 'A'; let toID = delta_A < 0 ? 'A' : 'B';
+    // ==========================================
+    // 7. ★ 核心物理邏輯演算 ★
+    // ==========================================
+    function checkPhysicsLogic() {
+        if (currentMode === 'sharing' && step === 0) {
+            if (groupB.position.x - groupA.position.x <= 2.05) {
+                step = 1; draggedObject = null; setDraggingStatus(false); groupA.position.x = groupB.position.x - 2.05;
+                let totalCharge = logicalState.qA_net + logicalState.qB_net;
+                let target_qA = Math.floor(totalCharge / 2), target_qB = Math.ceil(totalCharge / 2);
+                let delta_A = target_qA - logicalState.qA_net; let eFlowAmount = Math.abs(delta_A);
+                let fromID = delta_A < 0 ? 'B' : 'A'; let toID = delta_A < 0 ? 'A' : 'B';
 
-                    if (eFlowAmount !== 0) uiInstruction.innerText = `接觸中！電子互相排斥，從球 ${fromID} 流向球 ${toID}！`;
-                    else uiInstruction.innerText = "接觸中！電荷已平衡。";
+                if (eFlowAmount !== 0) showInst('inst.sharing.flow', { from: fromID, to: toID });
+                else showInst('inst.sharing.balanced');
 
-                    const finishSharing = () => {
-                        logicalState.qA_net = target_qA; logicalState.qB_net = target_qB;
+                const finishSharing = () => {
+                    logicalState.qA_net = target_qA; logicalState.qB_net = target_qB;
+                    logicalState.distA_net = 'left'; logicalState.distB_net = 'right'; logicalState.distA_e = 'left'; logicalState.distB_e = 'right';
+                    updateNetCharges(); updateLatticePositions('A', 'left'); updateLatticePositions('B', 'right');
+                    showInst('inst.sharing.done', () => ({
+                        sign: t(totalCharge > 0 ? 'sign.pos' : (totalCharge < 0 ? 'sign.neg' : 'sign.neutral')),
+                        repel: t(totalCharge !== 0 ? 'inst.sharing.repelYes' : 'inst.sharing.repelNo')
+                    }));
+
+                    gsap.to(groupA.position, { x: groupB.position.x - 2.6, duration: 1, ease: "power2.out" }); gsap.to(groupB.position, { x: groupB.position.x + 0.6, duration: 1, ease: "power2.out" });
+                    gsap.delayedCall(1.0, () => {
+                        logicalState.distA_net = 'even'; logicalState.distB_net = 'even'; logicalState.distA_e = 'even'; logicalState.distB_e = 'even';
+                        updateNetCharges(); updateLatticePositions('A', 'even'); updateLatticePositions('B', 'even');
+                        setDraggingStatus(true);
+                    });
+                };
+                if (eFlowAmount !== 0) playPhysicalTransfer(fromID, toID, eFlowAmount, finishSharing); else gsap.delayedCall(1.0, finishSharing);
+            }
+        }
+        else if (currentMode === 'induction') {
+            if (step === 0 && groupA.position.x - groupRod.position.x <= 1.3) {
+                step = 1; draggedObject = null; setDraggingStatus(false); groupRod.position.x = groupA.position.x - 1.25;
+                let qRod = logicalState.rodQ; let amountToMove = Math.abs(qRod);
+
+                if (qRod > 0) {
+                    showInst('inst.induction.polarPos');
+                    playPhysicalTransfer('B', 'A', amountToMove, () => {
+                        logicalState.qA_net = -amountToMove; logicalState.qB_net = amountToMove;
                         logicalState.distA_net = 'left'; logicalState.distB_net = 'right'; logicalState.distA_e = 'left'; logicalState.distB_e = 'right';
                         updateNetCharges(); updateLatticePositions('A', 'left'); updateLatticePositions('B', 'right');
-                        let finalSign = totalCharge > 0 ? "正電" : (totalCharge < 0 ? "負電" : "電中性");
-                        let finalRepelText = totalCharge !== 0 ? "並互相排斥" : "不再相斥";
-                        uiInstruction.innerText = `完成轉移！兩球最終皆為${finalSign}${finalRepelText}。`;
-                        
-                        gsap.to(groupA.position, { x: groupB.position.x - 2.6, duration: 1, ease: "power2.out" }); gsap.to(groupB.position, { x: groupB.position.x + 0.6, duration: 1, ease: "power2.out" });
-                        gsap.delayedCall(1.0, () => {
-                            logicalState.distA_net = 'even'; logicalState.distB_net = 'even'; logicalState.distA_e = 'even'; logicalState.distB_e = 'even';
-                            updateNetCharges(); updateLatticePositions('A', 'even'); updateLatticePositions('B', 'even'); 
-                            setDraggingStatus(true);
-                        });
-                    };
-                    if (eFlowAmount !== 0) playPhysicalTransfer(fromID, toID, eFlowAmount, finishSharing); else gsap.delayedCall(1.0, finishSharing);
-                }
-            } 
-            else if (currentMode === 'induction') {
-                if (step === 0 && groupA.position.x - groupRod.position.x <= 1.3) {
-                    step = 1; draggedObject = null; setDraggingStatus(false); groupRod.position.x = groupA.position.x - 1.25; 
-                    let qRod = logicalState.rodQ; let amountToMove = Math.abs(qRod);
-                    
-                    if (qRod > 0) {
-                        uiInstruction.innerText = "①：感應極化\n棒吸引電子飛向近端球 A！";
-                        playPhysicalTransfer('B', 'A', amountToMove, () => {
-                            logicalState.qA_net = -amountToMove; logicalState.qB_net = amountToMove; 
-                            logicalState.distA_net = 'left'; logicalState.distB_net = 'right'; logicalState.distA_e = 'left'; logicalState.distB_e = 'right';
-                            updateNetCharges(); updateLatticePositions('A', 'left'); updateLatticePositions('B', 'right');
-                            uiInstruction.innerText = "① 完成：電荷已分離。\n👉 請分離【球 B】，或點擊「下一步」。"; 
-                            setDraggingStatus(true);
-                        });
-                    } else {
-                        uiInstruction.innerText = "①：感應極化\n棒排斥電子退至遠端球 B！";
-                        playPhysicalTransfer('A', 'B', amountToMove, () => {
-                            logicalState.qA_net = amountToMove; logicalState.qB_net = -amountToMove; 
-                            logicalState.distA_net = 'left'; logicalState.distB_net = 'right'; logicalState.distA_e = 'left'; logicalState.distB_e = 'right'; 
-                            updateNetCharges(); updateLatticePositions('A', 'left'); updateLatticePositions('B', 'right');
-                            uiInstruction.innerText = "① 完成：電荷已分離。\n👉 請分離【球 B】，或點擊「下一步」。"; 
-                            setDraggingStatus(true);
-                        });
-                    }
-                }
-                else if (step === 1 && groupB.position.x - groupA.position.x >= 3.0) {
-                    step = 2; draggedObject = null;
-                    uiInstruction.innerText = "②：分離球體\n棒維持作用。\n👉 請移走【帶電棒】，或點擊「下一步」。";
-                    logicalState.distB_net = 'even'; logicalState.distB_e = 'even'; updateNetCharges(); updateLatticePositions('B', 'even');
-                    setDraggingStatus(true);
-                }
-                else if (step === 2 && groupA.position.x - groupRod.position.x >= 6.0) {
-                    step = 3; draggedObject = null;
-                    uiInstruction.innerText = "③：移走帶電棒\n電荷重新均勻包覆球 A。\n🎉 實驗完成！";
-                    logicalState.distA_net = 'even'; logicalState.distA_e = 'even'; updateNetCharges(); updateLatticePositions('A', 'even');
-                    setDraggingStatus(true);
-                }
-            }
-            else if (currentMode === 'earthing') {
-                if (step === 0 && groupA.position.x - groupRod.position.x <= 1.3) {
-                    step = 1; draggedObject = null; setDraggingStatus(false); groupRod.position.x = groupA.position.x - 1.25;
-                    let qRod = logicalState.rodQ; logicalState.distA_e = qRod > 0 ? 'left' : 'right'; updateLatticePositions('A', logicalState.distA_e);
-                    uiInstruction.innerText = `①：靠近棒 (感應極化)\n球內電子分佈改變。\n👉 ②：請將【接地線】觸碰球右側，或點擊「下一步」。`;
-                    setDraggingStatus(true);
-                }
-                else if (step === 1 && groupEarth.position.x - groupA.position.x <= 1.05) { 
-                    step = 2; draggedObject = null; setDraggingStatus(false); groupEarth.position.x = groupA.position.x + 1.0; 
-                    let qRod = logicalState.rodQ; let target_qA = -qRod;
-                    let delta_A = target_qA - logicalState.qA_net; let eAmount = Math.abs(delta_A);
-
-                    if (eAmount === 0) {
-                        uiInstruction.innerText = "②：短暫接地\n無電子流動。";
-                        gsap.delayedCall(1.0, () => {
-                            uiInstruction.innerText = "② 接地完成！球體遠端已中和。\n💡 【重要分歧點】請做選擇：\n👉 拖曳[接地線]往右移(正確步驟) 或 拖曳[帶電棒]往左移(錯誤步驟)。";
-                            setDraggingStatus(true);
-                        });
-                    }
-                    else if (delta_A < 0) {
-                        uiInstruction.innerText = "②：短暫接地\n棒鎖住電荷。地球電子流入球體中和！";
-                        playEarthTransfer('in', eAmount, () => {
-                            logicalState.qA_net = target_qA; updateNetCharges();
-                            uiInstruction.innerText = "② 接地完成！球體遠端已中和。\n💡 【重要分歧點】請做選擇：\n👉 拖曳[接地線]往右移(正確步驟) 或 拖曳[帶電棒]往左移(錯誤步驟)。";
-                            setDraggingStatus(true);
-                        });
-                    } else {
-                        uiInstruction.innerText = "②：短暫接地\n棒鎖住正核。電子流入地球！";
-                        playEarthTransfer('out', eAmount, () => {
-                            logicalState.qA_net = target_qA; updateNetCharges();
-                            uiInstruction.innerText = "② 接地完成！球體遠端已中和。\n💡 【重要分歧點】請做選擇：\n👉 拖曳[接地線]往右移(正確步驟) 或 拖曳[帶電棒]往左移(錯誤步驟)。";
-                            setDraggingStatus(true);
-                        });
-                    }
-                }
-                else if (step === 2) {
-                    if (groupEarth.position.x - groupA.position.x >= 3.0) {
-                        step = 3; draggedObject = null;
-                        uiInstruction.innerText = "③：斷開接地 (正確步驟)\n接地線已斷開，感應電荷成功鎖定在球體上！\n👉 ④：最後，移走【帶電棒】，或點擊「下一步」。";
+                        showInst('inst.induction.separated');
                         setDraggingStatus(true);
-                    }
-                    else if (groupA.position.x - groupRod.position.x >= 6.0) {
-                        step = 5; draggedObject = null; setDraggingStatus(false);
-                        
-                        // 修改點 1 (手動拖曳版)：因為移走了帶電棒，立刻將球體狀態設為「均勻分佈」
-                        logicalState.distA_net = 'even'; logicalState.distA_e = 'even';
-                        updateLatticePositions('A', 'even');
-
-                        let currentQ = logicalState.qA_net;
-                        let direction = currentQ > 0 ? 'in' : 'out';
-                        let eAmount = Math.abs(currentQ);
-                        
-                        uiInstruction.innerText = "❌ 錯誤步驟！在斷開接地前先移走了帶電棒！\n失去約束力，電荷重新均勻分佈，並正在流失...";
-                        
-                        const resetSphere = () => {
-                            logicalState.qA_net = 0; updateNetCharges();
-                            uiInstruction.innerText = "❌ 錯誤步驟！帶電棒已移走，感應電荷已全數漏回地球，金屬球 A 變回【電中性】！\n👉 請移走【接地線】以結束此流程並查看總結。";
-                            setDraggingStatus(true);
-                        };
-                        if (eAmount > 0) playEarthTransfer(direction, eAmount, resetSphere); else resetSphere();
-                    }
-                }
-                else if (step === 3 && groupA.position.x - groupRod.position.x >= 6.0) {
-                    step = 4; draggedObject = null;
-                    logicalState.distA_net = 'even'; logicalState.distA_e = 'even'; updateNetCharges(); updateLatticePositions('A', 'even');
-                    uiInstruction.innerText = "④：移走帶電棒\n電荷重新均勻包覆球 A。\n🎉 正確步驟完成！球體順利完成了感應起電。";
-                    setDraggingStatus(true);
-                }
-                else if (step === 5 && groupEarth.position.x - groupA.position.x >= 3.0) {
-                    step = 6; draggedObject = null;
-                    uiInstruction.innerText = "完成（錯誤流程）。球體完全未帶電。\n💡 教學總結：必須「先斷開接地，再移走帶電棒」，電荷才不會流失！點擊「重置當前實驗」重新嘗試。";
-                    setDraggingStatus(true);
+                    });
+                } else {
+                    showInst('inst.induction.polarNeg');
+                    playPhysicalTransfer('A', 'B', amountToMove, () => {
+                        logicalState.qA_net = amountToMove; logicalState.qB_net = -amountToMove;
+                        logicalState.distA_net = 'left'; logicalState.distB_net = 'right'; logicalState.distA_e = 'left'; logicalState.distB_e = 'right';
+                        updateNetCharges(); updateLatticePositions('A', 'left'); updateLatticePositions('B', 'right');
+                        showInst('inst.induction.separated');
+                        setDraggingStatus(true);
+                    });
                 }
             }
+            else if (step === 1 && groupB.position.x - groupA.position.x >= 3.0) {
+                step = 2; draggedObject = null;
+                showInst('inst.induction.step2');
+                logicalState.distB_net = 'even'; logicalState.distB_e = 'even'; updateNetCharges(); updateLatticePositions('B', 'even');
+                setDraggingStatus(true);
+            }
+            else if (step === 2 && groupA.position.x - groupRod.position.x >= 6.0) {
+                step = 3; draggedObject = null;
+                showInst('inst.induction.step3');
+                logicalState.distA_net = 'even'; logicalState.distA_e = 'even'; updateNetCharges(); updateLatticePositions('A', 'even');
+                setDraggingStatus(true);
+            }
         }
+        else if (currentMode === 'earthing') {
+            if (step === 0 && groupA.position.x - groupRod.position.x <= 1.3) {
+                step = 1; draggedObject = null; setDraggingStatus(false); groupRod.position.x = groupA.position.x - 1.25;
+                let qRod = logicalState.rodQ; logicalState.distA_e = qRod > 0 ? 'left' : 'right'; updateLatticePositions('A', logicalState.distA_e);
+                showInst('inst.earthing.step1');
+                setDraggingStatus(true);
+            }
+            else if (step === 1 && groupEarth.position.x - groupA.position.x <= 1.05) {
+                step = 2; draggedObject = null; setDraggingStatus(false); groupEarth.position.x = groupA.position.x + 1.0;
+                let qRod = logicalState.rodQ; let target_qA = -qRod;
+                let delta_A = target_qA - logicalState.qA_net; let eAmount = Math.abs(delta_A);
 
-        // ==========================================
-        // 8. 視窗標籤與渲染循環
-        // ==========================================
-        const domLabels = { A: document.getElementById('label-sphereA'), B: document.getElementById('label-sphereB'), Rod: document.getElementById('label-rod'), Earth: document.getElementById('label-earth') };
-        function updateLabels() {
-            if (!document.getElementById('toggle-labels').checked) { Object.values(domLabels).forEach(el => el.style.display = 'none'); return; }
-            const updatePos = (group, xOffset, yOffset, el) => {
-                if (!group.visible || group.position.y > 5 || group.position.x < -7 || group.position.y < -5) { el.style.display = 'none'; return; }
-                const pos = new THREE.Vector3(group.position.x + xOffset, group.position.y + yOffset, group.position.z).project(camera);
-                el.style.display = 'block'; el.style.left = `${(pos.x * .5 + .5) * window.innerWidth}px`; el.style.top = `${(pos.y * -.5 + .5) * window.innerHeight}px`;
-            };
-            updatePos(groupA, 0, 2.0, domLabels.A); updatePos(groupB, 0, 2.0, domLabels.B); updatePos(groupRod, -1.0, 1.5, domLabels.Rod); 
-            updatePos(groupEarth, 3.5, -0.5, domLabels.Earth);
+                if (eAmount === 0) {
+                    showInst('inst.earthing.noFlow');
+                    gsap.delayedCall(1.0, () => {
+                        showInst('inst.earthing.branch');
+                        setDraggingStatus(true);
+                    });
+                }
+                else if (delta_A < 0) {
+                    showInst('inst.earthing.inFlow');
+                    playEarthTransfer('in', eAmount, () => {
+                        logicalState.qA_net = target_qA; updateNetCharges();
+                        showInst('inst.earthing.branch');
+                        setDraggingStatus(true);
+                    });
+                } else {
+                    showInst('inst.earthing.outFlow');
+                    playEarthTransfer('out', eAmount, () => {
+                        logicalState.qA_net = target_qA; updateNetCharges();
+                        showInst('inst.earthing.branch');
+                        setDraggingStatus(true);
+                    });
+                }
+            }
+            else if (step === 2) {
+                if (groupEarth.position.x - groupA.position.x >= 3.0) {
+                    step = 3; draggedObject = null;
+                    showInst('inst.earthing.step3');
+                    setDraggingStatus(true);
+                }
+                else if (groupA.position.x - groupRod.position.x >= 6.0) {
+                    step = 5; draggedObject = null; setDraggingStatus(false);
+
+                    // 修改點 1 (手動拖曳版)：因為移走了帶電棒，立刻將球體狀態設為「均勻分佈」
+                    logicalState.distA_net = 'even'; logicalState.distA_e = 'even';
+                    updateLatticePositions('A', 'even');
+
+                    let currentQ = logicalState.qA_net;
+                    let direction = currentQ > 0 ? 'in' : 'out';
+                    let eAmount = Math.abs(currentQ);
+
+                    showInst('inst.earthing.wrongStartDrag');
+
+                    const resetSphere = () => {
+                        logicalState.qA_net = 0; updateNetCharges();
+                        showInst('inst.earthing.wrongLeaked');
+                        setDraggingStatus(true);
+                    };
+                    if (eAmount > 0) playEarthTransfer(direction, eAmount, resetSphere); else resetSphere();
+                }
+            }
+            else if (step === 3 && groupA.position.x - groupRod.position.x >= 6.0) {
+                step = 4; draggedObject = null;
+                logicalState.distA_net = 'even'; logicalState.distA_e = 'even'; updateNetCharges(); updateLatticePositions('A', 'even');
+                showInst('inst.earthing.step4');
+                setDraggingStatus(true);
+            }
+            else if (step === 5 && groupEarth.position.x - groupA.position.x >= 3.0) {
+                step = 6; draggedObject = null;
+                showInst('inst.earthing.wrongEnd');
+                setDraggingStatus(true);
+            }
         }
+    }
 
-        window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
-        function animate() { requestAnimationFrame(animate); controls.update(); updateLabels(); renderer.render(scene, camera); }
+    // ==========================================
+    // 8. 視窗標籤與渲染循環
+    // ==========================================
+    const domLabels = { A: document.getElementById('label-sphereA'), B: document.getElementById('label-sphereB'), Rod: document.getElementById('label-rod'), Earth: document.getElementById('label-earth') };
+    function updateLabels() {
+        if (!showLabels) { Object.values(domLabels).forEach(el => el.style.display = 'none'); return; }
+        /* 標籤改掛 #view3d 內：投影座標以容器尺寸換算（原版用 window 尺寸） */
+        const W = view3dEl.clientWidth, H = view3dEl.clientHeight;
+        const updatePos = (group, xOffset, yOffset, el) => {
+            if (!group.visible || group.position.y > 5 || group.position.x < -7 || group.position.y < -5) { el.style.display = 'none'; return; }
+            const pos = new THREE.Vector3(group.position.x + xOffset, group.position.y + yOffset, group.position.z).project(camera);
+            el.style.display = 'block'; el.style.left = `${(pos.x * .5 + .5) * W}px`; el.style.top = `${(pos.y * -.5 + .5) * H}px`;
+        };
+        updatePos(groupA, 0, 2.0, domLabels.A); updatePos(groupB, 0, 2.0, domLabels.B); updatePos(groupRod, -1.0, 1.5, domLabels.Rod);
+        updatePos(groupEarth, 3.5, -0.5, domLabels.Earth);
+    }
 
-        applyCustomInputs(); animate();
-    </script>
-    <a id="home-btn" href="../../../index.html">&#127968; &#20027;&#38913;</a>
+    /* 語言切換：重繪動態指示文字與步驟按鈕文字
+       （靜態 data-i18n 由 i18n.applyTo 自動處理） */
+    PhysLab.i18n.onChange(function () {
+        renderInst();
+        setDraggingStatus(isDraggingEnabled);
+    });
+
+    applyCustomInputs();
+    sim.start(function () { updateLabels(); });
+});
+</script>
 </body>
 </html>
