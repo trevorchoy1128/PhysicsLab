@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-HK">
+<html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,207 +7,263 @@
 
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.2/dist/gsap.min.js"></script>
+
+    <!-- 共用資源（載入順序固定，不可 defer/async）：core → i18n → quiz → sim3d -->
+    <link rel="stylesheet" href="../../../assets/css/tokens.css">
+    <link rel="stylesheet" href="../../../assets/css/labgray.css">
+    <script src="../../../assets/js/core.js"></script>
+    <script src="../../../assets/js/i18n.js"></script>
+    <script src="../../../assets/js/quiz.js"></script>
+    <script src="../../../assets/js/sim3d.js"></script>
 
     <style>
-        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; background-color: #ebf4fa; color: #ffffff; }
+        /* ── 頁面獨有樣式（共用 chrome 見 assets/css/labgray.css）── */
+        /* 版面鐵律：滿版三欄、面板卡片不被壓縮（成對使用） */
+        body { height: 100vh; overflow: hidden; }
+        #left-panel > *, #right-panel > * { flex-shrink: 0; }
 
-        #canvas-container { position: absolute; top: 0; left: 0; width: 65%; height: 100vh; overflow: hidden; transition: width 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); }
-        #canvas-container canvas#scene-canvas { width: 100% !important; height: 100% !important; display: block; outline: none; }
-
-        #ui-panel {
-            position: absolute; top: 0; right: 0; width: 35%; height: 100vh;
-            background-color: #0d1117; border-left: 1px solid #1a2332; padding: 25px; box-sizing: border-box;
-            display: flex; flex-direction: column; overflow-y: auto; box-shadow: -10px 0 40px rgba(0,0,0,0.8); z-index: 10;
-            transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
-        }
-
-        body.panel-collapsed #ui-panel { transform: translateX(100%); }
-        body.panel-collapsed #canvas-container { width: 100%; }
-
-        #toggle-panel-btn {
-            position: absolute; top: 20px; right: calc(35% + 20px); z-index: 100;
-            background: #161b22; color: #00ccff; border: 2px solid #00ccff;
-            padding: 10px 18px; border-radius: 8px; font-weight: bold; font-size: 0.95rem;
-            cursor: pointer; box-shadow: 0 4px 20px rgba(0,204,255,0.4);
-            transition: right 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), background 0.2s, color 0.2s;
-            display: flex; align-items: center; gap: 8px;
-        }
-        #toggle-panel-btn:hover { background: #00ccff; color: #0d1117; }
-        body.panel-collapsed #toggle-panel-btn { right: 20px; background: #ffcc00; color: #0d1117; border-color: #ffcc00; box-shadow: 0 4px 20px rgba(255,204,0,0.4); }
-
-        h2 { color: #00ccff; margin-top: 0; font-size: 1.5rem; border-bottom: 2px solid #1f2937; padding-bottom: 10px; text-shadow: 0 0 10px rgba(0,204,255,0.5); }
-        h3 { color: #ffcc00; font-size: 1.05rem; margin: 6px 0 12px; }
-        .control-group { background: #161b22; padding: 18px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #1f2937; border-left: 4px solid #00ccff; }
-        .analogy-group { border-left-color: #ffcc00; }
-        label { display: flex; justify-content: space-between; margin-bottom: 8px; font-weight: bold; font-size: 0.95rem; color: #c9d1d9; align-items: center;}
-        input[type="range"] { width: 100%; margin-bottom: 15px; -webkit-appearance: none; background: transparent; }
-        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 20px; width: 20px; border-radius: 50%; background: #00ccff; cursor: pointer; margin-top: -7px; box-shadow: 0 0 15px rgba(0,204,255,0.8); }
-        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 6px; cursor: pointer; background: #30363d; border-radius: 3px; }
-        input[type=range].r-slider::-webkit-slider-thumb { background: #ffcc00; box-shadow: 0 0 15px rgba(255,204,0,0.8); }
-        .btn-group { display: flex; justify-content: space-between; margin-bottom: 15px; gap: 8px;}
-        .btn { flex: 1; background: #21262d; color: #ffffff; border: 1px solid #30363d; padding: 10px; cursor: pointer; border-radius: 5px; font-weight: bold; transition: all 0.2s; font-size: 0.85rem;}
-        .btn:hover { background: #30363d; }
-        .btn.active { background: #00ccff; color: #0d1117; border-color: #00ccff; box-shadow: 0 0 15px rgba(0, 204, 255, 0.6); }
-        .btn-small { flex: none; width: 40px; padding: 5px 0; font-size: 1.2rem; }
-
-        #mode-controls .btn.active { background: #ff8a3d; color: #0d1117; border-color: #ff8a3d; box-shadow: 0 0 15px rgba(255,138,61,0.6); }
-        #speed-controls .btn.active { background: #ffcc00; color: #0d1117; border-color: #ffcc00; box-shadow: 0 0 15px rgba(255, 204, 0, 0.6); }
-
-        .load-row { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
-        .load-row .swatch { width: 14px; height: 14px; border-radius: 50%; flex: none; box-shadow: 0 0 8px currentColor; }
-        .load-row input[type="range"] { margin-bottom: 0; }
-
-        .meter-readout { display: flex; justify-content: space-between; background: #0d1117; padding: 12px; border: 1px solid #30363d; border-radius: 10px; font-family: 'JetBrains Mono', Courier, monospace; font-size: 1.05rem; color: #39ff14; margin-bottom: 8px; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); }
-        .readout-box { display: flex; flex-direction: column; align-items: center; width: 48%; }
-        .readout-label { font-size: 0.75rem; color: #8b949e; margin-bottom: 5px; font-weight: bold; text-align: center;}
-        .load-meters { display: flex; flex-direction: column; gap: 6px; }
-        .load-meter { display: flex; justify-content: space-between; align-items: center; background: #0d1117; padding: 8px 12px; border: 1px solid #30363d; border-radius: 8px; font-family: 'JetBrains Mono', Courier, monospace; font-size: 0.88rem; }
-        .load-meter .lm-name { display: flex; align-items: center; gap: 8px; color: #c9d1d9; }
-        .load-meter .lm-name .swatch { width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 8px currentColor; }
-
-        .probe-group { border-left-color: #39ff14; }
-        .probe-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 0.9rem; color: #c9d1d9; font-weight: bold; }
-        .probe-row select { flex: 1; background: #0d1117; color: #fff; border: 1px solid #30363d; border-radius: 6px; padding: 6px; font-size: 0.85rem; }
-        .dot { width: 14px; height: 14px; border-radius: 50%; flex: none; }
-        .dot.red { background: #ff2a55; box-shadow: 0 0 8px #ff2a55; }
-        .dot.black { background: #111; border: 1px solid #888; }
-        .note { font-size: 0.8rem; color: #8b949e; line-height: 1.6; margin-top: 6px; }
-
-        .theory-box { background: rgba(255, 204, 0, 0.15); color: #ffcc00; padding: 15px; border-radius: 10px; font-size: 0.9rem; line-height: 1.7; border: 1px solid rgba(255, 204, 0, 0.5); margin-top: 10px; text-shadow: 0 0 5px rgba(255,204,0,0.2);}
-        .highlight { color: #00ccff; font-weight: bold; text-shadow: 0 0 8px rgba(0,204,255,0.6); }
-        .overlay-text { position: absolute; top: 15px; left: 15px; color: #ffffff; pointer-events: none; background: rgba(13, 17, 23, 0.9); padding: 15px; border-radius: 8px; border: 1px solid #30363d; font-size: 0.9rem; z-index: 5; line-height: 1.6; box-shadow: 0 4px 20px rgba(0,0,0,0.4); max-width: 360px; }
-
+        /* 電勢梯級圖（深色示波螢幕；作為儀器覆蓋於 3D 視圖右下） */
         #potential-graph {
-            position: absolute; right: 15px; bottom: 15px; z-index: 6;
-            background: rgba(13, 17, 23, 0.88); border: 1px solid #30363d; border-radius: 10px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            position: absolute; right: 14px; bottom: 14px; z-index: 6;
+            background: rgba(15,23,42,0.9); border: 1px solid var(--pl-border);
+            border-radius: 10px; box-shadow: var(--pl-shadow-float);
         }
 
-        /* ── Responsive ── */
-        @media (max-width: 768px) {
-            body { overflow-y: auto; }
-            #canvas-container { position: relative; width: 100% !important; height: 70vw; min-height: 280px; max-height: 70vh; }
-            #ui-panel {
-                position: relative; width: 100% !important; height: auto; transform: none !important;
-                box-shadow: none; border-left: none; border-top: 2px solid #1a2332; max-height: none; overflow-y: visible;
-            }
-            #toggle-panel-btn { display: none; }
-            .overlay-text { font-size: 0.72rem; padding: 8px; max-width: 60vw; }
-            #potential-graph { right: 8px; bottom: 8px; }
-        }
-        @media (min-width: 769px) and (max-width: 1024px) {
-            #canvas-container { width: 55% !important; }
-            #ui-panel { width: 45% !important; }
-            #toggle-panel-btn { right: calc(45% + 15px); }
-            body:not(.panel-collapsed) #toggle-panel-btn { right: calc(45% + 15px); }
-        }
+        /* 動態負荷滑桿列（JS 生成；swatch 對應 3D 燈泡色） */
+        .load-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+        .load-row:last-child { margin-bottom: 0; }
+        .load-row input[type=range] { flex: 1; }
+
+        /* 讀數面板（JS 生成即時數據 / 探針電勢） */
+        .meter-readout { display: flex; justify-content: space-between; gap: 8px; background: var(--pl-inset); padding: 10px; border: 1px solid var(--pl-border-soft); border-radius: 8px; margin-bottom: 8px; font-variant-numeric: tabular-nums; }
+        .readout-box { display: flex; flex-direction: column; align-items: center; flex: 1; }
+        .readout-label { font-size: 0.62rem; color: var(--pl-text-faint); margin-bottom: 4px; font-weight: 600; text-align: center; }
+        .load-meters { display: flex; flex-direction: column; gap: 6px; }
+        .load-meter { display: flex; justify-content: space-between; align-items: center; gap: 8px; background: var(--pl-inset); padding: 7px 10px; border: 1px solid var(--pl-border-soft); border-radius: 8px; font-size: 0.72rem; font-variant-numeric: tabular-nums; }
+        .load-meter .lm-name { display: flex; align-items: center; gap: 7px; color: var(--pl-text-dim); }
+        .swatch { width: 12px; height: 12px; border-radius: 50%; flex: none; box-shadow: 0 0 6px currentColor; }
+
+        /* 電壓表探針列 */
+        .probe-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 0.74rem; color: var(--pl-text-dim); font-weight: 600; }
+        .probe-row select { flex: 1; background: var(--pl-inset); color: var(--pl-text-dim); border: 1px solid var(--pl-border); border-radius: 6px; padding: 6px; font-size: 0.7rem; }
+        .dot { width: 13px; height: 13px; border-radius: 50%; flex: none; }
+        .dot.red { background: #dc2626; box-shadow: 0 0 6px #dc2626; }
+        .dot.black { background: #1e293b; border: 1px solid #64748b; }
+        .note { font-size: 0.68rem; color: var(--pl-text-faint); line-height: 1.6; margin-top: 6px; }
+
+        /* +/− 負荷按鈕列 */
+        .count-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+        .count-row .dir-btn { flex: none; width: 40px; font-size: 1.1rem; }
+        .count-hint { flex: 1; text-align: center; font-size: 0.68rem; color: var(--pl-text-faint); }
+
+        /* 強調字 + 圖例色（對應 3D 場景物件色，調暗以在淺底可讀） */
+        .highlight { color: #0891b2; font-weight: 700; }
+        .lg-batt  { color: #0891b2; font-weight: 700; }
+        .lg-load  { color: #b45309; font-weight: 700; }
+        .lg-ruler { color: #15803d; font-weight: 700; }
     </style>
-    <!-- sim3d-load-guard: three.js 載入失敗提示 -->
-    <script>
-      window.addEventListener('DOMContentLoaded', function () {
-        if (typeof THREE === 'undefined' || typeof THREE.OrbitControls === 'undefined') {
-          var o = document.createElement('div');
-          o.id = 'sim3d-load-error';
-          o.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;background:#0f172a;color:#fff;font-family:system-ui,\'Noto Sans HK\',sans-serif;font-size:18px;line-height:1.7';
-          o.innerHTML = '⚠️ 無法載入 3D 元件（three.js）<br>請檢查網路連線後重新整理頁面。';
-          document.body.appendChild(o);
-        }
-      });
-    </script>
 </head>
 <body>
 
-    <button id="toggle-panel-btn">👁️ 隱藏控制面板</button>
-
-    <div id="canvas-container">
-        <div class="overlay-text">
-            <strong>🐧 視覺對應指南：</strong><br>
-            🛗 <span style="color:#00ccff">電梯 = 電池</span>：抬升企鵝（電荷），賦予電勢能（電壓 ε）。<br>
-            🎢 <span style="color:#ffcc00">滑梯 = 負荷（燈泡）</span>：企鵝滑下損失高度（電壓降 ΔV），轉化為光與熱；越陡＝功率越大＝越亮。<br>
-            📏 <span style="color:#39ff14">左側電勢標尺</span>：每個高度＝一個「電勢 V」（相對負極 0V）。<br>
-            🔌 用<strong>電壓表探針</strong>選兩點：看各點電勢，及兩點之差「電勢差 ΔV」。
+<div id="topbar">
+    <div style="display:flex;align-items:center;gap:16px;">
+        <button type="button" class="panel-toggle-btn" id="btn-toggle-left">
+            <span>☰</span> <span data-i18n="topbar.controls">控制</span>
+        </button>
+        <div class="title-block">
+            <h1 data-i18n="topbar.title">🐧 企鵝滑梯實驗室</h1>
+            <p data-i18n="topbar.subtitle">HKDSE Physics · Book 4 · Chapter 2 · 電位差類比（企鵝滑梯）</p>
         </div>
-        <canvas id="scene-canvas"></canvas>
+    </div>
+    <div class="tb-actions">
+        <button type="button" class="panel-toggle-btn" id="btn-toggle-right">
+            <span>📖</span> <span data-i18n="topbar.info">資訊</span>
+        </button>
+    </div>
+</div>
+
+<div id="main">
+    <div id="left-panel">
+        <div class="card">
+            <div class="card-header">🔀 <span data-i18n="panel.mode.header">電路模式</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <div class="dir-btn-group" id="mode-controls">
+                    <button type="button" class="dir-btn active" data-mode="series" data-i18n="panel.mode.series">串聯 (Series)</button>
+                    <button type="button" class="dir-btn" data-mode="parallel" data-i18n="panel.mode.parallel">並聯 (Parallel)</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">🛗 <span data-i18n="panel.battery.header">電池與負荷</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <div class="slider-row">
+                    <div class="slider-head"><label data-i18n="panel.battery.emf">🛗 電池電壓 ε（電梯高度）</label><span class="val" id="val-emf">12.0 V</span></div>
+                    <input type="range" id="slider-emf" min="2" max="24" step="0.5" value="12">
+                </div>
+                <div class="slider-head" style="margin-top:6px;"><label data-i18n="panel.battery.count">🎢 滑梯（負荷）數量</label><span class="val" id="val-count">2 段</span></div>
+                <div class="count-row">
+                    <button type="button" class="dir-btn" id="btn-remove">−</button>
+                    <span class="count-hint" data-i18n="panel.battery.countHint">加減負荷 (1–4)</span>
+                    <button type="button" class="dir-btn" id="btn-add">+</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">🔧 <span data-i18n="panel.resistance.header">各滑梯陡度（電阻 R）</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <div id="load-sliders"></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">🔌 <span data-i18n="panel.probe.header">電壓表（電勢 vs 電勢差）</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <div class="probe-row"><span class="dot red"></span><span data-i18n="panel.probe.red">紅筆 V₊</span> <select id="sel-red"></select></div>
+                <div class="probe-row"><span class="dot black"></span><span data-i18n="panel.probe.black">黑筆 V₋</span> <select id="sel-black"></select></div>
+                <div class="meter-readout">
+                    <div class="readout-box"><span class="readout-label" data-i18n="panel.probe.redLabel">紅筆電勢 V₊</span><span id="v-red">– V</span></div>
+                    <div class="readout-box"><span class="readout-label" data-i18n="panel.probe.blackLabel">黑筆電勢 V₋</span><span id="v-black">– V</span></div>
+                </div>
+                <div class="meter-readout">
+                    <div class="readout-box" style="flex:1;"><span class="readout-label" data-i18n="panel.probe.diff">電勢差 ΔV = V₊ − V₋（＝電壓表讀數）</span><span id="v-diff" class="highlight" style="font-size:1.1rem;">– V</span></div>
+                </div>
+                <div class="note" data-i18n="panel.probe.note">「電勢」需指定參考點（負極 = 0V）才有意義；「電勢差」是兩點電勢之差，無論把 0V 設在哪裡都不變。</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">⏱️ <span data-i18n="panel.speed.header">動畫速度</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <div class="dir-btn-group" id="speed-controls">
+                    <button type="button" class="dir-btn" data-speed="0.5">0.5x</button>
+                    <button type="button" class="dir-btn active" data-speed="1">1.0x</button>
+                    <button type="button" class="dir-btn" data-speed="2">2.0x</button>
+                </div>
+                <div class="action-row" style="margin-top:10px;">
+                    <button type="button" class="action-btn" id="btn-pause" data-i18n="panel.speed.pause">⏸ 暫停</button>
+                    <button type="button" class="action-btn btn-reset" id="btn-reset" data-i18n="panel.speed.reset">↺ 重置</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">📊 <span data-i18n="panel.data.header">即時數據</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <div class="meter-readout">
+                    <div class="readout-box"><span class="readout-label" data-i18n="panel.data.emf">電源 ε</span><span id="m-emf" style="color:#0891b2;">12.00 V</span></div>
+                    <div class="readout-box"><span class="readout-label" data-i18n="panel.data.current">總電流 I</span><span id="m-current" style="color:#dc2626;">0.00 A</span></div>
+                </div>
+                <div class="load-meters" id="load-meters"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="canvas-wrap">
+        <div id="view3d"></div>
         <canvas id="potential-graph" width="370" height="230"></canvas>
     </div>
 
-    <div id="ui-panel">
-        <h2>🐧 企鵝滑梯實驗室</h2>
-
-        <div class="btn-group" id="mode-controls">
-            <button class="btn active" data-mode="series">串聯 (Series)</button>
-            <button class="btn" data-mode="parallel">並聯 (Parallel)</button>
-        </div>
-
-        <div class="control-group">
-            <label><span>🛗 電池電壓 ε（電梯高度）</span> <span id="val-emf" class="highlight">12.0 V</span></label>
-            <input type="range" id="slider-emf" min="2" max="24" step="0.5" value="12">
-
-            <label style="color:#ffcc00; border-top:1px solid #30363d; padding-top:12px;">
-                <span>🎢 滑梯（負荷）數量</span>
-                <span id="val-count" style="color:#ffcc00;">2 段</span>
-            </label>
-            <div class="btn-group" style="margin-bottom:0;">
-                <button class="btn btn-small" id="btn-remove">−</button>
-                <span style="flex:1; text-align:center; align-self:center; color:#8b949e; font-size:0.8rem;">加減負荷 (1–4)</span>
-                <button class="btn btn-small" id="btn-add">+</button>
+    <div id="right-panel">
+        <div class="guide-box">
+            <h4>🐧 <span data-i18n="info.legend.header">視覺對應指南</span></h4>
+            <div class="info-box" data-i18n-html="info.legend.body">
+                🛗 <span class="lg-batt">電梯 = 電池</span>：抬升企鵝（電荷），賦予電勢能（電壓 ε）。<br>
+                🎢 <span class="lg-load">滑梯 = 負荷（燈泡）</span>：企鵝滑下損失高度（電壓降 ΔV），轉化為光與熱；越陡＝功率越大＝越亮。<br>
+                📏 <span class="lg-ruler">左側電勢標尺</span>：每個高度＝一個「電勢 V」（相對負極 0V）。<br>
+                🔌 用<strong>電壓表探針</strong>選兩點：看各點電勢，及兩點之差「電勢差 ΔV」。
             </div>
         </div>
-
-        <div class="control-group analogy-group">
-            <h3>🔧 各滑梯陡度（電阻 R）</h3>
-            <div id="load-sliders"></div>
+        <div class="guide-box">
+            <h4>📚 <span data-i18n="info.theory.header">原理說明</span></h4>
+            <div class="info-box" id="theory-box"></div>
         </div>
-
-        <div class="control-group probe-group">
-            <h3 style="color:#39ff14;">🔌 電壓表（電勢 vs 電勢差）</h3>
-            <div class="probe-row"><span class="dot red"></span>紅筆 V₊ <select id="sel-red"></select></div>
-            <div class="probe-row"><span class="dot black"></span>黑筆 V₋ <select id="sel-black"></select></div>
-            <div class="meter-readout" style="color:#39ff14;">
-                <div class="readout-box"><span class="readout-label">紅筆電勢 V₊</span><span id="v-red">– V</span></div>
-                <div class="readout-box"><span class="readout-label">黑筆電勢 V₋</span><span id="v-black">– V</span></div>
-            </div>
-            <div class="meter-readout" style="color:#ffcc00;">
-                <div class="readout-box" style="width:100%;"><span class="readout-label">電勢差 ΔV = V₊ − V₋（＝電壓表讀數）</span><span id="v-diff" style="font-size:1.3rem;">– V</span></div>
-            </div>
-            <div class="note">「電勢」需指定參考點（負極 = 0V）才有意義；「電勢差」是兩點電勢之差，無論把 0V 設在哪裡都不變。</div>
-        </div>
-
-        <div class="control-group" style="padding-bottom: 10px;">
-            <label style="color: #00ccff; border-bottom: 1px solid #30363d; padding-bottom: 5px; margin-bottom: 12px;">⏱️ 動畫速度</label>
-            <div class="btn-group" id="speed-controls" style="margin-bottom: 12px;">
-                <button class="btn" data-speed="0.5">0.5x</button>
-                <button class="btn active" data-speed="1">1.0x</button>
-                <button class="btn" data-speed="2">2.0x</button>
-            </div>
-            <div class="btn-group" style="margin-bottom:0;">
-                <button class="btn" id="btn-pause">⏸ 暫停</button>
-                <button class="btn" id="btn-reset">↺ 重置</button>
-            </div>
-        </div>
-
-        <div class="control-group">
-            <h3>📊 即時數據</h3>
-            <div class="meter-readout">
-                <div class="readout-box"><span class="readout-label">電源 ε</span><span id="m-emf" style="color:#00ccff;">12.00 V</span></div>
-                <div class="readout-box"><span class="readout-label">總電流 I</span><span id="m-current" style="color:#ff2a55;">0.00 A</span></div>
-            </div>
-            <div class="load-meters" id="load-meters"></div>
-        </div>
-
-        <div class="theory-box" id="theory-box"></div>
     </div>
+</div>
 
+<!-- ═══════════ 頁面字典（zh 必填；en 缺字自動回退 zh） ═══════════ -->
+<script>
+PhysLab.i18n.register({
+    zh: {
+        'topbar.title': '🐧 企鵝滑梯實驗室',
+        'topbar.subtitle': 'HKDSE Physics · Book 4 · Chapter 2 · 電位差類比（企鵝滑梯）',
+        'topbar.controls': '控制',
+        'topbar.info': '資訊',
+
+        'panel.mode.header': '電路模式',
+        'panel.mode.series': '串聯 (Series)',
+        'panel.mode.parallel': '並聯 (Parallel)',
+
+        'panel.battery.header': '電池與負荷',
+        'panel.battery.emf': '🛗 電池電壓 ε（電梯高度）',
+        'panel.battery.count': '🎢 滑梯（負荷）數量',
+        'panel.battery.countHint': '加減負荷 (1–4)',
+
+        'panel.resistance.header': '各滑梯陡度（電阻 R）',
+
+        'panel.probe.header': '電壓表（電勢 vs 電勢差）',
+        'panel.probe.red': '紅筆 V₊',
+        'panel.probe.black': '黑筆 V₋',
+        'panel.probe.redLabel': '紅筆電勢 V₊',
+        'panel.probe.blackLabel': '黑筆電勢 V₋',
+        'panel.probe.diff': '電勢差 ΔV = V₊ − V₋（＝電壓表讀數）',
+        'panel.probe.note': '「電勢」需指定參考點（負極 = 0V）才有意義；「電勢差」是兩點電勢之差，無論把 0V 設在哪裡都不變。',
+
+        'panel.speed.header': '動畫速度',
+        'panel.speed.pause': '⏸ 暫停',
+        'panel.speed.resume': '▶ 繼續',
+        'panel.speed.reset': '↺ 重置',
+
+        'panel.data.header': '即時數據',
+        'panel.data.emf': '電源 ε',
+        'panel.data.current': '總電流 I',
+
+        'info.legend.header': '視覺對應指南',
+        'info.legend.body': '🛗 <span class="lg-batt">電梯 = 電池</span>：抬升企鵝（電荷），賦予電勢能（電壓 ε）。<br>🎢 <span class="lg-load">滑梯 = 負荷（燈泡）</span>：企鵝滑下損失高度（電壓降 ΔV），轉化為光與熱；越陡＝功率越大＝越亮。<br>📏 <span class="lg-ruler">左側電勢標尺</span>：每個高度＝一個「電勢 V」（相對負極 0V）。<br>🔌 用<strong>電壓表探針</strong>選兩點：看各點電勢，及兩點之差「電勢差 ΔV」。',
+        'info.theory.header': '原理說明',
+        'theory.series': '<strong>串聯：</strong>同一條路，電流 I 處處相同。各滑梯越陡＝電壓降 ΔV 越大＝功率 <span class="highlight">P=I²R</span> 越大＝越亮。全部落差相加＝被電梯抬升的高度：<span class="highlight">ε = ΣΔV</span>。',
+        'theory.parallel': '<strong>並聯：</strong>每條支路都直接從頂（ε）滑到底（0），所以<strong>各支路電壓相同 = ε</strong>（滑梯一樣陡）。但電阻越小的支路企鵝越多、流得越快（電流大）、燈泡越亮：<span class="highlight">I = Σ(ε/Rₖ)</span>。',
+
+        'unit.seg': '{n} 段',
+        'unit.branch': '{n} 條',
+        'meter.slide': '滑梯',
+        'meter.branch': '支路',
+
+        'node.posTop': '正極（電梯頂）',
+        'node.afterLoad': '負荷 {n} 之後',
+        'node.negBottom': '負極（電梯底 0V）',
+        'node.posBus': '正極（頂部匯流 ε）',
+        'node.branchMid': '支路 {n} 中點',
+        'node.negBus': '負極（底部匯流 0V）',
+
+        'label3d.potential': '電勢',
+        'label3d.ref0': '0V 參考',
+
+        'graph.title': '電勢圖  V（電勢）vs 迴路位置',
+        'graph.elevatorUp': '電梯↑',
+        'graph.loadSeries': '負荷（滑梯）↓',
+        'graph.loadParallel': '支路滑梯↓',
+        'graph.return': '回程'
+    },
+    en: {}
+});
+</script>
+
+<!-- ═══════════ 頁面邏輯（類比物理 / three.js 場景 / 動畫逐字保留） ═══════════ -->
 <script>
 // ════════════════════════════════════════════════════════════════
 //  企鵝滑梯：電勢能轉換類比模擬器（串/並聯 + 電壓表探針）
 // ════════════════════════════════════════════════════════════════
-(function () {
-    if (typeof THREE === 'undefined' || typeof THREE.OrbitControls === 'undefined') return;
+PhysLab.sim3d.ready(function () {
+    const t = PhysLab.i18n.t;
 
     const LOAD_COLORS = [0xff5e5e, 0xffcc00, 0x39ff14, 0x00ccff];
     const LOAD_COLORS_CSS = ['#ff5e5e', '#ffcc00', '#39ff14', '#00ccff'];
+    // 深色文字版：霓虹色作白卡上文字時對比不足（黃/綠 <1.6:1），
+    // 讀數文字改用同色相的深色可讀版；swatch 填充與 3D/canvas 深底仍用亮色
+    const LOAD_COLORS_TXT = ['#dc2626', '#b45309', '#15803d', '#0891b2'];
 
     const P = {
         emf: 12,
@@ -225,27 +281,20 @@
 
     const GEO = { baseY: -20, topY: 0, elevatorX: -34, topZ: 0, runLength: 60, unitVperWorld: 1.6 };
 
-    // ── Three.js ──
-    const container = document.getElementById('canvas-container');
-    const sceneCanvas = document.getElementById('scene-canvas');
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xbfe3f5);
-    scene.fog = new THREE.Fog(0xbfe3f5, 140, 300);
-
-    const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
-    camera.position.set(20, 32, 100);
-
-    const renderer = new THREE.WebGLRenderer({ canvas: sceneCanvas, antialias: true });
-    renderer.setSize(container.clientWidth, container.clientHeight, false);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-
-    const controls = new THREE.OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.target.set(0, -2, 0);
+    // ── Three.js（共用底座 sim3d.create；場景背景改統一淺灰 0xe2e6eb） ──
+    const ctx = PhysLab.sim3d.create(document.getElementById('view3d'), {
+        background: 0xe2e6eb, fov: 45, near: 0.1, far: 1000,
+        views: { default: { pos: [20, 32, 100], tgt: [0, -2, 0] } },
+        controls: { damping: 0.05 },
+        lights: false, grid: false
+    });
+    const scene = ctx.scene, camera = ctx.camera, renderer = ctx.renderer, controls = ctx.controls;
+    scene.fog = new THREE.Fog(0xe2e6eb, 140, 300);
     controls.minDistance = 40;
     controls.maxDistance = 220;
+
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
     scene.add(new THREE.AmbientLight(0xffffff, 0.75));
     const dirLight = new THREE.DirectionalLight(0xffffff, 0.85);
@@ -324,15 +373,9 @@
         trackGroup.add(plat);
     }
 
-    // ── 文字 sprite（電勢標尺/探針標籤）──
+    // ── 文字 sprite（電勢標尺/探針標籤）── 共用 sim3d.makeLabel（plain 變體），保留原非等比縮放
     function makeLabelSprite(text, color) {
-        const c = document.createElement('canvas'); c.width = 160; c.height = 64;
-        const x = c.getContext('2d');
-        x.font = 'bold 44px "Segoe UI", sans-serif'; x.fillStyle = color || '#fff';
-        x.textAlign = 'center'; x.textBaseline = 'middle';
-        x.fillText(text, 80, 34);
-        const tex = new THREE.CanvasTexture(c);
-        const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }));
+        const sp = PhysLab.sim3d.makeLabel(text, color || '#fff');
         sp.scale.set(9, 3.6, 1);
         return sp;
     }
@@ -395,14 +438,14 @@
         for (let i = 0; i <= ticks; i++) {
             const v = P.emf * i / ticks;
             const y = baseY + (topY - baseY) * i / ticks;
-            const t = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.18, 0.18), new THREE.MeshBasicMaterial({ color: 0x39ff14 }));
-            t.position.set(rx - 1.2, y, z); trackGroup.add(t);
+            const tk = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.18, 0.18), new THREE.MeshBasicMaterial({ color: 0x39ff14 }));
+            tk.position.set(rx - 1.2, y, z); trackGroup.add(tk);
             const lab = makeLabelSprite(v.toFixed(0) + 'V', '#39ff14');
             lab.position.set(rx - 6, y, z); trackGroup.add(lab);
         }
-        const title = makeLabelSprite('電勢', '#39ff14'); title.scale.set(11, 4.4, 1);
+        const title = makeLabelSprite(t('label3d.potential'), '#39ff14'); title.scale.set(11, 4.4, 1);
         title.position.set(rx - 6, topY + 6, z); trackGroup.add(title);
-        const ref = makeLabelSprite('0V 參考', '#39ff14'); ref.scale.set(12, 4, 1);
+        const ref = makeLabelSprite(t('label3d.ref0'), '#39ff14'); ref.scale.set(12, 4, 1);
         ref.position.set(rx - 6, baseY - 4, z); trackGroup.add(ref);
     }
 
@@ -419,8 +462,8 @@
         const T = br.totalLen; d = ((d % T) + T) % T;
         for (const s of br.segments) {
             if (d >= s.start && d <= s.start + s.len) {
-                const t = s.len ? (d - s.start) / s.len : 0;
-                return { x: s.a.x + (s.b.x - s.a.x) * t, y: s.a.y + (s.b.y - s.a.y) * t, z: s.a.z + (s.b.z - s.a.z) * t };
+                const t2 = s.len ? (d - s.start) / s.len : 0;
+                return { x: s.a.x + (s.b.x - s.a.x) * t2, y: s.a.y + (s.b.y - s.a.y) * t2, z: s.a.z + (s.b.z - s.a.z) * t2 };
             }
         }
         const L = br.segments[br.segments.length - 1];
@@ -439,7 +482,7 @@
 
         let cx = startX, cy = topY;
         const pts = [vec(cx, cy, z)];
-        measureNodes.push({ label: '正極（電梯頂）', V: P.emf, pos: vec(startX, topY, z) });
+        measureNodes.push({ label: t('node.posTop'), V: P.emf, pos: vec(startX, topY, z) });
         for (let k = 0; k < n; k++) {
             cx += platLen; pts.push(vec(cx, cy, z));
             const ax = cx, ay = cy;
@@ -449,7 +492,7 @@
             const b = makeBulb(vec((ax + cx) / 2, (ay + cy) / 2, z + 3.6), LOAD_COLORS[k % 4]);
             b.panelMat = mat; b.loadIdx = k; bulbs.push(b);
             const Vnode = P.emf - P.Vdrop.slice(0, k + 1).reduce((a, x) => a + x, 0);
-            measureNodes.push({ label: (k === n - 1 ? '負極（電梯底 0V）' : `負荷 ${k + 1} 之後`), V: Math.max(0, Vnode), pos: vec(cx, cy, z) });
+            measureNodes.push({ label: (k === n - 1 ? t('node.negBottom') : t('node.afterLoad', { n: k + 1 })), V: Math.max(0, Vnode), pos: vec(cx, cy, z) });
         }
         cx += platLen; pts.push(vec(cx, cy, z));
         const rightX = cx, bottomY = cy;
@@ -479,7 +522,7 @@
         trackGroup.add(tube(vec(ex, topY, z), vec(startX, topY, z), 0.45, matWire)); // 頂部匯流
         trackGroup.add(tube(vec(mergeX, baseY, z), vec(ex, baseY, z), 0.45, matWire)); // 底部匯流
 
-        measureNodes.push({ label: '正極（頂部匯流 ε）', V: P.emf, pos: vec(startX, topY, z) });
+        measureNodes.push({ label: t('node.posBus'), V: P.emf, pos: vec(startX, topY, z) });
         for (let k = 0; k < n; k++) {
             const zk = (k - (n - 1) / 2) * laneSpacing;
             const pTop = vec(slideTopX, topY, zk), pBot = vec(slideBotX, baseY, zk);
@@ -489,13 +532,13 @@
             trackGroup.add(tube(vec(mergeX, baseY, zk), vec(mergeX, baseY, z), 0.4, matWire));
             const mid = vec((slideTopX + slideBotX) / 2, (topY + baseY) / 2, zk + 3.6);
             const b = makeBulb(mid, LOAD_COLORS[k % 4]); b.panelMat = mat; b.loadIdx = k; bulbs.push(b);
-            measureNodes.push({ label: `支路 ${k + 1} 中點`, V: P.emf / 2, pos: vec((slideTopX + slideBotX) / 2, (topY + baseY) / 2, zk) });
+            measureNodes.push({ label: t('node.branchMid', { n: k + 1 }), V: P.emf / 2, pos: vec((slideTopX + slideBotX) / 2, (topY + baseY) / 2, zk) });
 
             const loop = [vec(ex, baseY, z), vec(ex, topY, z), vec(startX, topY, z),
                 pTop, pBot, vec(mergeX, baseY, zk), vec(mergeX, baseY, z), vec(ex, baseY, z)];
             branches.push(makeBranch(loop, P.branchI[k]));
         }
-        measureNodes.push({ label: '負極（底部匯流 0V）', V: 0, pos: vec(ex, baseY, z) });
+        measureNodes.push({ label: t('node.negBus'), V: 0, pos: vec(ex, baseY, z) });
     }
 
     // ── 重建場景 ──
@@ -580,7 +623,7 @@
             row.innerHTML = `
                 <span class="swatch" style="color:${LOAD_COLORS_CSS[k % 4]};background:${LOAD_COLORS_CSS[k % 4]}"></span>
                 <input type="range" class="r-slider" data-idx="${k}" min="1" max="12" step="0.5" value="${r}" style="flex:1;">
-                <span style="width:54px;text-align:right;font-family:'JetBrains Mono',monospace;color:${LOAD_COLORS_CSS[k % 4]}" id="rval-${k}">${r.toFixed(1)}Ω</span>`;
+                <span style="width:54px;text-align:right;font-variant-numeric:tabular-nums;color:${LOAD_COLORS_TXT[k % 4]}" id="rval-${k}">${r.toFixed(1)}Ω</span>`;
             wrap.appendChild(row);
         });
         wrap.querySelectorAll('input.r-slider').forEach(inp => {
@@ -596,19 +639,17 @@
         el('val-emf').textContent = P.emf.toFixed(1) + ' V';
         el('m-emf').textContent = P.emf.toFixed(2) + ' V';
         el('m-current').textContent = P.I.toFixed(2) + ' A';
-        el('val-count').textContent = P.R.length + (P.mode === 'series' ? ' 段' : ' 條');
+        el('val-count').textContent = t(P.mode === 'series' ? 'unit.seg' : 'unit.branch', { n: P.R.length });
         const lm = el('load-meters'); lm.innerHTML = '';
         P.R.forEach((r, k) => {
             const d = document.createElement('div'); d.className = 'load-meter';
             const extra = P.mode === 'series' ? '' : ` · I=${P.branchI[k].toFixed(2)}A`;
             d.innerHTML = `
-                <span class="lm-name"><span class="swatch" style="color:${LOAD_COLORS_CSS[k % 4]};background:${LOAD_COLORS_CSS[k % 4]}"></span>${P.mode === 'series' ? '滑梯' : '支路'} ${k + 1}（${r.toFixed(1)}Ω）</span>
-                <span style="color:${LOAD_COLORS_CSS[k % 4]}">ΔV=${P.Vdrop[k].toFixed(2)}V · P=${P.power[k].toFixed(2)}W${extra}</span>`;
+                <span class="lm-name"><span class="swatch" style="color:${LOAD_COLORS_CSS[k % 4]};background:${LOAD_COLORS_CSS[k % 4]}"></span>${P.mode === 'series' ? t('meter.slide') : t('meter.branch')} ${k + 1}（${r.toFixed(1)}Ω）</span>
+                <span style="color:${LOAD_COLORS_TXT[k % 4]}">ΔV=${P.Vdrop[k].toFixed(2)}V · P=${P.power[k].toFixed(2)}W${extra}</span>`;
             lm.appendChild(d);
         });
-        el('theory-box').innerHTML = P.mode === 'series'
-            ? '<strong>串聯：</strong>同一條路，電流 I 處處相同。各滑梯越陡＝電壓降 ΔV 越大＝功率 <span class="highlight">P=I²R</span> 越大＝越亮。全部落差相加＝被電梯抬升的高度：<span class="highlight">ε = ΣΔV</span>。'
-            : '<strong>並聯：</strong>每條支路都直接從頂（ε）滑到底（0），所以<strong>各支路電壓相同 = ε</strong>（滑梯一樣陡）。但電阻越小的支路企鵝越多、流得越快（電流大）、燈泡越亮：<span class="highlight">I = Σ(ε/Rₖ)</span>。';
+        el('theory-box').innerHTML = P.mode === 'series' ? t('theory.series') : t('theory.parallel');
     }
 
     // ════════════════════════════════════════════════════════════
@@ -644,8 +685,8 @@
         }
         if (!measureNodes.length) return;
         const defs = [
-            { idx: Math.min(P.probeRedIdx, measureNodes.length - 1), col: 0xff2a55, lab: 'V₊', txt: '#ff9bb3' },
-            { idx: Math.min(P.probeBlackIdx, measureNodes.length - 1), col: 0x111111, lab: 'V₋', txt: '#e6edf3' }
+            { idx: Math.min(P.probeRedIdx, measureNodes.length - 1), col: 0xff2a55, lab: 'V₊', txt: '#dc2626' },
+            { idx: Math.min(P.probeBlackIdx, measureNodes.length - 1), col: 0x111111, lab: 'V₋', txt: '#334155' }
         ];
         defs.forEach(d => {
             const node = measureNodes[d.idx];
@@ -671,7 +712,7 @@
         pgx.clearRect(0, 0, W, H);
 
         pgx.fillStyle = '#00ccff'; pgx.font = 'bold 13px "Segoe UI", sans-serif'; pgx.textAlign = 'left';
-        pgx.fillText('電勢圖  V（電勢）vs 迴路位置', padL - 8, 16);
+        pgx.fillText(t('graph.title'), padL - 8, 16);
 
         const vMax = Math.max(P.emf, 1);
         const yOf = v => padT + plotH - (v / vMax) * plotH;
@@ -728,20 +769,17 @@
         pgx.strokeStyle = '#ffcc00'; pgx.lineWidth = 2; pgx.beginPath(); pgx.arc(cx, cyy, 5, 0, Math.PI * 2); pgx.stroke();
 
         pgx.fillStyle = '#8b949e'; pgx.font = '9px "Segoe UI",sans-serif'; pgx.textAlign = 'center';
-        pgx.fillText('電梯↑', xOf(0.1), padT + plotH + 13);
-        pgx.fillText(P.mode === 'series' ? '負荷（滑梯）↓' : '支路滑梯↓', xOf(0.5), padT + plotH + 13);
-        pgx.fillText('回程', xOf(0.9), padT + plotH + 13);
+        pgx.fillText(t('graph.elevatorUp'), xOf(0.1), padT + plotH + 13);
+        pgx.fillText(P.mode === 'series' ? t('graph.loadSeries') : t('graph.loadParallel'), xOf(0.5), padT + plotH + 13);
+        pgx.fillText(t('graph.return'), xOf(0.9), padT + plotH + 13);
         pgx.textAlign = 'left';
     }
 
     // ════════════════════════════════════════════════════════════
-    //  動畫
+    //  動畫（controls.update 與 renderer.render 由 ctx.start 處理）
     // ════════════════════════════════════════════════════════════
-    const clock = new THREE.Clock();
-    function animate() {
-        requestAnimationFrame(animate);
-        const dt = Math.min(clock.getDelta(), 0.05);
-        controls.update();
+    function tick(dt) {
+        dt = Math.min(dt, 0.05);
 
         if (!P.paused && branches.length) {
             for (const pn of penguins) {
@@ -768,31 +806,29 @@
         });
 
         if (elevatorCar) {
-            const t = (performance.now() * 0.0004 * P.speed) % 1;
-            const tri = t < 0.5 ? t * 2 : (1 - t) * 2;
+            const tt = (performance.now() * 0.0004 * P.speed) % 1;
+            const tri = tt < 0.5 ? tt * 2 : (1 - tt) * 2;
             elevatorCar.position.y = GEO.baseY + 2 + tri * (GEO.topY - GEO.baseY - 2);
         }
-        renderer.render(scene, camera);
     }
 
     // ════════════════════════════════════════════════════════════
     //  事件
     // ════════════════════════════════════════════════════════════
-    el('slider-emf').addEventListener('input', e => { P.emf = +e.target.value; updatePhysics(); });
     el('btn-add').addEventListener('click', () => { if (P.R.length >= 4) return; P.R.push(4); buildLoadSliders(); updatePhysics(); });
     el('btn-remove').addEventListener('click', () => { if (P.R.length <= 1) return; P.R.pop(); buildLoadSliders(); updatePhysics(); });
 
-    document.querySelectorAll('#mode-controls .btn').forEach(b => {
+    document.querySelectorAll('#mode-controls .dir-btn').forEach(b => {
         b.addEventListener('click', () => {
             if (P.mode === b.dataset.mode) return;
-            document.querySelectorAll('#mode-controls .btn').forEach(x => x.classList.remove('active'));
+            document.querySelectorAll('#mode-controls .dir-btn').forEach(x => x.classList.remove('active'));
             b.classList.add('active'); P.mode = b.dataset.mode;
             updatePhysics();
         });
     });
-    document.querySelectorAll('#speed-controls .btn').forEach(b => {
+    document.querySelectorAll('#speed-controls .dir-btn').forEach(b => {
         b.addEventListener('click', () => {
-            document.querySelectorAll('#speed-controls .btn').forEach(x => x.classList.remove('active'));
+            document.querySelectorAll('#speed-controls .dir-btn').forEach(x => x.classList.remove('active'));
             b.classList.add('active'); P.speed = +b.dataset.speed;
         });
     });
@@ -801,40 +837,37 @@
 
     el('btn-pause').addEventListener('click', e => {
         P.paused = !P.paused;
-        e.target.textContent = P.paused ? '▶ 繼續' : '⏸ 暫停';
+        e.target.textContent = P.paused ? t('panel.speed.resume') : t('panel.speed.pause');
         e.target.classList.toggle('active', P.paused);
     });
     el('btn-reset').addEventListener('click', () => {
         P.emf = 12; P.R = [3, 5]; P.mode = 'series'; P.speed = 1; P.paused = false;
         P.probeRedIdx = 0; P.probeBlackIdx = 999;
         el('slider-emf').value = 12;
-        el('btn-pause').textContent = '⏸ 暫停'; el('btn-pause').classList.remove('active');
-        document.querySelectorAll('#mode-controls .btn').forEach(x => x.classList.toggle('active', x.dataset.mode === 'series'));
-        document.querySelectorAll('#speed-controls .btn').forEach(x => x.classList.toggle('active', x.dataset.speed === '1'));
+        el('btn-pause').textContent = t('panel.speed.pause'); el('btn-pause').classList.remove('active');
+        document.querySelectorAll('#mode-controls .dir-btn').forEach(x => x.classList.toggle('active', x.dataset.mode === 'series'));
+        document.querySelectorAll('#speed-controls .dir-btn').forEach(x => x.classList.toggle('active', x.dataset.speed === '1'));
         buildLoadSliders(); updatePhysics();
     });
 
-    el('toggle-panel-btn').addEventListener('click', () => {
-        document.body.classList.toggle('panel-collapsed');
-        const collapsed = document.body.classList.contains('panel-collapsed');
-        el('toggle-panel-btn').textContent = collapsed ? '⚙️ 顯示控制面板' : '👁️ 隱藏控制面板';
-        setTimeout(onResize, 420);
-    });
-
-    function onResize() {
-        const w = container.clientWidth, h = container.clientHeight;
-        camera.aspect = w / h; camera.updateProjectionMatrix();
-        renderer.setSize(w, h, false);
-        drawPotentialGraph();
+    /* 語言切換：重建控制列與場景文字（sprite/節點/圖表經 t() 於 updatePhysics 重繪；
+       靜態 data-i18n 由 i18n.applyTo 自動處理） */
+    function onLangChange() {
+        buildLoadSliders();
+        el('btn-pause').textContent = t(P.paused ? 'panel.speed.resume' : 'panel.speed.pause');
+        updatePhysics();
     }
-    window.addEventListener('resize', onResize);
 
     // ── 啟動 ──
     buildLoadSliders();
+    PhysLab.ui.bindSlider('slider-emf', 'val-emf', function (v) { P.emf = v; updatePhysics(); return v.toFixed(1) + ' V'; });
+    ctx.onResize(drawPotentialGraph);
+    PhysLab.ui.bindPanelToggle('btn-toggle-left', 'left-panel', ctx.resize);
+    PhysLab.ui.bindPanelToggle('btn-toggle-right', 'right-panel', ctx.resize);
+    PhysLab.i18n.onChange(onLangChange);
     updatePhysics();
-    onResize();
-    animate();
-})();
+    ctx.start(tick);
+});
 </script>
 </body>
 </html>
