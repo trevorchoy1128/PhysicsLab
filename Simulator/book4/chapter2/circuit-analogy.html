@@ -1,710 +1,765 @@
 <!DOCTYPE html>
-<html lang="zh-HK">
+<html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>電力物流學：貨櫃車與超市類比實驗室 (極致流暢鮮豔版)</title>
-    
+
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
 
+    <!-- 共用資源（載入順序固定，不可 defer/async）：core → i18n → sim3d -->
+    <link rel="stylesheet" href="../../../assets/css/tokens.css">
+    <link rel="stylesheet" href="../../../assets/css/labgray.css">
+    <script src="../../../assets/js/core.js"></script>
+    <script src="../../../assets/js/i18n.js"></script>
+    <script src="../../../assets/js/sim3d.js"></script>
+
     <style>
-        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; background-color: #ebf4fa; color: #ffffff; }
-        
-        #canvas-container { position: absolute; top: 0; left: 0; width: 65%; height: 100vh; overflow: hidden; transition: width 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); }
-        #canvas-container canvas { width: 100% !important; height: 100% !important; display: block; outline: none; }
+        /* ── 頁面獨有樣式（共用 chrome 見 assets/css/labgray.css）── */
+        html, body { height: 100vh; overflow: hidden; }
+        #left-panel > *, #right-panel > * { flex-shrink: 0; }
 
-        #ui-panel {
-            position: absolute; top: 0; right: 0; width: 35%; height: 100vh;
-            background-color: #0d1117; border-left: 1px solid #1a2332; padding: 25px; box-sizing: border-box;
-            display: flex; flex-direction: column; overflow-y: auto; box-shadow: -10px 0 40px rgba(0,0,0,0.8); z-index: 10;
-            transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+        /* 動態增減電阻的 +／- 按鈕（單頁動作鈕） */
+        .rc-adj { display: flex; gap: 5px; }
+        .rc-adj button {
+            width: 34px; padding: 6px 0; border-radius: 7px; border: 1px solid var(--pl-border);
+            font-weight: 700; cursor: pointer; font-size: 1rem; line-height: 1;
         }
+        #btn-add-r { background: #dcfce7; color: #15803d; border-color: #86efac; }
+        #btn-sub-r { background: #fee2e2; color: #b91c1c; border-color: #fca5a5; }
+        .rc-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 
-        body.panel-collapsed #ui-panel { transform: translateX(100%); }
-        body.panel-collapsed #canvas-container { width: 100%; }
-        
-        #toggle-panel-btn {
-            position: absolute; top: 20px; right: calc(35% + 20px); z-index: 100;
-            background: #161b22; color: #00ccff; border: 2px solid #00ccff;
-            padding: 10px 18px; border-radius: 8px; font-weight: bold; font-size: 0.95rem;
-            cursor: pointer; box-shadow: 0 4px 20px rgba(0,204,255,0.4);
-            transition: right 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), background 0.2s, color 0.2s;
-            display: flex; align-items: center; gap: 8px;
+        /* 實時物流數據監控 — 保留深色數位錶盤 + 等寬字體 + 教學色（One Dark 遺產，語意保留） */
+        #meters-container { display: flex; flex-direction: column; }
+        .meter-readout {
+            display: flex; justify-content: space-between; background: #0f172a; padding: 12px;
+            border: 1px solid #1e293b; border-radius: 10px; font-family: 'JetBrains Mono', Courier, monospace;
+            font-size: 1.05rem; color: #39ff14; margin-bottom: 8px; box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
         }
-        #toggle-panel-btn:hover { background: #00ccff; color: #0d1117; }
-        body.panel-collapsed #toggle-panel-btn { right: 20px; background: #ffcc00; color: #0d1117; border-color: #ffcc00; box-shadow: 0 4px 20px rgba(255,204,0,0.4); }
-        
-        h2 { color: #00ccff; margin-top: 0; font-size: 1.5rem; border-bottom: 2px solid #1f2937; padding-bottom: 10px; text-shadow: 0 0 10px rgba(0,204,255,0.5); }
-        .control-group { background: #161b22; padding: 18px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #1f2937; border-left: 4px solid #00ccff; }
-        .analogy-group { border-left-color: #ffcc00; }
-        label { display: flex; justify-content: space-between; margin-bottom: 8px; font-weight: bold; font-size: 0.95rem; color: #c9d1d9; align-items: center;}
-        input[type="range"] { width: 100%; margin-bottom: 15px; -webkit-appearance: none; background: transparent; }
-        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 20px; width: 20px; border-radius: 50%; background: #00ccff; cursor: pointer; margin-top: -7px; box-shadow: 0 0 15px rgba(0,204,255,0.8); }
-        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 6px; cursor: pointer; background: #30363d; border-radius: 3px; }
-        .btn-group { display: flex; justify-content: space-between; margin-bottom: 15px; gap: 8px;}
-        .btn { flex: 1; background: #21262d; color: #ffffff; border: 1px solid #30363d; padding: 10px; cursor: pointer; border-radius: 5px; font-weight: bold; transition: all 0.2s; font-size: 0.85rem;}
-        .btn:hover { background: #30363d; }
-        .btn.active { background: #00ccff; color: #0d1117; border-color: #00ccff; box-shadow: 0 0 15px rgba(0, 204, 255, 0.6); }
-        .btn-small { flex: none; width: 40px; padding: 5px; font-size: 1.2rem; }
-        
-        #speed-controls .btn.active { background: #ffcc00; color: #0d1117; border-color: #ffcc00; box-shadow: 0 0 15px rgba(255, 204, 0, 0.6); }
-
-        .meter-readout { display: flex; justify-content: space-between; background: #0d1117; padding: 12px; border: 1px solid #30363d; border-radius: 10px; font-family: 'JetBrains Mono', Courier, monospace; font-size: 1.05rem; color: #39ff14; margin-bottom: 8px; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); }
         .readout-box { display: flex; flex-direction: column; align-items: center; width: 48%; }
-        .readout-label { font-size: 0.75rem; color: #8b949e; margin-bottom: 5px; font-weight: bold; text-align: center;}
-        .theory-box { background: rgba(255, 204, 0, 0.15); color: #ffcc00; padding: 15px; border-radius: 10px; font-size: 0.95rem; line-height: 1.6; border: 1px solid rgba(255, 204, 0, 0.5); margin-top: 10px; text-shadow: 0 0 5px rgba(255,204,0,0.2);}
-        .highlight { color: #00ccff; font-weight: bold; text-shadow: 0 0 8px rgba(0,204,255,0.6); }
-        .overlay-text { position: absolute; top: 15px; left: 15px; color: #ffffff; pointer-events: none; background: rgba(13, 17, 23, 0.9); padding: 15px; border-radius: 8px; border: 1px solid #30363d; font-size: 0.95rem; z-index: 5; line-height: 1.6; box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
+        .readout-label { font-size: 0.72rem; color: #94a3b8; margin-bottom: 5px; font-weight: bold; text-align: center; }
 
-        /* ── Responsive ── */
-        @media (max-width: 768px) {
-            body { overflow-y: auto; }
-            #canvas-container {
-                position: relative; width: 100% !important; height: 55vw; min-height: 240px; max-height: 60vh;
-            }
-            #ui-panel {
-                position: relative; width: 100% !important; height: auto; transform: none !important;
-                box-shadow: none; border-left: none; border-top: 2px solid #1a2332;
-                max-height: none; overflow-y: visible;
-            }
-            #toggle-panel-btn { display: none; }
-            .overlay-text { font-size: 0.75rem; padding: 8px; max-width: 70vw; }
+        /* 動態理論解說盒（教學琥珀色，淺色化） */
+        .theory-box {
+            background: rgba(202,138,4,0.10); color: #92400e; padding: 13px; border-radius: 10px;
+            font-size: 0.82rem; line-height: 1.65; border: 1px solid rgba(202,138,4,0.35); margin-top: 10px;
         }
-        @media (min-width: 769px) and (max-width: 1024px) {
-            #canvas-container { width: 55% !important; }
-            #ui-panel { width: 45% !important; }
-            #toggle-panel-btn { right: calc(45% + 15px); }
-            body:not(.panel-collapsed) #toggle-panel-btn { right: calc(45% + 15px); }
-        }
+        .theory-box strong { color: #b45309; }
     </style>
-    <!-- sim3d-load-guard: three.js 載入失敗提示 -->
-    <script>
-      window.addEventListener('DOMContentLoaded', function () {
-        if (typeof THREE === 'undefined' || typeof THREE.OrbitControls === 'undefined') {
-          var o = document.createElement('div');
-          o.id = 'sim3d-load-error';
-          o.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;background:#0f172a;color:#fff;font-family:system-ui,\'Noto Sans HK\',sans-serif;font-size:18px;line-height:1.7';
-          o.innerHTML = '⚠️ 無法載入 3D 元件（three.js）<br>請檢查網路連線後重新整理頁面。';
-          document.body.appendChild(o);
-        }
-      });
-    </script>
 </head>
 <body>
 
-    <button id="toggle-panel-btn">👁️ 隱藏控制面板</button>
+<div id="topbar">
+    <div style="display: flex; align-items: center; gap: 16px;">
+        <button type="button" class="panel-toggle-btn" id="btn-toggle-left">
+            <span>☰</span> <span data-i18n="topbar.controls">控制</span>
+        </button>
+        <div class="title-block">
+            <h1 data-i18n="topbar.title">🚚 電力物流學虛擬實驗室</h1>
+            <p data-i18n="topbar.subtitle">HKDSE Physics · Book 4 · Chapter 2 · 電路類比</p>
+        </div>
+    </div>
+    <div class="tb-actions">
+        <button type="button" class="panel-toggle-btn" id="btn-toggle-right">
+            <span>📖</span> <span data-i18n="topbar.info">資訊</span>
+        </button>
+    </div>
+</div>
 
-    <div id="canvas-container">
-        <div class="overlay-text">
-            <strong>視覺對應指南與升級說明：</strong><br>
-            🚀 <span style="color:#39ff14">流暢度極致優化：</span>拉桿控制引擎已重構，現在調整阻抗數值如絲綢般滑順，絕不卡頓！<br>
-            ⚡ <span style="color:#ff2a55">嚴格電勢定律：</span>電量數值**絕對不會在電線上消耗**，只有當電子進入金黃色的「電阻器內部」時，電壓才會精確下降！<br>
-            ⏱️ <span style="color:#00ccff">真實阻抗類比：</span>電阻越大，對應超市的卸貨時間越長，引發宏觀的物流塞車。<br>
-            ➕ <span style="color:#ffcc00">自由增減負載：</span>利用右側面板「+ / -」動態加入最多 5 間超市/電阻！
+<div id="main">
+    <div id="left-panel">
+        <div class="card">
+            <div class="card-header">🔌 <span data-i18n="panel.circuit.title">電路類型</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <div class="dir-btn-group">
+                    <button type="button" class="dir-btn active" id="btn-series" data-i18n="panel.circuit.series">串聯電路 (Series)</button>
+                    <button type="button" class="dir-btn"        id="btn-parallel" data-i18n="panel.circuit.parallel">並聯分支電路 (Parallel)</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">⏱️ <span data-i18n="panel.speed.title">教學速度控制</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <div class="dir-btn-group" id="speed-controls">
+                    <button type="button" class="dir-btn active" data-speed="1"    data-i18n="panel.speed.x1">1.0x (正常)</button>
+                    <button type="button" class="dir-btn"        data-speed="0.5"  data-i18n="panel.speed.x05">0.5x (慢速)</button>
+                    <button type="button" class="dir-btn"        data-speed="0.25" data-i18n="panel.speed.x025">0.25x (極慢)</button>
+                    <button type="button" class="dir-btn"        data-speed="0.1"  data-i18n="panel.speed.x01">0.1x (分解)</button>
+                </div>
+                <div class="toggle-row" id="row-charge" style="margin-top:12px;">
+                    <div class="toggle-track" id="opt-charge"><div class="toggle-thumb"></div></div>
+                    <span data-i18n="panel.charge.show">👁️ 顯示實時流經量 (C/s 與 架/秒)</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">🔋 <span data-i18n="panel.emf.title">電源與負載</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <div class="slider-row">
+                    <div class="slider-head">
+                        <label data-i18n="panel.emf.label">📦 貨倉總裝貨量 (電源 e.m.f.)</label>
+                        <span class="val" id="val-emf">12 V</span>
+                    </div>
+                    <input type="range" id="slider-emf" min="6" max="24" value="12" step="2">
+                </div>
+
+                <div class="rc-head" style="margin-top:6px;">
+                    <div class="mode-label" style="margin:0;" data-i18n="panel.res.title">⚙️ 動態增減超市 / 電阻器</div>
+                    <div class="rc-adj">
+                        <button type="button" id="btn-sub-r">−</button>
+                        <button type="button" id="btn-add-r">+</button>
+                    </div>
+                </div>
+                <div id="resistors-container"></div>
+            </div>
         </div>
     </div>
 
-    <div id="ui-panel">
-        <h2>電力物流學虛擬實驗室</h2>
-        
-        <div class="btn-group">
-            <button class="btn active" id="btn-series">串聯電路 (Series)</button>
-            <button class="btn" id="btn-parallel">並聯分支電路 (Parallel)</button>
+    <div id="canvas-wrap">
+        <div id="view3d">
+            <div id="status-badge">電路模擬</div>
+            <div id="hint" data-i18n="hint.text">🖱️ 左鍵旋轉視角 · 滾輪縮放 · 於左側面板調整電路</div>
         </div>
+    </div>
 
-        <div class="control-group" style="padding-bottom: 10px;">
-            <label style="color: #00ccff; border-bottom: 1px solid #30363d; padding-bottom: 5px; margin-bottom: 12px;">⏱️ 教學速度控制</label>
-            <div class="btn-group" id="speed-controls" style="margin-bottom: 0;">
-                <button class="btn active" data-speed="1">1.0x (正常)</button>
-                <button class="btn" data-speed="0.5">0.5x (慢速)</button>
-                <button class="btn" data-speed="0.25">0.25x (極慢)</button>
-                <button class="btn" data-speed="0.1">0.1x (分解)</button>
-            </div>
-            
-            <label style="display: flex; align-items: center; justify-content: flex-start; gap: 10px; cursor: pointer; color: #ff2a55; margin-top: 15px; border-top: 1px solid #30363d; padding-top: 12px;">
-                <input type="checkbox" id="toggle-charge-flow" style="width: 18px; height: 18px; margin: 0; cursor: pointer; accent-color: #ff2a55;">
-                <span style="font-size: 0.9rem; font-weight: bold;">👁️ 顯示實時流經量 (C/s 與 架/秒)</span>
-            </label>
-        </div>
-
-        <div class="control-group">
-            <label><span>📦 貨倉總裝貨量 (電源 e.m.f.)</span> <span id="val-emf" class="highlight">12 V</span></label>
-            <input type="range" id="slider-emf" min="6" max="24" value="12" step="2">
-        </div>
-
-        <div class="control-group" id="resistors-control-group">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #30363d; padding-bottom: 8px; margin-bottom: 12px;">
-                <label style="margin: 0; color: #ffcc00;">⚙️ 動態增減超市 / 電阻器</label>
-                <div style="display: flex; gap: 5px;">
-                    <button class="btn btn-small" id="btn-sub-r" style="background:#ff2a55; border:none;">-</button>
-                    <button class="btn btn-small" id="btn-add-r" style="background:#39ff14; color:#000; border:none;">+</button>
-                </div>
-            </div>
-            <div id="resistors-container">
-                </div>
-        </div>
-
-        <div class="control-group analogy-group">
-            <label style="color: #ffcc00; border-bottom: 1px solid #30363d; padding-bottom: 5px;">📊 實時物流數據監控</label>
-            <div id="meters-container">
-                </div>
+    <div id="right-panel">
+        <div class="formula-box">
+            <h4>📊 <span data-i18n="panel.data.title">實時物流數據監控</span></h4>
+            <div id="meters-container"></div>
             <div class="theory-box" id="exp-text"></div>
         </div>
+
+        <div class="guide-box">
+            <h4>🧭 <span data-i18n="panel.guide.title">視覺對應指南</span></h4>
+            <div class="info-box" data-i18n-html="panel.guide.body">
+                <strong>視覺對應指南與升級說明：</strong><br>
+                🚀 <span style="color:#15803d">流暢度極致優化：</span>拉桿控制引擎已重構，現在調整阻抗數值如絲綢般滑順，絕不卡頓！<br>
+                ⚡ <span style="color:#dc2626">嚴格電勢定律：</span>電量數值**絕對不會在電線上消耗**，只有當電子進入金黃色的「電阻器內部」時，電壓才會精確下降！<br>
+                ⏱️ <span style="color:#0284c7">真實阻抗類比：</span>電阻越大，對應超市的卸貨時間越長，引發宏觀的物流塞車。<br>
+                ➕ <span style="color:#b45309">自由增減負載：</span>利用左側面板「+ / -」動態加入最多 5 間超市/電阻！
+            </div>
+        </div>
     </div>
+</div>
 
-    <script>
-        let isSeries = true;
-        let currentSpeed = 1.0; 
-        let showChargeFlow = false; 
-        
-        let N = 2; 
-        let R_vals = [2, 5]; 
-        let P = { emf: 12, req: 7, iTotal: 1.71, v: [], i: [], p: [] }; 
-        
-        let eAcc = [], tAcc = [];
-        let sceneBuildTimer = null; 
+<!-- ═══════════ 頁面字典（zh 必填；en 缺字自動回退 zh） ═══════════ -->
+<script>
+PhysLab.i18n.register({
+    zh: {
+        'topbar.title': '🚚 電力物流學虛擬實驗室',
+        'topbar.subtitle': 'HKDSE Physics · Book 4 · Chapter 2 · 電路類比',
+        'topbar.controls': '控制',
+        'topbar.info': '資訊',
 
-        const ui = {
-            btnSeries: document.getElementById('btn-series'), btnParallel: document.getElementById('btn-parallel'),
-            sEmf: document.getElementById('slider-emf'), vEmf: document.getElementById('val-emf'),
-            btnAddR: document.getElementById('btn-add-r'), btnSubR: document.getElementById('btn-sub-r'),
-            rContainer: document.getElementById('resistors-container'), mContainer: document.getElementById('meters-container'),
-            expText: document.getElementById('exp-text'), tChargeFlow: document.getElementById('toggle-charge-flow'),
-            togglePanelBtn: document.getElementById('toggle-panel-btn')
-        };
+        'panel.circuit.title': '電路類型',
+        'panel.circuit.series': '串聯電路 (Series)',
+        'panel.circuit.parallel': '並聯分支電路 (Parallel)',
 
-        let isPanelVisible = true;
-        ui.togglePanelBtn.addEventListener('click', () => {
-            isPanelVisible = !isPanelVisible;
-            if (isPanelVisible) {
-                document.body.classList.remove('panel-collapsed');
-                ui.togglePanelBtn.innerHTML = '👁️ 隱藏控制面板';
-            } else {
-                document.body.classList.add('panel-collapsed');
-                ui.togglePanelBtn.innerHTML = '👁️ 顯示控制面板';
-            }
+        'panel.speed.title': '教學速度控制',
+        'panel.speed.x1': '1.0x (正常)',
+        'panel.speed.x05': '0.5x (慢速)',
+        'panel.speed.x025': '0.25x (極慢)',
+        'panel.speed.x01': '0.1x (分解)',
+        'panel.charge.show': '👁️ 顯示實時流經量 (C/s 與 架/秒)',
+
+        'panel.emf.title': '電源與負載',
+        'panel.emf.label': '📦 貨倉總裝貨量 (電源 e.m.f.)',
+        'panel.res.title': '⚙️ 動態增減超市 / 電阻器',
+        'panel.res.market': '超市',
+        'panel.res.unload': '單箱卸貨 {s}s',
+
+        'panel.data.title': '實時物流數據監控',
+        'panel.guide.title': '視覺對應指南',
+        'panel.guide.body': '<strong>視覺對應指南與升級說明：</strong><br>🚀 <span style="color:#15803d">流暢度極致優化：</span>拉桿控制引擎已重構，現在調整阻抗數值如絲綢般滑順，絕不卡頓！<br>⚡ <span style="color:#dc2626">嚴格電勢定律：</span>電量數值**絕對不會在電線上消耗**，只有當電子進入金黃色的「電阻器內部」時，電壓才會精確下降！<br>⏱️ <span style="color:#0284c7">真實阻抗類比：</span>電阻越大，對應超市的卸貨時間越長，引發宏觀的物流塞車。<br>➕ <span style="color:#b45309">自由增減負載：</span>利用左側面板「+ / -」動態加入最多 5 間超市/電阻！',
+
+        'meter.totalCurrent': '總車流量 (I)',
+        'meter.emf': '貨倉總裝貨量 (ε)',
+        'meter.marketV': '超市{n} 卸貨量',
+        'meter.marketI': '超市{n} 分流',
+
+        'exp.series': '<strong>【嚴格理想電路驗證】</strong><br>導線電阻為零，因此電子的電量 (V) <strong>在純導線上移動時絕對不會下降</strong>。<br>👉 電量數值的扣減只會發生在穿過阻抗元件（電阻器 / 超市）的瞬間！',
+        'exp.parallel': '<strong>【並聯理想導線定律】</strong><br>主幹道分流至各分支時，電勢並未發生消耗。電子在進入各自支路的電阻器之前，都維持著滿載的電勢能！<br>👉 觀察電子到達不同分支，只有進入電阻本體時才會歸零。',
+
+        'status.series': '🔗 串聯電路 · 總電阻 R = {r} Ω',
+        'status.parallel': '🔀 並聯電路 · 總電阻 R = {r} Ω',
+        'hint.text': '🖱️ 左鍵旋轉視角 · 滾輪縮放 · 於左側面板調整電路',
+
+        'scene.source': '電源',
+        'scene.iTotal': 'I總',
+        'scene.warehouse': '🏭 電源 (物流貨倉)',
+        'scene.market': '超市 {n} (R{n})',
+        'scene.perTruck': '架/秒',
+        'scene.flowStartCharge': '出發總電荷',
+        'scene.flowStartTruck': '出發總車流',
+        'scene.flowBranchCharge': '支路{n}電荷',
+        'scene.flowBranchTruck': '支路{n}車流',
+        'scene.flowMainCharge': '主幹總電荷',
+        'scene.flowMainTruck': '主幹總車流',
+        'tex.warehouse': '物流貨倉',
+        'tex.supermarket': '超級市場'
+    },
+    en: {}
+});
+</script>
+
+<!-- ═══════════ 頁面邏輯（類比動畫邏輯逐字保留；僅換外殼與接線 + i18n） ═══════════ -->
+<script>
+PhysLab.sim3d.ready(function () {
+    var t = PhysLab.i18n.t;
+    var el = PhysLab.ui.el;
+    var setText = PhysLab.ui.setText;
+
+    let isSeries = true;
+    let currentSpeed = 1.0;
+    let showChargeFlow = false;
+
+    let N = 2;
+    let R_vals = [2, 5];
+    let P = { emf: 12, req: 7, iTotal: 1.71, v: [], i: [], p: [] };
+
+    let eAcc = [], tAcc = [];
+    let sceneBuildTimer = null;
+
+    const ui = {
+        btnSeries: el('btn-series'), btnParallel: el('btn-parallel'),
+        sEmf: el('slider-emf'), vEmf: el('val-emf'),
+        btnAddR: el('btn-add-r'), btnSubR: el('btn-sub-r'),
+        rContainer: el('resistors-container'), mContainer: el('meters-container'),
+        expText: el('exp-text')
+    };
+
+    const speedBtns = document.querySelectorAll('#speed-controls .dir-btn');
+    speedBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            speedBtns.forEach(b => b.classList.remove('active')); btn.classList.add('active');
+            currentSpeed = parseFloat(btn.dataset.speed); gsap.globalTimeline.timeScale(currentSpeed);
         });
+    });
 
-        const speedBtns = document.querySelectorAll('#speed-controls .btn');
-        speedBtns.forEach(btn => {
-            btn.addEventListener('click', () => {
-                speedBtns.forEach(b => b.classList.remove('active')); btn.classList.add('active');
-                currentSpeed = parseFloat(btn.dataset.speed); gsap.globalTimeline.timeScale(currentSpeed); 
-            });
-        });
+    el('row-charge').addEventListener('click', () => {
+        showChargeFlow = !showChargeFlow;
+        el('opt-charge').classList.toggle('on', showChargeFlow);
+        if (activeElements.flowLabels) activeElements.flowLabels.forEach(lbl => lbl.visible = showChargeFlow);
+    });
 
-        ui.tChargeFlow.addEventListener('change', (e) => {
-            showChargeFlow = e.target.checked;
-            if (activeElements.flowLabels) activeElements.flowLabels.forEach(lbl => lbl.visible = showChargeFlow);
-        });
-
-        function initUIStructure() {
-            ui.rContainer.innerHTML = '';
-            R_vals.forEach((r, i) => {
-                const num = i + 1;
-                ui.rContainer.innerHTML += `
-                    <label><span>🏢 超市 ${num} (R<sub>${num}</sub>) &rarr; <span style="color:#ffff00; text-shadow: 0 0 5px rgba(255,255,0,0.5);" id="lbl-time-${i}">單箱卸貨 ${ (0.02 * r).toFixed(2) }s</span></span> <span id="val-r${i}">${r} &Omega;</span></label>
+    function initUIStructure() {
+        ui.rContainer.innerHTML = '';
+        R_vals.forEach((r, i) => {
+            const num = i + 1;
+            ui.rContainer.innerHTML += `
+                <div class="slider-row">
+                    <div class="slider-head">
+                        <label>🏢 ${t('panel.res.market')} ${num} (R<sub>${num}</sub>)</label>
+                        <span class="val" id="val-r${i}">${r} &Omega;</span>
+                    </div>
                     <input type="range" class="slider-r" data-idx="${i}" id="slider-r${i}" min="1" max="10" value="${r}" step="1">
-                `;
-            });
-
-            document.querySelectorAll('.slider-r').forEach(slider => {
-                slider.addEventListener('input', (e) => {
-                    R_vals[e.target.dataset.idx] = parseFloat(e.target.value);
-                    updatePhysics(); 
-                });
-            });
-        }
-
-        ui.btnAddR.addEventListener('click', () => { if (N < 5) { N++; R_vals.push(4); initUIStructure(); updatePhysics(); } });
-        ui.btnSubR.addEventListener('click', () => { if (N > 1) { N--; R_vals.pop(); initUIStructure(); updatePhysics(); } });
-
-        const container = document.getElementById('canvas-container');
-        const scene = new THREE.Scene(); 
-        // 更明亮清爽的背景色
-        scene.background = new THREE.Color(0xebf4fa); 
-        const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
-        camera.position.set(0, 85, 100); 
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        
-        renderer.setSize(container.clientWidth, container.clientHeight, false);
-        renderer.setPixelRatio(window.devicePixelRatio);
-        renderer.toneMapping = THREE.ACESFilmicToneMapping; 
-        renderer.toneMappingExposure = 1.2; // 增加曝光讓顏色更亮
-        renderer.shadowMap.enabled = true;
-        container.appendChild(renderer.domElement);
-        const controls = new THREE.OrbitControls(camera, renderer.domElement); controls.enableDamping = true; controls.target.set(0, 0, 0);
-
-        // 增強環境光與方向光
-        scene.add(new THREE.AmbientLight(0xffffff, 0.9));
-        const dirLight = new THREE.DirectionalLight(0xffffff, 0.9); dirLight.position.set(10, 40, 20); dirLight.castShadow = true; scene.add(dirLight);
-
-        const circuitGroup = new THREE.Group(); scene.add(circuitGroup);
-        const analogyGroup = new THREE.Group(); scene.add(analogyGroup);
-        let activeElements = { electrons: [], trucks: [], floatingBoxes: [], circuitPaths: [], roadPaths: [], flowLabels: [] };
-
-        function createBatteryTexture() {
-            const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 512; const ctx = canvas.getContext('2d');
-            const grd = ctx.createLinearGradient(0, 0, 0, 512); 
-            // 更鮮豔的電池顏色
-            grd.addColorStop(0, "#ff3300"); grd.addColorStop(0.2, "#ff8800"); grd.addColorStop(0.25, "#1a2a3a"); grd.addColorStop(1, "#000000");
-            ctx.fillStyle = grd; ctx.fillRect(0, 0, 512, 512);
-            ctx.fillStyle = '#ffffff'; ctx.font = 'bold 80px "Segoe UI"'; ctx.textAlign = 'center'; ctx.fillText("+", 256, 80);
-            ctx.font = 'bold 70px "Segoe UI"'; ctx.fillText("POWER", 256, 280); ctx.fillText("CELL", 256, 360); ctx.font = 'bold 80px "Segoe UI"'; ctx.fillText("-", 256, 480);
-            return new THREE.CanvasTexture(canvas);
-        }
-
-        function createBuildingMaterials(type) {
-            const canvas = document.createElement('canvas'); canvas.width = 1024; canvas.height = 512; const ctx = canvas.getContext('2d');
-            if (type === 'warehouse') {
-                // 更亮的貨倉配色
-                ctx.fillStyle = '#5fa8d3'; ctx.fillRect(0, 0, 1024, 512); 
-                ctx.strokeStyle = '#87c3e5'; ctx.lineWidth = 4; for(let i=0; i<1024; i+=30) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,512); ctx.stroke(); }
-                ctx.fillStyle = '#1d5885'; ctx.fillRect(80, 200, 220, 312); ctx.fillRect(390, 200, 220, 312); ctx.fillRect(700, 200, 220, 312); 
-                ctx.fillStyle = '#ffea00'; ctx.fillRect(80, 150, 220, 50); ctx.fillRect(390, 150, 220, 50); ctx.fillRect(700, 150, 220, 50); 
-                ctx.fillStyle = '#0d2b45'; ctx.fillRect(212, 30, 600, 100); 
-                ctx.fillStyle = '#ffcc00'; ctx.font = 'bold 70px "Segoe UI"'; ctx.textAlign = 'center'; ctx.fillText("物流貨倉", 512, 105);
-            } else {
-                // 更亮的超市配色
-                ctx.fillStyle = '#dce8f2'; ctx.fillRect(0, 0, 1024, 512); 
-                ctx.fillStyle = '#00ffff'; ctx.fillRect(50, 150, 924, 362); ctx.strokeStyle = '#111111'; ctx.lineWidth = 10; ctx.strokeRect(50, 150, 924, 362);
-                for(let i=50; i<950; i+=150) { ctx.beginPath(); ctx.moveTo(i, 150); ctx.lineTo(i, 512); ctx.stroke(); } 
-                ctx.fillStyle = '#ff0033'; ctx.fillRect(0, 0, 1024, 120); 
-                ctx.fillStyle = '#ffffff'; ctx.font = 'bold 80px "Segoe UI"'; ctx.textAlign = 'center'; ctx.fillText("超級市場", 512, 95);
-            }
-            return [
-                new THREE.MeshLambertMaterial({ color: type === 'warehouse' ? 0x5fa8d3 : 0xdce8f2 }), new THREE.MeshLambertMaterial({ color: type === 'warehouse' ? 0x5fa8d3 : 0xdce8f2 }),
-                new THREE.MeshLambertMaterial({ color: type === 'warehouse' ? 0x5fa8d3 : 0xdce8f2 }), new THREE.MeshLambertMaterial({ color: type === 'warehouse' ? 0x5fa8d3 : 0xdce8f2 }),
-                new THREE.MeshLambertMaterial({ map: new THREE.CanvasTexture(canvas) }), new THREE.MeshLambertMaterial({ color: type === 'warehouse' ? 0x5fa8d3 : 0xdce8f2 })
-            ]; 
-        }
-
-        const batTexture = createBatteryTexture();
-        const warehouseMats = createBuildingMaterials('warehouse');
-        const supermarketMats = createBuildingMaterials('supermarket');
-        // 更深邃的馬路顏色以凸顯貨車
-        const roadMat = new THREE.MeshLambertMaterial({ color: 0x203547 }); 
-
-        function createTextSprite(message, color = "#ffffff", scale = 1) {
-            const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 128; const ctx = canvas.getContext('2d');
-            ctx.font = "Bold 52px 'Segoe UI', Arial"; ctx.textAlign = "center"; ctx.lineWidth = 8; ctx.strokeStyle = '#111'; ctx.strokeText(message, 256, 80);
-            ctx.fillStyle = color; ctx.fillText(message, 256, 80);
-            const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), transparent: true }));
-            sprite.scale.set(6 * scale, 1.5 * scale, 1); return sprite;
-        }
-
-        function createDigitalLabel(text, color) {
-            const canvas = document.createElement('canvas'); canvas.width = 300; canvas.height = 80; const ctx = canvas.getContext('2d');
-            ctx.fillStyle = 'rgba(10, 15, 20, 0.9)'; ctx.fillRect(0, 0, 300, 80); ctx.strokeStyle = color; ctx.lineWidth = 4; ctx.strokeRect(2, 2, 296, 76);
-            ctx.fillStyle = color; ctx.font = "bold 32px 'Courier New', monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(text, 150, 40);
-            const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), transparent: true })); 
-            sprite.scale.set(4.5, 1.2, 1); return sprite;
-        }
-
-        function createFlowLabel(text, color) {
-            const canvas = document.createElement('canvas'); canvas.width = 500; canvas.height = 80; const ctx = canvas.getContext('2d');
-            ctx.fillStyle = 'rgba(20, 25, 30, 0.95)'; ctx.fillRect(0, 0, 500, 80); ctx.strokeStyle = color; ctx.lineWidth = 4; ctx.strokeRect(2, 2, 496, 76);
-            ctx.fillStyle = color; ctx.font = "bold 30px 'Segoe UI', Courier, monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(text, 250, 42);
-            const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), transparent: true, depthTest: false })); 
-            sprite.scale.set(7.5, 1.2, 1); return sprite;
-        }
-
-        // 將物件定位後回傳物件本身（修正：避免誤把 position.copy() 回傳的 Vector3 傳入 .add()）
-        function placeAt(obj, vec) { obj.position.copy(vec); return obj; }
-
-        function addDualFlowLabel(posLeft, posRight, val, leftName, rightName) {
-            const lblLeft = createFlowLabel(`📍${leftName}: ${val.toFixed(2)} C/s`, '#ff2a55');
-            lblLeft.position.copy(posLeft); lblLeft.visible = showChargeFlow;
-            circuitGroup.add(lblLeft); activeElements.flowLabels.push(lblLeft);
-
-            const lblRight = createFlowLabel(`📍${rightName}: ${val.toFixed(2)} 架/秒`, '#ffcc00');
-            lblRight.position.copy(posRight); lblRight.visible = showChargeFlow;
-            analogyGroup.add(lblRight); activeElements.flowLabels.push(lblRight);
-        }
-
-        function updateDOMValues() {
-            ui.vEmf.innerText = `${P.emf} V`;
-            R_vals.forEach((r, i) => {
-                const timeLbl = document.getElementById(`lbl-time-${i}`);
-                const valLbl = document.getElementById(`val-r${i}`);
-                if(timeLbl) timeLbl.innerText = `單箱卸貨 ${ (0.02 * r).toFixed(2) }s`;
-                if(valLbl) valLbl.innerHTML = `${r} &Omega;`;
-            });
-
-            let metersHtml = `
-                <div class="meter-readout">
-                    <div class="readout-box"><span class="readout-label">總車流量 (I)</span><span style="color:#ff2a55;">${P.iTotal.toFixed(2)} A</span></div>
-                    <div class="readout-box"><span class="readout-label">貨倉總裝貨量 (&epsilon;)</span><span style="color:#ffffff;">${P.emf.toFixed(2)} V</span></div>
+                    <div class="mode-label" id="lbl-time-${i}">${t('panel.res.unload', { s: (0.02 * r).toFixed(2) })}</div>
                 </div>
             `;
-            R_vals.forEach((r, i) => {
-                const num = i + 1;
-                metersHtml += `
-                    <div class="meter-readout" style="background: #161b22;">
-                        <div class="readout-box"><span class="readout-label">超市${num} 卸貨量 (V<sub>${num}</sub>)</span><span style="color:#ffcc00;">${P.v[i].toFixed(2)} V</span></div>
-                        <div class="readout-box"><span class="readout-label">超市${num} 分流 (I<sub>${num}</sub>)</span><span style="color:#ff2a55;">${P.i[i].toFixed(2)} A</span></div>
-                    </div>
-                `;
+        });
+
+        document.querySelectorAll('.slider-r').forEach(slider => {
+            slider.addEventListener('input', (e) => {
+                R_vals[e.target.dataset.idx] = parseFloat(e.target.value);
+                updatePhysics();
             });
-            ui.mContainer.innerHTML = metersHtml;
+        });
+    }
+
+    ui.btnAddR.addEventListener('click', () => { if (N < 5) { N++; R_vals.push(4); initUIStructure(); updatePhysics(); } });
+    ui.btnSubR.addEventListener('click', () => { if (N > 1) { N--; R_vals.pop(); initUIStructure(); updatePhysics(); } });
+
+    /* ── 3D 場景底座（共用 sim3d.create 樣板；原頁 initSim 常數逐字保留：
+          背景 0xebf4fa、fov 45、far 1000、無上限 pixelRatio、ACES 色調、
+          陰影、原亮度雙燈、無網格）── */
+    var ctx = PhysLab.sim3d.create(el('view3d'), {
+        background: 0xebf4fa, fov: 45, near: 0.1, far: 1000,
+        pixelRatio: window.devicePixelRatio,
+        views: { default: { pos: [0, 85, 100], tgt: [0, 0, 0] } },
+        lights: false, grid: false
+    });
+    var scene = ctx.scene, camera = ctx.camera, renderer = ctx.renderer, controls = ctx.controls;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.2; // 增加曝光讓顏色更亮
+    renderer.shadowMap.enabled = true;
+    controls.target.set(0, 0, 0);
+
+    // 增強環境光與方向光
+    scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.9); dirLight.position.set(10, 40, 20); dirLight.castShadow = true; scene.add(dirLight);
+
+    const circuitGroup = new THREE.Group(); scene.add(circuitGroup);
+    const analogyGroup = new THREE.Group(); scene.add(analogyGroup);
+    let activeElements = { electrons: [], trucks: [], floatingBoxes: [], circuitPaths: [], roadPaths: [], flowLabels: [] };
+
+    function createBatteryTexture() {
+        const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 512; const ctx = canvas.getContext('2d');
+        const grd = ctx.createLinearGradient(0, 0, 0, 512);
+        // 更鮮豔的電池顏色
+        grd.addColorStop(0, "#ff3300"); grd.addColorStop(0.2, "#ff8800"); grd.addColorStop(0.25, "#1a2a3a"); grd.addColorStop(1, "#000000");
+        ctx.fillStyle = grd; ctx.fillRect(0, 0, 512, 512);
+        ctx.fillStyle = '#ffffff'; ctx.font = 'bold 80px "Segoe UI"'; ctx.textAlign = 'center'; ctx.fillText("+", 256, 80);
+        ctx.font = 'bold 70px "Segoe UI"'; ctx.fillText("POWER", 256, 280); ctx.fillText("CELL", 256, 360); ctx.font = 'bold 80px "Segoe UI"'; ctx.fillText("-", 256, 480);
+        return new THREE.CanvasTexture(canvas);
+    }
+
+    function createBuildingMaterials(type) {
+        const canvas = document.createElement('canvas'); canvas.width = 1024; canvas.height = 512; const ctx = canvas.getContext('2d');
+        if (type === 'warehouse') {
+            // 更亮的貨倉配色
+            ctx.fillStyle = '#5fa8d3'; ctx.fillRect(0, 0, 1024, 512);
+            ctx.strokeStyle = '#87c3e5'; ctx.lineWidth = 4; for(let i=0; i<1024; i+=30) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,512); ctx.stroke(); }
+            ctx.fillStyle = '#1d5885'; ctx.fillRect(80, 200, 220, 312); ctx.fillRect(390, 200, 220, 312); ctx.fillRect(700, 200, 220, 312);
+            ctx.fillStyle = '#ffea00'; ctx.fillRect(80, 150, 220, 50); ctx.fillRect(390, 150, 220, 50); ctx.fillRect(700, 150, 220, 50);
+            ctx.fillStyle = '#0d2b45'; ctx.fillRect(212, 30, 600, 100);
+            ctx.fillStyle = '#ffcc00'; ctx.font = 'bold 70px "Segoe UI"'; ctx.textAlign = 'center'; ctx.fillText(t('tex.warehouse'), 512, 105);
+        } else {
+            // 更亮的超市配色
+            ctx.fillStyle = '#dce8f2'; ctx.fillRect(0, 0, 1024, 512);
+            ctx.fillStyle = '#00ffff'; ctx.fillRect(50, 150, 924, 362); ctx.strokeStyle = '#111111'; ctx.lineWidth = 10; ctx.strokeRect(50, 150, 924, 362);
+            for(let i=50; i<950; i+=150) { ctx.beginPath(); ctx.moveTo(i, 150); ctx.lineTo(i, 512); ctx.stroke(); }
+            ctx.fillStyle = '#ff0033'; ctx.fillRect(0, 0, 1024, 120);
+            ctx.fillStyle = '#ffffff'; ctx.font = 'bold 80px "Segoe UI"'; ctx.textAlign = 'center'; ctx.fillText(t('tex.supermarket'), 512, 95);
         }
+        return [
+            new THREE.MeshLambertMaterial({ color: type === 'warehouse' ? 0x5fa8d3 : 0xdce8f2 }), new THREE.MeshLambertMaterial({ color: type === 'warehouse' ? 0x5fa8d3 : 0xdce8f2 }),
+            new THREE.MeshLambertMaterial({ color: type === 'warehouse' ? 0x5fa8d3 : 0xdce8f2 }), new THREE.MeshLambertMaterial({ color: type === 'warehouse' ? 0x5fa8d3 : 0xdce8f2 }),
+            new THREE.MeshLambertMaterial({ map: new THREE.CanvasTexture(canvas) }), new THREE.MeshLambertMaterial({ color: type === 'warehouse' ? 0x5fa8d3 : 0xdce8f2 })
+        ];
+    }
 
-        function updatePhysics() {
-            P.emf = parseFloat(ui.sEmf.value);
-            P.v = []; P.i = []; P.p = [];
+    const batTexture = createBatteryTexture();
+    let warehouseMats = createBuildingMaterials('warehouse');
+    let supermarketMats = createBuildingMaterials('supermarket');
+    // 語言切換時重建含中文的貼圖
+    function rebuildBuildingMaterials() {
+        warehouseMats = createBuildingMaterials('warehouse');
+        supermarketMats = createBuildingMaterials('supermarket');
+    }
+    // 更深邃的馬路顏色以凸顯貨車
+    const roadMat = new THREE.MeshLambertMaterial({ color: 0x203547 });
 
-            if (isSeries) {
-                let sumR = R_vals.reduce((a, b) => a + b, 0);
-                P.req = sumR; P.iTotal = P.emf / sumR;
-                R_vals.forEach((r, idx) => {
-                    P.i[idx] = P.iTotal; P.v[idx] = P.iTotal * r; P.p[idx] = P.v[idx] * P.i[idx];
-                });
-                ui.expText.innerHTML = `<strong>【嚴格理想電路驗證】</strong><br>導線電阻為零，因此電子的電量 (V) <strong>在純導線上移動時絕對不會下降</strong>。<br>👉 電量數值的扣減只會發生在穿過阻抗元件（電阻器 / 超市）的瞬間！`;
-            } else {
-                let invR = R_vals.reduce((a, b) => a + (1 / b), 0);
-                P.req = 1 / invR; P.iTotal = P.emf / P.req;
-                R_vals.forEach((r, idx) => {
-                    P.v[idx] = P.emf; P.i[idx] = P.emf / r; P.p[idx] = P.emf * P.i[idx];
-                });
-                ui.expText.innerHTML = `<strong>【並聯理想導線定律】</strong><br>主幹道分流至各分支時，電勢並未發生消耗。電子在進入各自支路的電阻器之前，都維持著滿載的電勢能！<br>👉 觀察電子到達不同分支，只有進入電阻本體時才會歸零。`;
-            }
-            
-            updateDOMValues();
-            eAcc = new Array(N).fill(0); tAcc = new Array(N).fill(0);
-            
-            if(sceneBuildTimer) clearTimeout(sceneBuildTimer);
-            sceneBuildTimer = setTimeout(() => {
-                buildScene();
-            }, 50); 
-        }
+    function createTextSprite(message, color = "#ffffff", scale = 1) {
+        const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 128; const ctx = canvas.getContext('2d');
+        ctx.font = "Bold 52px 'Segoe UI', Arial"; ctx.textAlign = "center"; ctx.lineWidth = 8; ctx.strokeStyle = '#111'; ctx.strokeText(message, 256, 80);
+        ctx.fillStyle = color; ctx.fillText(message, 256, 80);
+        const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), transparent: true }));
+        sprite.scale.set(6 * scale, 1.5 * scale, 1); return sprite;
+    }
 
-        function drawWireSegment(pts, material) {
-            for(let i=1; i<pts.length; i++) {
-                const p1 = pts[i-1]; const p2 = pts[i]; const length = p1.distanceTo(p2); if(length < 0.1) continue;
-                const cylGeo = new THREE.CylinderGeometry(0.15, 0.15, length, 16); cylGeo.rotateX(Math.PI / 2);
-                const cyl = new THREE.Mesh(cylGeo, material); cyl.position.copy(p1).lerp(p2, 0.5); cyl.lookAt(p2); circuitGroup.add(cyl);
-                const sphere = new THREE.Mesh(new THREE.SphereGeometry(0.15, 16, 16), material); sphere.position.copy(p1); circuitGroup.add(sphere);
-                if (i === pts.length - 1) { const sEnd = new THREE.Mesh(new THREE.SphereGeometry(0.15, 16, 16), material); sEnd.position.copy(p2); circuitGroup.add(sEnd); }
-            }
-        }
+    function createDigitalLabel(text, color) {
+        const canvas = document.createElement('canvas'); canvas.width = 300; canvas.height = 80; const ctx = canvas.getContext('2d');
+        ctx.fillStyle = 'rgba(10, 15, 20, 0.9)'; ctx.fillRect(0, 0, 300, 80); ctx.strokeStyle = color; ctx.lineWidth = 4; ctx.strokeRect(2, 2, 296, 76);
+        ctx.fillStyle = color; ctx.font = "bold 32px 'Courier New', monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(text, 150, 40);
+        const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), transparent: true }));
+        sprite.scale.set(4.5, 1.2, 1); return sprite;
+    }
 
-        function drawRoadSegment(pts, yOffset = 0.05) { 
-            for(let i=1; i<pts.length; i++) {
-                const p1 = pts[i-1]; const p2 = pts[i]; const length = p1.distanceTo(p2); if(length < 0.1) continue;
-                const roadGeo = new THREE.PlaneGeometry(3.0, length + 3.0); roadGeo.rotateX(-Math.PI / 2); 
-                const road = new THREE.Mesh(roadGeo, roadMat); road.position.copy(p1).lerp(p2, 0.5); road.position.y = yOffset; 
-                road.lookAt(new THREE.Vector3(p2.x, road.position.y, p2.z)); analogyGroup.add(road); 
-            }
-        }
+    function createFlowLabel(text, color) {
+        const canvas = document.createElement('canvas'); canvas.width = 500; canvas.height = 80; const ctx = canvas.getContext('2d');
+        ctx.fillStyle = 'rgba(20, 25, 30, 0.95)'; ctx.fillRect(0, 0, 500, 80); ctx.strokeStyle = color; ctx.lineWidth = 4; ctx.strokeRect(2, 2, 496, 76);
+        ctx.fillStyle = color; ctx.font = "bold 30px 'Segoe UI', Courier, monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(text, 250, 42);
+        const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), transparent: true, depthTest: false }));
+        sprite.scale.set(7.5, 1.2, 1); return sprite;
+    }
 
-        function buildScene() {
-            activeElements.electrons.forEach(e => { e.tl.kill(); scene.remove(e.mesh); if(e.tex) e.tex.dispose(); });
-            activeElements.trucks.forEach(t => { t.tl.kill(); scene.remove(t.group); t.cargoBoxes.forEach(b => {scene.remove(b); b.material.dispose(); b.geometry.dispose();}); if(t.tTex) t.tTex.dispose(); });
-            activeElements.floatingBoxes.forEach(b => { gsap.killTweensOf(b.position); gsap.killTweensOf(b.material); scene.remove(b); b.material.dispose(); b.geometry.dispose(); });
-            if (activeElements.flowLabels) activeElements.flowLabels.forEach(lbl => { circuitGroup.remove(lbl); analogyGroup.remove(lbl); if(lbl.material.map) lbl.material.map.dispose(); lbl.material.dispose(); }); 
-            
-            circuitGroup.clear(); analogyGroup.clear();
-            activeElements = { electrons: [], trucks: [], floatingBoxes: [], circuitPaths: [], roadPaths: [], flowLabels: [] };
+    // 將物件定位後回傳物件本身（修正：避免誤把 position.copy() 回傳的 Vector3 傳入 .add()）
+    function placeAt(obj, vec) { obj.position.copy(vec); return obj; }
 
-            const cOffsetX = -24; const aOffsetX = 24; 
-            const p = (x,y,z) => new THREE.Vector3(cOffsetX+x, y, z); const rp = (x,y,z) => new THREE.Vector3(aOffsetX+x, y, z);
-            
-            let xLimit = 22; 
-            let maxZ = isSeries ? 6 : Math.max(6, -2 + 12 * (N - 1));
-            let centerZ = isSeries ? 0 : maxZ / 2;
+    function addDualFlowLabel(posLeft, posRight, val, leftName, rightName) {
+        const lblLeft = createFlowLabel(`📍${leftName}: ${val.toFixed(2)} C/s`, '#ff2a55');
+        lblLeft.position.copy(posLeft); lblLeft.visible = showChargeFlow;
+        circuitGroup.add(lblLeft); activeElements.flowLabels.push(lblLeft);
 
-            gsap.to(camera.position, { z: 100 + centerZ * 0.4, y: 85 + centerZ * 0.2, duration: 1.2, ease: "power2.out" });
-            gsap.to(controls.target, { z: centerZ, duration: 1.2, ease: "power2.out" });
+        const lblRight = createFlowLabel(`📍${rightName}: ${val.toFixed(2)} ${t('scene.perTruck')}`, '#ffcc00');
+        lblRight.position.copy(posRight); lblRight.visible = showChargeFlow;
+        analogyGroup.add(lblRight); activeElements.flowLabels.push(lblRight);
+    }
 
-            const batMesh = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 4.5, 32), new THREE.MeshLambertMaterial({ map: batTexture }));
-            batMesh.position.copy(p(0, 1.75, -14)); batMesh.rotation.y = Math.PI/2; circuitGroup.add(batMesh);
-            const batTop = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.6, 16), new THREE.MeshLambertMaterial({color: 0xcccccc}));
-            batTop.position.set(0, 2.4, 0); batMesh.add(batTop);
-            
-            circuitGroup.add(placeAt(createTextSprite("電源", "#ff3333", 0.9), p(0, 5.5, -14)));
-            circuitGroup.add(placeAt(createDigitalLabel(`ε = ${P.emf.toFixed(1)} V`, "#ff3333"), p(-3.5, 2, -14)));
+    function updateDOMValues() {
+        ui.vEmf.innerText = `${P.emf} V`;
+        R_vals.forEach((r, i) => {
+            const timeLbl = document.getElementById(`lbl-time-${i}`);
+            const valLbl = document.getElementById(`val-r${i}`);
+            if(timeLbl) timeLbl.innerText = t('panel.res.unload', { s: (0.02 * r).toFixed(2) });
+            if(valLbl) valLbl.innerHTML = `${r} &Omega;`;
+        });
 
-            // 讓導線帶有更亮的金屬光澤感
-            const wireMat = new THREE.MeshLambertMaterial({color: 0x5588aa}); 
-            function addResistorObj(pos, label) {
-                // 更純粹閃亮的黃金電阻
-                const r = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 3, 16), new THREE.MeshLambertMaterial({color: 0xffd700})); r.rotation.z = Math.PI/2; r.position.copy(pos); circuitGroup.add(r);
-                circuitGroup.add(placeAt(createTextSprite(label, "#ffcc00", 0.8), pos.clone().add(new THREE.Vector3(0, 1.5, 0))));
-            }
+        let metersHtml = `
+            <div class="meter-readout">
+                <div class="readout-box"><span class="readout-label">${t('meter.totalCurrent')}</span><span style="color:#ff2a55;">${P.iTotal.toFixed(2)} A</span></div>
+                <div class="readout-box"><span class="readout-label">${t('meter.emf')}</span><span style="color:#ffffff;">${P.emf.toFixed(2)} V</span></div>
+            </div>
+        `;
+        R_vals.forEach((r, i) => {
+            const num = i + 1;
+            metersHtml += `
+                <div class="meter-readout" style="background: #161b22;">
+                    <div class="readout-box"><span class="readout-label">${t('meter.marketV', { n: num })} (V<sub>${num}</sub>)</span><span style="color:#ffcc00;">${P.v[i].toFixed(2)} V</span></div>
+                    <div class="readout-box"><span class="readout-label">${t('meter.marketI', { n: num })} (I<sub>${num}</sub>)</span><span style="color:#ff2a55;">${P.i[i].toFixed(2)} A</span></div>
+                </div>
+            `;
+        });
+        ui.mContainer.innerHTML = metersHtml;
 
-            let s_x = []; 
-            if (N === 1) s_x = [0];
-            else {
-                let xStart = 16;
-                for(let i=0; i<N; i++) s_x.push(xStart - (xStart * 2 / (N - 1)) * i);
-            }
+        setText('status-badge', t(isSeries ? 'status.series' : 'status.parallel', { r: P.req.toFixed(2) }));
+    }
 
-            let p_z = []; 
-            for(let i=0; i<N; i++) p_z.push(-2 + 12 * i); 
+    function updatePhysics() {
+        P.emf = parseFloat(ui.sEmf.value);
+        P.v = []; P.i = []; P.p = [];
 
-            if (isSeries) {
-                const pts = [ p(0,0,-14), p(xLimit,0,-14), p(xLimit,0,6) ];
-                s_x.forEach(x => {
-                    pts.push(p(x + 1.5, 0, 6)); 
-                    pts.push(p(x - 1.5, 0, 6)); 
-                });
-                pts.push(p(-xLimit,0,6), p(-xLimit,0,-14), p(0,0,-14));
-                activeElements.circuitPaths.push({ pts: pts, weight: 1 });
-                
-                drawWireSegment([ p(0,0,-14), p(xLimit,0,-14), p(xLimit,0,6), p(-xLimit,0,6), p(-xLimit,0,-14), p(0,0,-14) ], wireMat);
-                s_x.forEach((x, i) => {
-                    addResistorObj(p(x, 0, 6), `R${i+1}`);
-                    circuitGroup.add(placeAt(createDigitalLabel(`V${i+1} = ${P.v[i].toFixed(1)} V`, "#ffcc00"), p(x, 3.5, 6)));
-                });
-
-                circuitGroup.add(placeAt(createDigitalLabel(`I = ${P.iTotal.toFixed(2)} A`, "#00ccff"), p(4, 1.5, -14)));
-                addDualFlowLabel(p(14, 1.5, -14), rp(14, 1.5, -14), P.iTotal, "出發總電荷", "出發總車流");
-            } else {
-                drawWireSegment([ p(0,0,-14), p(xLimit,0,-14), p(xLimit,0,-2) ], wireMat); 
-                if (N > 1) { drawWireSegment([ p(xLimit,0,-2), p(xLimit,0,maxZ) ], wireMat); drawWireSegment([ p(-xLimit,0,-2), p(-xLimit,0,maxZ) ], wireMat); }
-                drawWireSegment([ p(-xLimit,0,-2), p(-xLimit,0,-14), p(0,0,-14) ], wireMat);
-
-                p_z.forEach((z, i) => {
-                    const ptsA = [ p(0,0,-14), p(xLimit,0,-14), p(xLimit,0,z), p(1.5,0,z), p(-1.5,0,z), p(-xLimit,0,z), p(-xLimit,0,-14), p(0,0,-14) ];
-                    activeElements.circuitPaths.push({ pts: ptsA, weight: P.i[i] / P.iTotal });
-                    drawWireSegment([ p(xLimit,0,z), p(-xLimit,0,z) ], wireMat); 
-                    addResistorObj(p(0, 0, z), `R${i+1}`);
-                    circuitGroup.add(placeAt(createDigitalLabel(`V${i+1} = ${P.v[i].toFixed(1)} V`, "#ffcc00"), p(0, 3.5, z)));
-                    addDualFlowLabel(p(8, 1.5, z), rp(8, 1.5, z), P.i[i], `支路${i+1}電荷`, `支路${i+1}車流`);
-                });
-                circuitGroup.add(placeAt(createDigitalLabel(`I總 = ${P.iTotal.toFixed(2)} A`, "#00ccff"), p(4, 1.5, -14)));
-                addDualFlowLabel(p(14, 1.5, -14), rp(14, 1.5, -14), P.iTotal, "主幹總電荷", "主幹總車流");
-            }
-
-            const logCenter = new THREE.Mesh(new THREE.BoxGeometry(10, 6, 4), warehouseMats);
-            logCenter.position.copy(rp(0, 3, -17)); analogyGroup.add(logCenter);
-            analogyGroup.add(placeAt(createTextSprite("🏭 電源 (物流貨倉)", "#00ccff"), logCenter.position.clone().add(new THREE.Vector3(0, 4.5, 0))));
-
-            function addSupermarket(pos, label) {
-                const sm = new THREE.Mesh(new THREE.BoxGeometry(6, 4, 3), supermarketMats);
-                sm.position.copy(pos); sm.position.y = 2; analogyGroup.add(sm);
-                analogyGroup.add(placeAt(createTextSprite(label, "#ffaa00"), pos.clone().add(new THREE.Vector3(0, 4.5, 0))));
-            }
-
-            if (isSeries) {
-                const rPts = [ rp(0,0,-14), rp(xLimit,0,-14), rp(xLimit,0,6) ]; s_x.forEach(x => rPts.push(rp(x,0,6))); rPts.push(rp(-xLimit,0,6), rp(-xLimit,0,-14), rp(0,0,-14));
-                activeElements.roadPaths.push({ pts: rPts, weight: 1, type: 'series' }); 
-                drawRoadSegment([ rp(0,0,-14), rp(xLimit,0,-14), rp(xLimit,0,6), rp(-xLimit,0,6), rp(-xLimit,0,-14), rp(0,0,-14) ], 0.05);
-                s_x.forEach((x, i) => addSupermarket(rp(x, 0, 2.5), `超市 ${i+1} (R${i+1})`));
-            } else {
-                drawRoadSegment([ rp(0,0,-14), rp(xLimit,0,-14), rp(xLimit,0,-2) ], 0.05);
-                if(N > 1) { drawRoadSegment([ rp(xLimit,0,-2), rp(xLimit,0,maxZ) ], 0.05); drawRoadSegment([ rp(-xLimit,0,-2), rp(-xLimit,0,maxZ) ], 0.05); }
-                drawRoadSegment([ rp(-xLimit,0,-2), rp(-xLimit,0,-14), rp(0,0,-14) ], 0.05);
-                
-                p_z.forEach((z, i) => {
-                    const rPts = [ rp(0,0,-14), rp(xLimit,0,-14), rp(xLimit,0,z), rp(0,0,z), rp(-xLimit,0,z), rp(-xLimit,0,-14), rp(0,0,-14) ];
-                    activeElements.roadPaths.push({ pts: rPts, weight: P.i[i] / P.iTotal, type: `para${i}` });
-                    drawRoadSegment([ rp(xLimit,0,z), rp(-xLimit,0,z) ], 0.04);
-                    addSupermarket(rp(0, 0, z - 3.5), `超市 ${i+1} (R${i+1})`);
-                });
-            }
-        }
-
-        // 極致亮青色的電子
-        const electronMat = new THREE.MeshLambertMaterial({ color: 0x00e5ff }); const electronGeo = new THREE.SphereGeometry(0.35, 16, 16);
-        // 高飽和純黃色的貨物
-        const cargoGeo = new THREE.BoxGeometry(0.4, 0.4, 0.4); const cargoMatBase = new THREE.MeshLambertMaterial({color: 0xffea00});
-
-        function spawnElectron(pathIdx) {
-            const cPath = activeElements.circuitPaths[pathIdx].pts; 
-            const electron = new THREE.Mesh(electronGeo, electronMat); scene.add(electron); electron.position.copy(cPath[0]);
-            
-            const eCanv = document.createElement('canvas'); eCanv.width = 160; eCanv.height = 80; const eCtx = eCanv.getContext('2d');
-            const eTex = new THREE.CanvasTexture(eCanv);
-            const eSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: eTex, transparent: true, depthTest: false }));
-            eSprite.scale.set(4.5, 2.25, 1); eSprite.position.set(0, 3.2, 0); electron.add(eSprite);
-
-            let eData = { val: P.emf }; 
-            function drawVal() {
-                eCtx.clearRect(0,0,160,80); eCtx.fillStyle = 'rgba(10, 15, 20, 0.9)'; eCtx.fillRect(0,0,160,80);
-                eCtx.strokeStyle = '#00ffaa'; eCtx.lineWidth = 4; eCtx.strokeRect(2,2,156,76);
-                eCtx.fillStyle = '#00ffaa'; eCtx.font = "bold 34px 'Segoe UI'"; eCtx.textAlign = "center";
-                eCtx.fillText(`⚡ ${eData.val.toFixed(1)} V`, 80, 52); eTex.needsUpdate = true;
-            }
-            drawVal(); 
-
-            const baseSpeed = 10 + (P.iTotal * 4.0); 
-            const eTl = gsap.timeline({ onComplete: () => { scene.remove(electron); eTex.dispose(); activeElements.electrons = activeElements.electrons.filter(e => e.mesh !== electron); }});
-            activeElements.electrons.push({ mesh: electron, tl: eTl, tex: eTex });
-
-            for (let i = 1; i < cPath.length; i++) {
-                const dur = cPath[i-1].distanceTo(cPath[i]) / baseSpeed;
-                eTl.to(electron.position, { x: cPath[i].x, y: cPath[i].y, z: cPath[i].z, duration: dur, ease: "none" }, `move${i}`);
-
-                if (isSeries) {
-                    let j = (i - 4) / 2; 
-                    if (Number.isInteger(j) && j >= 0 && j < N) {
-                        let remainingVoltage = P.emf - P.v.slice(0, j + 1).reduce((a, b) => a + b, 0);
-                        if (remainingVoltage < 0.1) remainingVoltage = 0; 
-                        eTl.to(eData, { val: remainingVoltage, duration: dur, ease: "none", onUpdate: drawVal }, `move${i}`);
-                    }
-                } else {
-                    if (i === 4) { 
-                        eTl.to(eData, { val: 0, duration: dur, ease: "none", onUpdate: drawVal }, `move${i}`);
-                    } 
-                }
-            }
-        }
-
-        function createTruckMesh(cargoCount) {
-            const group = new THREE.Group();
-            const chassis = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.2, 4.0), new THREE.MeshLambertMaterial({color: 0x000000})); chassis.position.set(0, 0.4, 0); group.add(chassis);
-            // 鮮豔粉紅的車頭
-            const cab = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.2, 1.2), new THREE.MeshLambertMaterial({color: 0xff0044})); cab.position.set(0, 1.1, 1.4); 
-            const cabWindow = new THREE.Mesh(new THREE.BoxGeometry(1.62, 0.5, 0.6), new THREE.MeshLambertMaterial({color: 0x00ffff})); cabWindow.position.set(0, 1.2, 1.5);
-            const hlL = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.2, 0.1), new THREE.MeshBasicMaterial({color: 0xffffee})); hlL.position.set(-0.6, 0.8, 2.05);
-            const hlR = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.2, 0.1), new THREE.MeshBasicMaterial({color: 0xffffee})); hlR.position.set(0.6, 0.8, 2.05);
-            group.add(cab, cabWindow, hlL, hlR);
-            const bed = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.1, 2.6), new THREE.MeshLambertMaterial({color: 0x888888})); bed.position.set(0, 0.55, -0.7); group.add(bed);
-
-            const wheelGeo = new THREE.CylinderGeometry(0.35, 0.35, 0.25, 16); wheelGeo.rotateZ(Math.PI / 2); const wheelMat = new THREE.MeshLambertMaterial({color: 0x000000});
-            [[-0.9,0.35,1.2],[0.9,0.35,1.2],[-0.9,0.35,-0.4],[0.9,0.35,-0.4],[-0.9,0.35,-1.6],[0.9,0.35,-1.6]].forEach(pos => {
-                const wheel = new THREE.Mesh(wheelGeo, wheelMat); wheel.position.set(...pos); group.add(wheel);
+        if (isSeries) {
+            let sumR = R_vals.reduce((a, b) => a + b, 0);
+            P.req = sumR; P.iTotal = P.emf / sumR;
+            R_vals.forEach((r, idx) => {
+                P.i[idx] = P.iTotal; P.v[idx] = P.iTotal * r; P.p[idx] = P.v[idx] * P.i[idx];
             });
-            
-            const cargoBoxes = [];
-            for(let i=0; i<cargoCount; i++) {
-                const box = new THREE.Mesh(cargoGeo, cargoMatBase.clone()); 
-                const row = Math.floor(i / 6); const col = i % 6;
-                box.position.set((col%3)*0.45 - 0.45, 0.8 + row*0.45, Math.floor(col/3)*0.45 - 0.9);
-                group.add(box); cargoBoxes.push(box);
-            }
-
-            const tCanv = document.createElement('canvas'); tCanv.width = 160; tCanv.height = 80; const tCtx = tCanv.getContext('2d');
-            const tTex = new THREE.CanvasTexture(tCanv); const tSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tTex, transparent: true, depthTest: false }));
-            tSprite.scale.set(5.5, 2.75, 1); tSprite.position.set(0, 3.8, 0); group.add(tSprite);
-            group.scale.set(0.65, 0.65, 0.65);
-
-            const obj = { group, cargoBoxes, cargoCount, tCtx, tTex, tSprite };
-            obj.updateTruckLabel = function() {
-                tCtx.clearRect(0,0,160,80); tCtx.fillStyle = 'rgba(10, 15, 20, 0.9)'; tCtx.fillRect(0,0,160,80);
-                tCtx.strokeStyle = '#ffea00'; tCtx.lineWidth = 4; tCtx.strokeRect(2,2,156,76);
-                tCtx.fillStyle = '#ffea00'; tCtx.font = "bold 34px 'Segoe UI'"; tCtx.textAlign = "center";
-                tCtx.fillText(`📦 ${this.cargoCount}`, 80, 52); tTex.needsUpdate = true;
-            };
-            obj.updateTruckLabel(); return obj;
+            ui.expText.innerHTML = t('exp.series');
+        } else {
+            let invR = R_vals.reduce((a, b) => a + (1 / b), 0);
+            P.req = 1 / invR; P.iTotal = P.emf / P.req;
+            R_vals.forEach((r, idx) => {
+                P.v[idx] = P.emf; P.i[idx] = P.emf / r; P.p[idx] = P.emf * P.i[idx];
+            });
+            ui.expText.innerHTML = t('exp.parallel');
         }
 
-        function spawnTruck(pathIdx) {
-            const rPath = activeElements.roadPaths[pathIdx].pts;
-            const truckObj = createTruckMesh(Math.round(P.emf)); scene.add(truckObj.group); activeElements.trucks.push(truckObj);
-            truckObj.group.position.copy(rPath[0]);
-            
-            const tTl = gsap.timeline({ onComplete: () => { scene.remove(truckObj.group); truckObj.tTex.dispose(); activeElements.trucks = activeElements.trucks.filter(t => t.group !== truckObj.group); }});
-            truckObj.tl = tTl;
-            const baseSpeed = 12 + (P.iTotal * 3.0); 
+        updateDOMValues();
+        eAcc = new Array(N).fill(0); tAcc = new Array(N).fill(0);
 
-            for (let i = 1; i < rPath.length; i++) {
-                const dur = rPath[i-1].distanceTo(rPath[i]) / baseSpeed;
-                const dir = new THREE.Vector3().subVectors(rPath[i], rPath[i-1]).normalize(); const angle = Math.atan2(dir.x, dir.z);
-                tTl.to(truckObj.group.position, { x: rPath[i].x, y: rPath[i].y, z: rPath[i].z, duration: dur, ease: "none" }, `seq${i}`);
-                tTl.to(truckObj.group.rotation, { y: angle, duration: 0.1 }, `seq${i}`);
+        if(sceneBuildTimer) clearTimeout(sceneBuildTimer);
+        sceneBuildTimer = setTimeout(() => {
+            buildScene();
+        }, 50);
+    }
 
-                if (isSeries) {
-                    let rIdx = i - 3; 
-                    if (rIdx >= 0 && rIdx < N) {
-                        let currentR = R_vals[rIdx];
-                        let amount = Math.round(P.v[rIdx]);
-                        let interval = 0.02 * currentR;
-                        let flyDuration = 0.1 + (0.04 * currentR);
-                        let totalUnloadTime = (amount * interval) + flyDuration;
-                        
-                        tTl.call(() => unloadCargo(truckObj, amount, truckObj.group.position.x, truckObj.group.position.z + 2.5, currentR));
-                        tTl.to({}, {duration: totalUnloadTime}); 
-                    }
-                } else {
-                    if (i === 3) {
-                        let currentR = R_vals[pathIdx];
-                        let amount = Math.round(P.emf);
-                        let interval = 0.02 * currentR;
-                        let flyDuration = 0.1 + (0.04 * currentR);
-                        let totalUnloadTime = (amount * interval) + flyDuration;
-                        
-                        tTl.call(() => unloadCargo(truckObj, amount, truckObj.group.position.x, truckObj.group.position.z - 3.5, currentR));
-                        tTl.to({}, {duration: totalUnloadTime});
-                    }
-                }
-            }
+    function drawWireSegment(pts, material) {
+        for(let i=1; i<pts.length; i++) {
+            const p1 = pts[i-1]; const p2 = pts[i]; const length = p1.distanceTo(p2); if(length < 0.1) continue;
+            const cylGeo = new THREE.CylinderGeometry(0.15, 0.15, length, 16); cylGeo.rotateX(Math.PI / 2);
+            const cyl = new THREE.Mesh(cylGeo, material); cyl.position.copy(p1).lerp(p2, 0.5); cyl.lookAt(p2); circuitGroup.add(cyl);
+            const sphere = new THREE.Mesh(new THREE.SphereGeometry(0.15, 16, 16), material); sphere.position.copy(p1); circuitGroup.add(sphere);
+            if (i === pts.length - 1) { const sEnd = new THREE.Mesh(new THREE.SphereGeometry(0.15, 16, 16), material); sEnd.position.copy(p2); circuitGroup.add(sEnd); }
+        }
+    }
+
+    function drawRoadSegment(pts, yOffset = 0.05) {
+        for(let i=1; i<pts.length; i++) {
+            const p1 = pts[i-1]; const p2 = pts[i]; const length = p1.distanceTo(p2); if(length < 0.1) continue;
+            const roadGeo = new THREE.PlaneGeometry(3.0, length + 3.0); roadGeo.rotateX(-Math.PI / 2);
+            const road = new THREE.Mesh(roadGeo, roadMat); road.position.copy(p1).lerp(p2, 0.5); road.position.y = yOffset;
+            road.lookAt(new THREE.Vector3(p2.x, road.position.y, p2.z)); analogyGroup.add(road);
+        }
+    }
+
+    function buildScene() {
+        activeElements.electrons.forEach(e => { e.tl.kill(); scene.remove(e.mesh); if(e.tex) e.tex.dispose(); });
+        activeElements.trucks.forEach(t => { t.tl.kill(); scene.remove(t.group); t.cargoBoxes.forEach(b => {scene.remove(b); b.material.dispose(); b.geometry.dispose();}); if(t.tTex) t.tTex.dispose(); });
+        activeElements.floatingBoxes.forEach(b => { gsap.killTweensOf(b.position); gsap.killTweensOf(b.material); scene.remove(b); b.material.dispose(); b.geometry.dispose(); });
+        if (activeElements.flowLabels) activeElements.flowLabels.forEach(lbl => { circuitGroup.remove(lbl); analogyGroup.remove(lbl); if(lbl.material.map) lbl.material.map.dispose(); lbl.material.dispose(); });
+
+        circuitGroup.clear(); analogyGroup.clear();
+        activeElements = { electrons: [], trucks: [], floatingBoxes: [], circuitPaths: [], roadPaths: [], flowLabels: [] };
+
+        const cOffsetX = -24; const aOffsetX = 24;
+        const p = (x,y,z) => new THREE.Vector3(cOffsetX+x, y, z); const rp = (x,y,z) => new THREE.Vector3(aOffsetX+x, y, z);
+
+        let xLimit = 22;
+        let maxZ = isSeries ? 6 : Math.max(6, -2 + 12 * (N - 1));
+        let centerZ = isSeries ? 0 : maxZ / 2;
+
+        gsap.to(camera.position, { z: 100 + centerZ * 0.4, y: 85 + centerZ * 0.2, duration: 1.2, ease: "power2.out" });
+        gsap.to(controls.target, { z: centerZ, duration: 1.2, ease: "power2.out" });
+
+        const batMesh = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 4.5, 32), new THREE.MeshLambertMaterial({ map: batTexture }));
+        batMesh.position.copy(p(0, 1.75, -14)); batMesh.rotation.y = Math.PI/2; circuitGroup.add(batMesh);
+        const batTop = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.6, 16), new THREE.MeshLambertMaterial({color: 0xcccccc}));
+        batTop.position.set(0, 2.4, 0); batMesh.add(batTop);
+
+        circuitGroup.add(placeAt(createTextSprite(t('scene.source'), "#ff3333", 0.9), p(0, 5.5, -14)));
+        circuitGroup.add(placeAt(createDigitalLabel(`ε = ${P.emf.toFixed(1)} V`, "#ff3333"), p(-3.5, 2, -14)));
+
+        // 讓導線帶有更亮的金屬光澤感
+        const wireMat = new THREE.MeshLambertMaterial({color: 0x5588aa});
+        function addResistorObj(pos, label) {
+            // 更純粹閃亮的黃金電阻
+            const r = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 3, 16), new THREE.MeshLambertMaterial({color: 0xffd700})); r.rotation.z = Math.PI/2; r.position.copy(pos); circuitGroup.add(r);
+            circuitGroup.add(placeAt(createTextSprite(label, "#ffcc00", 0.8), pos.clone().add(new THREE.Vector3(0, 1.5, 0))));
         }
 
-        function unloadCargo(truckObj, amount, targetX, targetZ, rVal) {
-            truckObj.cargoCount = Math.max(0, truckObj.cargoCount - amount); truckObj.updateTruckLabel(); 
-            let interval = 0.02 * rVal; 
-            let flyDuration = 0.1 + (0.04 * rVal);
-
-            for(let i=0; i<amount; i++) {
-                if(truckObj.cargoBoxes.length > 0) {
-                    let box = truckObj.cargoBoxes.pop(); activeElements.floatingBoxes.push(box); 
-                    let worldPos = new THREE.Vector3(); box.getWorldPosition(worldPos); 
-                    let worldScale = new THREE.Vector3(); box.getWorldScale(worldScale);
-                    scene.add(box); box.position.copy(worldPos); box.scale.copy(worldScale);
-
-                    let delay = i * interval;
-                    gsap.to(box.position, { x: targetX + (Math.random()-0.5)*0.8, y: 3, z: targetZ, duration: flyDuration, delay: delay, ease: "power1.out" });
-                    gsap.to(box.material, { opacity: 0, transparent: true, duration: flyDuration * 0.7, delay: delay + flyDuration * 0.3, onComplete: () => { 
-                        scene.remove(box); box.material.dispose(); box.geometry.dispose(); activeElements.floatingBoxes = activeElements.floatingBoxes.filter(b => b !== box); 
-                    }});
-                }
-            }
+        let s_x = [];
+        if (N === 1) s_x = [0];
+        else {
+            let xStart = 16;
+            for(let i=0; i<N; i++) s_x.push(xStart - (xStart * 2 / (N - 1)) * i);
         }
 
-        let lastTime = performance.now(); 
-        function animateFlow(time) { 
-            const dt = time - lastTime; lastTime = time; if (dt > 100 || dt < 0) return; 
-            const scaledDt = dt * currentSpeed; 
-            
+        let p_z = [];
+        for(let i=0; i<N; i++) p_z.push(-2 + 12 * i);
+
+        if (isSeries) {
+            const pts = [ p(0,0,-14), p(xLimit,0,-14), p(xLimit,0,6) ];
+            s_x.forEach(x => {
+                pts.push(p(x + 1.5, 0, 6));
+                pts.push(p(x - 1.5, 0, 6));
+            });
+            pts.push(p(-xLimit,0,6), p(-xLimit,0,-14), p(0,0,-14));
+            activeElements.circuitPaths.push({ pts: pts, weight: 1 });
+
+            drawWireSegment([ p(0,0,-14), p(xLimit,0,-14), p(xLimit,0,6), p(-xLimit,0,6), p(-xLimit,0,-14), p(0,0,-14) ], wireMat);
+            s_x.forEach((x, i) => {
+                addResistorObj(p(x, 0, 6), `R${i+1}`);
+                circuitGroup.add(placeAt(createDigitalLabel(`V${i+1} = ${P.v[i].toFixed(1)} V`, "#ffcc00"), p(x, 3.5, 6)));
+            });
+
+            circuitGroup.add(placeAt(createDigitalLabel(`I = ${P.iTotal.toFixed(2)} A`, "#00ccff"), p(4, 1.5, -14)));
+            addDualFlowLabel(p(14, 1.5, -14), rp(14, 1.5, -14), P.iTotal, t('scene.flowStartCharge'), t('scene.flowStartTruck'));
+        } else {
+            drawWireSegment([ p(0,0,-14), p(xLimit,0,-14), p(xLimit,0,-2) ], wireMat);
+            if (N > 1) { drawWireSegment([ p(xLimit,0,-2), p(xLimit,0,maxZ) ], wireMat); drawWireSegment([ p(-xLimit,0,-2), p(-xLimit,0,maxZ) ], wireMat); }
+            drawWireSegment([ p(-xLimit,0,-2), p(-xLimit,0,-14), p(0,0,-14) ], wireMat);
+
+            p_z.forEach((z, i) => {
+                const ptsA = [ p(0,0,-14), p(xLimit,0,-14), p(xLimit,0,z), p(1.5,0,z), p(-1.5,0,z), p(-xLimit,0,z), p(-xLimit,0,-14), p(0,0,-14) ];
+                activeElements.circuitPaths.push({ pts: ptsA, weight: P.i[i] / P.iTotal });
+                drawWireSegment([ p(xLimit,0,z), p(-xLimit,0,z) ], wireMat);
+                addResistorObj(p(0, 0, z), `R${i+1}`);
+                circuitGroup.add(placeAt(createDigitalLabel(`V${i+1} = ${P.v[i].toFixed(1)} V`, "#ffcc00"), p(0, 3.5, z)));
+                addDualFlowLabel(p(8, 1.5, z), rp(8, 1.5, z), P.i[i], t('scene.flowBranchCharge', { n: i+1 }), t('scene.flowBranchTruck', { n: i+1 }));
+            });
+            circuitGroup.add(placeAt(createDigitalLabel(`${t('scene.iTotal')} = ${P.iTotal.toFixed(2)} A`, "#00ccff"), p(4, 1.5, -14)));
+            addDualFlowLabel(p(14, 1.5, -14), rp(14, 1.5, -14), P.iTotal, t('scene.flowMainCharge'), t('scene.flowMainTruck'));
+        }
+
+        const logCenter = new THREE.Mesh(new THREE.BoxGeometry(10, 6, 4), warehouseMats);
+        logCenter.position.copy(rp(0, 3, -17)); analogyGroup.add(logCenter);
+        analogyGroup.add(placeAt(createTextSprite(t('scene.warehouse'), "#00ccff"), logCenter.position.clone().add(new THREE.Vector3(0, 4.5, 0))));
+
+        function addSupermarket(pos, label) {
+            const sm = new THREE.Mesh(new THREE.BoxGeometry(6, 4, 3), supermarketMats);
+            sm.position.copy(pos); sm.position.y = 2; analogyGroup.add(sm);
+            analogyGroup.add(placeAt(createTextSprite(label, "#ffaa00"), pos.clone().add(new THREE.Vector3(0, 4.5, 0))));
+        }
+
+        if (isSeries) {
+            const rPts = [ rp(0,0,-14), rp(xLimit,0,-14), rp(xLimit,0,6) ]; s_x.forEach(x => rPts.push(rp(x,0,6))); rPts.push(rp(-xLimit,0,6), rp(-xLimit,0,-14), rp(0,0,-14));
+            activeElements.roadPaths.push({ pts: rPts, weight: 1, type: 'series' });
+            drawRoadSegment([ rp(0,0,-14), rp(xLimit,0,-14), rp(xLimit,0,6), rp(-xLimit,0,6), rp(-xLimit,0,-14), rp(0,0,-14) ], 0.05);
+            s_x.forEach((x, i) => addSupermarket(rp(x, 0, 2.5), t('scene.market', { n: i+1 })));
+        } else {
+            drawRoadSegment([ rp(0,0,-14), rp(xLimit,0,-14), rp(xLimit,0,-2) ], 0.05);
+            if(N > 1) { drawRoadSegment([ rp(xLimit,0,-2), rp(xLimit,0,maxZ) ], 0.05); drawRoadSegment([ rp(-xLimit,0,-2), rp(-xLimit,0,maxZ) ], 0.05); }
+            drawRoadSegment([ rp(-xLimit,0,-2), rp(-xLimit,0,-14), rp(0,0,-14) ], 0.05);
+
+            p_z.forEach((z, i) => {
+                const rPts = [ rp(0,0,-14), rp(xLimit,0,-14), rp(xLimit,0,z), rp(0,0,z), rp(-xLimit,0,z), rp(-xLimit,0,-14), rp(0,0,-14) ];
+                activeElements.roadPaths.push({ pts: rPts, weight: P.i[i] / P.iTotal, type: `para${i}` });
+                drawRoadSegment([ rp(xLimit,0,z), rp(-xLimit,0,z) ], 0.04);
+                addSupermarket(rp(0, 0, z - 3.5), t('scene.market', { n: i+1 }));
+            });
+        }
+    }
+
+    // 極致亮青色的電子
+    const electronMat = new THREE.MeshLambertMaterial({ color: 0x00e5ff }); const electronGeo = new THREE.SphereGeometry(0.35, 16, 16);
+    // 高飽和純黃色的貨物
+    const cargoGeo = new THREE.BoxGeometry(0.4, 0.4, 0.4); const cargoMatBase = new THREE.MeshLambertMaterial({color: 0xffea00});
+
+    function spawnElectron(pathIdx) {
+        const cPath = activeElements.circuitPaths[pathIdx].pts;
+        const electron = new THREE.Mesh(electronGeo, electronMat); scene.add(electron); electron.position.copy(cPath[0]);
+
+        const eCanv = document.createElement('canvas'); eCanv.width = 160; eCanv.height = 80; const eCtx = eCanv.getContext('2d');
+        const eTex = new THREE.CanvasTexture(eCanv);
+        const eSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: eTex, transparent: true, depthTest: false }));
+        eSprite.scale.set(4.5, 2.25, 1); eSprite.position.set(0, 3.2, 0); electron.add(eSprite);
+
+        let eData = { val: P.emf };
+        function drawVal() {
+            eCtx.clearRect(0,0,160,80); eCtx.fillStyle = 'rgba(10, 15, 20, 0.9)'; eCtx.fillRect(0,0,160,80);
+            eCtx.strokeStyle = '#00ffaa'; eCtx.lineWidth = 4; eCtx.strokeRect(2,2,156,76);
+            eCtx.fillStyle = '#00ffaa'; eCtx.font = "bold 34px 'Segoe UI'"; eCtx.textAlign = "center";
+            eCtx.fillText(`⚡ ${eData.val.toFixed(1)} V`, 80, 52); eTex.needsUpdate = true;
+        }
+        drawVal();
+
+        const baseSpeed = 10 + (P.iTotal * 4.0);
+        const eTl = gsap.timeline({ onComplete: () => { scene.remove(electron); eTex.dispose(); activeElements.electrons = activeElements.electrons.filter(e => e.mesh !== electron); }});
+        activeElements.electrons.push({ mesh: electron, tl: eTl, tex: eTex });
+
+        for (let i = 1; i < cPath.length; i++) {
+            const dur = cPath[i-1].distanceTo(cPath[i]) / baseSpeed;
+            eTl.to(electron.position, { x: cPath[i].x, y: cPath[i].y, z: cPath[i].z, duration: dur, ease: "none" }, `move${i}`);
+
             if (isSeries) {
-                if(!eAcc[0]) eAcc[0] = 0; if(!tAcc[0]) tAcc[0] = 0;
-                eAcc[0] += scaledDt; tAcc[0] += scaledDt;
-                const eRate = Math.max(80, 1000 / P.iTotal);
-                const tRate = Math.max(250, 1200 / P.iTotal); 
-                if (eAcc[0] > eRate) { spawnElectron(0); eAcc[0] = 0; }
-                if (tAcc[0] > tRate) { spawnTruck(0); tAcc[0] = 0; }
+                let j = (i - 4) / 2;
+                if (Number.isInteger(j) && j >= 0 && j < N) {
+                    let remainingVoltage = P.emf - P.v.slice(0, j + 1).reduce((a, b) => a + b, 0);
+                    if (remainingVoltage < 0.1) remainingVoltage = 0;
+                    eTl.to(eData, { val: remainingVoltage, duration: dur, ease: "none", onUpdate: drawVal }, `move${i}`);
+                }
             } else {
-                for(let i=0; i<N; i++) {
-                    if(!eAcc[i]) eAcc[i] = 0; if(!tAcc[i]) tAcc[i] = 0;
-                    eAcc[i] += scaledDt; tAcc[i] += scaledDt;
-                    const eRate = Math.max(80, 800 / P.i[i]);
-                    const tRate = Math.max(250, 1000 / P.i[i]); 
-                    if (eAcc[i] > eRate) { spawnElectron(i); eAcc[i] = 0; }
-                    if (tAcc[i] > tRate) { spawnTruck(i); tAcc[i] = 0; }
+                if (i === 4) {
+                    eTl.to(eData, { val: 0, duration: dur, ease: "none", onUpdate: drawVal }, `move${i}`);
                 }
             }
         }
+    }
 
-        ui.btnSeries.addEventListener('click', () => { isSeries = true; ui.btnSeries.classList.add('active'); ui.btnParallel.classList.remove('active'); updatePhysics(); });
-        ui.btnParallel.addEventListener('click', () => { isSeries = false; ui.btnParallel.classList.add('active'); ui.btnSeries.classList.remove('active'); updatePhysics(); });
-        ui.sEmf.addEventListener('input', updatePhysics);
+    function createTruckMesh(cargoCount) {
+        const group = new THREE.Group();
+        const chassis = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.2, 4.0), new THREE.MeshLambertMaterial({color: 0x000000})); chassis.position.set(0, 0.4, 0); group.add(chassis);
+        // 鮮豔粉紅的車頭
+        const cab = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.2, 1.2), new THREE.MeshLambertMaterial({color: 0xff0044})); cab.position.set(0, 1.1, 1.4);
+        const cabWindow = new THREE.Mesh(new THREE.BoxGeometry(1.62, 0.5, 0.6), new THREE.MeshLambertMaterial({color: 0x00ffff})); cabWindow.position.set(0, 1.2, 1.5);
+        const hlL = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.2, 0.1), new THREE.MeshBasicMaterial({color: 0xffffee})); hlL.position.set(-0.6, 0.8, 2.05);
+        const hlR = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.2, 0.1), new THREE.MeshBasicMaterial({color: 0xffffee})); hlR.position.set(0.6, 0.8, 2.05);
+        group.add(cab, cabWindow, hlL, hlR);
+        const bed = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.1, 2.6), new THREE.MeshLambertMaterial({color: 0x888888})); bed.position.set(0, 0.55, -0.7); group.add(bed);
 
+        const wheelGeo = new THREE.CylinderGeometry(0.35, 0.35, 0.25, 16); wheelGeo.rotateZ(Math.PI / 2); const wheelMat = new THREE.MeshLambertMaterial({color: 0x000000});
+        [[-0.9,0.35,1.2],[0.9,0.35,1.2],[-0.9,0.35,-0.4],[0.9,0.35,-0.4],[-0.9,0.35,-1.6],[0.9,0.35,-1.6]].forEach(pos => {
+            const wheel = new THREE.Mesh(wheelGeo, wheelMat); wheel.position.set(...pos); group.add(wheel);
+        });
+
+        const cargoBoxes = [];
+        for(let i=0; i<cargoCount; i++) {
+            const box = new THREE.Mesh(cargoGeo, cargoMatBase.clone());
+            const row = Math.floor(i / 6); const col = i % 6;
+            box.position.set((col%3)*0.45 - 0.45, 0.8 + row*0.45, Math.floor(col/3)*0.45 - 0.9);
+            group.add(box); cargoBoxes.push(box);
+        }
+
+        const tCanv = document.createElement('canvas'); tCanv.width = 160; tCanv.height = 80; const tCtx = tCanv.getContext('2d');
+        const tTex = new THREE.CanvasTexture(tCanv); const tSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tTex, transparent: true, depthTest: false }));
+        tSprite.scale.set(5.5, 2.75, 1); tSprite.position.set(0, 3.8, 0); group.add(tSprite);
+        group.scale.set(0.65, 0.65, 0.65);
+
+        const obj = { group, cargoBoxes, cargoCount, tCtx, tTex, tSprite };
+        obj.updateTruckLabel = function() {
+            tCtx.clearRect(0,0,160,80); tCtx.fillStyle = 'rgba(10, 15, 20, 0.9)'; tCtx.fillRect(0,0,160,80);
+            tCtx.strokeStyle = '#ffea00'; tCtx.lineWidth = 4; tCtx.strokeRect(2,2,156,76);
+            tCtx.fillStyle = '#ffea00'; tCtx.font = "bold 34px 'Segoe UI'"; tCtx.textAlign = "center";
+            tCtx.fillText(`📦 ${this.cargoCount}`, 80, 52); tTex.needsUpdate = true;
+        };
+        obj.updateTruckLabel(); return obj;
+    }
+
+    function spawnTruck(pathIdx) {
+        const rPath = activeElements.roadPaths[pathIdx].pts;
+        const truckObj = createTruckMesh(Math.round(P.emf)); scene.add(truckObj.group); activeElements.trucks.push(truckObj);
+        truckObj.group.position.copy(rPath[0]);
+
+        const tTl = gsap.timeline({ onComplete: () => { scene.remove(truckObj.group); truckObj.tTex.dispose(); activeElements.trucks = activeElements.trucks.filter(t => t.group !== truckObj.group); }});
+        truckObj.tl = tTl;
+        const baseSpeed = 12 + (P.iTotal * 3.0);
+
+        for (let i = 1; i < rPath.length; i++) {
+            const dur = rPath[i-1].distanceTo(rPath[i]) / baseSpeed;
+            const dir = new THREE.Vector3().subVectors(rPath[i], rPath[i-1]).normalize(); const angle = Math.atan2(dir.x, dir.z);
+            tTl.to(truckObj.group.position, { x: rPath[i].x, y: rPath[i].y, z: rPath[i].z, duration: dur, ease: "none" }, `seq${i}`);
+            tTl.to(truckObj.group.rotation, { y: angle, duration: 0.1 }, `seq${i}`);
+
+            if (isSeries) {
+                let rIdx = i - 3;
+                if (rIdx >= 0 && rIdx < N) {
+                    let currentR = R_vals[rIdx];
+                    let amount = Math.round(P.v[rIdx]);
+                    let interval = 0.02 * currentR;
+                    let flyDuration = 0.1 + (0.04 * currentR);
+                    let totalUnloadTime = (amount * interval) + flyDuration;
+
+                    tTl.call(() => unloadCargo(truckObj, amount, truckObj.group.position.x, truckObj.group.position.z + 2.5, currentR));
+                    tTl.to({}, {duration: totalUnloadTime});
+                }
+            } else {
+                if (i === 3) {
+                    let currentR = R_vals[pathIdx];
+                    let amount = Math.round(P.emf);
+                    let interval = 0.02 * currentR;
+                    let flyDuration = 0.1 + (0.04 * currentR);
+                    let totalUnloadTime = (amount * interval) + flyDuration;
+
+                    tTl.call(() => unloadCargo(truckObj, amount, truckObj.group.position.x, truckObj.group.position.z - 3.5, currentR));
+                    tTl.to({}, {duration: totalUnloadTime});
+                }
+            }
+        }
+    }
+
+    function unloadCargo(truckObj, amount, targetX, targetZ, rVal) {
+        truckObj.cargoCount = Math.max(0, truckObj.cargoCount - amount); truckObj.updateTruckLabel();
+        let interval = 0.02 * rVal;
+        let flyDuration = 0.1 + (0.04 * rVal);
+
+        for(let i=0; i<amount; i++) {
+            if(truckObj.cargoBoxes.length > 0) {
+                let box = truckObj.cargoBoxes.pop(); activeElements.floatingBoxes.push(box);
+                let worldPos = new THREE.Vector3(); box.getWorldPosition(worldPos);
+                let worldScale = new THREE.Vector3(); box.getWorldScale(worldScale);
+                scene.add(box); box.position.copy(worldPos); box.scale.copy(worldScale);
+
+                let delay = i * interval;
+                gsap.to(box.position, { x: targetX + (Math.random()-0.5)*0.8, y: 3, z: targetZ, duration: flyDuration, delay: delay, ease: "power1.out" });
+                gsap.to(box.material, { opacity: 0, transparent: true, duration: flyDuration * 0.7, delay: delay + flyDuration * 0.3, onComplete: () => {
+                    scene.remove(box); box.material.dispose(); box.geometry.dispose(); activeElements.floatingBoxes = activeElements.floatingBoxes.filter(b => b !== box);
+                }});
+            }
+        }
+    }
+
+    let lastTime = performance.now();
+    function animateFlow(time) {
+        const dt = time - lastTime; lastTime = time; if (dt > 100 || dt < 0) return;
+        const scaledDt = dt * currentSpeed;
+
+        if (isSeries) {
+            if(!eAcc[0]) eAcc[0] = 0; if(!tAcc[0]) tAcc[0] = 0;
+            eAcc[0] += scaledDt; tAcc[0] += scaledDt;
+            const eRate = Math.max(80, 1000 / P.iTotal);
+            const tRate = Math.max(250, 1200 / P.iTotal);
+            if (eAcc[0] > eRate) { spawnElectron(0); eAcc[0] = 0; }
+            if (tAcc[0] > tRate) { spawnTruck(0); tAcc[0] = 0; }
+        } else {
+            for(let i=0; i<N; i++) {
+                if(!eAcc[i]) eAcc[i] = 0; if(!tAcc[i]) tAcc[i] = 0;
+                eAcc[i] += scaledDt; tAcc[i] += scaledDt;
+                const eRate = Math.max(80, 800 / P.i[i]);
+                const tRate = Math.max(250, 1000 / P.i[i]);
+                if (eAcc[i] > eRate) { spawnElectron(i); eAcc[i] = 0; }
+                if (tAcc[i] > tRate) { spawnTruck(i); tAcc[i] = 0; }
+            }
+        }
+    }
+
+    ui.btnSeries.addEventListener('click', () => { isSeries = true; ui.btnSeries.classList.add('active'); ui.btnParallel.classList.remove('active'); updatePhysics(); });
+    ui.btnParallel.addEventListener('click', () => { isSeries = false; ui.btnParallel.classList.add('active'); ui.btnSeries.classList.remove('active'); updatePhysics(); });
+    ui.sEmf.addEventListener('input', updatePhysics);
+
+    // 面板開關（切換後重算畫布尺寸）
+    PhysLab.ui.bindPanelToggle('btn-toggle-left', 'left-panel', ctx.resize);
+    PhysLab.ui.bindPanelToggle('btn-toggle-right', 'right-panel', ctx.resize);
+
+    // 語言切換：重建含中文貼圖 + 重繪面板動態文字與 3D 場景（en 缺字自動回退 zh）
+    PhysLab.i18n.onChange(function () {
+        rebuildBuildingMaterials();
         initUIStructure();
         updatePhysics();
+    });
 
-        function render(time) { 
-            requestAnimationFrame(render); 
-            controls.update(); 
-            animateFlow(time); 
-            
-            const canvas = renderer.domElement;
-            const width = container.clientWidth;
-            const height = container.clientHeight;
-            
-            if (canvas.width !== width || canvas.height !== height) {
-                renderer.setSize(width, height, false);
-                camera.aspect = width / height;
-                camera.updateProjectionMatrix();
-            }
+    initUIStructure();
+    updatePhysics();
 
-            renderer.render(scene, camera); 
-        }
-        
-        render(0);
-    </script>
+    // 主迴圈：sim3d 已代管 controls.update() 與 render；此處僅保留原生成節流邏輯
+    ctx.start(function () {
+        animateFlow(performance.now());
+    });
+});
+</script>
 </body>
 </html>
