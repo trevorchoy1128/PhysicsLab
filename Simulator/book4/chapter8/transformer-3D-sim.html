@@ -39,10 +39,18 @@
         #ro-rat { font-size: 0.72rem; letter-spacing: -0.01em; white-space: nowrap; }
         .rc-pow { background: #f0fdf4; border-color: #bbf7d0; color: #166534; }
 
-        /* 浮動波形視窗（預設隱藏，由 topbar「波形」鈕開關） */
+        /* 真實模式：功率 / 效率讀數格配色（P_in 暖紅、P_out 綠、損耗橙、效率藍紫） */
+        .rc-pin   { background: #fef2f2; border-color: #fecaca; color: #b91c1c; }
+        .rc-pout  { background: #f0fdf4; border-color: #bbf7d0; color: #15803d; }
+        .rc-ploss { background: #fff7ed; border-color: #fed7aa; color: #c2410c; }
+        .rc-eff   { background: #eef2ff; border-color: #c7d2fe; color: #4338ca; }
+        .rc-pcu   { background: #fffbeb; border-color: #fde68a; color: #b45309; }
+        .rc-piron { background: #fdf4ff; border-color: #f5d0fe; color: #a21caf; }
+
+        /* 浮動波形視窗（V-t 電壓圖；預設可見，由 topbar「波形」鈕開關） */
         #view2d-wrap {
             position: absolute; top: 14px; right: 14px; z-index: 20;
-            width: 360px; height: 260px;
+            width: 380px; height: 280px;
             border: 1px solid var(--pl-border); border-radius: 10px;
             background: rgba(248,250,252,0.97); backdrop-filter: blur(6px);
             box-shadow: var(--pl-shadow-float);
@@ -79,7 +87,7 @@
         </div>
     </div>
     <div class="tb-actions">
-        <button type="button" class="panel-toggle-btn inactive" id="btn-toggle-wave">
+        <button type="button" class="panel-toggle-btn" id="btn-toggle-wave">
             <span>📈</span> <span data-i18n="topbar.waveform">波形</span>
         </button>
         <button type="button" class="panel-toggle-btn" id="btn-toggle-right">
@@ -103,6 +111,11 @@
                     <button type="button" class="dir-btn active" id="mode-ac" data-i18n="mode.ac">AC 交流 ∿</button>
                     <button type="button" class="dir-btn"        id="mode-dc" data-i18n="mode.dc">DC 直流 ⎓</button>
                 </div>
+                <div class="slider-row" style="margin-top:12px;">
+                    <div class="slider-head"><label data-i18n="label.freq">頻率 f（50 Hz 香港市電）</label><span class="val" id="val-f">50 Hz</span></div>
+                    <input type="range" id="sld-f" min="10" max="60" step="5" value="50">
+                </div>
+                <div class="mode-label" id="freq-note" style="margin-top:6px; text-transform:none; letter-spacing:0;">T = 20 ms</div>
             </div>
         </div>
 
@@ -118,6 +131,12 @@
                     <input type="range" id="sld-ns" min="2" max="12" step="1" value="8">
                 </div>
                 <div class="mode-label" style="margin-top:4px;" data-i18n="panel.turns.hint">匝數 = 畫面實際圈數（1:1）；匝數比 Ns/Np 決定升壓或降壓</div>
+                <div class="mode-label" style="margin-top:10px;" data-i18n="label.presets">快速預設</div>
+                <div class="dir-btn-group">
+                    <button type="button" class="dir-btn" id="preset-up"   data-i18n="preset.up">3 : 6 升壓</button>
+                    <button type="button" class="dir-btn" id="preset-down" data-i18n="preset.down">8 : 4 降壓</button>
+                    <button type="button" class="dir-btn" id="preset-iso"  data-i18n="preset.iso">4 : 4 隔離</button>
+                </div>
             </div>
         </div>
 
@@ -129,6 +148,29 @@
                     <input type="range" id="sld-rs" min="10" max="200" step="5" value="60">
                 </div>
                 <div class="mode-label" style="margin-top:4px;" data-i18n="panel.load.hint">燈泡等效電阻；電阻越小 → 次級電流越大、燈越亮</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">⚙️ <span data-i18n="panel.model.title">變壓器模型</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <div class="dir-btn-group">
+                    <button type="button" class="dir-btn active" id="model-ideal" data-i18n="model.ideal">理想（無損耗）</button>
+                    <button type="button" class="dir-btn"        id="model-real"  data-i18n="model.real">真實（含損耗）</button>
+                </div>
+                <div class="mode-label" style="margin-top:8px; text-transform:none; letter-spacing:0;" data-i18n="panel.model.hint">真實模式加入銅損（繞組 I²R）與鐵損（≈∝Vp²），可觀察效率 η &lt; 100%。</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">🎯 <span data-i18n="panel.predict.title">預測挑戰</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <div class="toggle-row" id="row-predict">
+                    <div class="toggle-track" id="opt-predict"><div class="toggle-thumb"></div></div>
+                    <span data-i18n="label.predict">遮住 Vs / Is / P 讓你先預測</span>
+                </div>
+                <div class="mode-label" id="predict-hint" style="display:none; margin-top:8px; text-transform:none; letter-spacing:0;" data-i18n="predict.hint">先計 Vs = Vp × Ns/Np，再揭曉答案核對。</div>
+                <button type="button" class="dir-btn" id="btn-reveal" style="display:none; margin-top:8px; width:100%;" data-i18n="predict.reveal">揭曉答案</button>
             </div>
         </div>
 
@@ -174,8 +216,8 @@
             <div id="status-badge">升壓 / 降壓狀態</div>
             <div id="hint" data-i18n="status.hint">🖱️ 左鍵旋轉視角 · 滾輪縮放 · 右鍵平移</div>
         </div>
-        <div id="view2d-wrap" class="panel-hidden">
-            <div id="view2d-head"><span data-i18n="canvas.title">📈 電壓波形 Vp / Vs</span><button type="button" id="view2d-close" title="關閉">✕</button></div>
+        <div id="view2d-wrap">
+            <div id="view2d-head"><span data-i18n="canvas.title">📈 V-t 電壓圖（Vp / Vs）</span><button type="button" id="view2d-close" title="關閉">✕</button></div>
             <canvas id="view2d"></canvas>
         </div>
     </div>
@@ -198,9 +240,24 @@
                 <div class="readout-cell rc-pow"><small data-i18n="readout.power">傳遞功率 P</small><span id="ro-pow">0.0 W</span></div>
             </div>
             <div class="readout-grid" style="grid-template-columns:1fr 1fr;">
+                <div class="readout-cell rc-vp"><small data-i18n="readout.vpPeak">初級峰值 √2·Vp</small><span id="ro-vppk">0.0 V</span></div>
+                <div class="readout-cell rc-vs"><small data-i18n="readout.vsPeak">次級峰值 √2·Vs</small><span id="ro-vspk">0.0 V</span></div>
+            </div>
+            <div class="readout-grid" style="grid-template-columns:1fr 1fr;">
                 <div class="readout-cell rc-ip"><small data-i18n="readout.pip">初級 Np·Ip</small><span id="ro-nip">0.0</span></div>
                 <div class="readout-cell rc-is"><small data-i18n="readout.pis">次級 Ns·Is</small><span id="ro-nis">0.0</span></div>
             </div>
+            <div class="mode-label" id="ampturn-note" style="display:none; margin-top:6px; text-transform:none; letter-spacing:0;" data-i18n="readout.ampturnNote">真實模式：源端 Np·Ip 大於 Ns·Is —— 初級除了平衡負載安匝，還要抽取磁化電流並補償損耗（鐵損／銅損），故略大；輕載時差距更明顯。（理想模式下兩者精確相等。）</div>
+
+            <div class="readout-grid" id="loss-grid" style="display:none; grid-template-columns:1fr 1fr; margin-top:8px;">
+                <div class="readout-cell rc-pin"><small data-i18n-html="readout.pin">輸入功率 P<sub>in</sub></small><span id="ro-pin">0.0 W</span></div>
+                <div class="readout-cell rc-pout"><small data-i18n-html="readout.pout">輸出功率 P<sub>out</sub></small><span id="ro-pout">0.0 W</span></div>
+                <div class="readout-cell rc-ploss"><small data-i18n-html="readout.ploss">總損耗 P<sub>loss</sub></small><span id="ro-ploss">0.0 W</span></div>
+                <div class="readout-cell rc-eff"><small data-i18n="readout.eff">效率 η</small><span id="ro-eff">0 %</span></div>
+                <div class="readout-cell rc-pcu"><small data-i18n-html="readout.pcu">銅損 P<sub>cu</sub>（I²R）</small><span id="ro-pcu">0.0 W</span></div>
+                <div class="readout-cell rc-piron"><small data-i18n-html="readout.piron">鐵損 P<sub>iron</sub></small><span id="ro-piron">0.0 W</span></div>
+            </div>
+            <div class="info-box" id="model-explain" style="display:none; margin-top:8px;"></div>
         </div>
 
         <div class="guide-box">
@@ -249,16 +306,34 @@ PhysLab.i18n.register({
         'label.mode': '電源類型',
         'mode.ac': 'AC 交流 ∿',
         'mode.dc': 'DC 直流 ⎓',
+        'label.freq': '頻率 f（50 Hz 香港市電）',
+        'unit.hz': '{f} Hz',
+        'freq.note': 'T = {ms} ms ｜ 畫面為放慢示意（非實時 50 Hz）；初級與次級同頻率。',
 
         'panel.turns.title': '線圈匝數',
         'label.np': '初級匝數 Np',
         'label.ns': '次級匝數 Ns',
         'panel.turns.hint': '匝數 = 畫面實際圈數（1:1）；匝數比 Ns/Np 決定升壓或降壓',
         'unit.turns': '{n} 匝',
+        'label.presets': '快速預設',
+        'preset.up': '3 : 6 升壓',
+        'preset.down': '8 : 4 降壓',
+        'preset.iso': '4 : 4 隔離',
 
         'panel.load.title': '負載',
         'label.rs': '負載電阻 Rs',
         'panel.load.hint': '燈泡等效電阻（固定值）；P = Vs²/Rs，故 Rs 越細功率越大、燈越亮。本模型固定負載電阻，故升壓（Vs 上升）會同時提高次級功率。',
+
+        'panel.model.title': '變壓器模型',
+        'model.ideal': '理想（無損耗）',
+        'model.real': '真實（含損耗）',
+        'panel.model.hint': '真實模式加入銅損（繞組 I²R）與鐵損（≈∝Vp²），可觀察效率 η < 100%。',
+
+        'panel.predict.title': '預測挑戰',
+        'label.predict': '遮住 Vs / Is / P 讓你先預測',
+        'predict.hint': '先計 Vs = Vp × Ns/Np，再揭曉答案核對。',
+        'predict.reveal': '揭曉答案',
+        'predict.mask': '？',
 
         'panel.anim.title': '動畫控制',
         'label.play': '播放 / 暫停 ⏯',
@@ -285,6 +360,16 @@ PhysLab.i18n.register({
         'readout.pip': '初級 Np·Ip',
         'readout.pis': '次級 Ns·Is',
         'readout.ipDc': '受 R 限流',
+        'unit.rms': '(rms)',
+        'readout.vpPeak': '初級峰值 √2·Vp',
+        'readout.vsPeak': '次級峰值 √2·Vs',
+        'readout.pin': '輸入功率 P<sub>in</sub>',
+        'readout.pout': '輸出功率 P<sub>out</sub>',
+        'readout.ploss': '總損耗 P<sub>loss</sub>',
+        'readout.eff': '效率 η',
+        'readout.pcu': '銅損 P<sub>cu</sub>（I²R）',
+        'readout.piron': '鐵損 P<sub>iron</sub>',
+        'readout.ampturnNote': '真實模式：源端 Np·Ip 大於 Ns·Is —— 初級除了平衡負載安匝，還要抽取磁化電流並補償損耗（鐵損／銅損），故略大；輕載時差距更明顯。（理想模式下兩者精確相等。）',
 
         'formula.title': '理想變壓器方程',
         'formula.desc': '<span>V</span> 電壓 · <span>N</span> 匝數 · <span>I</span> 電流；下標 p = 初級（原線圈）、s = 次級（副線圈）。<br><span>ε = −N·dΦ/dt</span>：ε = 感應電動勢（≈ 次級電壓 Vs）、dΦ/dt = 磁通變化率，負號即<b>楞次定律</b>（感應對抗磁通變化）。共用鐵芯的 Φ 對每匝相同 → 電壓與匝數成正比。<br><b>初級與次級之間並無電線相連，只靠鐵芯內共用磁通 Φ 聯繫。</b>',
@@ -300,6 +385,8 @@ PhysLab.i18n.register({
         'explain.stepdown': '目前 <b>Ns &lt; Np</b>：這是<b>降壓變壓器</b>，次級電壓 <b>Vs 低於 Vp</b>。由功率守恆 Vp·Ip = Vs·Is，同一部變壓器內次級電流 <b>Is 比初級電流 Ip 大</b>（Ip = Is·Ns/Np）。',
         'explain.equal': '目前 <b>Ns = Np</b>：<b>1 : 1</b> 變壓器，Vs = Vp、Is = Ip，只作電氣隔離，不升不降。',
         'explain.dc': '電源為<b>直流</b>：穩定電流產生<b>恆定磁通</b>，dΦ/dt = 0，次級線圈<b>沒有感應電動勢</b> → Vs = 0、燈熄。<b>變壓器只對交流有效！</b>（實際上初級仍會流過受繞組電阻限制的大電流，可能過熱。）切回 AC 觀察差異。',
+        'explain.realSummary': '🔧 <b>真實變壓器</b>：輸入 <b>{pin} W</b>，只有 <b>{pout} W</b> 到達負載，<b>{ploss} W</b> 在繞組（銅損 I²R）與鐵芯（鐵損：磁滯＋渦流）化為熱，效率 <b>η = {eff}%</b>。<br>減損法：用<b>粗銅線</b>降銅損、鐵芯用<b>疊片＋軟磁材料</b>降鐵損（疊片減渦流、軟磁減磁滯）。<span style="opacity:0.75;">〔延伸：繞組電阻可 referred 到任一側、鐵損 ∝Vp²，DSE 不需量化〕</span>',
+        'explain.realIdeal': '目前為<b>理想變壓器</b>：無銅損、無鐵損，Vp·Ip = Vs·Is、效率 η = 100%。切到「真實」模式可觀察損耗與發熱。',
 
         'guide.title': '逐步引導',
         'guide.prev': '← 上一步',
@@ -320,7 +407,10 @@ PhysLab.i18n.register({
             { q: '為甚麼變壓器只能用交流電、不能用穩定直流？', opts: ['直流電壓太低', '直流會燒毀線圈', '直流產生恆定磁通，dΦ/dt = 0，次級無感應電動勢', '直流的匝數比不同'], ans: 2, exp: '變壓依賴電磁感應。穩定直流 → 磁通恆定 → dΦ/dt = 0 → 次級 ε = 0，故無輸出。（直流確實可能令初級因低阻抗而過熱，但變壓器失效的首要原因是次級無感應。）' },
             { q: '理想變壓器 Vp = 10 V、Ip = 2 A，次級 Vs = 40 V。次級電流 Is 為？', opts: ['8 A', '2 A', '0.5 A', '4 A'], ans: 2, exp: '功率守恆 Vp·Ip = Vs·Is：10×2 = 40×Is → Is = 20/40 = 0.5 A。升壓時次級電流 Is 比初級電流 Ip 小。' },
             { q: '初級 Np = 100 匝、Vp = 6 V，次級 Ns = 500 匝。次級電壓 Vs 為？', opts: ['1.2 V', '30 V', '6 V', '500 V'], ans: 1, exp: 'Vs = Vp × Ns/Np = 6 × 500/100 = 30 V。' },
-            { q: '副（次級）線圈感應電流所產生的磁場，作用是甚麼？', opts: ['抗拒鐵芯內磁通的「變化」', '完全抵消磁通，令鐵芯內無磁場', '令鐵芯磁通加倍', '與磁通變化無關'], ans: 0, exp: '由楞次定律，副線圈感應電流產生的 Φₛ 只抗拒磁通的「變化」，並非抵消整個 Φ。鐵芯淨磁通仍由原（初級）線圈維持；正是這反抗令原線圈需多抽電流以維持安匝平衡 Np·Ip = Ns·Is。' }
+            { q: '副（次級）線圈感應電流所產生的磁場，作用是甚麼？', opts: ['抗拒鐵芯內磁通的「變化」', '完全抵消磁通，令鐵芯內無磁場', '令鐵芯磁通加倍', '與磁通變化無關'], ans: 0, exp: '由楞次定律，副線圈感應電流產生的 Φₛ 只抗拒磁通的「變化」，並非抵消整個 Φ。鐵芯淨磁通仍由原（初級）線圈維持；正是這反抗令原線圈需多抽電流以維持安匝平衡 Np·Ip = Ns·Is。' },
+            { q: '真實變壓器的效率 η 定義為？', opts: ['η = P<sub>in</sub> / P<sub>out</sub>', 'η = P<sub>out</sub> / P<sub>in</sub>', 'η = P<sub>loss</sub> / P<sub>in</sub>', 'η = Vs / Vp'], ans: 1, exp: 'η = 輸出功率 / 輸入功率 = P<sub>out</sub> / P<sub>in</sub>。由能量守恆 P<sub>in</sub> = P<sub>out</sub> + P<sub>loss</sub>，故 η 恆 < 100%。' },
+            { q: '變壓器的「銅損」與「鐵損」分別指甚麼？', opts: ['銅損 = 繞組 I²R 發熱；鐵損 = 鐵芯的磁滯＋渦流損', '銅損 = 鐵芯生鏽；鐵損 = 電線熔斷', '銅損 = 匝數比誤差；鐵損 = 磁通洩漏', '兩者都是空氣阻力'], ans: 0, exp: '銅損＝繞組電阻的 I²R 發熱（負載越重、電流越大越顯著）；鐵損＝鐵芯的磁滯損＋渦流損（隨 Vp、頻率而定，輕載時相對主導）。' },
+            { q: '下列哪項可減少變壓器的能量損耗？', opts: ['用更幼的銅線繞組', '鐵芯用整塊實心鐵', '鐵芯用互相絕緣的疊片、並用軟磁材料', '提高負載電阻至無限大'], ans: 2, exp: '鐵芯用<b>疊片</b>（互相絕緣，切斷渦流路徑）減渦流損、用<b>軟磁材料</b>（磁滯迴線窄）減磁滯損；繞組改用<b>粗銅線</b>可降銅損。實心鐵芯會有大渦流，反而增加損耗。' }
         ],
 
         'label3d.core': '鐵芯（共用磁路）',
@@ -331,13 +421,19 @@ PhysLab.i18n.register({
         'label3d.bulb': '燈泡負載',
         'label3d.flux': '磁通 Φ',
         'label3d.react': '副線圈反抗磁通 Φₛ',
+        'label3d.heat': '🔥 鐵芯 / 繞組發熱',
 
-        'canvas.title': '📈 電壓波形 Vp / Vs',
-        'canvas.vpLegend': '■ 初級 Vp',
-        'canvas.vsLegend': '■ 次級 Vs',
+        'canvas.title': '📈 V-t 電壓圖（Vp / Vs）',
+        'canvas.vpLegend': '主線圈 Vp',
+        'canvas.vsLegend': '副線圈 Vs',
         'canvas.fluxLegend': '┄ 磁通 Φ (∝sin，與 Vs 差 90°)',
         'canvas.dcNote': '直流：Vp 恆定、Vs = 0（無交變磁通）',
-        'canvas.time': '時間 t →',
+        'canvas.time': '時間 t（ms）→',
+        'canvas.yAxis': 'V',
+        'canvas.vpRms': 'Vp rms',
+        'canvas.vsRms': 'Vs rms',
+        'canvas.peak': '峰值 √2·Vp ≈ {v} V',
+        'canvas.period': 'T = {ms} ms',
         'canvas.closeTitle': '關閉'
     },
     en: {}
@@ -361,10 +457,17 @@ PhysLab.sim3d.ready(function () {
     var acMode = true;
     var playing = true, speed = 1.0;
     var showFlux = true, showCurrent = true, showLabels = true, showLenz = false;
+    var freq = 50;                 // 頻率 f（Hz），只影響波形週期與動畫速率（不影響電壓/電流/功率/效率）
+    var realMode = false;          // 理想 ↔ 真實（含損耗）
+    var predictMode = false, predictRevealed = false;   // 預測挑戰：遮住 Vs/Is/P
 
     var phase = 0;                 // 交流相位（弧度）
-    var OMEGA = 2.2;               // 基礎角速度（每秒弧度，未計速率）
+    var OMEGA = 2.2;               // 基礎角速度（每秒弧度，未計速率）；= 2.2·(f/50)
     var P_REF = 9.0;               // 燈泡亮度歸一化參考功率 (W)
+
+    // 真實變壓器損耗常數（DSE 定調；命名刻意避開負載電阻 Rs）
+    var RHO_WIND = 0.05;           // 繞組電阻密度 (Ω/匝)
+    var K_IRON = 0.0056;           // 鐵損係數 (W/V²)；Piron = K_IRON·Vp²
 
     // 幾何常數
     var CORE_X = 4.0, CORE_Y = 3.0;      // 鐵芯中心線半寬 / 半高
@@ -376,6 +479,8 @@ PhysLab.sim3d.ready(function () {
 
     // 派生量（每幀）
     var ratio = Ns / Np, Vs = 0, Is = 0, Ip = 0, Pw = 0;
+    // 真實模式派生量
+    var Es = 0, Pout = 0, Pin = 0, Ploss = 0, Pcu = 0, Piron = 0, eff = 1, IpSrc = 0;
 
     var rootGroup, coreGroup, primGroup, secGroup, primCurGroup, secCurGroup;
     var fluxGroup, secReactGroup, sourceGroup, bulbGroup, leadGroup, labelGroup, flowGroup;
@@ -386,7 +491,8 @@ PhysLab.sim3d.ready(function () {
     var secFlow  = { curve: null, dots: [], offset: 0 };   // 次級迴路流動光點
     var bulbGlass, bulbFilament, bulbLight;
     var srcFaceMesh;
-    var lblCore, lblPrim, lblSec, lblSource, lblBulb, lblFlux, lblReact;
+    var coreMat;                              // 鐵芯材質（真實模式加暖紅 emissive 示意發熱）
+    var lblCore, lblPrim, lblSec, lblSource, lblBulb, lblFlux, lblReact, lblHeat;
 
     /* ============================================================
        場景底座
@@ -419,7 +525,8 @@ PhysLab.sim3d.ready(function () {
        ============================================================ */
     function buildCore() {
         disposeGroup(coreGroup);
-        var mat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.55, metalness: 0.6 });
+        var mat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.55, metalness: 0.6, emissive: 0xff3d00, emissiveIntensity: 0.0 });
+        coreMat = mat;                          // 供真實模式發熱示意調整 emissiveIntensity
         var h = CORE_Y * 2 + LIMB_T;           // 肢長（與軛在角位重疊）
         var wYoke = CORE_X * 2 + LIMB_T;
         var left  = new THREE.Mesh(new THREE.BoxGeometry(LIMB_T, h, LIMB_T), mat);
@@ -702,12 +809,14 @@ PhysLab.sim3d.ready(function () {
         lblPrim   = makePill(t('label3d.prim'), '#1d4ed8', 1.0);    lblPrim.position.set(-CORE_X, -WIND_Y - 1.2, 0);
         lblSec    = makePill(t('label3d.sec'),  '#ea580c', 1.0);    lblSec.position.set(CORE_X, -WIND_Y - 1.2, 0);
         lblSource = makePill(t(acMode ? 'label3d.source' : 'label3d.sourceDc'), '#0f172a', 0.95); lblSource.position.set(SRC_X, 2.1, 0);
-        lblBulb   = makePill(t('label3d.bulb'), '#b45309', 0.95);   lblBulb.position.set(BULB_X, 1.9, 0);
+        lblBulb   = makePill(t('label3d.bulb'), '#b45309', 0.95);   lblBulb.position.set(BULB_X - 0.9, 1.9, 0);
         lblFlux   = makePill(t('label3d.flux'), '#7c3aed', 0.9);    lblFlux.position.set(0, -CORE_Y - 1.5, 0);
         lblReact  = makePill(t('label3d.react'), '#0d9488', 0.9);   lblReact.position.set(CORE_X + 1.7, CORE_Y - 0.2, FLUX_Z);
-        labelGroup.add(lblCore, lblPrim, lblSec, lblSource, lblBulb, lblFlux, lblReact);
+        lblHeat   = makePill(t('label3d.heat'), '#dc2626', 0.95);   lblHeat.position.set(0, CORE_Y + 0.15, FLUX_Z + 0.4);
+        labelGroup.add(lblCore, lblPrim, lblSec, lblSource, lblBulb, lblFlux, lblReact, lblHeat);
         labelGroup.visible = showLabels;
         lblReact.visible = showLenz;      // Φₛ 標籤僅 Lenz 模式顯示
+        lblHeat.visible = false;          // 🔥 發熱標籤僅真實模式且有損耗時顯示（updateVisuals 控制）
     }
     function refreshLabelTexts() {
         if (!lblCore) return;
@@ -718,6 +827,7 @@ PhysLab.sim3d.ready(function () {
         lblBulb.userData.setText(t('label3d.bulb'));
         lblFlux.userData.setText(t('label3d.flux'));
         lblReact.userData.setText(t('label3d.react'));
+        lblHeat.userData.setText(t('label3d.heat'));
     }
 
     /* ============================================================
@@ -733,9 +843,30 @@ PhysLab.sim3d.ready(function () {
         });
         PhysLab.ui.bindSlider('sld-rs', 'val-rs', function (v) { Rs = v; return v + ' Ω'; });
         PhysLab.ui.bindSlider('sld-spd', 'val-spd', function (v) { speed = v; return v.toFixed(1) + ' ×'; });
+        PhysLab.ui.bindSlider('sld-f', 'val-f', function (v) {
+            freq = v;
+            OMEGA = 2.2 * (freq / 50);        // f 只改角速度（→ 波形週期、動畫速率），不改任何電學量
+            updateFreqNote();
+            return t('unit.hz', { f: freq });
+        });
 
         el('mode-ac').addEventListener('click', function () { setMode(true); });
         el('mode-dc').addEventListener('click', function () { setMode(false); });
+
+        // 匝數比快速預設鈕
+        el('preset-up').addEventListener('click', function () { applyPreset(3, 6); });
+        el('preset-down').addEventListener('click', function () { applyPreset(8, 4); });
+        el('preset-iso').addEventListener('click', function () { applyPreset(4, 4); });
+
+        // 理想 ↔ 真實
+        el('model-ideal').addEventListener('click', function () { setRealMode(false); });
+        el('model-real').addEventListener('click', function () { setRealMode(true); });
+
+        // 預測挑戰
+        el('row-predict').addEventListener('click', function () { setPredictMode(!predictMode); });
+        el('btn-reveal').addEventListener('click', function () {
+            predictRevealed = true; el('btn-reveal').style.display = 'none';
+        });
         el('row-play').addEventListener('click', function () {
             playing = !playing; el('opt-play').classList.toggle('on', playing);
         });
@@ -773,19 +904,75 @@ PhysLab.sim3d.ready(function () {
         applyLenzVisibility();
     }
 
+    // 匝數比快速預設：透過滑桿派發 input 事件，重用既有 rebuild + 顯示更新邏輯
+    function applyPreset(np, ns) {
+        var sp = el('sld-np'), ss = el('sld-ns');
+        sp.value = np; sp.dispatchEvent(new Event('input', { bubbles: true }));
+        ss.value = ns; ss.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+
+    // 理想 ↔ 真實
+    function setRealMode(real) {
+        realMode = real;
+        el('model-ideal').classList.toggle('active', !real);
+        el('model-real').classList.toggle('active', real);
+        el('loss-grid').style.display = real ? '' : 'none';
+        el('ampturn-note').style.display = real ? '' : 'none';
+        el('model-explain').style.display = real ? '' : 'none';
+        if (!real && coreMat) coreMat.emissiveIntensity = 0.0;   // 切回理想即時熄滅發熱
+        if (!real && lblHeat) lblHeat.visible = false;
+    }
+
+    // 預測挑戰：遮住 Vs/Is/P，提供揭曉鈕
+    function setPredictMode(on) {
+        predictMode = on;
+        predictRevealed = false;
+        el('opt-predict').classList.toggle('on', on);
+        el('predict-hint').style.display = on ? '' : 'none';
+        el('btn-reveal').style.display = on ? '' : 'none';
+    }
+
+    // 週期讀數 T = 1000/f ms（動畫慢放示意提示）
+    function updateFreqNote() {
+        var ms = (1000 / freq);
+        el('freq-note').textContent = t('freq.note', { ms: ms.toFixed(ms < 100 ? 1 : 0) });
+    }
+
     /* ============================================================
        物理更新
        ============================================================ */
     function updatePhysics(dt) {
         ratio = Ns / Np;
         if (acMode) {
-            Vs = Vp * ratio;
-            Is = Vs / Rs;
-            Ip = Is * ratio;          // Ip/Is = Ns/Np（功率守恆）
-            Pw = Vs * Is;             // = Vp·Ip
+            if (realMode) {
+                // 真實變壓器（含損耗）：以定義式 Pin = Pout + Ploss 保證能量守恆
+                var rWp = RHO_WIND * Np;          // 初級繞組電阻
+                var rWs = RHO_WIND * Ns;          // 次級繞組電阻
+                Es    = Vp * ratio;               // 次級感應電動勢
+                Is    = Es / (Rs + rWs);          // 次級迴路電流（Rs = 負載電阻 R_L）
+                Vs    = Is * Rs;                  // 次級端電壓（< Es）
+                Pout  = Vs * Is;
+                Ip    = Is * ratio;               // 供負載的安匝平衡電流
+                Pcu   = Ip * Ip * rWp + Is * Is * rWs;
+                Piron = K_IRON * Vp * Vp;
+                Ploss = Pcu + Piron;
+                Pin   = Pout + Ploss;
+                IpSrc = Pin / Vp;                 // 源端初級電流（顯示用，略大於 Is·ratio）
+                eff   = Pin > 0 ? Pout / Pin : 0;
+                Pw    = Pout;                      // 燈泡亮度用真實輸出功率
+            } else {
+                // 理想變壓器（無損耗）
+                Es = Vp * ratio;
+                Vs = Vp * ratio;
+                Is = Vs / Rs;
+                Ip = Is * ratio;          // Ip/Is = Ns/Np（功率守恆）
+                Pw = Vs * Is;             // = Vp·Ip
+                Pout = Pw; Pin = Pw; Ploss = 0; Pcu = 0; Piron = 0; eff = 1; IpSrc = Ip;
+            }
             if (playing) phase += OMEGA * speed * dt;
         } else {
             Vs = 0; Is = 0; Ip = 0; Pw = 0;
+            Es = 0; Pout = 0; Pin = 0; Ploss = 0; Pcu = 0; Piron = 0; eff = 0; IpSrc = 0;
         }
     }
 
@@ -799,9 +986,10 @@ PhysLab.sim3d.ready(function () {
     }
 
     // 電流流動光點更新：offset 隨時間累加（正負=方向），沿封閉曲線等距鋪 dots
+    // 乘 speed → 與相位推進、動畫速率滑桿一致（sld-spd 同步控制快慢）
     function marchDots(flow, dir, spd, dt, on) {
         if (!flow.curve) return;
-        if (on && playing) flow.offset += dir * spd * dt;
+        if (on && playing) flow.offset += dir * spd * speed * dt;
         var n = flow.dots.length;
         for (var k = 0; k < n; k++) {
             var d = flow.dots[k];
@@ -815,11 +1003,12 @@ PhysLab.sim3d.ready(function () {
     function updateFlow(dt, curSign, absEmf) {
         var pShow = showCurrent;
         if (acMode) {
-            var spd = 0.10 + 0.55 * absEmf;                 // 振幅越大越快
+            var ff = freq / 50;                             // f 越高流動越快（呼應動畫速率）
+            var spd = (0.04 + 0.22 * absEmf) * ff;          // 基礎速率調慢約一半，振幅越大越快
             marchDots(primFlow, curSign, spd, dt, pShow);   // 初級：跟 AC 反向
             marchDots(secFlow,  curSign, spd, dt, pShow);   // 次級：同步反向
         } else {
-            marchDots(primFlow, 1, 0.32, dt, pShow);        // DC：初級穩定單向流動（直流仍有電流）
+            marchDots(primFlow, 1, 0.14, dt, pShow);        // DC：初級穩定單向流動（直流仍有電流）
             marchDots(secFlow,  1, 0,    dt, false);        // DC：次級無電流→停流、隱藏
         }
     }
@@ -881,6 +1070,13 @@ PhysLab.sim3d.ready(function () {
         if (bulbGlass) bulbGlass.material.emissiveIntensity = 1.6 * inst;
         if (bulbFilament) bulbFilament.material.color.setHex(inst > 0.02 ? 0xffee88 : 0x553311);
         if (bulbLight) bulbLight.intensity = 2.4 * inst;
+
+        // 真實模式：鐵芯 / 繞組發熱示意（暖紅 emissive，強度 ∝ P_loss，clamp 上限）
+        var heating = realMode && acMode && Ploss > 0.02;
+        if (coreMat) {
+            coreMat.emissiveIntensity = heating ? clamp(0.05 + 0.25 * Ploss, 0.05, 0.6) : 0.0;
+        }
+        if (lblHeat) lblHeat.visible = showLabels && heating;
     }
 
     /* ============================================================
@@ -898,20 +1094,44 @@ PhysLab.sim3d.ready(function () {
             badge.textContent = t('status.equal');
         }
 
-        setText('ro-vp', Vp.toFixed(1) + ' V');
-        setText('ro-vs', Vs.toFixed(1) + ' V');
-        setText('ro-ip', acMode ? Ip.toFixed(2) + ' A' : t('readout.ipDc'));
-        setText('ro-is', Is.toFixed(2) + ' A');
+        // 預測挑戰：遮住答案格（Vs / Is / P 及 Vs 峰值）
+        function ans(id, text) {
+            setText(id, (predictMode && !predictRevealed) ? t('predict.mask') : text);
+        }
+        var SQ2 = Math.SQRT2;
+        var ipShown = realMode ? IpSrc : Ip;         // 真實模式初級電流用源端 IpSrc（略大於安匝值）
+
+        setText('ro-vp', Vp.toFixed(1) + ' V ' + t('unit.rms'));
+        ans('ro-vs', Vs.toFixed(1) + ' V' + (acMode ? ' ' + t('unit.rms') : ''));
+        setText('ro-ip', acMode ? ipShown.toFixed(2) + ' A' : t('readout.ipDc'));
+        ans('ro-is', Is.toFixed(2) + ' A');
         setText('ro-rat', ratioText());
-        setText('ro-pow', Pw.toFixed(1) + ' W');
-        setText('ro-nip', acMode ? (Np * Ip).toFixed(1) : '—');    // 安匝：初級 Np·Ip（DC 為受繞組電阻限流的大電流，非理想值，不顯示 0）
-        setText('ro-nis', (Ns * Is).toFixed(1));                    // 安匝：次級 Ns·Is
+        ans('ro-pow', Pw.toFixed(1) + ' W');
+        setText('ro-vppk', acMode ? (SQ2 * Vp).toFixed(1) + ' V' : '—');   // 峰值 = √2·rms
+        ans('ro-vspk', acMode ? (SQ2 * Vs).toFixed(1) + ' V' : '—');
+        setText('ro-nip', acMode ? (Np * ipShown).toFixed(1) : '—');    // 安匝：初級 Np·Ip（真實模式略大於次級，補鐵損）
+        setText('ro-nis', (Ns * Is).toFixed(1));                        // 安匝：次級 Ns·Is
+
+        // 真實模式：損耗 / 效率讀數（grid 隱藏時仍更新，切換即最新）
+        setText('ro-pin', Pin.toFixed(1) + ' W');
+        setText('ro-pout', Pout.toFixed(1) + ' W');
+        setText('ro-ploss', Ploss.toFixed(2) + ' W');
+        setText('ro-eff', (acMode && Pin > 0) ? (eff * 100).toFixed(0) + ' %' : '—');
+        setText('ro-pcu', Pcu.toFixed(2) + ' W');
+        setText('ro-piron', Piron.toFixed(2) + ' W');
 
         var live = el('live-explain');
         if (!acMode) live.innerHTML = t('explain.dc');
         else if (Ns > Np) live.innerHTML = t('explain.stepup');
         else if (Ns < Np) live.innerHTML = t('explain.stepdown');
         else live.innerHTML = t('explain.equal');
+
+        // 真實模式解說（能量守恆一句）：切換一刻即見
+        if (realMode) {
+            el('model-explain').innerHTML = acMode
+                ? t('explain.realSummary', { pin: Pin.toFixed(1), pout: Pout.toFixed(1), ploss: Ploss.toFixed(2), eff: (eff * 100).toFixed(0) })
+                : t('explain.dc');
+        }
 
         // Lenz 相位三態解說（僅 AC + Lenz 模式）
         // 判別以「|Φ| 是否上升」為準：Φ∝sinθ，d|Φ|/dt ∝ sign(sinθ)·cosθ = sinθ·cosθ。
@@ -947,6 +1167,7 @@ PhysLab.sim3d.ready(function () {
         ctx2d = cv2d.getContext('2d');
         ctx2d.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
+    var T_WINDOW_MS = 40;               // 固定時間窗 40 ms
     function draw2D() {
         if (!ctx2d) { resize2D(); if (!ctx2d) return; }
         var dpr = Math.min(window.devicePixelRatio, 2);
@@ -954,23 +1175,45 @@ PhysLab.sim3d.ready(function () {
         ctx2d.clearRect(0, 0, W, H);
         ctx2d.fillStyle = '#f8fafc'; ctx2d.fillRect(0, 0, W, H);
 
-        var padL = 30, padR = 10, padT = 26, padB = 22;
+        var padL = 34, padR = 12, padT = 30, padB = 26;
         var gx = padL, gy = padT, gw = W - padL - padR, gh = H - padT - padB;
         var midY = gy + gh / 2;
-        ctx2d.strokeStyle = '#e2e8f0'; ctx2d.lineWidth = 1; ctx2d.strokeRect(gx, gy, gw, gh);
-        ctx2d.strokeStyle = '#cbd5e1'; ctx2d.setLineDash([3, 3]);
+        var half = gh / 2;
+        var SQ2 = Math.SQRT2;
+
+        // 淺色格線：垂直每 10 ms、水平四等分
+        ctx2d.strokeStyle = '#eef2f7'; ctx2d.lineWidth = 1;
+        for (var mms = 10; mms < T_WINDOW_MS; mms += 10) {
+            var gxx = gx + (mms / T_WINDOW_MS) * gw;
+            ctx2d.beginPath(); ctx2d.moveTo(gxx, gy); ctx2d.lineTo(gxx, gy + gh); ctx2d.stroke();
+        }
+        for (var hh = 1; hh < 4; hh++) {
+            var gyy = gy + (hh / 4) * gh;
+            ctx2d.beginPath(); ctx2d.moveTo(gx, gyy); ctx2d.lineTo(gx + gw, gyy); ctx2d.stroke();
+        }
+
+        // 外框 + 0 軸
+        ctx2d.strokeStyle = '#cbd5e1'; ctx2d.lineWidth = 1; ctx2d.strokeRect(gx, gy, gw, gh);
+        ctx2d.strokeStyle = '#94a3b8'; ctx2d.setLineDash([3, 3]);
         ctx2d.beginPath(); ctx2d.moveTo(gx, midY); ctx2d.lineTo(gx + gw, midY); ctx2d.stroke();
         ctx2d.setLineDash([]);
-        ctx2d.fillStyle = '#94a3b8'; ctx2d.font = '10px Segoe UI'; ctx2d.textAlign = 'right';
+        ctx2d.fillStyle = '#64748b'; ctx2d.font = '10px Segoe UI'; ctx2d.textAlign = 'right';
         ctx2d.fillText('0', gx - 4, midY + 3);
+        // Y 軸標題「V」
+        ctx2d.fillStyle = '#475569'; ctx2d.font = 'bold 11px Segoe UI'; ctx2d.textAlign = 'left';
+        ctx2d.fillText(t('canvas.yAxis'), 4, gy + 4);
 
-        var half = gh / 2;
-        var vsAmp = acMode ? Vp * ratio : 0;
-        var maxV = Math.max(Vp, vsAmp, 1);
+        // 峰值 √2·V 作振幅（配合 rms 定義）
+        var vpRms = Vp;
+        var vsRms = acMode ? Vs : 0;
+        var vpPeak = SQ2 * vpRms, vsPeak = SQ2 * vsRms;
+        var maxPeak = Math.max(vpPeak, vsPeak, 1);
         var ampPx = half * 0.82;
-        var vpPx = ampPx * Vp / maxV;
-        var vsPx = ampPx * vsAmp / maxV;
-        var cycles = 2.2;
+        var vpPx = ampPx * vpPeak / maxPeak;        // 峰值高度 (px)
+        var vsPx = ampPx * vsPeak / maxPeak;
+        var vpRmsPx = vpPx / SQ2, vsRmsPx = vsPx / SQ2;   // rms 高度 = 峰值 / √2
+        var cycles = freq * (T_WINDOW_MS / 1000);   // 40 ms 內週期數 = f·0.04
+        var Tms = 1000 / freq;
 
         function plotWave(ampPxLocal, color) {
             ctx2d.strokeStyle = color; ctx2d.lineWidth = 2; ctx2d.beginPath();
@@ -980,6 +1223,15 @@ PhysLab.sim3d.ready(function () {
                 if (px === 0) ctx2d.moveTo(gx + px, y); else ctx2d.lineTo(gx + px, y);
             }
             ctx2d.stroke();
+        }
+        // rms 水平虛線 + 標籤
+        function rmsLine(rmsPx, color, label) {
+            if (rmsPx < 1) return;
+            ctx2d.strokeStyle = color; ctx2d.lineWidth = 1; ctx2d.setLineDash([5, 3]); ctx2d.globalAlpha = 0.7;
+            ctx2d.beginPath(); ctx2d.moveTo(gx, midY - rmsPx); ctx2d.lineTo(gx + gw, midY - rmsPx); ctx2d.stroke();
+            ctx2d.setLineDash([]); ctx2d.globalAlpha = 1;
+            ctx2d.fillStyle = color; ctx2d.font = '9px Segoe UI'; ctx2d.textAlign = 'right';
+            ctx2d.fillText(label, gx + gw - 3, midY - rmsPx - 3);
         }
 
         if (acMode) {
@@ -993,27 +1245,41 @@ PhysLab.sim3d.ready(function () {
                 }
                 ctx2d.stroke(); ctx2d.setLineDash([]);
             }
+            rmsLine(vpRmsPx, '#2563eb', t('canvas.vpRms'));
+            rmsLine(vsRmsPx, '#ea580c', t('canvas.vsRms'));
             plotWave(vpPx, '#2563eb');
             plotWave(vsPx, '#ea580c');
         } else {
             // 直流：Vp 為恆定水平線、Vs = 0
+            var vpDcPx = ampPx * 0.62;
             ctx2d.strokeStyle = '#2563eb'; ctx2d.lineWidth = 2;
-            ctx2d.beginPath(); ctx2d.moveTo(gx, midY - vpPx); ctx2d.lineTo(gx + gw, midY - vpPx); ctx2d.stroke();
+            ctx2d.beginPath(); ctx2d.moveTo(gx, midY - vpDcPx); ctx2d.lineTo(gx + gw, midY - vpDcPx); ctx2d.stroke();
             ctx2d.strokeStyle = '#ea580c'; ctx2d.lineWidth = 2;
             ctx2d.beginPath(); ctx2d.moveTo(gx, midY); ctx2d.lineTo(gx + gw, midY); ctx2d.stroke();
             ctx2d.fillStyle = '#94a3b8'; ctx2d.font = '11px Segoe UI'; ctx2d.textAlign = 'center';
             ctx2d.fillText(t('canvas.dcNote'), gx + gw / 2, midY + half * 0.55);
         }
 
+        // 圖例
         ctx2d.textAlign = 'left'; ctx2d.font = 'bold 11px Segoe UI';
-        ctx2d.fillStyle = '#2563eb'; ctx2d.fillText(t('canvas.vpLegend'), gx + 4, gy - 8);
-        ctx2d.fillStyle = '#ea580c'; ctx2d.fillText(t('canvas.vsLegend'), gx + 78, gy - 8);
-        if (acMode && showLenz) {
-            ctx2d.fillStyle = '#64748b'; ctx2d.font = '10px Segoe UI';
-            ctx2d.fillText(t('canvas.fluxLegend'), gx + 4, gy + gh + 15);
+        ctx2d.fillStyle = '#2563eb'; ctx2d.fillText(t('canvas.vpLegend'), gx + 2, gy - 9);
+        ctx2d.fillStyle = '#ea580c'; ctx2d.fillText(t('canvas.vsLegend'), gx + 86, gy - 9);
+        // 峰值標示（右上）
+        if (acMode) {
+            ctx2d.fillStyle = '#1e40af'; ctx2d.font = '9px Segoe UI'; ctx2d.textAlign = 'right';
+            ctx2d.fillText(t('canvas.peak', { v: vpPeak.toFixed(1) }), gx + gw, gy - 9);
         }
+        // 週期 T 標示
+        ctx2d.fillStyle = '#475569'; ctx2d.font = 'bold 10px Segoe UI'; ctx2d.textAlign = 'left';
+        ctx2d.fillText(t('canvas.period', { ms: Tms.toFixed(Tms < 100 ? 1 : 0) }), gx + 2, gy + gh + 16);
+        // Lenz 圖例（居中）
+        if (acMode && showLenz) {
+            ctx2d.fillStyle = '#64748b'; ctx2d.font = '9px Segoe UI'; ctx2d.textAlign = 'center';
+            ctx2d.fillText(t('canvas.fluxLegend'), gx + gw / 2, gy + gh + 16);
+        }
+        // X 軸時間標題（右）
         ctx2d.fillStyle = '#94a3b8'; ctx2d.font = '10px Segoe UI'; ctx2d.textAlign = 'right';
-        ctx2d.fillText(t('canvas.time'), gx + gw - 2, gy + gh + 15);
+        ctx2d.fillText(t('canvas.time'), gx + gw - 2, gy + gh + 16);
     }
 
     /* ============================================================
@@ -1031,6 +1297,9 @@ PhysLab.sim3d.ready(function () {
 
     bindControls();
     setMode(true);
+    setRealMode(false);         // 預設理想模式
+    setPredictMode(false);      // 預設關閉預測挑戰
+    updateFreqNote();           // 初始化 T 讀數
     applyLenzVisibility();      // 依 showLenz(預設 false) 設定 Φₛ / 標籤 / 解說框
 
     PhysLab.ui.bindPanelToggle('btn-toggle-left', 'left-panel', ctx.resize);
@@ -1053,6 +1322,8 @@ PhysLab.sim3d.ready(function () {
         el('view2d-close').title = t('canvas.closeTitle');
         setText('val-np', t('unit.turns', { n: Np }));
         setText('val-ns', t('unit.turns', { n: Ns }));
+        setText('val-f', t('unit.hz', { f: freq }));
+        updateFreqNote();
     });
 
     /* ============================================================
