@@ -1,218 +1,315 @@
 <!DOCTYPE html>
-<html lang="zh-HK">
+<html lang="zh-Hant">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>電功率與亮度 挑戰賽 - DSE 專業虛擬實驗室</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
-    <style>
-        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; background-color: #e0e0e0; color: #ecf0f1; touch-action: none; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>電功率與亮度 挑戰賽 - DSE 專業虛擬實驗室</title>
 
-        #canvas-container { position: absolute; top: 0; left: 0; width: 65%; height: 100vh; background: #11151c; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 15px; box-sizing: border-box; }
-        #ui-panel { position: absolute; top: 0; right: 0; width: 35%; height: 100vh; background-color: #1e2128; border-left: 1px solid #2c313c; padding: 20px; box-sizing: border-box; display: flex; flex-direction: column; overflow-y: auto; box-shadow: -10px 0 30px rgba(0,0,0,0.2); z-index: 10; }
-        #ui-panel::-webkit-scrollbar { width: 8px; }
-        #ui-panel::-webkit-scrollbar-thumb { background: #3e4451; border-radius: 4px; }
+<!-- KaTeX 0.16.9（公式排版）：鎖 jsdelivr -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 
-        .panel-title { color: #61afef; font-size: 1.3rem; margin: 0 0 4px 0; font-weight: 700; }
-        .panel-sub { color: #8a93a3; font-size: 0.82rem; margin: 0 0 14px 0; line-height: 1.4; }
+<!-- 共用資源（載入順序固定；classic script，file:// 可用） -->
+<link rel="stylesheet" href="../../../assets/css/tokens.css">
+<link rel="stylesheet" href="../../../assets/css/labgray.css">
+<script src="../../../assets/js/core.js"></script>
+<script src="../../../assets/js/i18n.js"></script>
 
-        #simCanvas { width: 100%; flex: 1 1 auto; min-height: 0; background: radial-gradient(circle at 50% 40%, #1b2330, #0c0f14); border-radius: 15px; box-shadow: inset 0 0 30px rgba(0,0,0,0.6); cursor: default; touch-action: none; }
+<style>
+    /* ── 版面鐵律：滿版三欄、面板內卡片不被壓縮 ── */
+    body { height: 100vh; overflow: hidden; }
+    #left-panel > *, #right-panel > * { flex-shrink: 0; }
+    .hidden { display: none !important; }
 
-        .seg { display: flex; gap: 6px; margin-bottom: 14px; }
-        .seg button { flex: 1; padding: 9px 4px; border: 1px solid #3e4451; background: #1e2128; color: #abb2bf; border-radius: 8px; cursor: pointer; font-weight: 700; font-size: 0.85rem; transition: 0.15s; }
-        .seg button:hover { border-color: #61afef; }
-        .seg button.active { background: #61afef; color: #1e2128; border-color: #61afef; box-shadow: 0 0 10px rgba(97,175,239,0.4); }
+    /* ── 中央畫布（One Dark 深底 → 淺色實驗台；電路/燈泡/亮度色保留） ── */
+    #canvas-wrap { padding: 12px; }
+    #simCanvas { flex: 1; min-width: 0; width: 100%; height: 100%; align-self: stretch;
+        background: radial-gradient(circle at 50% 40%, #eef2f7, #dfe4ea);
+        border: 1px solid var(--pl-border); border-radius: 14px; touch-action: none; }
 
-        .control-group { background: #282c34; padding: 12px; border-radius: 12px; margin-bottom: 12px; border: 1px solid #3e4451; flex-shrink: 0; }
-        .group-title { font-weight: 700; font-size: 0.95rem; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
-        label { display: block; margin-bottom: 6px; font-weight: 500; font-size: 0.88rem; color: #abb2bf; }
-        select, input[type="range"], input[type="number"] { width: 100%; padding: 7px; border-radius: 6px; border: 1px solid #3e4451; background: #1e2128; color: #61afef; font-size: 0.95rem; cursor: pointer; outline: none; box-sizing: border-box; }
-        select:focus, input:focus { border-color: #61afef; }
-        .row-inline { display: flex; gap: 8px; align-items: center; }
-        .row-inline input[type="range"] { flex: 1; }
-        .row-inline .num { width: 64px; flex: none; }
-        .hidden { display: none !important; }
-        .calc-line { font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; color: #98c379; margin-top: 8px; background: rgba(0,0,0,0.2); padding: 6px 8px; border-radius: 6px; }
-        .hint { font-size: 0.78rem; color: #8a93a3; line-height: 1.45; margin: 0 0 8px; }
+    /* ── 滑桿 + 數字輸入（保留原雙輸入功能） ── */
+    .row-inline { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
+    .row-inline input[type=range] { flex: 1; }
+    .num { width: 60px; flex: none; padding: 5px; border-radius: 6px;
+        border: 1px solid var(--pl-border); background: var(--pl-inset);
+        color: var(--pl-accent-deep); font-size: 0.82rem; text-align: center; }
+    .card-body > label { display: block; font-size: 0.74rem; color: var(--pl-text-dim); font-weight: 600; margin: 8px 0 2px; }
+    .card-body > label:first-child { margin-top: 0; }
+    .bulb-card label { display: block; font-size: 0.72rem; color: var(--pl-text-dim); font-weight: 600; margin: 8px 0 2px; }
 
-        input[type=range] { -webkit-appearance: none; background: transparent; padding: 0; }
-        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 18px; width: 18px; border-radius: 50%; background: #61afef; cursor: pointer; margin-top: -7px; box-shadow: 0 0 8px rgba(97,175,239,0.5); }
-        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: #3e4451; border-radius: 2px; }
+    /* ── 工具列 / 燈泡籌碼 ── */
+    .tool-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 8px; }
+    .tool-btn { background: var(--pl-inset); color: var(--pl-text-dim); border: 1px solid var(--pl-border);
+        border-radius: 6px; padding: 8px 4px; font-size: 0.72rem; font-weight: 700; cursor: pointer; }
+    .tool-btn:hover { border-color: var(--pl-blue); }
+    .tool-btn.tool-active { background: var(--pl-accent-bg); color: var(--pl-accent-deep); border-color: var(--pl-accent); }
+    #lampPicker { font-size: 0.74rem; color: var(--pl-text-dim); margin: 8px 0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .chip { --c: var(--pl-blue); background: #fff; color: var(--c); border: 1px solid var(--c);
+        border-radius: 50%; width: 28px; height: 28px; font-weight: 800; cursor: pointer; }
+    .chip.chip-active { background: var(--c); color: #fff; }
 
-        .btn { padding: 8px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.85rem; transition: 0.2s opacity; text-align: center; }
-        .btn:hover { opacity: 0.85; }
-        .btn-add { background: #98c379; color: #1e2128; }
-        .btn-clear-m { background: #7f8c8d; color: #fff; }
-        .btn-row { display: flex; gap: 8px; margin-top: 8px; }
-        .btn-row .btn { flex: 1; }
+    /* ── 動作按鈕 ── */
+    .btn { padding: 8px; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; font-size: 0.78rem; text-align: center; }
+    .btn:hover { opacity: 0.88; }
+    .btn-add { background: var(--pl-ok); color: #fff; }
+    .btn-clear-m { background: var(--pl-text-mute); color: #fff; }
+    .btn-row { display: flex; gap: 8px; margin-top: 8px; }
+    .btn-row .btn { flex: 1; }
 
-        /* 工具列 */
-        .tool-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 8px; }
-        .tool-btn { background: #3e4451; color: #abb2bf; border: none; border-radius: 6px; padding: 8px 4px; font-size: 0.82rem; font-weight: 700; cursor: pointer; }
-        .tool-btn:hover { opacity: 0.85; }
-        .tool-btn.tool-active { background: #61afef; color: #1e2128; box-shadow: 0 0 10px rgba(97,175,239,0.4); }
-        #lampPicker { font-size: 0.82rem; color: #abb2bf; margin: 8px 0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-        .chip { --c: #61afef; background: #1e2128; color: var(--c); border: 1px solid var(--c); border-radius: 50%; width: 30px; height: 30px; font-weight: 800; cursor: pointer; }
-        .chip.chip-active { background: var(--c); color: #1e2128; }
+    /* ── 燈泡卡片 ── */
+    .bulb-card { background: var(--pl-inset); padding: 10px 12px; border-radius: 10px; margin-bottom: 10px;
+        border: 1px solid var(--pl-border); border-left: 4px solid var(--pl-blue); }
+    .bulb-card .bc-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .bulb-card .bc-dot { width: 13px; height: 13px; border-radius: 50%; box-shadow: 0 0 5px currentColor; }
+    .bulb-card .bc-id { font-weight: 800; font-size: 0.9rem; }
+    .bulb-card .bc-rm { margin-left: auto; background: var(--pl-bad); color: #fff; border: none; border-radius: 6px; width: 24px; height: 24px; cursor: pointer; font-weight: bold; }
+    .bulb-card .bc-rm:disabled { opacity: 0.3; cursor: not-allowed; }
+    .bc-preset { width: 100%; padding: 6px; border-radius: 6px; border: 1px solid var(--pl-border); background: var(--pl-inset); color: var(--pl-text); font-size: 0.8rem; }
+    .calc-line { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; color: var(--pl-ok); margin-top: 8px; background: var(--pl-card-head); padding: 6px 8px; border-radius: 6px; }
+    .hint { font-size: 0.72rem; color: var(--pl-text-faint); line-height: 1.45; margin: 0 0 8px; }
 
-        /* 燈泡卡片 */
-        .bulb-card { background: #282c34; padding: 10px 12px; border-radius: 10px; margin-bottom: 10px; border: 1px solid #3e4451; border-left: 4px solid #61afef; }
-        .bulb-card .bc-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-        .bulb-card .bc-dot { width: 14px; height: 14px; border-radius: 50%; box-shadow: 0 0 6px currentColor; }
-        .bulb-card .bc-id { font-weight: 800; font-size: 0.95rem; }
-        .bulb-card .bc-rm { margin-left: auto; background: #e06c75; color: #1e2128; border: none; border-radius: 6px; width: 26px; height: 26px; cursor: pointer; font-weight: bold; }
-        .bulb-card .bc-rm:disabled { opacity: 0.25; cursor: not-allowed; }
+    /* ── 預測挑戰 ── */
+    .pred-q { margin-bottom: 10px; }
+    .pred-q .q-text { font-size: 0.78rem; color: var(--pl-text-dim); margin-bottom: 6px; font-weight: 600; }
+    .choice-row { display: flex; gap: 6px; }
+    .choice-btn { flex: 1; padding: 7px 4px; border: 1px solid var(--pl-border); border-radius: 6px; background: var(--pl-inset); color: var(--pl-text-dim); cursor: pointer; font-size: 0.74rem; font-weight: 600; }
+    .choice-btn.sel { background: var(--pl-accent-bg); color: var(--pl-accent-deep); border-color: var(--pl-accent); }
+    .choice-btn.correct { background: var(--pl-ok-bg); color: var(--pl-ok-text); border-color: var(--pl-ok-border); }
+    .choice-btn.wrong { background: var(--pl-bad-bg); color: var(--pl-bad-text); border-color: var(--pl-bad); }
+    .pred-result { font-size: 0.76rem; line-height: 1.5; margin-top: 8px; padding: 10px; border-radius: 8px; display: none; }
+    .pred-result.show { display: block; }
+    .pred-result.ok { background: var(--pl-ok-bg); color: var(--pl-ok-text); border-left: 4px solid var(--pl-ok-border); }
+    .pred-result.no { background: var(--pl-bad-bg); color: var(--pl-bad-text); border-left: 4px solid var(--pl-bad); }
 
-        /* 預測挑戰 */
-        .pred-q { margin-bottom: 10px; }
-        .pred-q .q-text { font-size: 0.88rem; color: #abb2bf; margin-bottom: 6px; font-weight: 600; }
-        .choice-row { display: flex; gap: 6px; }
-        .choice-btn { flex: 1; padding: 7px 4px; border: 1px solid #3e4451; border-radius: 6px; background: #1e2128; color: #abb2bf; cursor: pointer; font-size: 0.82rem; font-weight: 600; transition: 0.15s; }
-        .choice-btn.sel { background: #61afef; color: #1e2128; border-color: #61afef; }
-        .choice-btn.correct { background: #98c379; color: #1e2128; border-color: #98c379; }
-        .choice-btn.wrong { background: #e06c75; color: #1e2128; border-color: #e06c75; }
-        .pred-result { font-size: 0.84rem; line-height: 1.5; margin-top: 8px; padding: 10px; border-radius: 8px; display: none; }
-        .pred-result.show { display: block; }
-        .pred-result.ok { background: rgba(152,195,121,0.12); color: #98c379; border-left: 4px solid #98c379; }
-        .pred-result.no { background: rgba(224,108,117,0.12); color: #e06c75; border-left: 4px solid #e06c75; }
+    /* ── 數據表 / 能量條 ── */
+    .data-circuit { margin-bottom: 12px; }
+    .data-circuit h4 { margin: 0 0 6px; font-size: 0.82rem; color: var(--pl-accent); }
+    table.data-table { width: 100%; border-collapse: collapse; font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; }
+    table.data-table th { color: var(--pl-text-faint); font-weight: 700; padding: 4px 3px; text-align: right; border-bottom: 1px solid var(--pl-border); }
+    table.data-table th:first-child { text-align: left; }
+    table.data-table td { padding: 4px 3px; text-align: right; color: var(--pl-ok); }
+    table.data-table td:first-child { text-align: left; color: var(--pl-text-dim); font-weight: 600; }
+    .bright-tag { font-size: 0.68rem; color: var(--pl-warn-deep); }
+    .energy-block { margin-bottom: 10px; }
+    .energy-block .e-label { font-size: 0.74rem; color: var(--pl-text-dim); margin-bottom: 4px; display: flex; justify-content: space-between; }
+    .energy-bar { height: 22px; width: 100%; background: var(--pl-inset); border-radius: 6px; overflow: hidden; display: flex; border: 1px solid var(--pl-border); }
+    .energy-seg { height: 100%; display: flex; align-items: center; justify-content: center; font-size: 0.62rem; color: #fff; font-weight: 700; white-space: nowrap; overflow: hidden; }
+    .conserve-note { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: var(--pl-ok); margin-top: 6px; }
 
-        /* 數據面板 */
-        .data-circuit { margin-bottom: 12px; }
-        .data-circuit h4 { margin: 0 0 6px 0; font-size: 0.9rem; color: #61afef; }
-        table.data-table { width: 100%; border-collapse: collapse; font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; }
-        table.data-table th { color: #5c6370; font-weight: 700; padding: 4px 3px; text-align: right; border-bottom: 1px solid #3e4451; }
-        table.data-table th:first-child { text-align: left; }
-        table.data-table td { padding: 4px 3px; text-align: right; color: #98c379; }
-        table.data-table td:first-child { text-align: left; color: #abb2bf; font-weight: 600; }
-        .bright-tag { font-size: 0.72rem; color: #f1c40f; }
-
-        /* 能量條 */
-        .energy-block { margin-bottom: 10px; }
-        .energy-block .e-label { font-size: 0.82rem; color: #abb2bf; margin-bottom: 4px; display: flex; justify-content: space-between; }
-        .energy-bar { height: 22px; width: 100%; background: #1e2128; border-radius: 6px; overflow: hidden; display: flex; border: 1px solid #3e4451; }
-        .energy-seg { height: 100%; display: flex; align-items: center; justify-content: center; font-size: 0.68rem; color: #fff; font-weight: 700; white-space: nowrap; overflow: hidden; }
-        .conserve-note { font-family: 'JetBrains Mono', monospace; font-size: 0.76rem; color: #98c379; margin-top: 6px; }
-
-        .theory-box { background: rgba(97, 175, 239, 0.1); color: #61afef; padding: 12px; border-radius: 10px; font-size: 0.84rem; line-height: 1.6; border-left: 4px solid #61afef; flex-shrink: 0; margin-bottom: 12px; }
-        .theory-box b { color: #98c379; }
-        .katex { color: inherit; }
-        .note-box { background: rgba(241,196,15,0.08); color: #d4a017; font-size: 0.76rem; line-height: 1.4; padding: 8px 10px; border-radius: 8px; border-left: 3px solid #f1c40f; margin-bottom: 12px; }
-
-        #home-btn { position: fixed; bottom: 16px; left: 16px; z-index: 99999; background: rgba(30, 41, 59, 0.85); backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 10px; padding: 8px 14px; font-size: 13px; font-weight: bold; color: #fff; text-decoration: none; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25); transition: background 0.2s, transform 0.2s; display: inline-flex; align-items: center; gap: 6px; }
-        #home-btn:hover { background: rgba(30, 41, 59, 0.95); transform: translateY(-2px); }
-
-        @media (max-width: 820px) {
-            body { overflow-y: auto; height: auto; }
-            #canvas-container { position: static; width: 100%; height: auto; padding: 10px; }
-            #simCanvas { height: 56vh; flex: none; }
-            #ui-panel { position: static; width: 100%; height: auto; border-left: none; border-top: 2px solid #2c313c; box-shadow: none; overflow-y: visible; }
-        }
-    </style>
+    /* ── 原理盒 / 假設盒 ── */
+    .theory-box { background: var(--pl-accent-bg); color: var(--pl-text-dim); padding: 12px; border-radius: 10px; font-size: 0.78rem; line-height: 1.6; border-left: 4px solid var(--pl-accent); }
+    .theory-box b { color: var(--pl-accent-deep); }
+    .note-box { background: #fffbeb; color: var(--pl-warn-deep); font-size: 0.72rem; line-height: 1.4; padding: 8px 10px; border-radius: 8px; border-left: 3px solid var(--pl-warn); }
+    .katex { color: inherit; }
+</style>
 </head>
 <body>
-    <div id="canvas-container">
-        <canvas id="simCanvas"></canvas>
+
+<div id="topbar">
+    <div style="display:flex;align-items:center;gap:16px;">
+        <button type="button" class="panel-toggle-btn" id="btn-toggle-left"><span>☰</span> <span data-i18n="topbar.controls">控制</span></button>
+        <div class="title-block">
+            <h1 data-i18n="topbar.title">⚡ 電功率與亮度 挑戰賽</h1>
+            <p data-i18n="topbar.subtitle">HKDSE Physics · Book 4 · Chapter 2 · 功率與燈泡亮度</p>
+        </div>
+    </div>
+    <div class="tb-actions">
+        <button type="button" class="panel-toggle-btn" id="btn-toggle-right"><span>📖</span> <span data-i18n="topbar.info">資訊</span></button>
+    </div>
+</div>
+
+<div id="main">
+    <div id="left-panel">
+        <p class="hint" data-i18n-html="panel.sub">同一對燈泡，並聯與串聯下誰較亮？亮度由<strong>實際消耗功率</strong>決定，並非燈泡上標示的額定功率。</p>
+
+        <div class="card">
+            <div class="card-header">🔀 <span data-i18n="panel.view.header">顯示模式</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <div class="dir-btn-group" id="viewSeg">
+                    <button type="button" class="dir-btn" data-view="series" data-i18n="view.series">串聯</button>
+                    <button type="button" class="dir-btn" data-view="parallel" data-i18n="view.parallel">並聯</button>
+                    <button type="button" class="dir-btn active" data-view="compare" data-i18n="view.compare">對比</button>
+                    <button type="button" class="dir-btn" data-view="custom" data-i18n="view.custom">自訂</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">💡 <span data-i18n="panel.bulb.header">燈泡設定</span><span class="chevron">▾</span></div>
+            <div class="card-body"><div id="bulbList"></div></div>
+        </div>
+
+        <div class="card hidden" id="customControls">
+            <div class="card-header">🧩 <span data-i18n="panel.custom.header">自訂電路（自由編輯）</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <p class="hint" data-i18n="panel.custom.hint">選工具 → 在格點上按住拖拉放置。相鄰端點落在同一格點即自動接通；用「選取」可移動元件或點開關切換通斷。電池電動勢由下方「供應電壓」控制。</p>
+                <div class="tool-grid" id="toolGrid">
+                    <button type="button" data-tool="select" class="tool-btn tool-active" data-i18n="tool.select">↖ 選取</button>
+                    <button type="button" data-tool="wire" class="tool-btn" data-i18n="tool.wire">／ 導線</button>
+                    <button type="button" data-tool="battery" class="tool-btn" data-i18n="tool.battery">🔋 電池</button>
+                    <button type="button" data-tool="lamp" class="tool-btn" data-i18n="tool.lamp">💡 燈泡</button>
+                    <button type="button" data-tool="switch" class="tool-btn" data-i18n="tool.switch">⏻ 開關</button>
+                    <button type="button" data-tool="delete" class="tool-btn" data-i18n="tool.delete">🗑 刪除</button>
+                </div>
+                <div id="lampPicker"><span data-i18n="panel.custom.place">放置燈泡：</span><span id="lampChips"></span></div>
+                <div class="btn-row">
+                    <button type="button" class="btn btn-add" id="addBulb" data-i18n="btn.addBulb">➕ 新增燈泡</button>
+                    <button type="button" class="btn btn-clear-m" id="loadTemplate" data-i18n="btn.template">📋 範本</button>
+                    <button type="button" class="btn btn-clear-m" id="clearEditor" data-i18n="btn.clear">🗑 清空</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">🔋 <span data-i18n="panel.source.header">電源設定</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <label><span data-i18n="label.vs">供應電壓</span> <span data-tex="V_s"></span> (V)</label>
+                <div class="row-inline">
+                    <input type="range" id="vs" min="0" max="250" step="1" value="220">
+                    <input type="number" class="num" id="vsnum" min="0" max="400" value="220">
+                </div>
+                <label><span data-i18n="label.rint">電池內阻</span> <span data-tex="r"></span> (Ω)</label>
+                <div class="row-inline">
+                    <input type="range" id="rint" min="0" max="50" step="1" value="0">
+                    <input type="number" class="num" id="rintnum" min="0" max="200" value="0">
+                </div>
+            </div>
+        </div>
+
+        <div class="card" id="predGroup">
+            <div class="card-header">🎯 <span data-i18n="panel.pred.header">預測挑戰</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <div class="pred-q" data-q="parallel">
+                    <div class="q-text" data-i18n="pred.qParallel">① 並聯時哪顆燈泡較亮？</div>
+                    <div class="choice-row">
+                        <button type="button" class="choice-btn" data-q="parallel" data-v="A" data-i18n="pred.aBright">A 較亮</button>
+                        <button type="button" class="choice-btn" data-q="parallel" data-v="tie" data-i18n="pred.tie">一樣亮</button>
+                        <button type="button" class="choice-btn" data-q="parallel" data-v="B" data-i18n="pred.bBright">B 較亮</button>
+                    </div>
+                </div>
+                <div class="pred-q" data-q="series">
+                    <div class="q-text" data-i18n="pred.qSeries">② 串聯時哪顆燈泡較亮？</div>
+                    <div class="choice-row">
+                        <button type="button" class="choice-btn" data-q="series" data-v="A" data-i18n="pred.aBright">A 較亮</button>
+                        <button type="button" class="choice-btn" data-q="series" data-v="tie" data-i18n="pred.tie">一樣亮</button>
+                        <button type="button" class="choice-btn" data-q="series" data-v="B" data-i18n="pred.bBright">B 較亮</button>
+                    </div>
+                </div>
+                <div class="btn-row">
+                    <button type="button" class="btn btn-add" id="submitPred" data-i18n="btn.submit">提交答案</button>
+                    <button type="button" class="btn btn-clear-m" id="resetPred" data-i18n="btn.reset">重新挑戰</button>
+                </div>
+                <div class="pred-result" id="predResult"></div>
+            </div>
+        </div>
     </div>
 
-    <div id="ui-panel">
-        <h2 class="panel-title">⚡ 電功率與亮度 挑戰賽</h2>
-        <p class="panel-sub">同一對燈泡，並聯與串聯下誰較亮？亮度由<strong>實際消耗功率</strong>決定，並非燈泡上標示的額定功率。</p>
+    <div id="canvas-wrap"><canvas id="simCanvas"></canvas></div>
 
-        <!-- 顯示模式 -->
-        <div class="seg" id="viewSeg">
-            <button data-view="series">串聯</button>
-            <button data-view="parallel">並聯</button>
-            <button data-view="compare" class="active">對比</button>
-            <button data-view="custom">自訂</button>
+    <div id="right-panel">
+        <div class="card">
+            <div class="card-header">📊 <span data-i18n="panel.data.header">即時數據</span><span class="chevron">▾</span></div>
+            <div class="card-body"><div id="dataArea"></div></div>
         </div>
-
-        <!-- 燈泡卡片（動態） -->
-        <div id="bulbList"></div>
-
-        <!-- 自訂電路（自由編輯器） -->
-        <div class="control-group hidden" id="customControls">
-            <div class="group-title">🧩 自訂電路（自由編輯）</div>
-            <p class="hint">選工具 → 在格點上按住拖拉放置。相鄰端點落在同一格點即自動接通；用「選取」可移動元件或點開關切換通斷。電池電動勢由下方「供應電壓」控制。</p>
-            <div class="tool-grid" id="toolGrid">
-                <button data-tool="select" class="tool-btn tool-active">↖ 選取</button>
-                <button data-tool="wire" class="tool-btn">／ 導線</button>
-                <button data-tool="battery" class="tool-btn">🔋 電池</button>
-                <button data-tool="lamp" class="tool-btn">💡 燈泡</button>
-                <button data-tool="switch" class="tool-btn">⏻ 開關</button>
-                <button data-tool="delete" class="tool-btn">🗑 刪除</button>
-            </div>
-            <div id="lampPicker">放置燈泡：<span id="lampChips"></span></div>
-            <div class="btn-row">
-                <button class="btn btn-add" id="addBulb">➕ 新增燈泡</button>
-                <button class="btn btn-clear-m" id="loadTemplate">📋 範本</button>
-                <button class="btn btn-clear-m" id="clearEditor">🗑 清空</button>
+        <div class="card">
+            <div class="card-header">🔥 <span data-i18n="panel.energy.header">能量轉換與守恆</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <p class="hint" data-i18n="panel.energy.hint">電能 → 光能 + 熱能。電池輸出總功率 = 各燈泡消耗功率之和。</p>
+                <div id="energyArea"></div>
             </div>
         </div>
-
-        <!-- 電源設定 -->
-        <div class="control-group">
-            <div class="group-title">🔋 電源設定</div>
-            <label>供應電壓 <span data-tex="V_s"></span> (V)</label>
-            <div class="row-inline">
-                <input type="range" id="vs" min="0" max="250" step="1" value="220">
-                <input type="number" class="num" id="vsnum" min="0" max="400" value="220">
-            </div>
-            <label style="margin-top:8px;">電池內阻 <span data-tex="r"></span> (Ω)</label>
-            <div class="row-inline">
-                <input type="range" id="rint" min="0" max="50" step="1" value="0">
-                <input type="number" class="num" id="rintnum" min="0" max="200" value="0">
-            </div>
-        </div>
-
-        <!-- 預測挑戰 -->
-        <div class="control-group" id="predGroup">
-            <div class="group-title" style="color:#f1c40f;">🎯 預測挑戰</div>
-            <div class="pred-q" data-q="parallel">
-                <div class="q-text">① 並聯時哪顆燈泡較亮？</div>
-                <div class="choice-row">
-                    <button class="choice-btn" data-q="parallel" data-v="A">A 較亮</button>
-                    <button class="choice-btn" data-q="parallel" data-v="tie">一樣亮</button>
-                    <button class="choice-btn" data-q="parallel" data-v="B">B 較亮</button>
-                </div>
-            </div>
-            <div class="pred-q" data-q="series">
-                <div class="q-text">② 串聯時哪顆燈泡較亮？</div>
-                <div class="choice-row">
-                    <button class="choice-btn" data-q="series" data-v="A">A 較亮</button>
-                    <button class="choice-btn" data-q="series" data-v="tie">一樣亮</button>
-                    <button class="choice-btn" data-q="series" data-v="B">B 較亮</button>
-                </div>
-            </div>
-            <div class="btn-row">
-                <button class="btn btn-add" id="submitPred">提交答案</button>
-                <button class="btn btn-clear-m" id="resetPred">重新挑戰</button>
-            </div>
-            <div class="pred-result" id="predResult"></div>
-        </div>
-
-        <!-- 即時數據 -->
-        <div class="control-group">
-            <div class="group-title">📊 即時數據</div>
-            <div id="dataArea"></div>
-        </div>
-
-        <!-- 能量守恆 -->
-        <div class="control-group">
-            <div class="group-title">🔥 能量轉換與守恆</div>
-            <p class="hint">電能 → 光能 + 熱能。電池輸出總功率 = 各燈泡消耗功率之和。</p>
-            <div id="energyArea"></div>
-        </div>
-
-        <!-- 公式提示 -->
         <div class="theory-box" id="theoryBox"></div>
-
-        <div class="note-box">📌 假設：本模擬器將燈泡電阻視為定值（<span data-tex="R = V_{rated}^2 / P_{rated}"></span>）。真實燈泡為非歐姆元件，電阻隨溫度上升，此處為 DSE 分析慣例之簡化模型。</div>
+        <div class="note-box">📌 <span data-i18n="note.a">假設：本模擬器將燈泡電阻視為定值（</span><span data-tex="R = V_{rated}^2 / P_{rated}"></span><span data-i18n="note.b">）。真實燈泡為非歐姆元件，電阻隨溫度上升，此處為 DSE 分析慣例之簡化模型。</span></div>
     </div>
+</div>
 
-    <a id="home-btn" href="../../../index.html">&#127968; &#20027;&#38913;</a>
+<script>
+/* ── 頁面字典：學生可見字串集中於此（en 暫缺 → 自動回退 zh） ── */
+PhysLab.i18n.register({
+    zh: {
+        'topbar.title': '⚡ 電功率與亮度 挑戰賽',
+        'topbar.subtitle': 'HKDSE Physics · Book 4 · Chapter 2 · 功率與燈泡亮度',
+        'topbar.controls': '控制',
+        'topbar.info': '資訊',
+        'panel.sub': '同一對燈泡，並聯與串聯下誰較亮？亮度由<strong>實際消耗功率</strong>決定，並非燈泡上標示的額定功率。',
+        'panel.view.header': '顯示模式',
+        'view.series': '串聯',
+        'view.parallel': '並聯',
+        'view.compare': '對比',
+        'view.custom': '自訂',
+        'panel.bulb.header': '燈泡設定',
+        'panel.custom.header': '自訂電路（自由編輯）',
+        'panel.custom.hint': '選工具 → 在格點上按住拖拉放置。相鄰端點落在同一格點即自動接通；用「選取」可移動元件或點開關切換通斷。電池電動勢由下方「供應電壓」控制。',
+        'panel.custom.place': '放置燈泡：',
+        'tool.select': '↖ 選取',
+        'tool.wire': '／ 導線',
+        'tool.battery': '🔋 電池',
+        'tool.lamp': '💡 燈泡',
+        'tool.switch': '⏻ 開關',
+        'tool.delete': '🗑 刪除',
+        'btn.addBulb': '➕ 新增燈泡',
+        'btn.template': '📋 範本',
+        'btn.clear': '🗑 清空',
+        'btn.submit': '提交答案',
+        'btn.reset': '重新挑戰',
+        'panel.source.header': '電源設定',
+        'label.vs': '供應電壓',
+        'label.rint': '電池內阻',
+        'panel.pred.header': '預測挑戰',
+        'pred.qParallel': '① 並聯時哪顆燈泡較亮？',
+        'pred.qSeries': '② 串聯時哪顆燈泡較亮？',
+        'pred.aBright': 'A 較亮',
+        'pred.tie': '一樣亮',
+        'pred.bBright': 'B 較亮',
+        'pred.needAnswer': '請先為兩條問題各選一個答案。',
+        'pred.parLine': '並聯：你選「{you}」，正解「{ans}」',
+        'pred.serLine': '串聯：你選「{you}」，正解「{ans}」',
+        'pred.parWhyA': '電壓相同 → ',
+        'pred.parWhyB': '，電阻小者（額定功率大者）較亮。',
+        'pred.serWhyA': '電流相同 → ',
+        'pred.serWhyB': '，電阻大者（額定功率小者）較亮。',
+        'pred.allCorrect': '🎉 全對！你已掌握公式選擇。',
+        'pred.tryAgain': '再想想：同一對燈泡，串聯與並聯的「較亮者」常常相反。',
+        'panel.data.header': '即時數據',
+        'panel.energy.header': '能量轉換與守恆',
+        'panel.energy.hint': '電能 → 光能 + 熱能。電池輸出總功率 = 各燈泡消耗功率之和。',
+        'note.a': '假設：本模擬器將燈泡電阻視為定值（',
+        'note.b': '）。真實燈泡為非歐姆元件，電阻隨溫度上升，此處為 DSE 分析慣例之簡化模型。',
+        'canvas.brightness': '亮度 {p}%',
+        'canvas.winBright': '{w} 較亮（亮度比 ≈ {r}×）',
+        'canvas.emptyEditor': '選擇工具並在格點放置元件，或按「📋 範本」',
+        'canvas.parallel': '並聯 Parallel',
+        'canvas.series': '串聯 Series',
+        'label.tie': '兩燈一樣亮',
+        'label.suffixBright': ' 較亮',
+        'table.bulb': '燈泡',
+        'table.brightTag': '✦亮',
+        'table.custom': '自訂電路',
+        'data.noBulb': '尚未放置燈泡。用「💡 燈泡」工具在格點放置。',
+        'energy.parallel': '並聯',
+        'energy.series': '串聯',
+        'energy.custom': '自訂',
+        'energy.noBulb': '尚未放置燈泡。',
+        'theory.parHead': '並聯（電壓相同）',
+        'theory.serHead': '串聯（電流相同）',
+        'theory.use': '：用',
+        'theory.parBody': '，電阻小者較亮。目前',
+        'theory.serBody': '，電阻大者較亮。',
+        'theory.note': '💡 同一對燈泡，並聯與串聯時「較亮者」往往相反——這正是 DSE 常見的反直覺考點。',
+        'bulb.label': '燈泡 {id}',
+        'bulb.fixedTitle': 'A、B 為固定燈泡',
+        'bulb.customOption': '自訂…',
+        'bulb.vrated': '額定電壓',
+        'bulb.prated': '額定功率'
+    },
+    en: {}
+});
+</script>
 
     <script>
+    /* i18n 短別名（避免與頁內既有 tex()／區域變數 t 衝突） */
+    const tt = (k, p) => PhysLab.i18n.t(k, p);
+
     /* ============================================================
        KaTeX 工具（含降級 fallback）
        ============================================================ */
@@ -552,7 +649,7 @@
     const canvas = document.getElementById('simCanvas');
     const ctx = canvas.getContext('2d');
     let cssW = 0, cssH = 0;
-    const LIGHT_WIRE = '#9aa7b2', PARTICLE = '#ffe14d', TXT = '#cfd8dc';
+    const LIGHT_WIRE = '#9aa7b2', PARTICLE = '#ffe14d', TXT = '#334155';
 
     function resize() {
         const dpr = window.devicePixelRatio || 1;
@@ -612,10 +709,15 @@
         ctx.save(); ctx.translate(x, y); ctx.rotate(-Math.PI / 2); drawBatterySymbol(); ctx.restore();
     }
 
-    function label(text, x, y, color, size, align) {
-        ctx.fillStyle = color || TXT;
+    function label(text, x, y, color, size, align, outline) {
         ctx.font = `${size || 13}px 'Segoe UI', sans-serif`;
         ctx.textAlign = align || 'center'; ctx.textBaseline = 'middle';
+        // 淺底上的亮色文字（如亮度黃）加深色描邊拉開明度對比，保留色相語意
+        if (outline) {
+            ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(15,23,42,0.85)';
+            ctx.lineJoin = 'round'; ctx.strokeText(text, x, y);
+        }
+        ctx.fillStyle = color || TXT;
         ctx.fillText(text, x, y);
     }
 
@@ -644,14 +746,14 @@
         ctx.save(); ctx.translate(cx, cy); drawLamp(glowOf(stat.P), R, b.color); ctx.restore();
         label(b.id, cx, cy - R - 12, b.color, R * 0.7 + 4);
         if (showRating) label(`${b.Vr}V·${b.Pr}W`, cx, cy + R + 12, TXT, 11);
-        label(`亮度 ${pctOf(stat.P)}%`, cx, cy + R + (showRating ? 26 : 14), '#ffe14d', 12);
+        label(tt('canvas.brightness', { p: pctOf(stat.P) }), cx, cy + R + (showRating ? 26 : 14), '#ffe14d', 12, 'center', true);
     }
 
     function brightnessCaption(rx, ry, rw, statObj) {
         const a = statObj.A.P, bb = statObj.B.P, win = statObj.bright;
         let txt;
-        if (win === 'tie') txt = '兩燈一樣亮';
-        else { const ratio = Math.max(a, bb) / Math.max(Math.min(a, bb), 1e-6); txt = `${win} 較亮（亮度比 ≈ ${ratio.toFixed(2)}×）`; }
+        if (win === 'tie') txt = tt('label.tie');
+        else { const ratio = Math.max(a, bb) / Math.max(Math.min(a, bb), 1e-6); txt = tt('canvas.winBright', { w: win, r: ratio.toFixed(2) }); }
         label(txt, rx + rw / 2, ry, '#1abc9c', 15);
     }
 
@@ -705,7 +807,7 @@
             const b = bulbById(c.bulbId) || state.bulbs[0];
             const I = Math.abs(editorThrough(c)), R = c._elem ? c._elem.R : bulbR(b), P = I * I * R;
             label(b.id, mx, my - 26, b.color, 14);
-            label(`亮度 ${pctOf(P)}%`, mx, my + 26, '#ffe14d', 11);
+            label(tt('canvas.brightness', { p: pctOf(P) }), mx, my + 26, '#ffe14d', 11, 'center', true);
         } else if (c.type === 'switch') {
             label(c.closed ? 'ON' : 'OFF', mx, my - 24, c.closed ? '#27ae60' : '#e06c75', 12);
         }
@@ -767,7 +869,7 @@
     }
     function drawEditor(phase) {
         editorDrawGrid();
-        if (editor.components.length === 0) label('選擇工具並在格點放置元件，或按「📋 範本」', cssW / 2, cssH / 2, 'rgba(207,216,223,0.6)', 15);
+        if (editor.components.length === 0) label(tt('canvas.emptyEditor'), cssW / 2, cssH / 2, 'rgba(100,116,139,0.75)', 15);
         editor.components.forEach(c => drawEditorComp(c, phase));
         const cnt = new Map();
         editor.components.forEach(c => { [[c.x1, c.y1], [c.x2, c.y2]].forEach(([x, y]) => { const k = x + ',' + y; cnt.set(k, (cnt.get(k) || 0) + 1); }); });
@@ -782,18 +884,18 @@
         if (!sim) { requestAnimationFrame(frame); return; }
         if (state.view === 'compare') {
             const halfW = cssW / 2, titleY = 22;
-            label('並聯 Parallel', halfW * 0.5, titleY, TXT, 17);
-            label('串聯 Series', halfW + halfW * 0.5, titleY, TXT, 17);
+            label(tt('canvas.parallel'), halfW * 0.5, titleY, TXT, 17);
+            label(tt('canvas.series'), halfW + halfW * 0.5, titleY, TXT, 17);
             ctx.strokeStyle = 'rgba(154,167,178,0.18)'; ctx.lineWidth = 1.5;
             ctx.beginPath(); ctx.moveTo(halfW, 40); ctx.lineTo(halfW, cssH - 12); ctx.stroke();
             const cTop = 40, cH = cssH - 52;
             drawParallelCircuit(0, cTop, halfW, cH, phase, 20);
             drawSeriesCircuit(halfW, cTop, halfW, cH, phase, 20);
         } else if (state.view === 'parallel') {
-            label('並聯 Parallel', cssW / 2, 24, TXT, 19);
+            label(tt('canvas.parallel'), cssW / 2, 24, TXT, 19);
             drawParallelCircuit(0, 44, cssW, cssH - 56, phase, 34);
         } else if (state.view === 'series') {
-            label('串聯 Series', cssW / 2, 24, TXT, 19);
+            label(tt('canvas.series'), cssW / 2, 24, TXT, 19);
             drawSeriesCircuit(0, 44, cssW, cssH - 56, phase, 34);
         } else if (state.view === 'custom') {
             drawEditor(phase);
@@ -806,11 +908,11 @@
        ============================================================ */
     const fmt = (v, d) => Number(v).toFixed(d === undefined ? 2 : d);
     function tableHTML(title, rows) {
-        const head = `<thead><tr><th>燈泡</th><th>${tex('R\\,(\\Omega)')}</th><th>${tex('V')}</th><th>${tex('I')}</th><th>${tex('P_{actual}')}</th></tr></thead>`;
+        const head = `<thead><tr><th>${tt('table.bulb')}</th><th>${tex('R\\,(\\Omega)')}</th><th>${tex('V')}</th><th>${tex('I')}</th><th>${tex('P_{actual}')}</th></tr></thead>`;
         return `<div class="data-circuit"><h4>${title}</h4><table class="data-table">${head}<tbody>${rows}</tbody></table></div>`;
     }
     function rowHTML(b, s, isBright) {
-        return `<tr><td style="color:${b.color}">${b.id}${isBright ? ' <span class="bright-tag">✦亮</span>' : ''}</td>
+        return `<tr><td style="color:${b.color}">${b.id}${isBright ? ` <span class="bright-tag">${tt('table.brightTag')}</span>` : ''}</td>
             <td>${fmt(s.R, 1)}</td><td>${fmt(s.V)}</td><td>${fmt(s.I, 3)}</td><td>${fmt(s.P, 2)}</td></tr>`;
     }
     function buildDataPanel() {
@@ -818,15 +920,15 @@
         const A = state.bulbs[0], B = state.bulbs[1];
         let html = '';
         if (state.view === 'parallel' || state.view === 'compare')
-            html += tableHTML('並聯 Parallel', rowHTML(A, sim.par.A, sim.par.bright === 'A') + rowHTML(B, sim.par.B, sim.par.bright === 'B'));
+            html += tableHTML(tt('canvas.parallel'), rowHTML(A, sim.par.A, sim.par.bright === 'A') + rowHTML(B, sim.par.B, sim.par.bright === 'B'));
         if (state.view === 'series' || state.view === 'compare')
-            html += tableHTML('串聯 Series', rowHTML(A, sim.ser.A, sim.ser.bright === 'A') + rowHTML(B, sim.ser.B, sim.ser.bright === 'B'));
+            html += tableHTML(tt('canvas.series'), rowHTML(A, sim.ser.A, sim.ser.bright === 'A') + rowHTML(B, sim.ser.B, sim.ser.bright === 'B'));
         if (state.view === 'custom') {
-            if (sim.custom.lampStats.length === 0) html += '<p class="hint">尚未放置燈泡。用「💡 燈泡」工具在格點放置。</p>';
+            if (sim.custom.lampStats.length === 0) html += `<p class="hint">${tt('data.noBulb')}</p>`;
             else {
                 const maxP = Math.max(...sim.custom.lampStats.map(s => s.P), 1e-9);
                 const rows = sim.custom.lampStats.map((s, i) => rowHTML({ id: `${s.bulbId}#${i + 1}`, color: s.color }, s, s.P >= maxP - 1e-6 && s.P > 0)).join('');
-                html += tableHTML('自訂電路', rows);
+                html += tableHTML(tt('table.custom'), rows);
             }
         }
         area.innerHTML = html;
@@ -846,23 +948,22 @@
         const A = state.bulbs[0], B = state.bulbs[1];
         let html = '';
         if (state.view === 'parallel' || state.view === 'compare')
-            html += energyBlockHTML('並聯', [{ label: A.id, P: sim.par.A.P, color: A.color }, { label: B.id, P: sim.par.B.P, color: B.color }], sim.par.A.P + sim.par.B.P);
+            html += energyBlockHTML(tt('energy.parallel'), [{ label: A.id, P: sim.par.A.P, color: A.color }, { label: B.id, P: sim.par.B.P, color: B.color }], sim.par.A.P + sim.par.B.P);
         if (state.view === 'series' || state.view === 'compare')
-            html += energyBlockHTML('串聯', [{ label: A.id, P: sim.ser.A.P, color: A.color }, { label: B.id, P: sim.ser.B.P, color: B.color }], sim.ser.A.P + sim.ser.B.P);
+            html += energyBlockHTML(tt('energy.series'), [{ label: A.id, P: sim.ser.A.P, color: A.color }, { label: B.id, P: sim.ser.B.P, color: B.color }], sim.ser.A.P + sim.ser.B.P);
         if (state.view === 'custom') {
-            if (sim.custom.lampStats.length === 0) html += '<p class="hint">尚未放置燈泡。</p>';
-            else html += energyBlockHTML('自訂', sim.custom.lampStats.map((s, i) => ({ label: `${s.bulbId}#${i + 1}`, P: s.P, color: s.color })), sim.custom.Ptot);
+            if (sim.custom.lampStats.length === 0) html += `<p class="hint">${tt('energy.noBulb')}</p>`;
+            else html += energyBlockHTML(tt('energy.custom'), sim.custom.lampStats.map((s, i) => ({ label: `${s.bulbId}#${i + 1}`, P: s.P, color: s.color })), sim.custom.Ptot);
         }
         area.innerHTML = html;
     }
     function buildTheory() {
         const tb = document.getElementById('theoryBox');
-        const bn = (w) => w === 'tie' ? '兩燈一樣亮' : w + ' 較亮';
+        const bn = (w) => w === 'tie' ? tt('label.tie') : w + tt('label.suffixBright');
         tb.innerHTML = `
-            <div style="margin-bottom:8px;"><b>並聯（電壓相同）</b>：用 ${tex('P = \\dfrac{V^2}{R}')}，電阻小者較亮。
-            目前 ${tex('R_A=' + fmt(sim.Ra, 0) + '\\,\\Omega')}、${tex('R_B=' + fmt(sim.Rb, 0) + '\\,\\Omega')} → <b>${bn(sim.par.bright)}</b>。</div>
-            <div><b>串聯（電流相同）</b>：用 ${tex('P = I^2 R')}，電阻大者較亮。 → <b>${bn(sim.ser.bright)}</b>。</div>
-            <div style="margin-top:8px;color:#8a93a3;font-size:0.8rem;">💡 同一對燈泡，並聯與串聯時「較亮者」往往相反——這正是 DSE 常見的反直覺考點。</div>`;
+            <div style="margin-bottom:8px;"><b>${tt('theory.parHead')}</b>${tt('theory.use')} ${tex('P = \\dfrac{V^2}{R}')}${tt('theory.parBody')} ${tex('R_A=' + fmt(sim.Ra, 0) + '\\,\\Omega')}、${tex('R_B=' + fmt(sim.Rb, 0) + '\\,\\Omega')} → <b>${bn(sim.par.bright)}</b>。</div>
+            <div><b>${tt('theory.serHead')}</b>${tt('theory.use')} ${tex('P = I^2 R')}${tt('theory.serBody')} → <b>${bn(sim.ser.bright)}</b>。</div>
+            <div style="margin-top:8px;color:var(--pl-text-faint);font-size:0.8rem;">${tt('theory.note')}</div>`;
     }
     function updateAll() {
         recompute();
@@ -882,7 +983,7 @@
         const cur = `${b.Vr},${b.Pr}`;
         let match = PRESETS.some(p => p[0] === cur);
         let opts = PRESETS.map(p => `<option value="${p[0]}" ${p[0] === cur ? 'selected' : ''}>${p[1]}</option>`).join('');
-        opts += `<option value="custom" ${match ? '' : 'selected'}>自訂…</option>`;
+        opts += `<option value="custom" ${match ? '' : 'selected'}>${tt('bulb.customOption')}</option>`;
         return opts;
     }
     function updateOneCalc(b) { ktx(calcEls[b.id], `R=\\frac{V^2}{P}=\\frac{${b.Vr}^2}{${b.Pr}}=${fmt(bulbR(b), 1)}\\,\\Omega`); }
@@ -894,14 +995,14 @@
         card.innerHTML = `
             <div class="bc-head">
                 <span class="bc-dot" style="background:${b.color};color:${b.color}"></span>
-                <span class="bc-id" style="color:${b.color}">燈泡 ${b.id}</span>
-                <button class="bc-rm" ${isFixed ? 'disabled title="A、B 為固定燈泡"' : ''}>✕</button>
+                <span class="bc-id" style="color:${b.color}">${tt('bulb.label', { id: b.id })}</span>
+                <button class="bc-rm" ${isFixed ? `disabled title="${tt('bulb.fixedTitle')}"` : ''}>✕</button>
             </div>
             <select class="bc-preset">${presetOptionsHTML(b)}</select>
             <div class="bc-custom hidden">
-                <label>額定電壓 <span data-tex="V_{rated}"></span> (V)</label>
+                <label>${tt('bulb.vrated')} <span data-tex="V_{rated}"></span> (V)</label>
                 <div class="row-inline"><input type="range" class="bc-vr" min="6" max="250" step="1" value="${b.Vr}"><input type="number" class="num bc-vrn" min="1" max="400" value="${b.Vr}"></div>
-                <label>額定功率 <span data-tex="P_{rated}"></span> (W)</label>
+                <label>${tt('bulb.prated')} <span data-tex="P_{rated}"></span> (W)</label>
                 <div class="row-inline"><input type="range" class="bc-pr" min="1" max="150" step="1" value="${b.Pr}"><input type="number" class="num bc-prn" min="1" max="500" value="${b.Pr}"></div>
             </div>
             <div class="calc-line bc-calc"></div>`;
@@ -1074,19 +1175,19 @@
     });
     document.getElementById('submitPred').addEventListener('click', () => {
         const p = state.prediction, res = document.getElementById('predResult');
-        if (!p.parallel || !p.series) { res.className = 'pred-result show no'; res.innerHTML = '請先為兩條問題各選一個答案。'; return; }
+        if (!p.parallel || !p.series) { res.className = 'pred-result show no'; res.innerHTML = tt('pred.needAnswer'); return; }
         p.submitted = true;
         const ansP = sim.par.bright, ansS = sim.ser.bright;
         const okP = p.parallel === ansP, okS = p.series === ansS;
-        const t = (w) => w === 'tie' ? '兩燈一樣亮' : `${w} 較亮`;
+        const t = (w) => w === 'tie' ? tt('label.tie') : w + tt('label.suffixBright');
         res.className = 'pred-result show ' + (okP && okS ? 'ok' : 'no');
         res.innerHTML = `
-            <div>並聯：你選「${t(p.parallel)}」，正解「${t(ansP)}」 ${okP ? '✅' : '❌'}<br>
-            <span style="opacity:0.85">電壓相同 → ${tex('P=\\frac{V^2}{R}')}，電阻小者（額定功率大者）較亮。</span></div>
-            <div style="margin-top:6px;">串聯：你選「${t(p.series)}」，正解「${t(ansS)}」 ${okS ? '✅' : '❌'}<br>
-            <span style="opacity:0.85">電流相同 → ${tex('P=I^2R')}，電阻大者（額定功率小者）較亮。</span></div>
-            ${(okP && okS) ? '<div style="margin-top:6px;font-weight:700;">🎉 全對！你已掌握公式選擇。</div>'
-                : '<div style="margin-top:6px;">再想想：同一對燈泡，串聯與並聯的「較亮者」常常相反。</div>'}`;
+            <div>${tt('pred.parLine', { you: t(p.parallel), ans: t(ansP) })} ${okP ? '✅' : '❌'}<br>
+            <span style="opacity:0.85">${tt('pred.parWhyA')}${tex('P=\\frac{V^2}{R}')}${tt('pred.parWhyB')}</span></div>
+            <div style="margin-top:6px;">${tt('pred.serLine', { you: t(p.series), ans: t(ansS) })} ${okS ? '✅' : '❌'}<br>
+            <span style="opacity:0.85">${tt('pred.serWhyA')}${tex('P=I^2R')}${tt('pred.serWhyB')}</span></div>
+            ${(okP && okS) ? `<div style="margin-top:6px;font-weight:700;">${tt('pred.allCorrect')}</div>`
+                : `<div style="margin-top:6px;">${tt('pred.tryAgain')}</div>`}`;
         refreshPredictionUI();
     });
     document.getElementById('resetPred').addEventListener('click', () => { resetPrediction(); document.getElementById('predResult').classList.remove('show'); refreshPredictionUI(); });
@@ -1098,12 +1199,22 @@
         renderTexIn(document);
         renderAllBulbCards();
         renderLampPicker();
+        // 面板開關（切換後重算畫布尺寸）
+        PhysLab.ui.bindPanelToggle('btn-toggle-left', 'left-panel', resize);
+        PhysLab.ui.bindPanelToggle('btn-toggle-right', 'right-panel', resize);
         resize();
         setView('compare');
         requestAnimationFrame(frame);
     }
     init();
     window.addEventListener('load', () => { renderTexIn(document); updateAll(); });
+
+    /* 語言切換：重建含中文的動態面板 HTML（canvas 每幀自繪，文字自動更新） */
+    PhysLab.i18n.onChange(function () {
+        renderAllBulbCards();
+        renderLampPicker();
+        updateAll();
+    });
 
     /* ============================================================
        自驗測試（主控台）
