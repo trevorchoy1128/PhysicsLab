@@ -1,649 +1,680 @@
-﻿<!DOCTYPE html>
-<html lang="zh-HK">
+<!DOCTYPE html>
+<html lang="zh-Hant">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>影響電阻的因素：微觀實驗室 v2.5 (高密度碰撞 & 長度衰減流速)</title>
-    
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
-    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>影響電阻的因素 — 微觀 3D 模擬器 | HKDSE Physics</title>
 
-    <style>
-        body {
-            margin: 0; overflow: hidden;
-            font-family: "PingFang HK", "Microsoft JhengHei", sans-serif;
-            background-color: #dddddd; color: #333; cursor: grab;
-        }
-        body:active { cursor: grabbing; }
-        
-        #canvas-container { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
-        .ui-panel {
-            position: absolute; background: rgba(20, 20, 20, 0.85); border: 1px solid #333;
-            border-radius: 8px; padding: 20px; z-index: 10; backdrop-filter: blur(5px);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5); color: #fff; max-height: 90vh; overflow-y: auto;
-        }
-        .ui-panel::-webkit-scrollbar { width: 6px; }
-        .ui-panel::-webkit-scrollbar-thumb { background: #666; border-radius: 3px; }
+<!-- KaTeX（動態公式排版；物理程式碼以 katex.render 逐幀更新讀數） -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
 
-        #controls-panel { top: 20px; left: 20px; width: 350px; }
-        #data-panel { top: 20px; right: 20px; width: 400px; }
-        
-        h2 {
-            margin-top: 0; font-size: 17px; color: #4da6ff; border-bottom: 1px solid #444;
-            padding-bottom: 10px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;
-        }
-        .control-group {
-            margin-bottom: 12px; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 6px;
-        }
-        .control-group.wire-a { border-left: 3px solid #4da6ff; }
-        .control-group.wire-b { border-left: 3px solid #ff9900; display: none; }
-        label { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 5px; color: #ddd; }
-        input[type=range] { width: 100%; cursor: pointer; }
-        .btn-group { display: flex; gap: 5px; margin-bottom: 5px; flex-wrap: wrap; }
-        
-        button {
-            flex: 1; min-width: 60px; padding: 6px 4px; background: #333; color: #fff;
-            border: 1px solid #555; border-radius: 4px; cursor: pointer; transition: all 0.2s; font-size: 12px;
-        }
-        button:hover { background: #444; }
-        button.active { font-weight: bold; }
-        button.active-a { background: #4da6ff; color: #000; border-color: #4da6ff; }
-        button.active-b { background: #ff9900; color: #000; border-color: #ff9900; }
-        button.active-view { background: #fff; color: #000; border-color: #fff; }
+<!-- 共用資源（載入順序固定，不可 defer/async）：core → i18n → quiz → sim3d -->
+<link rel="stylesheet" href="../../../assets/css/tokens.css">
+<link rel="stylesheet" href="../../../assets/css/labgray.css">
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="../../../assets/js/core.js"></script>
+<script src="../../../assets/js/i18n.js"></script>
+<script src="../../../assets/js/quiz.js"></script>
+<script src="../../../assets/js/sim3d.js"></script>
 
-        .data-display {
-            background: #000; padding: 15px; border-radius: 6px; margin-bottom: 15px; border: 1px solid #333;
-        }
-        
-        .formula-container { font-size: 15px; color: #4da6ff; text-align: center; margin-top: 10px; overflow-x: auto; padding: 5px 0; }
-        .wire-result { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid #333; }
-        .wire-result:last-child { border-bottom: none; }
-        
-        .wire-label-a { color: #4da6ff; font-weight: bold; }
-        #katex-ra { color: #4da6ff; font-weight: bold; }
-        
-        .wire-label-b { color: #ff9900; font-weight: bold; display: none; }
-        #katex-rb { color: #ff9900; font-weight: bold; }
-        
-        #chart-container { width: 100%; height: 220px; background: #f0f0f0; border-radius: 6px; border: 1px solid #ccc; padding: 5px; }
-        .toggle-container { display: flex; align-items: center; gap: 8px; font-size: 13px; margin-top: 8px;}
-        input[type=checkbox] { cursor: pointer; }
+<!-- 頁面專用第三方庫（KaTeX / GSAP 動畫 / Chart.js 圖表） -->
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-        .flow-tag {
-            position: absolute; background: rgba(10, 10, 10, 0.85); border: 1px solid; color: #fff;
-            padding: 6px 10px; border-radius: 6px; font-size: 13px; pointer-events: none;
-            transform: translate(15px, -50%); display: none; z-index: 5; white-space: nowrap;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.5); backdrop-filter: blur(2px);
-        }
-        #flow-tag-a { border-color: #4da6ff; }
-        #flow-tag-b { border-color: #ff9900; }
-        .flow-tag .val { font-family: monospace; font-size: 16px; font-weight: bold; }
-        #flow-tag-a .val { color: #00ffcc; }
-        #flow-tag-b .val { color: #ffcc00; }
+<style>
+    /* ── 頁面獨有樣式（共用 chrome 見 assets/css/labgray.css）── */
 
-        .res-tag {
-            position: absolute; background: rgba(20, 20, 20, 0.85); border: 1px solid; color: #fff;
-            padding: 5px 10px; border-radius: 6px; font-size: 14px; font-weight: bold; pointer-events: none;
-            transform: translate(-50%, -100%); display: none; z-index: 4; white-space: nowrap;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.6); backdrop-filter: blur(2px);
-        }
-        #res-tag-a { border-color: #4da6ff; color: #4da6ff; }
-        #res-tag-b { border-color: #ff9900; color: #ff9900; }
-        .rho-info { font-size: 12px; color: #bbb; text-align: right; min-height: 18px; margin-bottom: 8px; }
+    /* 版面鐵律：滿版三欄、面板內卡片不被壓縮（成對使用） */
+    body { height: 100vh; overflow: hidden; }
+    #left-panel > *, #right-panel > * { flex-shrink: 0; }
 
-        #chart-controls { margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
-        .custom-select {
-            position: relative; display: inline-block; width: 190px; background: #333; color: white;
-            border: 1px solid #555; border-radius: 4px; font-size: 13px; cursor: pointer; user-select: none;
-        }
-        .select-selected { padding: 6px 10px; display: flex; justify-content: space-between; align-items: center; }
-        .select-selected::after { content: "▼"; font-size: 10px; margin-left: 5px; color: #aaa; }
-        .select-items {
-            position: absolute; background-color: #222; top: 100%; left: 0; right: 0;
-            z-index: 99; border: 1px solid #555; border-radius: 4px; margin-top: 2px; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-        }
-        .select-hide { display: none; }
-        .select-item { padding: 8px 10px; border-bottom: 1px solid #444; transition: 0.1s; }
-        .select-item:last-child { border-bottom: none; }
-        .select-item:hover { background-color: #4da6ff; color: #000; }
-    
-        /* -- Responsive (Mobile / Tablet) -- */
-        @media (max-width: 768px) {
-            #ui-panel, .ui-panel {
-                width: calc(100vw - 20px) !important;
-                max-width: 100vw !important;
-                max-height: 45vh !important;
-                overflow-y: auto !important;
-                top: auto !important;
-                bottom: 0 !important;
-                left: 0 !important;
-                right: 0 !important;
-                border-radius: 12px 12px 0 0 !important;
-                padding: 12px !important;
-                font-size: 12px !important;
-            }
-            #ui-panel h2, .ui-panel h2 { font-size: 14px !important; margin: 0 0 6px 0 !important; }
-            #ui-panel h3, .ui-panel h3 { font-size: 13px !important; }
-            #ui-panel label, .ui-panel label { font-size: 11px !important; }
-            #ui-panel input[type=range], .ui-panel input[type=range] { height: 20px !important; }
-            #ui-panel .btn, .ui-panel .btn { padding: 7px 4px !important; font-size: 11px !important; }
-        }
-        @media (min-width: 769px) and (max-width: 1024px) {
-            #ui-panel, .ui-panel {
-                width: 260px !important;
-                font-size: 13px !important;
-            }
-        }
-    </style>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- sim3d-load-guard: three.js 載入失敗提示 -->
-    <script>
-      window.addEventListener('DOMContentLoaded', function () {
-        if (typeof THREE === 'undefined' || typeof THREE.OrbitControls === 'undefined') {
-          var o = document.createElement('div');
-          o.id = 'sim3d-load-error';
-          o.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;background:#0f172a;color:#fff;font-family:system-ui,\'Noto Sans HK\',sans-serif;font-size:18px;line-height:1.7';
-          o.innerHTML = '⚠️ 無法載入 3D 元件（three.js）<br>請檢查網路連線後重新整理頁面。';
-          document.body.appendChild(o);
-        }
-      });
-    </script>
+    /* 導線 B 材質鈕：選中呈橙色（對應場景「B 導線」橙色語意，與藍色 A 區分） */
+    .dir-group-b .dir-btn.active {
+        border-color: #ea8f00; background: #fff7ed; color: #b45309; box-shadow: 0 0 0 1px #ea8f00;
+    }
+
+    /* 材質電阻率 ρ 小字（KaTeX 顯示） */
+    .rho-info { font-size: 0.68rem; color: var(--pl-text-faint); text-align: right; min-height: 16px; margin-top: 6px; }
+
+    /* 運算結果列 */
+    .res-formula { text-align: center; margin: 2px 0 10px; color: var(--pl-text-strong); }
+    .res-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--pl-border-soft); font-size: 0.82rem; }
+    .res-row:last-of-type { border-bottom: none; }
+    .res-row .wl-a { color: #2563eb; font-weight: 700; }
+    .res-row .wl-b { color: #c2410c; font-weight: 700; }
+    #katex-ra { color: #2563eb; font-weight: 700; }
+    #katex-rb { color: #c2410c; font-weight: 700; }
+    .res-substep { font-size: 0.8rem; color: var(--pl-text-dim); text-align: center; margin-top: 10px; overflow-x: auto; min-height: 20px; }
+
+    /* 圖表關係下拉 + 畫布（沿用 bar-magnet .shape-select 做法） */
+    .shape-select { width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--pl-border); background: var(--pl-inset); color: var(--pl-text-dim); font-size: 0.78rem; font-weight: 600; cursor: pointer; margin-bottom: 10px; }
+    .shape-select:hover { border-color: var(--pl-blue); }
+    .chart-wrap { height: 200px; background: var(--pl-card); border: 1px solid var(--pl-border-soft); border-radius: 8px; padding: 6px; }
+
+    /* 3D 場景浮動標籤（電子流 / 電阻），座標由 three.js 投影計算 */
+    .flow-tag, .res-tag {
+        position: absolute; pointer-events: none; z-index: 12; white-space: nowrap; display: none;
+        font-size: 0.72rem; font-weight: 600; background: rgba(255,255,255,0.94);
+        border: 1px solid; border-radius: 8px; padding: 5px 9px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.12); backdrop-filter: blur(3px);
+    }
+    .flow-tag { transform: translate(15px, -50%); }
+    .res-tag  { transform: translate(-50%, -100%); }
+    #flow-tag-a, #res-tag-a { border-color: #2563eb; color: #2563eb; }
+    #flow-tag-b, #res-tag-b { border-color: #ea8f00; color: #c2410c; }
+    .flow-tag .val { display: block; font-family: "JetBrains Mono", monospace; font-size: 0.9rem; font-weight: 700; margin-top: 2px; }
+    #flow-tag-a .val { color: #0e7490; }
+    #flow-tag-b .val { color: #b45309; }
+</style>
 </head>
 <body>
 
-    <div id="canvas-container"></div>
-    
-    <div id="flow-tag-a" class="flow-tag">導線 A 電子流 ($I$)<br><span class="val" id="flow-val-a">0 / s</span></div>
-    <div id="flow-tag-b" class="flow-tag">導線 B 電子流 ($I$)<br><span class="val" id="flow-val-b">0 / s</span></div>
-
-    <div id="res-tag-a" class="res-tag"><span id="res-val-a">0.00 Ω</span></div>
-    <div id="res-tag-b" class="res-tag"><span id="res-val-b">0.00 Ω</span></div>
-
-    <div id="controls-panel" class="ui-panel">
-        <h2>控制面板
-            <div class="toggle-container" style="margin-top: 0;">
-                <input type="checkbox" id="compare-toggle">
-                <label for="compare-toggle" style="margin:0; color:#ff9900;">對比模式</label>
-            </div>
-        </h2>
-
-        <div class="control-group" style="background: rgba(255,255,255,0.1);">
-            <label>環境溫度 Temperature ($T$) <span id="val-t">20 °C</span></label>
-            <input type="range" id="slider-t" min="20" max="200" step="1" value="20">
-        </div>
-
-        <div class="control-group wire-a">
-            <strong style="color:#4da6ff; font-size:14px; display:block; margin-bottom:8px;">導線 A 規格 ($Wire_A$)</strong>
-            <div class="btn-group" id="mat-btns-a">
-                <button class="active active-a" data-mat="copper">銅</button>
-                <button data-mat="nichrome">鎳鉻</button>
-                <button data-mat="graphite">石墨</button>
-                <button data-mat="glass">玻璃</button>
-            </div>
-            <div id="rho-info-a" class="rho-info"></div>
-
-            <label><span>長度 ($L_A$)</span> <span id="val-l">1.0 m</span></label>
-            <input type="range" id="slider-l" min="0.1" max="5.0" step="0.1" value="1.0">
-            <label style="margin-top:10px;"><span>半徑 ($r_A$)</span> <span id="val-r">1.0 mm</span></label>
-            <input type="range" id="slider-r" min="0.1" max="3.0" step="0.1" value="1.0">
-        </div>
-
-        <div class="control-group wire-b" id="control-b">
-            <strong style="color:#ff9900; font-size:14px; display:block; margin-bottom:8px;">導線 B 規格 ($Wire_B$)</strong>
-            <div class="btn-group" id="mat-btns-b">
-                <button data-mat="copper">銅</button>
-                <button class="active active-b" data-mat="nichrome">鎳鉻</button>
-                <button data-mat="graphite">石墨</button>
-                <button data-mat="glass">玻璃</button>
-            </div>
-            <div id="rho-info-b" class="rho-info"></div>
-
-            <label><span>長度 ($L_B$)</span> <span id="val-l2">2.0 m</span></label>
-            <input type="range" id="slider-l2" min="0.1" max="5.0" step="0.1" value="2.0">
-            <label style="margin-top:10px;"><span>半徑 ($r_B$)</span> <span id="val-r2">0.5 mm</span></label>
-            <input type="range" id="slider-r2" min="0.1" max="3.0" step="0.1" value="0.5">
-        </div>
-
-        <div class="control-group" style="background: transparent;">
-            <label>視圖模式 View Mode:</label>
-            <div class="btn-group" id="view-btns">
-                <button class="active active-view" data-view="macro">宏觀 Macroscopic</button>
-                <button data-view="micro">微觀 Microscopic</button>
-            </div>
-            <div class="toggle-container" style="justify-content: center;">
-                <input type="checkbox" id="res-toggle">
-                <label for="res-toggle" style="margin:0; color:#ddd;">在導線上顯示實時電阻 ($R$)</label>
-            </div>
-            <div class="toggle-container" style="justify-content: center;" id="flow-toggle-container">
-                <input type="checkbox" id="flow-toggle" checked>
-                <label for="flow-toggle" style="margin:0; color:#ddd;">在導線末端顯示電子流 ($I$)</label>
-            </div>
+<div id="topbar">
+    <div style="display: flex; align-items: center; gap: 16px;">
+        <button type="button" class="panel-toggle-btn" id="btn-toggle-left">
+            <span>☰</span> <span data-i18n="topbar.controls">控制</span>
+        </button>
+        <div class="title-block">
+            <h1 data-i18n="topbar.title">🔬 影響電阻的因素 — 微觀 3D 模擬器</h1>
+            <p data-i18n="topbar.subtitle">HKDSE Physics · Book 4 · Chapter 2 · 電阻與長度粗幼</p>
         </div>
     </div>
+    <div class="tb-actions">
+        <button type="button" class="panel-toggle-btn" id="btn-toggle-right">
+            <span>📖</span> <span data-i18n="topbar.info">資訊</span>
+        </button>
+    </div>
+</div>
 
-    <div id="data-panel" class="ui-panel">
-        <h2>運算結果 ($R = \rho \frac{L}{A}$)</h2>
-        <div class="data-display">
-            <div class="wire-result">
-                <span class="wire-label-a">導線 A 電阻 $R_A$</span>
-                <span id="katex-ra">0.00 \Omega</span>
-            </div>
-            <div class="wire-result wire-label-b" id="result-b-container">
-                <span>導線 B 電阻 $R_B$</span>
-                <span id="katex-rb">0.00 \Omega</span>
-            </div>
-            <div class="formula-container" id="katex-formula"></div>
-        </div>
-        
-        <div id="chart-controls">
-            <span style="font-size: 13px;">圖表關係：</span>
-            <div class="custom-select" id="chart-dropdown">
-                <div class="select-selected" id="select-selected">$R$ 對 $L$ (正比)</div>
-                <div class="select-items select-hide" id="select-items">
-                    <div class="select-item" data-val="Rl">$R$ 對 $L$ (正比)</div>
-                    <div class="select-item" data-val="RA">$R$ 對 $A$ (反比)</div>
-                    <div class="select-item" data-val="R1A">$R$ 對 $1/A$ (正比)</div>
+<div id="main">
+    <div id="left-panel">
+        <div class="card">
+            <div class="card-header">🧪 <span data-i18n="panel.setup.header">實驗設定</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <div class="toggle-row" id="row-compare">
+                    <div class="toggle-track" id="opt-compare"><div class="toggle-thumb"></div></div>
+                    <span data-i18n="panel.setup.compare">對比模式</span>
+                </div>
+                <div class="slider-row" style="margin-top:12px;">
+                    <div class="slider-head"><label data-i18n="panel.setup.temp">環境溫度 Temperature ($T$)</label><span class="val" id="val-t">20 °C</span></div>
+                    <input type="range" id="slider-t" min="20" max="200" step="1" value="20">
                 </div>
             </div>
         </div>
-        <div id="chart-container">
-            <canvas id="r-l-chart"></canvas>
+
+        <div class="card">
+            <div class="card-header">🔵 <span data-i18n="panel.wireA.header">導線 A 規格 ($Wire_A$)</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <div class="dir-btn-group" id="mat-btns-a">
+                    <button type="button" class="dir-btn active" data-mat="copper"   data-i18n="mat.copper">銅</button>
+                    <button type="button" class="dir-btn"        data-mat="nichrome" data-i18n="mat.nichrome">鎳鉻</button>
+                    <button type="button" class="dir-btn"        data-mat="graphite" data-i18n="mat.graphite">石墨</button>
+                    <button type="button" class="dir-btn"        data-mat="glass"    data-i18n="mat.glass">玻璃</button>
+                </div>
+                <div id="rho-info-a" class="rho-info"></div>
+                <div class="slider-row" style="margin-top:8px;">
+                    <div class="slider-head"><label data-i18n="panel.wireA.length">長度 ($L_A$)</label><span class="val" id="val-l">1.0 m</span></div>
+                    <input type="range" id="slider-l" min="0.1" max="5.0" step="0.1" value="1.0">
+                </div>
+                <div class="slider-row">
+                    <div class="slider-head"><label data-i18n="panel.wireA.radius">半徑 ($r_A$)</label><span class="val" id="val-r">1.0 mm</span></div>
+                    <input type="range" id="slider-r" min="0.1" max="3.0" step="0.1" value="1.0">
+                </div>
+            </div>
+        </div>
+
+        <div class="card" id="control-b" style="display:none;">
+            <div class="card-header">🟠 <span data-i18n="panel.wireB.header">導線 B 規格 ($Wire_B$)</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <div class="dir-btn-group dir-group-b" id="mat-btns-b">
+                    <button type="button" class="dir-btn"        data-mat="copper"   data-i18n="mat.copper">銅</button>
+                    <button type="button" class="dir-btn active" data-mat="nichrome" data-i18n="mat.nichrome">鎳鉻</button>
+                    <button type="button" class="dir-btn"        data-mat="graphite" data-i18n="mat.graphite">石墨</button>
+                    <button type="button" class="dir-btn"        data-mat="glass"    data-i18n="mat.glass">玻璃</button>
+                </div>
+                <div id="rho-info-b" class="rho-info"></div>
+                <div class="slider-row" style="margin-top:8px;">
+                    <div class="slider-head"><label data-i18n="panel.wireB.length">長度 ($L_B$)</label><span class="val" id="val-l2">2.0 m</span></div>
+                    <input type="range" id="slider-l2" min="0.1" max="5.0" step="0.1" value="2.0">
+                </div>
+                <div class="slider-row">
+                    <div class="slider-head"><label data-i18n="panel.wireB.radius">半徑 ($r_B$)</label><span class="val" id="val-r2">0.5 mm</span></div>
+                    <input type="range" id="slider-r2" min="0.1" max="3.0" step="0.1" value="0.5">
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">👁 <span data-i18n="panel.view.header">視圖模式 View Mode</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <div class="dir-btn-group" id="view-btns">
+                    <button type="button" class="dir-btn active" data-view="macro" data-i18n="view.macro">宏觀 Macroscopic</button>
+                    <button type="button" class="dir-btn"        data-view="micro" data-i18n="view.micro">微觀 Microscopic</button>
+                </div>
+                <div class="toggle-row" id="row-res" style="margin-top:12px;">
+                    <div class="toggle-track" id="opt-res"><div class="toggle-thumb"></div></div>
+                    <span data-i18n="panel.view.showR">在導線上顯示實時電阻 ($R$)</span>
+                </div>
+                <div id="flow-toggle-container">
+                    <div class="toggle-row" id="row-flow">
+                        <div class="toggle-track on" id="opt-flow"><div class="toggle-thumb"></div></div>
+                        <span data-i18n="panel.view.showI">在導線末端顯示電子流 ($I$)</span>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
+    <div id="canvas-wrap">
+        <div id="view3d">
+            <div id="hint" data-i18n="status.hint">🖱️ 左鍵旋轉視角 · 滾輪縮放 ·「微觀」可見電子在晶格間漂移</div>
+
+            <div id="flow-tag-a" class="flow-tag"><span data-i18n="flow.tagA">導線 A 電子流 ($I$)</span><span class="val" id="flow-val-a">0 / s</span></div>
+            <div id="flow-tag-b" class="flow-tag"><span data-i18n="flow.tagB">導線 B 電子流 ($I$)</span><span class="val" id="flow-val-b">0 / s</span></div>
+            <div id="res-tag-a" class="res-tag"><span id="res-val-a">0.00 Ω</span></div>
+            <div id="res-tag-b" class="res-tag"><span id="res-val-b">0.00 Ω</span></div>
+        </div>
+    </div>
+
+    <div id="right-panel">
+        <div class="formula-box">
+            <h4>📊 <span data-i18n="result.header">運算結果</span></h4>
+            <div class="res-formula">$$R = \rho\,\frac{L}{A}$$</div>
+            <div class="res-row"><span class="wl-a" data-i18n="result.ra">導線 A 電阻 $R_A$</span><span id="katex-ra"></span></div>
+            <div class="res-row" id="result-b-container" style="display:none;"><span class="wl-b" data-i18n="result.rb">導線 B 電阻 $R_B$</span><span id="katex-rb"></span></div>
+            <div class="res-substep" id="katex-formula"></div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">📈 <span data-i18n="chart.header">圖表關係</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <select id="chart-mode" class="shape-select">
+                    <option value="Rl"  selected data-i18n="chart.rl">R 對 L (正比)</option>
+                    <option value="RA"           data-i18n="chart.ra">R 對 A (反比)</option>
+                    <option value="R1A"          data-i18n="chart.r1a">R 對 1/A (正比)</option>
+                </select>
+                <div class="chart-wrap"><canvas id="r-l-chart"></canvas></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════ 頁面字典（zh 必填；en 缺字自動回退 zh） ═══════════ -->
 <script>
-document.addEventListener("DOMContentLoaded", function() {
-    renderMathInElement(document.body, { delimiters: [{left: "$$", right: "$$", display: true}, {left: "$", right: "$", display: false}], throwOnError: false });
+PhysLab.i18n.register({
+    zh: {
+        'topbar.title': '🔬 影響電阻的因素 — 微觀 3D 模擬器',
+        'topbar.subtitle': 'HKDSE Physics · Book 4 · Chapter 2 · 電阻與長度粗幼',
+        'topbar.controls': '控制',
+        'topbar.info': '資訊',
+
+        'panel.setup.header': '實驗設定',
+        'panel.setup.compare': '對比模式',
+        'panel.setup.temp': '環境溫度 Temperature ($T$)',
+
+        'panel.wireA.header': '導線 A 規格 ($Wire_A$)',
+        'panel.wireA.length': '長度 ($L_A$)',
+        'panel.wireA.radius': '半徑 ($r_A$)',
+        'panel.wireB.header': '導線 B 規格 ($Wire_B$)',
+        'panel.wireB.length': '長度 ($L_B$)',
+        'panel.wireB.radius': '半徑 ($r_B$)',
+
+        'mat.copper': '銅',
+        'mat.nichrome': '鎳鉻',
+        'mat.graphite': '石墨',
+        'mat.glass': '玻璃',
+
+        'panel.view.header': '視圖模式 View Mode',
+        'view.macro': '宏觀 Macroscopic',
+        'view.micro': '微觀 Microscopic',
+        'panel.view.showR': '在導線上顯示實時電阻 ($R$)',
+        'panel.view.showI': '在導線末端顯示電子流 ($I$)',
+
+        'result.header': '運算結果',
+        'result.ra': '導線 A 電阻 $R_A$',
+        'result.rb': '導線 B 電阻 $R_B$',
+
+        'chart.header': '圖表關係',
+        'chart.rl': 'R 對 L (正比)',
+        'chart.ra': 'R 對 A (反比)',
+        'chart.r1a': 'R 對 1/A (正比)',
+        'chart.wireA': '導線 A',
+        'chart.wireB': '導線 B',
+
+        'flow.tagA': '導線 A 電子流 ($I$)',
+        'flow.tagB': '導線 B 電子流 ($I$)',
+
+        'physics.insulator': '絕緣體',
+
+        'status.hint': '🖱️ 左鍵旋轉視角 · 滾輪縮放 ·「微觀」可見電子在晶格間漂移'
+    },
+    en: {}
 });
+</script>
 
-// ==========================================
-// 1. 物理數據及邏輯 Physics Data
-// ==========================================
-// 【更新】調升了 baseSpeed 基礎流速，用來抵銷 L 增加時的劇烈衰減，確保 L=1 時觀感依然順暢
-const materials = {
-    copper: { rho20: 1.72e-8, alpha: 0.0039, color: 0xb87333, type: 'metal', ionColor: 0xffaa44, electronColor: 0x00ffff, eDensity: 1.0, baseSpeed: 0.035 },
-    nichrome: { rho20: 1.1e-6, alpha: 0.0004, color: 0x888899, type: 'metal', ionColor: 0xcccccc, electronColor: 0x00ffff, eDensity: 0.35, baseSpeed: 0.015 },
-    graphite: { rho20: 1.0e-5, alpha: -0.0005, color: 0x333333, type: 'semiconductor', ionColor: 0x666666, electronColor: 0xffcc00, eDensity: 0.08, baseSpeed: 0.020 },
-    glass: { rho20: Infinity, alpha: 0, color: 0x99ddff, type: 'insulator', ionColor: 0x88bbcc, electronColor: 0x000000, eDensity: 0.0, baseSpeed: 0.0 }
-};
-
-let currentMatA = 'copper', currentMatB = 'nichrome', currentView = 'macro';
-let isCompareMode = false, currentChartMode = 'Rl', showFlowRate = true, showResTag = false; 
-let passedA = 0, passedB = 0, lastTime = 0;
-
-let state = { l: 1.0, r: 1.0, l2: 2.0, r2: 0.5, t: 20 };
-const VISUAL_R_SCALE = 0.35; 
-
-function getResistivity(mat, temp) {
-    const m = materials[mat];
-    if (m.type === 'insulator') return Infinity;
-    if (m.type === 'metal') return m.rho20 * (1 + m.alpha * (temp - 20));
-    return m.rho20 * Math.exp(m.alpha * (temp - 20));
+<!-- ═══════════ KaTeX 靜態排版（載入時 + 語言切換後重繪） ═══════════ -->
+<script>
+function renderAllMath() {
+    if (window.renderMathInElement) {
+        renderMathInElement(document.body, {
+            delimiters: [{ left: '$$', right: '$$', display: true }, { left: '$', right: '$', display: false }],
+            throwOnError: false
+        });
+    }
 }
-function calculateR(mat, length, radiusMm, temp) {
-    const rho = getResistivity(mat, temp);
-    if (rho === Infinity) return Infinity;
-    return rho * (length / (Math.PI * Math.pow(radiusMm * 1e-3, 2)));
-}
-function formatSciLatex(val) {
-    if (val === Infinity) return "\\infty";
-    if (val === 0) return "0.00";
-    if (val >= 0.01 && val < 100) return val.toPrecision(3);
-    const parts = val.toExponential(2).split('e');
-    return `${parts[0]} \\times 10^{${parseInt(parts[1])}}`;
-}
-function getRandomPointInCircle(radius) {
-    const r = radius * Math.sqrt(Math.random()), theta = Math.random() * 2 * Math.PI;
-    return { y: r * Math.cos(theta), z: r * Math.sin(theta) };
-}
+document.addEventListener('DOMContentLoaded', renderAllMath);
+</script>
 
-// ==========================================
-// 2. Three.js 初始化
-// ==========================================
-const container = document.getElementById('canvas-container');
-const scene = new THREE.Scene(); scene.background = new THREE.Color(0xdddddd);
-const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
-camera.position.set(0, 3, 12);
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize(window.innerWidth, window.innerHeight); container.appendChild(renderer.domElement);
-const controls = new THREE.OrbitControls(camera, renderer.domElement); controls.enableDamping = true; controls.dampingFactor = 0.05;
+<!-- ═══════════ 頁面邏輯 ═══════════ -->
+<script>
+PhysLab.sim3d.ready(function () {
+    var t  = PhysLab.i18n.t;
+    var el = PhysLab.ui.el;
 
-scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-const dirLight = new THREE.DirectionalLight(0xffffff, 0.9); dirLight.position.set(5, 5, 5); scene.add(dirLight);
+    // ==========================================
+    // 1. 物理數據及邏輯 Physics Data
+    // ==========================================
+    // 【更新】調升了 baseSpeed 基礎流速，用來抵銷 L 增加時的劇烈衰減，確保 L=1 時觀感依然順暢
+    const materials = {
+        copper: { rho20: 1.72e-8, alpha: 0.0039, color: 0xb87333, type: 'metal', ionColor: 0xffaa44, electronColor: 0x00ffff, eDensity: 1.0, baseSpeed: 0.035 },
+        nichrome: { rho20: 1.1e-6, alpha: 0.0004, color: 0x888899, type: 'metal', ionColor: 0xcccccc, electronColor: 0x00ffff, eDensity: 0.35, baseSpeed: 0.015 },
+        graphite: { rho20: 1.0e-5, alpha: -0.0005, color: 0x333333, type: 'semiconductor', ionColor: 0x666666, electronColor: 0xffcc00, eDensity: 0.08, baseSpeed: 0.020 },
+        glass: { rho20: Infinity, alpha: 0, color: 0x99ddff, type: 'insulator', ionColor: 0x88bbcc, electronColor: 0x000000, eDensity: 0.0, baseSpeed: 0.0 }
+    };
 
-// ==========================================
-// 3. 模型建立 (獨立的 A 與 B)
-// ==========================================
-const wireGeo = new THREE.CylinderGeometry(1, 1, 1, 32); wireGeo.rotateZ(Math.PI / 2); 
-const wireMatA = new THREE.MeshStandardMaterial({ roughness: 0.3, metalness: 0.8 });
-const wireMatB = new THREE.MeshStandardMaterial({ roughness: 0.3, metalness: 0.8 });
-const wireMeshA = new THREE.Mesh(wireGeo, wireMatA); scene.add(wireMeshA);
-const wireMeshB = new THREE.Mesh(wireGeo, wireMatB); scene.add(wireMeshB); wireMeshB.visible = false;
+    let currentMatA = 'copper', currentMatB = 'nichrome', currentView = 'macro';
+    let isCompareMode = false, currentChartMode = 'Rl', showFlowRate = true, showResTag = false;
+    let passedA = 0, passedB = 0, lastTime = 0;
 
-const microGroupA = new THREE.Group(); scene.add(microGroupA);
-const microGroupB = new THREE.Group(); scene.add(microGroupB);
+    let state = { l: 1.0, r: 1.0, l2: 2.0, r2: 0.5, t: 20 };
+    const VISUAL_R_SCALE = 0.35;
 
-// 【更新】大幅提升原子上限，確保高密度填滿
-const MAX_IONS = 6000, MAX_ELEC = 3000;
-const ionGeo = new THREE.SphereGeometry(0.06, 16, 16), elecGeo = new THREE.SphereGeometry(0.04, 16, 16);
-let matIonA = new THREE.MeshStandardMaterial(), matElecA = new THREE.MeshBasicMaterial();
-let matIonB = new THREE.MeshStandardMaterial(), matElecB = new THREE.MeshBasicMaterial();
-const ionsA = [], elecsA = [], ionsB = [], elecsB = [];
-
-function buildParticles(grp, ionsArr, elecsArr, mIon, mElec) {
-    for (let i = 0; i < MAX_IONS; i++) { const m = new THREE.Mesh(ionGeo, mIon); m.visible = false; grp.add(m); ionsArr.push(m); }
-    for (let i = 0; i < MAX_ELEC; i++) { const m = new THREE.Mesh(elecGeo, mElec); m.visible = false; m.userData.speedX = 0; grp.add(m); elecsArr.push(m); }
-}
-buildParticles(microGroupA, ionsA, elecsA, matIonA, matElecA);
-buildParticles(microGroupB, ionsB, elecsB, matIonB, matElecB);
-
-// ==========================================
-// 4. 圖表初始化
-// ==========================================
-const ctx = document.getElementById('r-l-chart').getContext('2d');
-const chart = new Chart(ctx, {
-    type: 'line',
-    data: { labels: [], datasets: [
-        { label: '導線 A', data: [], borderColor: '#4da6ff', backgroundColor: 'rgba(77, 166, 255, 0.1)', borderWidth: 2, tension: 0.2 },
-        { label: '導線 B', data: [], borderColor: '#ff9900', backgroundColor: 'rgba(255, 153, 0, 0.1)', borderWidth: 2, tension: 0.2, hidden: true }
-    ]},
-    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } }, animation: { duration: 300 } }
-});
-
-// ==========================================
-// 5. 更新邏輯
-// ==========================================
-function updatePhysics() {
-    const rA = calculateR(currentMatA, state.l, state.r, state.t);
-    const rB = calculateR(currentMatB, state.l2, state.r2, state.t);
-    const rhoA = getResistivity(currentMatA, state.t);
-    const rhoB = getResistivity(currentMatB, state.t);
-
-    if(window.katex) {
-        katex.render(`R_A = ${formatSciLatex(rA)} \\,\\Omega`, document.getElementById('katex-ra'), {throwOnError: false});
-        if(isCompareMode) katex.render(`R_B = ${formatSciLatex(rB)} \\,\\Omega`, document.getElementById('katex-rb'), {throwOnError: false});
-        if (rhoA === Infinity) katex.render(`Wire_A: \\text{絕緣體 }`, document.getElementById('katex-formula'), {throwOnError: false});
-        else katex.render(`Wire_A: R = (${formatSciLatex(rhoA)}) \\frac{${state.l.toFixed(1)}}{\\pi (${state.r.toFixed(1)} \\times 10^{-3})^2}`, document.getElementById('katex-formula'), {throwOnError: false});
-        
-        katex.render(`\\rho_A = ${formatSciLatex(rhoA)} \\,\\Omega\\cdot\\text{m}`, document.getElementById('rho-info-a'), {throwOnError: false});
-        katex.render(`\\rho_B = ${formatSciLatex(rhoB)} \\,\\Omega\\cdot\\text{m}`, document.getElementById('rho-info-b'), {throwOnError: false});
-
-        if(showResTag) {
-            katex.render(`R_A = ${formatSciLatex(rA)} \\,\\Omega`, document.getElementById('res-val-a'), {throwOnError: false});
-            if(isCompareMode) katex.render(`R_B = ${formatSciLatex(rB)} \\,\\Omega`, document.getElementById('res-val-b'), {throwOnError: false});
-        }
+    function getResistivity(mat, temp) {
+        const m = materials[mat];
+        if (m.type === 'insulator') return Infinity;
+        if (m.type === 'metal') return m.rho20 * (1 + m.alpha * (temp - 20));
+        return m.rho20 * Math.exp(m.alpha * (temp - 20));
+    }
+    function calculateR(mat, length, radiusMm, temp) {
+        const rho = getResistivity(mat, temp);
+        if (rho === Infinity) return Infinity;
+        return rho * (length / (Math.PI * Math.pow(radiusMm * 1e-3, 2)));
+    }
+    function formatSciLatex(val) {
+        if (val === Infinity) return "\\infty";
+        if (val === 0) return "0.00";
+        if (val >= 0.01 && val < 100) return val.toPrecision(3);
+        const parts = val.toExponential(2).split('e');
+        return `${parts[0]} \\times 10^{${parseInt(parts[1])}}`;
+    }
+    function getRandomPointInCircle(radius) {
+        const r = radius * Math.sqrt(Math.random()), theta = Math.random() * 2 * Math.PI;
+        return { y: r * Math.cos(theta), z: r * Math.sin(theta) };
     }
 
-    updateChart();
+    // ==========================================
+    // 2. 場景底座（共用 sim3d.create 樣板）
+    // ==========================================
+    // 本頁原版場景值（與共用預設不同者全部顯式傳入）：
+    //   背景改 0xe2e6eb 統一淺灰（原 0xdddddd）、fov 45（非 42）、far 100（非 200）、
+    //   相機 (0,3,12) → (0,0,0)、damping 0.05（非 0.07）、無網格、
+    //   燈光沿用原版（Ambient 0.6 ＋ 單一主光 0.9 @ (5,5,5)，無補光 → lights:false 後自建）
+    const sim = PhysLab.sim3d.create(el('view3d'), {
+        background: 0xe2e6eb,
+        fov: 45, near: 0.1, far: 100,
+        views: { default: { pos: [0, 3, 12], tgt: [0, 0, 0] } },
+        controls: { damping: 0.05 },
+        lights: false,
+        grid: false
+    });
+    const scene = sim.scene, camera = sim.camera, renderer = sim.renderer, controls = sim.controls;
 
-    if (isCompareMode) {
-        gsap.to(wireMeshA.position, { z: -2.0, duration: 0.3 });
-        gsap.to(wireMeshB.position, { z: 2.0, duration: 0.3 });
-        gsap.to(wireMeshB.scale, { x: state.l2, y: state.r2 * VISUAL_R_SCALE, z: state.r2 * VISUAL_R_SCALE, duration: 0.2 });
-        wireMeshB.visible = true;
-        microGroupA.position.z = -2.0; microGroupB.position.z = 2.0;
-    } else {
-        gsap.to(wireMeshA.position, { z: 0, duration: 0.3 });
-        wireMeshB.visible = false;
-        microGroupA.position.z = 0;
+    scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.9); dirLight.position.set(5, 5, 5); scene.add(dirLight);
+
+    // 面板收合 → 重算畫布尺寸
+    PhysLab.ui.bindPanelToggle('btn-toggle-left', 'left-panel', function () { sim.resize(); });
+    PhysLab.ui.bindPanelToggle('btn-toggle-right', 'right-panel', function () { sim.resize(); });
+
+    // 粒子抖動時間基準（原版專用 Clock，僅取 getElapsedTime）
+    const clock = new THREE.Clock();
+
+    // ==========================================
+    // 3. 模型建立 (獨立的 A 與 B)
+    // ==========================================
+    const wireGeo = new THREE.CylinderGeometry(1, 1, 1, 32); wireGeo.rotateZ(Math.PI / 2);
+    const wireMatA = new THREE.MeshStandardMaterial({ roughness: 0.3, metalness: 0.8 });
+    const wireMatB = new THREE.MeshStandardMaterial({ roughness: 0.3, metalness: 0.8 });
+    const wireMeshA = new THREE.Mesh(wireGeo, wireMatA); scene.add(wireMeshA);
+    const wireMeshB = new THREE.Mesh(wireGeo, wireMatB); scene.add(wireMeshB); wireMeshB.visible = false;
+
+    const microGroupA = new THREE.Group(); scene.add(microGroupA);
+    const microGroupB = new THREE.Group(); scene.add(microGroupB);
+
+    // 【更新】大幅提升原子上限，確保高密度填滿
+    const MAX_IONS = 6000, MAX_ELEC = 3000;
+    const ionGeo = new THREE.SphereGeometry(0.06, 16, 16), elecGeo = new THREE.SphereGeometry(0.04, 16, 16);
+    let matIonA = new THREE.MeshStandardMaterial(), matElecA = new THREE.MeshBasicMaterial();
+    let matIonB = new THREE.MeshStandardMaterial(), matElecB = new THREE.MeshBasicMaterial();
+    const ionsA = [], elecsA = [], ionsB = [], elecsB = [];
+
+    function buildParticles(grp, ionsArr, elecsArr, mIon, mElec) {
+        for (let i = 0; i < MAX_IONS; i++) { const m = new THREE.Mesh(ionGeo, mIon); m.visible = false; grp.add(m); ionsArr.push(m); }
+        for (let i = 0; i < MAX_ELEC; i++) { const m = new THREE.Mesh(elecGeo, mElec); m.visible = false; m.userData.speedX = 0; grp.add(m); elecsArr.push(m); }
     }
-    gsap.to(wireMeshA.scale, { x: state.l, y: state.r * VISUAL_R_SCALE, z: state.r * VISUAL_R_SCALE, duration: 0.2, onUpdate: updateParticles });
+    buildParticles(microGroupA, ionsA, elecsA, matIonA, matElecA);
+    buildParticles(microGroupB, ionsB, elecsB, matIonB, matElecB);
 
-    wireMatA.color.setHex(materials[currentMatA].color); matIonA.color.setHex(materials[currentMatA].ionColor); matElecA.color.setHex(materials[currentMatA].electronColor);
-    wireMatB.color.setHex(materials[currentMatB].color); matIonB.color.setHex(materials[currentMatB].ionColor); matElecB.color.setHex(materials[currentMatB].electronColor);
+    // ==========================================
+    // 4. 圖表初始化
+    // ==========================================
+    const chartCtx = document.getElementById('r-l-chart').getContext('2d');
+    const chart = new Chart(chartCtx, {
+        type: 'line',
+        data: { labels: [], datasets: [
+            { label: t('chart.wireA'), data: [], borderColor: '#4da6ff', backgroundColor: 'rgba(77, 166, 255, 0.1)', borderWidth: 2, tension: 0.2 },
+            { label: t('chart.wireB'), data: [], borderColor: '#ff9900', backgroundColor: 'rgba(255, 153, 0, 0.1)', borderWidth: 2, tension: 0.2, hidden: true }
+        ]},
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } }, animation: { duration: 300 } }
+    });
 
-    const isMicro = currentView === 'micro';
-    wireMatA.transparent = wireMatB.transparent = isMicro;
-    wireMatA.opacity = wireMatB.opacity = isMicro ? 0.25 : 1.0;
-    microGroupA.visible = isMicro; microGroupB.visible = isMicro && isCompareMode;
+    // ==========================================
+    // 5. 更新邏輯
+    // ==========================================
+    function updatePhysics() {
+        const rA = calculateR(currentMatA, state.l, state.r, state.t);
+        const rB = calculateR(currentMatB, state.l2, state.r2, state.t);
+        const rhoA = getResistivity(currentMatA, state.t);
+        const rhoB = getResistivity(currentMatB, state.t);
 
-    document.getElementById('flow-toggle-container').style.display = isMicro ? 'flex' : 'none';
-    if(!isMicro || !showFlowRate) {
-        document.getElementById('flow-tag-a').style.display = 'none';
-        document.getElementById('flow-tag-b').style.display = 'none';
-        passedA = 0; passedB = 0;
+        if(window.katex) {
+            katex.render(`R_A = ${formatSciLatex(rA)} \\,\\Omega`, document.getElementById('katex-ra'), {throwOnError: false});
+            if(isCompareMode) katex.render(`R_B = ${formatSciLatex(rB)} \\,\\Omega`, document.getElementById('katex-rb'), {throwOnError: false});
+            if (rhoA === Infinity) katex.render(`Wire_A: \\text{${t('physics.insulator')} }`, document.getElementById('katex-formula'), {throwOnError: false});
+            else katex.render(`Wire_A: R = (${formatSciLatex(rhoA)}) \\frac{${state.l.toFixed(1)}}{\\pi (${state.r.toFixed(1)} \\times 10^{-3})^2}`, document.getElementById('katex-formula'), {throwOnError: false});
+
+            katex.render(`\\rho_A = ${formatSciLatex(rhoA)} \\,\\Omega\\cdot\\text{m}`, document.getElementById('rho-info-a'), {throwOnError: false});
+            katex.render(`\\rho_B = ${formatSciLatex(rhoB)} \\,\\Omega\\cdot\\text{m}`, document.getElementById('rho-info-b'), {throwOnError: false});
+
+            if(showResTag) {
+                katex.render(`R_A = ${formatSciLatex(rA)} \\,\\Omega`, document.getElementById('res-val-a'), {throwOnError: false});
+                if(isCompareMode) katex.render(`R_B = ${formatSciLatex(rB)} \\,\\Omega`, document.getElementById('res-val-b'), {throwOnError: false});
+            }
+        }
+
+        updateChart();
+
+        if (isCompareMode) {
+            gsap.to(wireMeshA.position, { z: -2.0, duration: 0.3 });
+            gsap.to(wireMeshB.position, { z: 2.0, duration: 0.3 });
+            gsap.to(wireMeshB.scale, { x: state.l2, y: state.r2 * VISUAL_R_SCALE, z: state.r2 * VISUAL_R_SCALE, duration: 0.2 });
+            wireMeshB.visible = true;
+            microGroupA.position.z = -2.0; microGroupB.position.z = 2.0;
+        } else {
+            gsap.to(wireMeshA.position, { z: 0, duration: 0.3 });
+            wireMeshB.visible = false;
+            microGroupA.position.z = 0;
+        }
+        gsap.to(wireMeshA.scale, { x: state.l, y: state.r * VISUAL_R_SCALE, z: state.r * VISUAL_R_SCALE, duration: 0.2, onUpdate: updateParticles });
+
+        wireMatA.color.setHex(materials[currentMatA].color); matIonA.color.setHex(materials[currentMatA].ionColor); matElecA.color.setHex(materials[currentMatA].electronColor);
+        wireMatB.color.setHex(materials[currentMatB].color); matIonB.color.setHex(materials[currentMatB].ionColor); matElecB.color.setHex(materials[currentMatB].electronColor);
+
+        const isMicro = currentView === 'micro';
+        wireMatA.transparent = wireMatB.transparent = isMicro;
+        wireMatA.opacity = wireMatB.opacity = isMicro ? 0.25 : 1.0;
+        microGroupA.visible = isMicro; microGroupB.visible = isMicro && isCompareMode;
+
+        document.getElementById('flow-toggle-container').style.display = isMicro ? 'block' : 'none';
+        if(!isMicro || !showFlowRate) {
+            document.getElementById('flow-tag-a').style.display = 'none';
+            document.getElementById('flow-tag-b').style.display = 'none';
+            passedA = 0; passedB = 0;
+        }
+        updateParticles();
     }
-    updateParticles();
-}
 
-function updateChart() {
-    let labels = [], dataA = [], dataB = [], xLabel = '';
-    
-    if (currentChartMode === 'Rl') {
-        xLabel = 'L (m)';
-        for(let l = 0.5; l <= 5.0; l += 0.5) {
-            labels.push(l.toFixed(1));
-            dataA.push(calculateR(currentMatA, l, state.r, state.t));
-            dataB.push(calculateR(currentMatB, l, state.r2, state.t));
+    function updateChart() {
+        chart.data.datasets[0].label = t('chart.wireA');
+        chart.data.datasets[1].label = t('chart.wireB');
+        let labels = [], dataA = [], dataB = [], xLabel = '';
+
+        if (currentChartMode === 'Rl') {
+            xLabel = 'L (m)';
+            for(let l = 0.5; l <= 5.0; l += 0.5) {
+                labels.push(l.toFixed(1));
+                dataA.push(calculateR(currentMatA, l, state.r, state.t));
+                dataB.push(calculateR(currentMatB, l, state.r2, state.t));
+            }
+        } else if (currentChartMode === 'RA') {
+            xLabel = 'A (mm²)';
+            for(let a = 1; a <= 28; a += 3) {
+                labels.push(a.toFixed(1)); let r_for_A = Math.sqrt(a / Math.PI);
+                dataA.push(calculateR(currentMatA, state.l, r_for_A, state.t));
+                dataB.push(calculateR(currentMatB, state.l2, r_for_A, state.t));
+            }
+        } else if (currentChartMode === 'R1A') {
+            xLabel = '1/A (1/mm²)';
+            for(let invA = 0.1; invA <= 1.3; invA += 0.15) {
+                labels.push(invA.toFixed(2)); let r_for_invA = Math.sqrt(1 / (invA * Math.PI));
+                dataA.push(calculateR(currentMatA, state.l, r_for_invA, state.t));
+                dataB.push(calculateR(currentMatB, state.l2, r_for_invA, state.t));
+            }
         }
-    } else if (currentChartMode === 'RA') {
-        xLabel = 'A (mm²)';
-        for(let a = 1; a <= 28; a += 3) {
-            labels.push(a.toFixed(1)); let r_for_A = Math.sqrt(a / Math.PI);
-            dataA.push(calculateR(currentMatA, state.l, r_for_A, state.t));
-            dataB.push(calculateR(currentMatB, state.l2, r_for_A, state.t));
-        }
-    } else if (currentChartMode === 'R1A') {
-        xLabel = '1/A (1/mm²)';
-        for(let invA = 0.1; invA <= 1.3; invA += 0.15) {
-            labels.push(invA.toFixed(2)); let r_for_invA = Math.sqrt(1 / (invA * Math.PI));
-            dataA.push(calculateR(currentMatA, state.l, r_for_invA, state.t));
-            dataB.push(calculateR(currentMatB, state.l2, r_for_invA, state.t));
-        }
+        chart.data.labels = labels;
+        chart.data.datasets[0].data = dataA.map(v=>v===Infinity?null:v);
+        chart.data.datasets[1].data = dataB.map(v=>v===Infinity?null:v);
+        chart.data.datasets[1].hidden = !isCompareMode;
+        chart.options.scales.x.title.text = xLabel;
+        chart.update();
     }
-    chart.data.labels = labels;
-    chart.data.datasets[0].data = dataA.map(v=>v===Infinity?null:v);
-    chart.data.datasets[1].data = dataB.map(v=>v===Infinity?null:v);
-    chart.data.datasets[1].hidden = !isCompareMode;
-    chart.options.scales.x.title.text = xLabel;
-    chart.update();
-}
 
-function configureParticles(mesh, matKey, ionsArr, elecsArr, realRadius) {
-    const len = mesh.scale.x, visRadius = mesh.scale.y, halfLen = len/2;
-    
-    // 【更新】調降晶格間距，從 0.28 縮小到 0.20，讓原子看起來非常密集
-    const spacing = 0.20; 
-    let activeIons = 0;
-    const steps = Math.max(0, Math.floor((visRadius - 0.05) / spacing));
+    function configureParticles(mesh, matKey, ionsArr, elecsArr, realRadius) {
+        const len = mesh.scale.x, visRadius = mesh.scale.y, halfLen = len/2;
 
-    for(let x = -halfLen+spacing/2; x <= halfLen; x+=spacing) {
-        for(let y = -steps*spacing; y <= steps*spacing; y+=spacing) {
-            for(let z = -steps*spacing; z <= steps*spacing; z+=spacing) {
-                if(y*y + z*z <= visRadius*visRadius && activeIons < ionsArr.length) {
-                    const ion = ionsArr[activeIons++];
-                    ion.position.set(x, y, z); ion.userData.basePos = new THREE.Vector3(x, y, z); ion.visible = true;
+        // 【更新】調降晶格間距，從 0.28 縮小到 0.20，讓原子看起來非常密集
+        const spacing = 0.20;
+        let activeIons = 0;
+        const steps = Math.max(0, Math.floor((visRadius - 0.05) / spacing));
+
+        for(let x = -halfLen+spacing/2; x <= halfLen; x+=spacing) {
+            for(let y = -steps*spacing; y <= steps*spacing; y+=spacing) {
+                for(let z = -steps*spacing; z <= steps*spacing; z+=spacing) {
+                    if(y*y + z*z <= visRadius*visRadius && activeIons < ionsArr.length) {
+                        const ion = ionsArr[activeIons++];
+                        ion.position.set(x, y, z); ion.userData.basePos = new THREE.Vector3(x, y, z); ion.visible = true;
+                    }
                 }
             }
         }
-    }
-    for(let i=activeIons; i<ionsArr.length; i++) ionsArr[i].visible = false;
+        for(let i=activeIons; i<ionsArr.length; i++) ionsArr[i].visible = false;
 
-    const mat = materials[matKey];
-    let density = mat.eDensity; if(mat.type==='semiconductor') density *= (1 + (state.t-20)*0.03);
-    let activeElec = Math.min(MAX_ELEC, Math.floor((20 + len*realRadius*realRadius*100)*density));
-    if(mat.type === 'insulator') activeElec = 0;
+        const mat = materials[matKey];
+        let density = mat.eDensity; if(mat.type==='semiconductor') density *= (1 + (state.t-20)*0.03);
+        let activeElec = Math.min(MAX_ELEC, Math.floor((20 + len*realRadius*realRadius*100)*density));
+        if(mat.type === 'insulator') activeElec = 0;
 
-    for(let i=0; i<activeElec; i++) {
-        const el = elecsArr[i];
-        if(!el.visible) {
-            const p = getRandomPointInCircle(visRadius*0.9);
-            el.position.set((Math.random()-0.5)*len, p.y, p.z);
-            el.userData.speedX = (Math.random()*0.4 + 0.8) * mat.baseSpeed;
+        for(let i=0; i<activeElec; i++) {
+            const el2 = elecsArr[i];
+            if(!el2.visible) {
+                const p = getRandomPointInCircle(visRadius*0.9);
+                el2.position.set((Math.random()-0.5)*len, p.y, p.z);
+                el2.userData.speedX = (Math.random()*0.4 + 0.8) * mat.baseSpeed;
+            }
+            el2.visible = true;
         }
-        el.visible = true;
+        for(let i=activeElec; i<elecsArr.length; i++) elecsArr[i].visible = false;
     }
-    for(let i=activeElec; i<elecsArr.length; i++) elecsArr[i].visible = false;
-}
 
-function updateParticles() {
-    if(currentView !== 'micro') return;
-    configureParticles(wireMeshA, currentMatA, ionsA, elecsA, state.r);
-    if(isCompareMode) configureParticles(wireMeshB, currentMatB, ionsB, elecsB, state.r2);
-}
+    function updateParticles() {
+        if(currentView !== 'micro') return;
+        configureParticles(wireMeshA, currentMatA, ionsA, elecsA, state.r);
+        if(isCompareMode) configureParticles(wireMeshB, currentMatB, ionsB, elecsB, state.r2);
+    }
 
-// ==========================================
-// 6. UI 事件與 3D 投影
-// ==========================================
-['l','r','l2','r2','t'].forEach(k => document.getElementById('slider-'+k).addEventListener('input', e=>{
-    state[k] = parseFloat(e.target.value); 
-    document.getElementById('val-'+k).innerText = state[k].toFixed(1) + (k==='t'?' °C':(k.startsWith('r')?' mm':' m'));
-    updatePhysics();
-}));
+    // ==========================================
+    // 6. UI 事件與 3D 投影
+    // ==========================================
+    PhysLab.ui.bindSlider('slider-l',  'val-l',  function (v) { state.l  = v; updatePhysics(); return v.toFixed(1) + ' m'; });
+    PhysLab.ui.bindSlider('slider-r',  'val-r',  function (v) { state.r  = v; updatePhysics(); return v.toFixed(1) + ' mm'; });
+    PhysLab.ui.bindSlider('slider-l2', 'val-l2', function (v) { state.l2 = v; updatePhysics(); return v.toFixed(1) + ' m'; });
+    PhysLab.ui.bindSlider('slider-r2', 'val-r2', function (v) { state.r2 = v; updatePhysics(); return v.toFixed(1) + ' mm'; });
+    PhysLab.ui.bindSlider('slider-t',  'val-t',  function (v) { state.t  = v; updatePhysics(); return v.toFixed(1) + ' °C'; });
 
-document.getElementById('compare-toggle').addEventListener('change', e=>{
-    isCompareMode = e.target.checked;
-    document.getElementById('control-b').style.display = isCompareMode ? 'block' : 'none';
-    document.getElementById('result-b-container').style.display = isCompareMode ? 'flex' : 'none';
-    updatePhysics();
-});
-document.getElementById('flow-toggle').addEventListener('change', e=>{ showFlowRate=e.target.checked; updatePhysics(); });
-document.getElementById('res-toggle').addEventListener('change', e=>{ showResTag=e.target.checked; updatePhysics(); });
-
-document.getElementById('select-selected').addEventListener('click', function(e) {
-    e.stopPropagation(); document.getElementById('select-items').classList.toggle('select-hide');
-});
-document.querySelectorAll('.select-item').forEach(item => {
-    item.addEventListener('click', function(e) {
-        currentChartMode = this.dataset.val; document.getElementById('select-selected').innerHTML = this.innerHTML;
-        document.getElementById('select-items').classList.add('select-hide'); updatePhysics();
+    el('row-compare').addEventListener('click', function () {
+        isCompareMode = !isCompareMode;
+        el('opt-compare').classList.toggle('on', isCompareMode);
+        el('control-b').style.display = isCompareMode ? 'block' : 'none';
+        el('result-b-container').style.display = isCompareMode ? 'flex' : 'none';
+        updatePhysics();
     });
-});
-document.addEventListener('click', () => document.getElementById('select-items').classList.add('select-hide'));
+    el('row-flow').addEventListener('click', function () {
+        showFlowRate = !showFlowRate;
+        el('opt-flow').classList.toggle('on', showFlowRate);
+        updatePhysics();
+    });
+    el('row-res').addEventListener('click', function () {
+        showResTag = !showResTag;
+        el('opt-res').classList.toggle('on', showResTag);
+        updatePhysics();
+    });
 
-function setupMaterialBtns(groupId, isWireA) {
-    document.querySelectorAll(`#${groupId} button`).forEach(btn => {
-        btn.addEventListener('click', e => {
-            document.querySelectorAll(`#${groupId} button`).forEach(b => b.className='');
-            e.target.className = isWireA ? 'active active-a' : 'active active-b';
-            if(isWireA) { currentMatA = e.target.dataset.mat; elecsA.forEach(el=>el.visible=false); }
-            else { currentMatB = e.target.dataset.mat; elecsB.forEach(el=>el.visible=false); }
-            updatePhysics();
+    el('chart-mode').addEventListener('change', function (e) {
+        currentChartMode = e.target.value; updatePhysics();
+    });
+
+    function setupMaterialBtns(groupId, isWireA) {
+        document.querySelectorAll(`#${groupId} .dir-btn`).forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll(`#${groupId} .dir-btn`).forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                if(isWireA) { currentMatA = btn.dataset.mat; elecsA.forEach(el2=>el2.visible=false); }
+                else { currentMatB = btn.dataset.mat; elecsB.forEach(el2=>el2.visible=false); }
+                updatePhysics();
+            });
+        });
+    }
+    setupMaterialBtns('mat-btns-a', true); setupMaterialBtns('mat-btns-b', false);
+
+    document.querySelectorAll('#view-btns .dir-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('#view-btns .dir-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentView = btn.dataset.view; updatePhysics();
         });
     });
-}
-setupMaterialBtns('mat-btns-a', true); setupMaterialBtns('mat-btns-b', false);
 
-document.querySelectorAll('#view-btns button').forEach(btn => {
-    btn.addEventListener('click', e => {
-        document.querySelectorAll('#view-btns button').forEach(b => b.className='');
-        e.target.className = 'active active-view';
-        currentView = e.target.dataset.view; updatePhysics();
-    });
-});
-
-function updateTagPositionEnd(tag, meshObj) {
-    const endPos = new THREE.Vector3(meshObj.scale.x / 2, 0, meshObj.position.z);
-    endPos.project(camera);
-    const x = (endPos.x * 0.5 + 0.5) * window.innerWidth;
-    const y = (endPos.y * -0.5 + 0.5) * window.innerHeight;
-    if(endPos.z > 1) { tag.style.display = 'none'; return; }
-    tag.style.display = 'block'; tag.style.left = `${x}px`; tag.style.top = `${y}px`;
-}
-
-function updateTagPositionCenter(tag, meshObj) {
-    const centerPos = new THREE.Vector3(0, meshObj.scale.y + 0.5, meshObj.position.z);
-    centerPos.project(camera);
-    const x = (centerPos.x * 0.5 + 0.5) * window.innerWidth;
-    const y = (centerPos.y * -0.5 + 0.5) * window.innerHeight;
-    if(centerPos.z > 1) { tag.style.display = 'none'; return; }
-    tag.style.display = 'block'; tag.style.left = `${x}px`; tag.style.top = `${y}px`;
-}
-
-// ==========================================
-// 7. 動畫循環
-// ==========================================
-const clock = new THREE.Clock();
-function animateParticlesEngine(ionsArr, elecsArr, mesh, matKey, counterObj) {
-    const time = clock.getElapsedTime(), tFactor = state.t - 20;
-    const mat = materials[matKey], rLimit2 = Math.pow(mesh.scale.y * 0.95, 2);
-    let ampBase = mat.type!=='insulator' ? 0.003 + tFactor*0.00015 : 0.003;
-    
-    // 【更新】調高基礎碰撞抖動值，讓碰撞視覺更加明顯
-    let jitter = 0.0035; 
-    
-    // 【更新核心】引入電場強度 E = V/L 的概念，假設定電壓，長度越長則流速等比例下降
-    const lengthFactor = 1.0 / mesh.scale.x; 
-    let flowMul = lengthFactor;
-
-    if(mat.type==='metal') { 
-        jitter += tFactor*0.0004; 
-        flowMul *= Math.max(0.1, 1.0 - tFactor*0.005); 
-    }
-    else if(mat.type==='semiconductor') { 
-        jitter += tFactor*0.00015; 
-        flowMul *= Math.min(3.0, 1.0 + tFactor*0.015); 
+    // 3D → 螢幕投影：畫布不再滿版，改以 renderer canvas 的實際尺寸換算（標籤為 #view3d 子元素）
+    function updateTagPositionEnd(tag, meshObj) {
+        const cw = renderer.domElement.clientWidth, ch = renderer.domElement.clientHeight;
+        const endPos = new THREE.Vector3(meshObj.scale.x / 2, 0, meshObj.position.z);
+        endPos.project(camera);
+        const x = (endPos.x * 0.5 + 0.5) * cw;
+        const y = (endPos.y * -0.5 + 0.5) * ch;
+        if(endPos.z > 1) { tag.style.display = 'none'; return; }
+        tag.style.display = 'block'; tag.style.left = `${x}px`; tag.style.top = `${y}px`;
     }
 
-    ionsArr.forEach((ion, i) => {
-        if(!ion.visible) return; const bp = ion.userData.basePos;
-        ion.position.set(bp.x + Math.sin(time*(15+i%5)+i*0.7)*ampBase, bp.y + Math.cos(time*(15+i%5)+i*0.7)*ampBase, bp.z + Math.sin(time*(15+i%5)*1.3+i*0.7)*ampBase);
-    });
+    function updateTagPositionCenter(tag, meshObj) {
+        const cw = renderer.domElement.clientWidth, ch = renderer.domElement.clientHeight;
+        const centerPos = new THREE.Vector3(0, meshObj.scale.y + 0.5, meshObj.position.z);
+        centerPos.project(camera);
+        const x = (centerPos.x * 0.5 + 0.5) * cw;
+        const y = (centerPos.y * -0.5 + 0.5) * ch;
+        if(centerPos.z > 1) { tag.style.display = 'none'; return; }
+        tag.style.display = 'block'; tag.style.left = `${x}px`; tag.style.top = `${y}px`;
+    }
 
-    const halfLen = mesh.scale.x / 2;
-    elecsArr.forEach(el => {
-        if(!el.visible) return;
-        el.position.x += el.userData.speedX * flowMul + (Math.random()-0.5)*jitter;
-        el.position.y += (Math.random()-0.5)*jitter; el.position.z += (Math.random()-0.5)*jitter;
-        if(el.position.y*el.position.y + el.position.z*el.position.z > rLimit2) {
-            const p = getRandomPointInCircle(mesh.scale.y*0.9); el.position.y = p.y; el.position.z = p.z;
+    // ==========================================
+    // 7. 動畫循環（controls.update 與 render 由 sim.start 處理）
+    // ==========================================
+    function animateParticlesEngine(ionsArr, elecsArr, mesh, matKey, counterObj) {
+        const time = clock.getElapsedTime(), tFactor = state.t - 20;
+        const mat = materials[matKey], rLimit2 = Math.pow(mesh.scale.y * 0.95, 2);
+        let ampBase = mat.type!=='insulator' ? 0.003 + tFactor*0.00015 : 0.003;
+
+        // 【更新】調高基礎碰撞抖動值，讓碰撞視覺更加明顯
+        let jitter = 0.0035;
+
+        // 【更新核心】引入電場強度 E = V/L 的概念，假設定電壓，長度越長則流速等比例下降
+        const lengthFactor = 1.0 / mesh.scale.x;
+        let flowMul = lengthFactor;
+
+        if(mat.type==='metal') {
+            jitter += tFactor*0.0004;
+            flowMul *= Math.max(0.1, 1.0 - tFactor*0.005);
         }
-        if(el.position.x > halfLen) { el.position.x -= mesh.scale.x; counterObj.count++; }
-        else if(el.position.x < -halfLen) el.position.x += mesh.scale.x;
-    });
-}
-
-function animate() {
-    requestAnimationFrame(animate); controls.update();
-    
-    if(currentView === 'micro') {
-        let passCounterA = { count: 0 }, passCounterB = { count: 0 };
-        animateParticlesEngine(ionsA, elecsA, wireMeshA, currentMatA, passCounterA);
-        passedA += passCounterA.count;
-        if(isCompareMode) {
-            animateParticlesEngine(ionsB, elecsB, wireMeshB, currentMatB, passCounterB);
-            passedB += passCounterB.count;
+        else if(mat.type==='semiconductor') {
+            jitter += tFactor*0.00015;
+            flowMul *= Math.min(3.0, 1.0 + tFactor*0.015);
         }
 
-        const now = performance.now();
-        if(now - lastTime > 1000) {
-            if(showFlowRate) {
-                document.getElementById('flow-val-a').innerText = passedA + ' / s';
-                if(isCompareMode) document.getElementById('flow-val-b').innerText = passedB + ' / s';
+        ionsArr.forEach((ion, i) => {
+            if(!ion.visible) return; const bp = ion.userData.basePos;
+            ion.position.set(bp.x + Math.sin(time*(15+i%5)+i*0.7)*ampBase, bp.y + Math.cos(time*(15+i%5)+i*0.7)*ampBase, bp.z + Math.sin(time*(15+i%5)*1.3+i*0.7)*ampBase);
+        });
+
+        const halfLen = mesh.scale.x / 2;
+        elecsArr.forEach(el2 => {
+            if(!el2.visible) return;
+            el2.position.x += el2.userData.speedX * flowMul + (Math.random()-0.5)*jitter;
+            el2.position.y += (Math.random()-0.5)*jitter; el2.position.z += (Math.random()-0.5)*jitter;
+            if(el2.position.y*el2.position.y + el2.position.z*el2.position.z > rLimit2) {
+                const p = getRandomPointInCircle(mesh.scale.y*0.9); el2.position.y = p.y; el2.position.z = p.z;
             }
-            passedA = 0; passedB = 0; lastTime = now;
+            if(el2.position.x > halfLen) { el2.position.x -= mesh.scale.x; counterObj.count++; }
+            else if(el2.position.x < -halfLen) el2.position.x += mesh.scale.x;
+        });
+    }
+
+    function tick() {
+        if(currentView === 'micro') {
+            let passCounterA = { count: 0 }, passCounterB = { count: 0 };
+            animateParticlesEngine(ionsA, elecsA, wireMeshA, currentMatA, passCounterA);
+            passedA += passCounterA.count;
+            if(isCompareMode) {
+                animateParticlesEngine(ionsB, elecsB, wireMeshB, currentMatB, passCounterB);
+                passedB += passCounterB.count;
+            }
+
+            const now = performance.now();
+            if(now - lastTime > 1000) {
+                if(showFlowRate) {
+                    document.getElementById('flow-val-a').innerText = passedA + ' / s';
+                    if(isCompareMode) document.getElementById('flow-val-b').innerText = passedB + ' / s';
+                }
+                passedA = 0; passedB = 0; lastTime = now;
+            }
+
+            if(showFlowRate) {
+                updateTagPositionEnd(document.getElementById('flow-tag-a'), wireMeshA);
+                if(isCompareMode) updateTagPositionEnd(document.getElementById('flow-tag-b'), wireMeshB);
+                else document.getElementById('flow-tag-b').style.display = 'none';
+            }
         }
 
-        if(showFlowRate) {
-            updateTagPositionEnd(document.getElementById('flow-tag-a'), wireMeshA);
-            if(isCompareMode) updateTagPositionEnd(document.getElementById('flow-tag-b'), wireMeshB);
-            else document.getElementById('flow-tag-b').style.display = 'none';
+        if(showResTag) {
+            updateTagPositionCenter(document.getElementById('res-tag-a'), wireMeshA);
+            if(isCompareMode) updateTagPositionCenter(document.getElementById('res-tag-b'), wireMeshB);
+            else document.getElementById('res-tag-b').style.display = 'none';
+        } else {
+            document.getElementById('res-tag-a').style.display = 'none';
+            document.getElementById('res-tag-b').style.display = 'none';
         }
     }
 
-    if(showResTag) {
-        updateTagPositionCenter(document.getElementById('res-tag-a'), wireMeshA);
-        if(isCompareMode) updateTagPositionCenter(document.getElementById('res-tag-b'), wireMeshB);
-        else document.getElementById('res-tag-b').style.display = 'none';
-    } else {
-        document.getElementById('res-tag-a').style.display = 'none';
-        document.getElementById('res-tag-b').style.display = 'none';
-    }
+    // 語言切換：重繪動態 KaTeX 讀數／圖表標籤（updatePhysics）＋ 靜態 $…$（renderAllMath）
+    PhysLab.i18n.onChange(function () {
+        updatePhysics();
+        renderAllMath();
+    });
 
-    renderer.render(scene, camera);
-}
-
-window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight);
+    setTimeout(() => { updatePhysics(); }, 300);
+    sim.start(tick);
 });
-
-setTimeout(() => { updatePhysics(); }, 300);
-animate();
-
 </script>
 </body>
 </html>
