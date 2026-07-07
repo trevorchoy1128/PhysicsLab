@@ -10,19 +10,18 @@
     <link rel="stylesheet" href="../../../assets/css/labgray.css">
     <script src="../../../assets/js/core.js"></script>
     <script src="../../../assets/js/i18n.js"></script>
+    <script src="../../../assets/js/canvas2d.js"></script>
 
     <style>
         /* ── 頁面獨有 CSS ──
-           畫布：保留原頁 800×600 邏輯座標系（幾何常數以邏輯像素寫死），
-           CSS 尺寸在 #canvas-wrap 內自適應，滑鼠座標換算沿用原頁
-           (CSS_WIDTH / rect.width) 比例式，兩者相容。 */
+           畫布：保留原頁 800×600 邏輯座標系（幾何常數以邏輯像素寫死），經
+           PhysLab.c2d.setup({logical}) 做 book4 3D 那種真・貼邊無縫：填滿
+           #canvas-wrap、無外框，信箱區與場景同為淺灰 #e2e6eb。 */
         #simCanvas {
-            width: min(100% - 28px, 800px);
-            aspect-ratio: 800 / 600;
-            margin: auto;
-            background: #fff;
-            border: 1.5px solid var(--pl-border);
-            border-radius: 12px;
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
             display: block;
             cursor: grab;
         }
@@ -190,6 +189,7 @@ PhysLab.i18n.register({
 
     const canvas = document.getElementById('simCanvas');
     const ctx = canvas.getContext('2d');
+    let view; // PhysLab.c2d.setup 回傳（信箱貼邊模式；於初始化時賦值）
 
     const CSS_WIDTH = 800;
     const CSS_HEIGHT = 600;
@@ -218,15 +218,6 @@ PhysLab.i18n.register({
 
     let ptVisibility = [];
     let raySelectionStates = {};
-
-    function resizeCanvas() {
-        const dpr = window.devicePixelRatio || 1;
-        canvas.width = CSS_WIDTH * dpr;
-        canvas.height = CSS_HEIGHT * dpr;
-        ctx.resetTransform();
-        ctx.scale(dpr, dpr);
-        draw();
-    }
 
     // 動態生成選中圖形的對應光線控制 UI 開關（toggle-row 版）
     function updateRayControlUI() {
@@ -501,8 +492,8 @@ PhysLab.i18n.register({
 
     canvas.addEventListener('mousedown', (e) => {
         if (pts.length === 0) return;
-        const rect = canvas.getBoundingClientRect();
-        const mouseX = (e.clientX - rect.left) * (CSS_WIDTH / rect.width), mouseY = (e.clientY - rect.top) * (CSS_HEIGHT / rect.height);
+        const _p = PhysLab.c2d.pointerPos(canvas, e, view);
+        const mouseX = _p.x, mouseY = _p.y;
         if (showObserver && Math.hypot(mouseX - observer.x, mouseY - observer.y) < observer.radius * 1.5) { dragTarget = 'observer'; return; }
         const bounds = getMirrorBoundaries(mirror.x, mirror.y, isSlanted ? Math.PI/4 : Math.PI/2);
         if (distToSegment({ x: mouseX, y: mouseY }, bounds.p1, bounds.p2) < 15) { dragTarget = 'mirror'; startMouse = { x: snap(mouseX), y: snap(mouseY) }; initialPts = { x: mirror.x, y: mirror.y }; return; }
@@ -529,8 +520,8 @@ PhysLab.i18n.register({
 
     canvas.addEventListener('mousemove', (e) => {
         if (!dragTarget || pts.length === 0) return;
-        const rect = canvas.getBoundingClientRect();
-        const mouseX = (e.clientX - rect.left) * (CSS_WIDTH / rect.width), mouseY = (e.clientY - rect.top) * (CSS_HEIGHT / rect.height);
+        const _p = PhysLab.c2d.pointerPos(canvas, e, view);
+        const mouseX = _p.x, mouseY = _p.y;
         const snX = snap(mouseX), snY = snap(mouseY), { nx, ny } = getMirrorNormal();
         let changed = false;
 
@@ -673,7 +664,7 @@ PhysLab.i18n.register({
     }
 
     function draw() {
-        ctx.clearRect(0, 0, CSS_WIDTH, CSS_HEIGHT);
+        view.clear(); // 信箱貼邊：以淺灰 #e2e6eb 填滿整個緩衝（含信箱區）
         drawGrid();
         if (!pts || pts.length === 0) return;
 
@@ -720,9 +711,11 @@ PhysLab.i18n.register({
     // 語言切換後：重建動態光線開關列文字 + 重繪畫布（fillText 中文提示）
     PhysLab.i18n.onChange(() => { updateRayControlUI(); draw(); });
 
+    // 信箱貼邊：畫布填滿 #canvas-wrap，繪圖維持 800×600 邏輯座標置中等比縮放，
+    // autoResize 監聽容器尺寸自動重繪（onResize→draw），取代手寫 DPR/resize 樣板。
+    view = PhysLab.c2d.setup(canvas, { logical: { w: CSS_WIDTH, h: CSS_HEIGHT }, bg: '#e2e6eb', onResize: draw });
     initShape('arrow');
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
+    draw();
 </script>
 </body>
 </html>
