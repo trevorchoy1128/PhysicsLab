@@ -23,7 +23,7 @@
     .hidden { display: none !important; }
 
     /* ── 中央畫布：貼邊無縫（填滿 #canvas-wrap、無外框；view.clear() 以淺灰填滿信箱） ── */
-    #simCanvas { display: block; width: 100%; height: 100%; touch-action: none; }
+    #simCanvas { display: block; position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
 
     /* ── 滑桿 + 數字輸入（保留原雙輸入功能） ── */
     .row-inline { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
