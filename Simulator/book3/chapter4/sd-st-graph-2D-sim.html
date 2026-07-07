@@ -14,11 +14,11 @@
     <style>
         /* ── 頁面獨有樣式（共用 chrome 見 assets/css/labgray.css）── */
 
-        /* 圖表區：兩張圖表卡片垂直堆疊（畫布固定邏輯座標 800×240，CSS 等比縮放） */
-        #canvas-wrap { flex-direction: column; align-items: center; gap: 14px; padding: 16px; overflow-y: auto; }
-        .graph-container { background: var(--pl-card); border: 1px solid var(--pl-border); border-radius: 10px; padding: 12px 14px; width: 100%; max-width: 860px; box-shadow: var(--pl-shadow-card); }
+        /* 圖表區：兩張圖表垂直堆疊、貼邊無框填滿舞台（畫布固定邏輯座標 800×240，CSS 等比縮放，繪圖碼內建 800px 上限並置中） */
+        #canvas-wrap { flex-direction: column; align-items: stretch; gap: 12px; padding: 12px 0; overflow-y: auto; }
+        .graph-container { background: transparent; padding: 4px 0; width: 100%; }
         .graph-title { text-align: center; font-weight: 700; font-size: 0.82rem; color: var(--pl-text-strong); margin-bottom: 8px; }
-        .graph-container canvas { background: #fafafa; border: 1px solid var(--pl-border-soft); border-radius: 6px; display: block; margin: 0 auto; width: 100%; height: auto; cursor: crosshair; }
+        .graph-container canvas { background: #fafafa; display: block; margin: 0 auto; width: 100%; height: auto; cursor: crosshair; }
 
         /* 播放／暫停（單頁動作鈕；labgray 僅收錄 .btn-reset） */
         .btn-play { background: var(--pl-ok); border-color: #15803d; color: #fff; }
