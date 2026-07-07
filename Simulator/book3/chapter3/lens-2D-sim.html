@@ -14,19 +14,19 @@
     <link rel="stylesheet" href="../../../assets/css/labgray.css">
     <script src="../../../assets/js/core.js"></script>
     <script src="../../../assets/js/i18n.js"></script>
+    <script src="../../../assets/js/canvas2d.js"></script>
 
     <style>
         /* ── 頁面獨有 CSS ──
-           畫布：保留原頁 800×400 邏輯座標系（幾何常數以邏輯像素寫死），
-           CSS 尺寸在 #canvas-wrap 內自適應；滑鼠座標換算沿用原頁
-           (logicalWidth / rect.width) 比例式，兩者相容。 */
+           畫布：真・貼邊無縫（book4 3D 風格）——填滿 #canvas-wrap、無外框。
+           保留原頁 800×400 邏輯座標系（幾何常數以邏輯像素寫死），由
+           PhysLab.c2d.setup({logical}) 做信箱貼邊等比縮放；灰底 #e2e6eb
+           由 view.clear() 填滿，指標座標由 pointerPos(...,view) 回傳邏輯座標。 */
         #simCanvas {
-            width: min(100% - 28px, 800px);
-            aspect-ratio: 800 / 400;
-            margin: auto;
-            background: #fff;
-            border: 1.5px solid var(--pl-border);
-            border-radius: 12px;
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
             display: block;
         }
         /* 滑桿列右側的數字輸入框（保留原頁可直接鍵入數值的功能） */
@@ -255,6 +255,14 @@ PhysLab.i18n.register({
     const ctx = canvas.getContext('2d');
 
     const logicalWidth = 800, logicalHeight = 400;
+
+    // 舞台貼邊：固定 800×400 邏輯座標 + 信箱等比縮放（幾何碼零改動），
+    // 灰底 #e2e6eb 由 view.clear() 填滿，容器縮放時自動 onResize → update()。
+    const view = PhysLab.c2d.setup(canvas, {
+        logical: { w: logicalWidth, h: logicalHeight },
+        bg: '#e2e6eb',
+        onResize: update
+    });
 
     // UI 元素
     const btnConvex = document.getElementById('btnConvex');
@@ -490,14 +498,6 @@ PhysLab.i18n.register({
 
     // 主更新迴圈
     function update() {
-        const dpr = window.devicePixelRatio || 1;
-        if (canvas.width !== logicalWidth * dpr || canvas.height !== logicalHeight * dpr) {
-            canvas.width = logicalWidth * dpr;
-            canvas.height = logicalHeight * dpr;
-        }
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
-        ctx.scale(dpr, dpr);
-
         const f_mag = parseFloat(fSlider.value);
         const u = parseFloat(uSlider.value);
         const h_o = parseFloat(hSlider.value);
@@ -510,7 +510,7 @@ PhysLab.i18n.register({
         const isParallel = isConvex && Math.abs(u - f_mag) < 0.1;
         const isVirtual = v < 0;
 
-        ctx.clearRect(0, 0, logicalWidth, logicalHeight);
+        view.clear();
 
         if (showGrid) {
             const major = 50 * scale, minor = 10 * scale;
@@ -659,8 +659,8 @@ PhysLab.i18n.register({
     // 滑鼠物理拖曳
     let dragTarget = null;
     canvas.addEventListener('mousedown', (e) => {
-        const rect = canvas.getBoundingClientRect();
-        const mouseX = (e.clientX - rect.left) * (logicalWidth / rect.width), mouseY = (e.clientY - rect.top) * (logicalHeight / rect.height);
+        const p = PhysLab.c2d.pointerPos(canvas, e, view);
+        const mouseX = p.x, mouseY = p.y;
         const scale = parseFloat(zoomSlider.value);
         const u = parseFloat(uSlider.value), f = parseFloat(fSlider.value), h_o = parseFloat(hSlider.value);
         const objX = centerX - u * scale, objY = centerY - h_o * scale;
@@ -677,8 +677,8 @@ PhysLab.i18n.register({
     });
 
     canvas.addEventListener('mousemove', (e) => {
-        const rect = canvas.getBoundingClientRect();
-        const mouseX = (e.clientX - rect.left) * (logicalWidth / rect.width), mouseY = (e.clientY - rect.top) * (logicalHeight / rect.height);
+        const p = PhysLab.c2d.pointerPos(canvas, e, view);
+        const mouseX = p.x, mouseY = p.y;
         const scale = parseFloat(zoomSlider.value);
         const h_o = parseFloat(hSlider.value), u = parseFloat(uSlider.value), f = parseFloat(fSlider.value);
         const objX = centerX - u * scale, objY = centerY - h_o * scale;
@@ -722,9 +722,8 @@ PhysLab.i18n.register({
     // 語言切換後：同步 JS 生成文字的按鈕 + 重繪畫布（fillText 中文標籤與推導面板）
     PhysLab.i18n.onChange(() => { updateCustomRayUI(); update(); });
 
-    // 初始化
+    // 初始化（容器縮放由 c2d.setup 的 onResize → update() 處理）
     update();
-    window.addEventListener('resize', update);
 </script>
 </body>
 </html>
