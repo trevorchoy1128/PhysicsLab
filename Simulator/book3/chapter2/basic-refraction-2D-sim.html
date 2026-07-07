@@ -10,15 +10,14 @@
 <link rel="stylesheet" href="../../../assets/css/labgray.css">
 <script src="../../../assets/js/core.js"></script>
 <script src="../../../assets/js/i18n.js"></script>
+<script src="../../../assets/js/canvas2d.js"></script>
 
 <style>
     /* ── 頁面獨有樣式（光的折射 2D）──
        共用 chrome 見 assets/css/labgray.css；canvas 繪圖邏輯不在此。 */
-    #canvas-wrap { align-items: center; justify-content: center; padding: 16px; }
+    #canvas-wrap { align-items: center; justify-content: center; }
     #simCanvas {
-        background: #fff; border: 1px solid var(--pl-border); border-radius: 12px;
-        box-shadow: inset 0 1px 4px rgba(0,0,0,0.05);
-        width: min(100%, calc(100vh - 130px), 640px); aspect-ratio: 1 / 1;
+        position: absolute; inset: 0; width: 100%; height: 100%; display: block;
         touch-action: none;
     }
     /* 入射角步進（保留原頁動態步長＋長按加速邏輯，故不用共用 .step-btn） */
@@ -316,20 +315,19 @@ PhysLab.i18n.register({
     // 核心邏輯
     // ==========================================
     const logicalSize = 600;
-    let cx, cy;
+    let cx = logicalSize / 2, cy = logicalSize / 2;
     let isDirection1To2 = true;
     let currentAngleDeg = 45.0;
     let isDragging = false;
     let isHoveringRay = false;
 
-    function setupCanvas() {
-        const scaleFactor = window.devicePixelRatio || 1;
-        canvas.width = logicalSize * scaleFactor;
-        canvas.height = logicalSize * scaleFactor;
-        ctx.scale(scaleFactor, scaleFactor);
-        cx = logicalSize / 2;
-        cy = logicalSize / 2;
-    }
+    /* 固定邏輯座標 600×600 + 信箱貼邊（填滿 #canvas-wrap、灰底無縫）；
+       DPR／等比縮放／置中由共用工具處理，繪圖座標維持 0..600。 */
+    const view = PhysLab.c2d.setup(canvas, {
+        logical: { w: logicalSize, h: logicalSize },
+        bg: '#e2e6eb',
+        onResize: () => draw()
+    });
 
     function getCriticalAngleExact() {
         let n_inc = isDirection1To2 ? parseFloat(n1Slider.value) : parseFloat(n2Slider.value);
@@ -438,7 +436,7 @@ PhysLab.i18n.register({
             precisionBadge.className = "prec off";
         }
 
-        ctx.clearRect(0, 0, logicalSize, logicalSize);
+        view.clear();
 
         let n_inc = isDirection1To2 ? n1 : n2;
         let n_ref = isDirection1To2 ? n2 : n1;
@@ -705,13 +703,8 @@ PhysLab.i18n.register({
     }
 
     function getCanvasPoint(evt) {
-        const rect = canvas.getBoundingClientRect();
-        const clientX = evt.touches ? evt.touches[0].clientX : evt.clientX;
-        const clientY = evt.touches ? evt.touches[0].clientY : evt.clientY;
-        return {
-            x: (clientX - rect.left) * (logicalSize / rect.width),
-            y: (clientY - rect.top) * (logicalSize / rect.height)
-        };
+        /* 信箱模式回傳邏輯座標（0..600），與繪圖座標直接互用 */
+        return PhysLab.c2d.pointerPos(canvas, evt, view);
     }
 
     function onPointerDown(e) {
@@ -759,11 +752,11 @@ PhysLab.i18n.register({
     }
 
     window.addEventListener('load', () => {
-        setupCanvas();
+        view.resize();
         document.title = T('page.title');
         draw();
     });
-    window.addEventListener('resize', () => { setupCanvas(); draw(); });
+    /* window resize / ResizeObserver 由 PhysLab.c2d.setup 的 onResize 自動重繪 */
 
     n1Slider.addEventListener('input', draw);
     n2Slider.addEventListener('input', draw);
@@ -782,8 +775,8 @@ PhysLab.i18n.register({
     });
 
     /* 面板開關（畫布為固定邏輯座標系，切換後重繪即可） */
-    PhysLab.ui.bindPanelToggle('btn-toggle-left', 'left-panel', () => { setupCanvas(); draw(); });
-    PhysLab.ui.bindPanelToggle('btn-toggle-right', 'right-panel', () => { setupCanvas(); draw(); });
+    PhysLab.ui.bindPanelToggle('btn-toggle-left', 'left-panel', () => { view.resize(); draw(); });
+    PhysLab.ui.bindPanelToggle('btn-toggle-right', 'right-panel', () => { view.resize(); draw(); });
 
     /* 語言切換：靜態文字由 data-i18n 自動套用；canvas 文字與動態狀態靠重繪 */
     PhysLab.i18n.onChange(() => {
