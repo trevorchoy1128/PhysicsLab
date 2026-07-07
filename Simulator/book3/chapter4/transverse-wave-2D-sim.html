@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="../../../assets/css/labgray.css">
 <script src="../../../assets/js/core.js"></script>
 <script src="../../../assets/js/i18n.js"></script>
+<script src="../../../assets/js/canvas2d.js"></script>
 
 <style>
     /* ── 頁面獨有 CSS ── */
@@ -29,15 +30,9 @@
        再被 .card{overflow:hidden} 裁走，內容過長時必須由面板本身捲動 */
     #left-panel > *, #right-panel > * { flex-shrink: 0; }
 
-    /* 畫布舞台：固定 720×400 邏輯座標，CSS 等比縮放 */
-    #stage { flex: 1; display: flex; align-items: center; justify-content: center; padding: 24px 20px; min-width: 0; }
-    #waveCanvas {
-        width: 100%; max-width: 960px; height: auto; aspect-ratio: 720 / 400;
-        background: linear-gradient(to bottom, var(--pl-inset) 0%, #e0f2fe 100%);
-        border: 3px solid var(--pl-text-faint); border-radius: 14px;
-        box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-        cursor: crosshair;
-    }
+    /* 畫布舞台：固定 720×400 邏輯座標，真・貼邊無縫（填滿舞台、無外框；信箱區由 view.clear 灰） */
+    #stage { flex: 1; min-width: 0; position: relative; }
+    #waveCanvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: crosshair; }
 
     /* 滑桿刻度提示與註記 */
     .scale-hints { display: flex; justify-content: space-between; font-size: 0.62rem; color: var(--pl-text-mute); margin-top: 2px; }
@@ -68,7 +63,6 @@
     .kp-list { margin: 0; padding-left: 1.1em; }
     .kp-list li { margin-bottom: 4px; }
 
-    @media (max-width: 860px) { #stage { padding: 12px 10px; } }
 </style>
 </head>
 <body>
@@ -380,7 +374,7 @@ PhysLab.i18n.register({
 <!-- ═══════════ 頁面邏輯（波動計算與 canvas 繪圖邏輯逐字保留自原版；只換 UI 接線） ═══════════ -->
 <script>
 // Canvas and context
-let canvas, ctx;
+let canvas, ctx, view;
 let isPlaying = false;
 let hasStarted = false;     // 是否播放過（決定「開始播放／繼續播放」文字）
 let t = 0; // simulation time in seconds
@@ -423,15 +417,18 @@ let initialPhase = 0;      // 依據上述兩者計算出的總初始相位
 
 function initCanvas() {
     canvas = document.getElementById('waveCanvas');
-    ctx = canvas.getContext('2d', { alpha: true });
+    // 固定 720×400 邏輯座標 + 信箱貼邊（畫布填滿舞台、繪圖座標維持 0..720×0..400 置中縮放）
+    view = PhysLab.c2d.setup(canvas, {
+        logical: { w: 720, h: 400 },
+        bg: '#e2e6eb',
+        onResize: function () { drawWave(); }
+    });
+    ctx = view.ctx;
 
     canvas.addEventListener('click', function(e) {
         if (!enableCustomParticles) return;
 
-        const rect = canvas.getBoundingClientRect();
-        let clickX = e.clientX - rect.left;
-        const scaleX = canvas.width / rect.width;
-        clickX = clickX * scaleX;
+        const clickX = PhysLab.c2d.pointerPos(canvas, e, view).x;
 
         if (clickX >= currentWaveStartX && clickX <= currentWaveEndX) {
             customParticles.push(clickX);
@@ -671,10 +668,10 @@ function setupControls() {
 }
 
 function drawWave() {
-    if (!ctx || !canvas) return;
+    if (!ctx || !view) return;
 
-    const w = canvas.width;
-    const h = canvas.height;
+    const w = view.logical.w;   // 720（邏輯座標；緩衝尺寸改由 canvas2d 管理）
+    const h = view.logical.h;   // 400
     const centerY = 200;
 
     const leftMargin = 40;
@@ -688,7 +685,13 @@ function drawWave() {
     const driverX = (waveDirection === 'right') ? waveStartX : (waveEndX);
     const waveSpeedPx = frequency * wavelength;
 
-    ctx.clearRect(0, 0, w, h);
+    // 信箱區以舞台灰填滿（無縫貼邊）；邏輯區內保留原淺藍場景漸層
+    view.clear();
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
+    bgGrad.addColorStop(0, '#f8fafc');
+    bgGrad.addColorStop(1, '#e0f2fe');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, w, h);
 
     const usableWidth = waveEndX - waveStartX;
     const gridSizeX = Math.floor(usableWidth / 70);
