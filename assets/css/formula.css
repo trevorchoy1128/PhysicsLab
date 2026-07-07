@@ -1,0 +1,156 @@
+/* ══════════════════════════════════════════════════════════════════
+   formula.css — 公式頁（Formula List）文件版式
+   逐字提取自 Formula List/book4/chapter5-formula.html 的內嵌 <style>
+   （8 個公式頁近乎一致，此檔即其單一來源）。
+
+   已移至 tokens.css、本檔不再重複的規則：
+     · 語言切換顯示規則（span.lang-zh / .lang-en / body.en-mode …）
+     · 全域 reset（*{box-sizing;margin;padding}）
+     · #home-btn（公式頁用浮動變體，套 class="pl-floating"）
+
+   公式頁保留自身的藍紫漸層識別（#1e3a8a/#2563eb/#7c3aed 等為刻意色，
+   逐字保留）；純中性 slate 值沿用字面值以確保與原頁逐 pixel 一致。
+   斷點沿用公式頁原有 600/768/1024（文件式版面，與模擬器 chrome 不同）。
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── 語言切換按鈕（公式頁專屬：右下角藍紫膠囊） ── */
+.lang-toggle-btn {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 1000;
+    background: linear-gradient(135deg, #1e3a8a, #2563eb);
+    color: #fff;
+    border: 2px solid #ffffff;
+    padding: 10px 20px;
+    border-radius: 99px;
+    font-size: 10.5pt;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(30, 58, 138, 0.3);
+    transition: all .2s;
+}
+.lang-toggle-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(30, 58, 138, 0.4);
+}
+
+/* ── Base ── */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Microsoft JhengHei", sans-serif;
+    background: linear-gradient(135deg, #e8f0fe 0%, #f0f4ff 50%, #faf5ff 100%);
+    color: #1e293b;
+    line-height: 1.7;
+    min-height: 100vh;
+}
+
+/* ── Layout ── */
+.page-wrapper { display: flex; max-width: 1100px; margin: 0 auto; padding: 40px 20px; gap: 28px; align-items: flex-start; }
+
+/* ── Sticky TOC Sidebar ── */
+.toc {
+    width: 250px; flex-shrink: 0; position: sticky; top: 24px; background: #ffffff;
+    border-radius: 14px; box-shadow: 0 4px 20px rgba(30, 58, 138, 0.08); padding: 20px 16px; border: 1px solid #dbeafe;
+}
+.toc h3 { font-size: 11pt; font-weight: 700; color: #1e3a8a; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 2px solid #dbeafe; }
+.toc ul { list-style: none; }
+.toc li { margin-bottom: 6px; }
+.toc a { display: flex; align-items: center; gap: 7px; font-size: 9.5pt; color: #475569; text-decoration: none; padding: 5px 8px; border-radius: 7px; transition: all .2s; }
+.toc a:hover { background: #eff6ff; color: #1d4ed8; }
+.toc-num { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; background: #dbeafe; color: #1e40af; border-radius: 50%; font-size: 8pt; font-weight: 700; flex-shrink: 0; }
+
+/* ── Progress Bar ── */
+.progress-bar-wrap { background: #e2e8f0; border-radius: 99px; height: 6px; margin-top: 16px; overflow: hidden; }
+.progress-bar-fill { height: 100%; background: linear-gradient(90deg, #3b82f6, #6366f1); border-radius: 99px; transition: width .5s ease; width: 0%; }
+.progress-label { font-size: 8.5pt; color: #64748b; margin-top: 6px; text-align: center; }
+
+/* ── Main Content ── */
+.container { flex: 1; min-width: 0; }
+
+/* ── Header Banner ── */
+.header-banner { background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 60%, #7c3aed 100%); color: #ffffff; padding: 36px 32px; border-radius: 16px; margin-bottom: 36px; text-align: center; box-shadow: 0 8px 32px rgba(37, 99, 235, 0.3); position: relative; overflow: hidden; }
+.header-banner::before { content: ''; position: absolute; top: -40px; right: -40px; width: 200px; height: 200px; background: rgba(255,255,255,.06); border-radius: 50%; }
+.header-banner::after { content: ''; position: absolute; bottom: -60px; left: -30px; width: 250px; height: 250px; background: rgba(255,255,255,.04); border-radius: 50%; }
+.header-banner h1 { font-size: 24pt; font-weight: 800; letter-spacing: 1px; position: relative; z-index: 1; }
+.header-banner p { margin: 10px 0 0; font-size: 11pt; opacity: .85; position: relative; z-index: 1; }
+.score-badge { display: inline-flex; align-items: center; gap: 6px; margin-top: 16px; background: rgba(255,255,255,.2); backdrop-filter: blur(4px); color: #fff; padding: 6px 16px; border-radius: 99px; font-size: 10pt; font-weight: 600; border: 1px solid rgba(255,255,255,.3); position: relative; z-index: 1; }
+
+/* ── Section Heading ── */
+.section-heading { display: flex; align-items: center; gap: 12px; margin: 44px 0 20px; }
+.section-num { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: linear-gradient(135deg, #1e3a8a, #3b82f6); color: #fff; border-radius: 10px; font-size: 14pt; font-weight: 800; flex-shrink: 0; box-shadow: 0 4px 12px rgba(37,99,235,.3); }
+.section-heading h2 { color: #1e3a8a; font-size: 15pt; font-weight: 700; }
+
+/* ── Formula Box ── */
+.formula-box { background: linear-gradient(135deg, #eff6ff 0%, #f5f3ff 100%); border: 1px solid #bfdbfe; border-left: 5px solid #3b82f6; border-radius: 12px; padding: 24px 28px; margin: 4px 0 16px; box-shadow: 0 2px 12px rgba(59,130,246,.08); transition: box-shadow .25s; }
+.formula-box:hover { box-shadow: 0 6px 24px rgba(59,130,246,.15); }
+.formula-main { font-size: 17pt; font-weight: bold; color: #1d4ed8; text-align: center; margin-bottom: 12px; }
+.formula-derived { font-size: 10.5pt; color: #475569; text-align: center; border-top: 1px dashed #c7d2fe; padding-top: 10px; margin-top: 10px; }
+
+/* ── Symbol List ── */
+.symbol-list { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 18px; margin: 0 0 16px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); }
+.symbol-list-title { font-size: 9.5pt; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .07em; margin-bottom: 10px; border-bottom: 2px solid #e2e8f0; padding-bottom: 6px; }
+.symbol-list ul { list-style: none; }
+.symbol-list li { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-size: 10pt; }
+.symbol-list li:last-child { border-bottom: none; }
+.sym-math { min-width: 50px; display: inline-flex; justify-content: center; font-size: 11pt; }
+.sym-desc { flex: 1; }
+
+/* ── Cards ── */
+.card { border-radius: 12px; padding: 22px 24px; margin: 14px 0; transition: transform .2s, box-shadow .2s; }
+.card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.08); }
+.card-example { background: linear-gradient(135deg, #f0fdf4 0%, #f7fffe 100%); border: 1px solid #bbf7d0; border-left: 4px solid #10b981; }
+.card-practice { background: linear-gradient(135deg, #faf5ff 0%, #f5f3ff 100%); border: 1px solid #ddd6fe; border-left: 4px solid #8b5cf6; }
+.card-quiz { background: linear-gradient(135deg, #fffbeb 0%, #fffdf4 100%); border: 1px solid #fde68a; border-left: 4px solid #f59e0b; }
+
+.badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 12px; font-size: 9pt; font-weight: 700; border-radius: 99px; margin-bottom: 12px; }
+.badge-example { background: #d1fae5; color: #047857; }
+.badge-practice { background: #ede9fe; color: #5b21b6; }
+.badge-quiz { background: #fef3c7; color: #b45309; }
+
+.solution-box { background: #ffffff; border-radius: 8px; padding: 16px; margin-top: 14px; border: 1px solid #e2e8f0; }
+.solution-title { font-size: 9.5pt; font-weight: 700; color: #64748b; margin-bottom: 8px; }
+
+/* ── Practice Toggle ── */
+.toggle-btn { background: #ffffff; border: 1px solid #cbd5e1; color: #475569; padding: 8px 16px; border-radius: 8px; font-size: 9.5pt; font-weight: 600; cursor: pointer; transition: all .2s; margin-top: 12px; display: inline-flex; align-items: center; gap: 6px; }
+.toggle-btn:hover { background: #f8fafc; border-color: #94a3b8; color: #0f172a; }
+.practice-answer { display: none; margin-top: 14px; animation: fadeIn .3s ease; }
+.practice-answer.open { display: block; }
+
+/* ── Quiz Options ── */
+.quiz-options { display: grid; gap: 10px; margin-top: 16px; }
+.quiz-option { background: #ffffff; border: 2px solid #fef3c7; padding: 12px 16px; border-radius: 10px; cursor: pointer; font-size: 10pt; transition: all .2s; display: flex; align-items: center; gap: 10px; }
+.quiz-option:hover { border-color: #fcd34d; background: #fffbeb; }
+.quiz-option.disabled { pointer-events: none; opacity: 0.7; }
+.quiz-option.correct { border-color: #10b981; background: #ecfdf5; color: #047857; }
+.quiz-option.wrong { border-color: #ef4444; background: #fef2f2; color: #b91c1c; }
+
+.option-radio { width: 20px; height: 20px; border-radius: 50%; border: 2px solid #fcd34d; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 12px; font-weight: bold; }
+.quiz-option.correct .option-radio { border-color: #10b981; background: #10b981; color: white; }
+.quiz-option.wrong .option-radio { border-color: #ef4444; background: #ef4444; color: white; }
+
+.quiz-feedback { display: none; padding: 14px; border-radius: 8px; margin-top: 14px; font-size: 9.5pt; }
+.quiz-feedback.visible { display: block; animation: fadeIn .3s ease; }
+.quiz-feedback.correct { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+.quiz-feedback.wrong { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+
+@media (max-width: 600px) {
+    .page-wrapper { flex-direction: column; padding: 12px; gap: 16px; }
+    .toc { width: 100%; position: static; }
+    .header-banner { padding: 20px 16px; border-radius: 10px; }
+    .header-banner h1 { font-size: 16pt; }
+    .header-banner p { font-size: 9.5pt; }
+    .score-badge { font-size: 9pt; padding: 5px 12px; }
+    .formula-main { font-size: 13pt; }
+    .section-heading h2 { font-size: 12pt; }
+}
+@media (min-width: 601px) and (max-width: 768px) {
+    .page-wrapper { flex-direction: column; padding: 16px; }
+    .toc { width: 100%; position: static; }
+    .header-banner h1 { font-size: 20pt; }
+}
+@media (min-width: 769px) and (max-width: 1024px) {
+    .page-wrapper { padding: 24px 16px; }
+    .toc { width: 180px; }
+}
