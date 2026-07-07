@@ -13,478 +13,99 @@
             options: { skipHtmlTags: ['script','noscript','style','textarea','pre'] }
         };
     </script>
-    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js"></script>
+    <link rel="stylesheet" href="../../assets/css/tokens.css">
+    <link rel="stylesheet" href="../../assets/css/formula.css">
+    <script src="../../assets/js/core.js"></script>
+    <script src="../../assets/js/i18n.js"></script>
     <style>
-        /* ── Reset ── */
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      /* ────────────────────────────────────────────────────────────────
+         頁面獨有 / 值差異規則（此頁為 8 個公式頁中的 outlier，卡片/徽章/
+         測驗/符號沿用較舊的設計語彙）。共用 tokens.css + formula.css 已涵蓋：
+         reset、body、page-wrapper、toc（除寬度）、progress、container、
+         header-banner（除 h1 大小）、section-heading、formula-box、
+         card / card-example / card-practice、與響應式基礎值。
+         下列僅保留與 formula.css「有值差異」或 formula.css「未涵蓋」者，
+         逐值對照原內嵌 <style> 保真。此 <style> 位於 formula.css 之後，
+         故非媒體宣告會贏；值差異選擇器另於媒體查詢中複寫，避免跨斷點洩漏。
+         ──────────────────────────────────────────────────────────────── */
 
-        /* ── Base ── */
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-                         "Helvetica Neue", Arial, "Microsoft JhengHei", sans-serif;
-            background: linear-gradient(135deg, #e8f0fe 0%, #f0f4ff 50%, #faf5ff 100%);
-            color: #1e293b;
-            line-height: 1.7;
-            min-height: 100vh;
-        }
+      /* 值差異：TOC 寬 220px（標準 250px）；banner 標題 26pt（標準 24pt） */
+      .toc { width: 220px; }
+      .header-banner h1 { font-size: 26pt; }
 
-        /* ── Layout ── */
-        .page-wrapper {
-            display: flex;
-            max-width: 1100px;
-            margin: 0 auto;
-            padding: 40px 20px;
-            gap: 28px;
-            align-items: flex-start;
-        }
+      /* 值差異：symbol-list 無 inset 陰影；title 無底線；li 用 baseline/8px/5px */
+      .symbol-list { box-shadow: none; }
+      .symbol-list-title { border-bottom: none; padding-bottom: 0; }
+      .symbol-list li { align-items: baseline; gap: 8px; padding: 5px 0; }
 
-        /* ── Sticky TOC Sidebar ── */
-        .toc {
-            width: 220px;
-            flex-shrink: 0;
-            position: sticky;
-            top: 24px;
-            background: #ffffff;
-            border-radius: 14px;
-            box-shadow: 0 4px 20px rgba(30, 58, 138, 0.08);
-            padding: 20px 16px;
-            border: 1px solid #dbeafe;
-        }
-        .toc h3 {
-            font-size: 11pt;
-            font-weight: 700;
-            color: #1e3a8a;
-            text-transform: uppercase;
-            letter-spacing: .05em;
-            margin-bottom: 14px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #dbeafe;
-        }
-        .toc ul { list-style: none; }
-        .toc li { margin-bottom: 6px; }
-        .toc a {
-            display: flex;
-            align-items: center;
-            gap: 7px;
-            font-size: 9.5pt;
-            color: #475569;
-            text-decoration: none;
-            padding: 5px 8px;
-            border-radius: 7px;
-            transition: all .2s;
-        }
-        .toc a:hover { background: #eff6ff; color: #1d4ed8; }
-        .toc-num {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 20px; height: 20px;
-            background: #dbeafe;
-            color: #1e40af;
-            border-radius: 50%;
-            font-size: 8pt;
-            font-weight: 700;
-            flex-shrink: 0;
-        }
+      /* formula.css 未涵蓋：符號斜體字與內文粗體字 */
+      .sym { font-family: 'Times New Roman', Times, serif; font-style: italic; font-weight: 700; color: #2563eb; min-width: 52px; }
+      .bold-text { font-weight: 600; color: #0f172a; }
 
-        /* ── Progress Bar ── */
-        .progress-bar-wrap {
-            background: #e2e8f0;
-            border-radius: 99px;
-            height: 6px;
-            margin-top: 16px;
-            overflow: hidden;
-        }
-        .progress-bar-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #3b82f6, #6366f1);
-            border-radius: 99px;
-            transition: width .5s ease;
-            width: 0%;
-        }
-        .progress-label {
-            font-size: 8.5pt;
-            color: #64748b;
-            margin-top: 6px;
-            text-align: center;
-        }
+      /* 值差異：徽章用漸層底 + 白字（標準版為淺底深字） */
+      .badge { color: #ffffff; }
+      .badge-example { background: linear-gradient(90deg, #059669, #10b981); }
+      .badge-practice { background: linear-gradient(90deg, #7c3aed, #8b5cf6); }
 
-        /* ── Main Content ── */
-        .container {
-            flex: 1;
-            min-width: 0;
-        }
+      /* formula.css 未涵蓋：題目 / 詳解文字塊 */
+      .problem-text { font-weight: 500; margin-bottom: 12px; color: #1e293b; font-size: 10.5pt; line-height: 1.8; }
+      .solution-text { font-size: 10pt; color: #334155; padding: 14px 16px; border-left: 3px solid #cbd5e1; background: rgba(255,255,255,.6); border-radius: 0 8px 8px 0; line-height: 1.9; }
 
-        /* ── Header Banner ── */
-        .header-banner {
-            background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 60%, #7c3aed 100%);
-            color: #ffffff;
-            padding: 36px 32px;
-            border-radius: 16px;
-            margin-bottom: 36px;
-            text-align: center;
-            box-shadow: 0 8px 32px rgba(37, 99, 235, 0.3);
-            position: relative;
-            overflow: hidden;
-        }
-        .header-banner::before {
-            content: '';
-            position: absolute;
-            top: -40px; right: -40px;
-            width: 200px; height: 200px;
-            background: rgba(255,255,255,.06);
-            border-radius: 50%;
-        }
-        .header-banner::after {
-            content: '';
-            position: absolute;
-            bottom: -60px; left: -30px;
-            width: 250px; height: 250px;
-            background: rgba(255,255,255,.04);
-            border-radius: 50%;
-        }
-        .header-banner h1 {
-            font-size: 26pt;
-            font-weight: 800;
-            letter-spacing: 1px;
-            position: relative;
-            z-index: 1;
-        }
-        .header-banner p {
-            margin: 10px 0 0;
-            font-size: 11pt;
-            opacity: .85;
-            position: relative;
-            z-index: 1;
-        }
-        .score-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            margin-top: 16px;
-            background: rgba(255,255,255,.2);
-            backdrop-filter: blur(4px);
-            color: #fff;
-            padding: 6px 16px;
-            border-radius: 99px;
-            font-size: 10pt;
-            font-weight: 600;
-            border: 1px solid rgba(255,255,255,.3);
-            position: relative;
-            z-index: 1;
-        }
+      /* formula.css 未涵蓋：本頁答案按鈕 / 面板（標準版用 .toggle-btn / .practice-answer） */
+      .toggle-answer-btn { display: inline-flex; align-items: center; gap: 7px; margin-top: 10px; padding: 8px 18px; background: linear-gradient(90deg, #7c3aed, #8b5cf6); color: #fff; border: none; border-radius: 99px; font-size: 9.5pt; font-weight: 600; cursor: pointer; transition: all .2s; box-shadow: 0 2px 8px rgba(124,58,237,.25); }
+      .toggle-answer-btn:hover { background: linear-gradient(90deg, #6d28d9, #7c3aed); box-shadow: 0 4px 14px rgba(124,58,237,.35); transform: translateY(-1px); }
+      .toggle-answer-btn .btn-icon { transition: transform .3s; }
+      .toggle-answer-btn.open .btn-icon { transform: rotate(180deg); }
+      .answer-panel { display: none; margin-top: 12px; animation: slideDown .25s ease; }
+      .answer-panel.visible { display: block; }
+      @keyframes slideDown {
+          from { opacity: 0; transform: translateY(-6px); }
+          to   { opacity: 1; transform: translateY(0); }
+      }
 
-        /* ── Section Heading ── */
-        .section-heading {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin: 44px 0 20px;
-        }
-        .section-num {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 36px; height: 36px;
-            background: linear-gradient(135deg, #1e3a8a, #3b82f6);
-            color: #fff;
-            border-radius: 10px;
-            font-size: 14pt;
-            font-weight: 800;
-            flex-shrink: 0;
-            box-shadow: 0 4px 12px rgba(37,99,235,.3);
-        }
-        .section-heading h2 {
-            color: #1e3a8a;
-            font-size: 15pt;
-            font-weight: 700;
-        }
+      /* 值差異 / 未涵蓋：本頁測驗採橘色主題（標準版為琥珀色 .card-quiz）。
+         quiz-box/label/question 為本頁獨有類；options/option/radio/feedback
+         與 formula.css 值不同，故完整複寫。option-radio 補 font-size/weight
+         以中和 formula.css 的 12px/bold 洩漏（原頁繼承 10pt/normal）。 */
+      .quiz-box { background: linear-gradient(135deg, #fff7ed 0%, #fffbf0 100%); border: 1px solid #fed7aa; border-left: 5px solid #f97316; border-radius: 12px; padding: 22px 24px; margin: 18px 0; box-shadow: 0 2px 10px rgba(249,115,22,.07); }
+      .quiz-label { display: inline-flex; align-items: center; gap: 6px; font-size: 9pt; font-weight: 700; color: #ea580c; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 10px; }
+      .quiz-question { font-size: 10.5pt; font-weight: 600; color: #1e293b; margin-bottom: 14px; line-height: 1.7; }
+      .quiz-options { display: flex; flex-direction: column; gap: 8px; margin-top: 0; }
+      .quiz-option { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #fff; border: 1.5px solid #e2e8f0; border-radius: 9px; cursor: pointer; font-size: 10pt; transition: all .2s; user-select: none; }
+      .quiz-option:hover:not(.disabled) { border-color: #f97316; background: #fff7ed; }
+      .quiz-option.correct { border-color: #10b981; background: #f0fdf4; color: #065f46; font-weight: 600; }
+      .quiz-option.wrong   { border-color: #ef4444; background: #fef2f2; color: #991b1b; }
+      .quiz-option.disabled { cursor: default; opacity: 1; }
+      .option-radio { width: 18px; height: 18px; border: 2px solid #cbd5e1; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all .2s; font-size: 10pt; font-weight: normal; }
+      .quiz-option.correct .option-radio { background: #10b981; border-color: #10b981; }
+      .quiz-option.wrong   .option-radio { background: #ef4444; border-color: #ef4444; }
+      .quiz-feedback { margin-top: 12px; padding: 10px 14px; border-radius: 8px; font-size: 10pt; font-weight: 500; display: none; }
+      .quiz-feedback.correct { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+      .quiz-feedback.wrong   { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+      .quiz-feedback.visible { display: block; animation: slideDown .25s ease; }
 
-        /* ── Formula Box ── */
-        .formula-box {
-            background: linear-gradient(135deg, #eff6ff 0%, #f5f3ff 100%);
-            border: 1px solid #bfdbfe;
-            border-left: 5px solid #3b82f6;
-            border-radius: 12px;
-            padding: 24px 28px;
-            margin: 4px 0 16px;
-            box-shadow: 0 2px 12px rgba(59,130,246,.08);
-            transition: box-shadow .25s;
-        }
-        .formula-box:hover {
-            box-shadow: 0 6px 24px rgba(59,130,246,.15);
-        }
-        .formula-main {
-            font-size: 17pt;
-            font-weight: bold;
-            color: #1d4ed8;
-            text-align: center;
-            margin-bottom: 12px;
-        }
-        .formula-derived {
-            font-size: 10.5pt;
-            color: #475569;
-            text-align: center;
-            border-top: 1px dashed #c7d2fe;
-            padding-top: 10px;
-            margin-top: 10px;
-        }
+      /* formula.css 未涵蓋：分隔線與頁尾 */
+      .section-divider { height: 1px; background: linear-gradient(90deg, transparent, #cbd5e1, transparent); margin: 36px 0 0; }
+      .footer { text-align: center; margin-top: 48px; padding: 24px; border-top: 1px solid #e2e8f0; font-size: 9pt; color: #94a3b8; }
 
-        /* ── Symbol List ── */
-        .symbol-list {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 10px;
-            padding: 14px 18px;
-            margin: 0 0 16px;
-        }
-        .symbol-list-title {
-            font-size: 9.5pt;
-            font-weight: 700;
-            color: #64748b;
-            text-transform: uppercase;
-            letter-spacing: .07em;
-            margin-bottom: 10px;
-        }
-        .symbol-list ul { list-style: none; }
-        .symbol-list li {
-            display: flex;
-            align-items: baseline;
-            gap: 8px;
-            padding: 5px 0;
-            border-bottom: 1px solid #f1f5f9;
-            font-size: 10pt;
-        }
-        .symbol-list li:last-child { border-bottom: none; }
-        .sym { font-family: 'Times New Roman', Times, serif; font-style: italic; font-weight: 700; color: #2563eb; min-width: 52px; }
-        .bold-text { font-weight: 600; color: #0f172a; }
-
-        /* ── Cards ── */
-        .card {
-            border-radius: 12px;
-            padding: 22px 24px;
-            margin: 14px 0;
-            transition: transform .2s, box-shadow .2s;
-        }
-        .card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.08); }
-
-        .card-example {
-            background: linear-gradient(135deg, #f0fdf4 0%, #f7fffe 100%);
-            border: 1px solid #bbf7d0;
-            border-left: 4px solid #10b981;
-        }
-        .card-practice {
-            background: linear-gradient(135deg, #faf5ff 0%, #f5f3ff 100%);
-            border: 1px solid #ddd6fe;
-            border-left: 4px solid #8b5cf6;
-        }
-        .badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            padding: 4px 12px;
-            font-size: 9pt;
-            font-weight: 700;
-            border-radius: 99px;
-            color: #ffffff;
-            margin-bottom: 12px;
-        }
-        .badge-example { background: linear-gradient(90deg, #059669, #10b981); }
-        .badge-practice { background: linear-gradient(90deg, #7c3aed, #8b5cf6); }
-
-        .problem-text {
-            font-weight: 500;
-            margin-bottom: 12px;
-            color: #1e293b;
-            font-size: 10.5pt;
-            line-height: 1.8;
-        }
-        .solution-text {
-            font-size: 10pt;
-            color: #334155;
-            padding: 14px 16px;
-            border-left: 3px solid #cbd5e1;
-            background: rgba(255,255,255,.6);
-            border-radius: 0 8px 8px 0;
-            line-height: 1.9;
-        }
-
-        /* ── Toggle Answer Button ── */
-        .toggle-answer-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 7px;
-            margin-top: 10px;
-            padding: 8px 18px;
-            background: linear-gradient(90deg, #7c3aed, #8b5cf6);
-            color: #fff;
-            border: none;
-            border-radius: 99px;
-            font-size: 9.5pt;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all .2s;
-            box-shadow: 0 2px 8px rgba(124,58,237,.25);
-        }
-        .toggle-answer-btn:hover {
-            background: linear-gradient(90deg, #6d28d9, #7c3aed);
-            box-shadow: 0 4px 14px rgba(124,58,237,.35);
-            transform: translateY(-1px);
-        }
-        .toggle-answer-btn .btn-icon { transition: transform .3s; }
-        .toggle-answer-btn.open .btn-icon { transform: rotate(180deg); }
-
-        .answer-panel {
-            display: none;
-            margin-top: 12px;
-            animation: slideDown .25s ease;
-        }
-        .answer-panel.visible { display: block; }
-        @keyframes slideDown {
-            from { opacity: 0; transform: translateY(-6px); }
-            to   { opacity: 1; transform: translateY(0); }
-        }
-
-        /* ── Quiz ── */
-        .quiz-box {
-            background: linear-gradient(135deg, #fff7ed 0%, #fffbf0 100%);
-            border: 1px solid #fed7aa;
-            border-left: 5px solid #f97316;
-            border-radius: 12px;
-            padding: 22px 24px;
-            margin: 18px 0;
-            box-shadow: 0 2px 10px rgba(249,115,22,.07);
-        }
-        .quiz-label {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 9pt;
-            font-weight: 700;
-            color: #ea580c;
-            text-transform: uppercase;
-            letter-spacing: .06em;
-            margin-bottom: 10px;
-        }
-        .quiz-question {
-            font-size: 10.5pt;
-            font-weight: 600;
-            color: #1e293b;
-            margin-bottom: 14px;
-            line-height: 1.7;
-        }
-        .quiz-options { display: flex; flex-direction: column; gap: 8px; }
-        .quiz-option {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 10px 14px;
-            background: #fff;
-            border: 1.5px solid #e2e8f0;
-            border-radius: 9px;
-            cursor: pointer;
-            font-size: 10pt;
-            transition: all .2s;
-            user-select: none;
-        }
-        .quiz-option:hover:not(.disabled) { border-color: #f97316; background: #fff7ed; }
-        .quiz-option.correct { border-color: #10b981; background: #f0fdf4; color: #065f46; font-weight: 600; }
-        .quiz-option.wrong   { border-color: #ef4444; background: #fef2f2; color: #991b1b; }
-        .quiz-option.disabled { cursor: default; }
-        .option-radio {
-            width: 18px; height: 18px;
-            border: 2px solid #cbd5e1;
-            border-radius: 50%;
-            flex-shrink: 0;
-            display: flex; align-items: center; justify-content: center;
-            transition: all .2s;
-        }
-        .quiz-option.correct .option-radio { background: #10b981; border-color: #10b981; }
-        .quiz-option.wrong   .option-radio { background: #ef4444; border-color: #ef4444; }
-        .quiz-feedback {
-            margin-top: 12px;
-            padding: 10px 14px;
-            border-radius: 8px;
-            font-size: 10pt;
-            font-weight: 500;
-            display: none;
-        }
-        .quiz-feedback.correct { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
-        .quiz-feedback.wrong   { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
-        .quiz-feedback.visible { display: block; animation: slideDown .25s ease; }
-
-        /* ── Divider ── */
-        .section-divider {
-            height: 1px;
-            background: linear-gradient(90deg, transparent, #cbd5e1, transparent);
-            margin: 36px 0 0;
-        }
-
-        /* ── Footer ── */
-        .footer {
-            text-align: center;
-            margin-top: 48px;
-            padding: 24px;
-            border-top: 1px solid #e2e8f0;
-            font-size: 9pt;
-            color: #94a3b8;
-        }
-
-        /* ── Responsive ── */
-        /* 手機直屏 */
-        @media (max-width: 600px) {
-            .page-wrapper { flex-direction: column; padding: 12px; gap: 16px; }
-            .toc { width: 100%; position: static; }
-            .header-banner { padding: 20px 16px; border-radius: 10px; }
-            .header-banner h1 { font-size: 16pt; }
-            .header-banner p { font-size: 9.5pt; }
-            .score-badge { font-size: 9pt; padding: 5px 12px; }
-            .formula-main { font-size: 13pt; }
-            .section-heading h2 { font-size: 12pt; }
-            .quiz-question { font-size: 9.5pt; }
-            .problem-text, .solution-text { font-size: 9.5pt; }
-        }
-        /* 平板直屏 */
-        @media (min-width: 601px) and (max-width: 768px) {
-            .page-wrapper { flex-direction: column; padding: 16px; }
-            .toc { width: 100%; position: static; }
-            .header-banner h1 { font-size: 20pt; }
-        }
-        /* 平板橫屏：維持雙欄，但縮小 TOC */
-        @media (min-width: 769px) and (max-width: 1024px) {
-            .page-wrapper { padding: 24px 16px; }
-            .toc { width: 180px; }
-        }
-    
-    /* Home button */
-    #home-btn {
-        position: fixed;
-        bottom: 16px;
-        left: 16px;
-        z-index: 99999;
-        background: rgba(30,41,59,0.85);
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-        border: 1px solid rgba(255,255,255,0.3);
-        border-radius: 10px;
-        padding: 8px 14px;
-        font-size: 13px;
-        font-weight: bold;
-        color: #fff;
-        text-decoration: none;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.25);
-        transition: background 0.2s, transform 0.2s;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-    #home-btn:hover {
-        background: rgba(30,41,59,0.95);
-        transform: translateY(-2px);
-    }
-</style>
+      /* 響應式：複寫值差異選擇器的斷點值（防跨斷點洩漏）＋ 本頁獨有類的字級縮放 */
+      @media (max-width: 600px) {
+          .toc { width: 100%; }
+          .header-banner h1 { font-size: 16pt; }
+          .quiz-question { font-size: 9.5pt; }
+          .problem-text, .solution-text { font-size: 9.5pt; }
+      }
+      @media (min-width: 601px) and (max-width: 768px) {
+          .toc { width: 100%; }
+          .header-banner h1 { font-size: 20pt; }
+      }
+      @media (min-width: 769px) and (max-width: 1024px) {
+          .toc { width: 180px; }
+      }
+    </style>
 </head>
-<body>
+<body data-no-lang>
 
 
 <div class="page-wrapper">
@@ -866,6 +487,5 @@
     }
 </script>
 
-    <a id="home-btn" href="../../index.html">&#127968; &#20027;&#38913;</a>
 </body>
 </html>
