@@ -11,11 +11,17 @@
  *   core.js → i18n.js → quiz.js → canvas2d.js
  *
  * API 摘要：
- *   PhysLab.c2d.setup(canvas, opts?) → view {canvas, ctx, w, h, dpr, resize()}
- *   PhysLab.c2d.pointerPos(canvas, evt) → {x, y}（CSS 像素；支援觸控）
+ *   PhysLab.c2d.setup(canvas, opts?) → view {canvas, ctx, w, h, dpr, resize(), clear()}
+ *   PhysLab.c2d.pointerPos(canvas, evt, view?) → {x, y}（CSS 像素；logical 模式回傳邏輯座標）
  *   PhysLab.c2d.drawArrow(ctx, x1, y1, x2, y2, opts?)  直線 + 實心三角箭頭
  *   PhysLab.c2d.drawGrid(ctx, w, h, opts?)             背景格線（可強調座標軸）
  *   PhysLab.c2d.withDash(ctx, dash, fn)                套用虛線執行 fn 後還原
+ *
+ * 「固定邏輯座標 + 信箱貼邊」模式（opts.logical）：
+ *   給固定座標系的 2D 舞台（如 800×460）做 book4 3D 那種真・貼邊無縫。畫布緩衝
+ *   隨容器填滿，但繪圖座標維持 0..w × 0..h、自動置中等比縮放（幾何碼零改動）；
+ *   信箱區（左右或上下留白）由 view.clear() 用 opts.bg（預設舞台淺灰 #e2e6eb）
+ *   填滿，與場景背景同色而無縫。pointerPos(canvas, evt, view) 回傳邏輯座標。
  * ========================================================================== */
 
 window.PhysLab = window.PhysLab || {};
@@ -36,12 +42,19 @@ PhysLab.c2d = (function () {
      *        ResizeObserver(canvas)，自動呼叫 resize()
      * @param {function(Object):void} [opts.onResize] 自動 resize 後回呼（傳入 view；
      *        頁面通常在此重繪）
+     * @param {{w:number, h:number}} [opts.logical] 固定邏輯座標尺寸；給定即啟用
+     *        「信箱貼邊」模式（畫布填滿容器、繪圖座標維持 0..w × 0..h 置中縮放）。
+     *        不給則沿用原行為（繪圖座標＝CSS 像素）。
+     * @param {string}  [opts.bg='#e2e6eb'] view.clear() 填滿整個緩衝（含信箱區）的底色。
      * @returns {{canvas:HTMLCanvasElement, ctx:CanvasRenderingContext2D,
-     *            w:number, h:number, dpr:number, resize:function():void}} view
+     *            w:number, h:number, dpr:number, scale:number, offX:number, offY:number,
+     *            logical:?{w:number,h:number}, resize:function():void, clear:function():void}} view
      */
     function setup(canvas, opts) {
         var o = opts || {};
         var ctx = canvas.getContext('2d');
+        var logical = o.logical || null;
+        var bg = o.bg || '#e2e6eb';
 
         var view = {
             canvas: canvas,
@@ -49,11 +62,19 @@ PhysLab.c2d = (function () {
             w: 0,
             h: 0,
             dpr: 1,
-            resize: resize
+            scale: 1,
+            offX: 0,
+            offY: 0,
+            logical: logical,
+            resize: resize,
+            clear: clear
         };
+        // 基準 transform 矩陣 [a,b,c,d,e,f]，供 clear() 還原（resize 時更新）
+        var base = [1, 0, 0, 1, 0, 0];
 
         /**
-         * 依 CSS 尺寸重建背景緩衝（僅在尺寸改變時），並重設 dpr 變換。
+         * 依 CSS 尺寸重建背景緩衝（僅在尺寸改變時），並重設繪圖變換：
+         * 一般模式 = dpr；logical 模式 = dpr×(等比縮放)＋置中平移。
          */
         function resize() {
             var rect = canvas.getBoundingClientRect();
@@ -63,10 +84,34 @@ PhysLab.c2d = (function () {
                 canvas.width = bw;
                 canvas.height = bh;
             }
-            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
             view.dpr = dpr;
             view.w = rect.width;
             view.h = rect.height;
+            if (logical) {
+                // 信箱貼邊：等比縮放至容器內、置中；繪圖座標維持 0..logical.w × 0..logical.h
+                var scale = Math.min(rect.width / logical.w, rect.height / logical.h);
+                var offX = (rect.width - logical.w * scale) / 2;
+                var offY = (rect.height - logical.h * scale) / 2;
+                view.scale = scale;
+                view.offX = offX;
+                view.offY = offY;
+                base = [dpr * scale, 0, 0, dpr * scale, dpr * offX, dpr * offY];
+            } else {
+                view.scale = 1; view.offX = 0; view.offY = 0;
+                base = [dpr, 0, 0, dpr, 0, 0];
+            }
+            ctx.setTransform(base[0], base[1], base[2], base[3], base[4], base[5]);
+        }
+
+        /**
+         * 清畫布：以 bg 填滿整個緩衝（含 logical 模式的信箱區），再還原基準變換，
+         * 供頁面接著在邏輯座標繪圖。取代頁面原本的 clearRect(0,0,w,h)。
+         */
+        function clear() {
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.fillStyle = bg;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.setTransform(base[0], base[1], base[2], base[3], base[4], base[5]);
         }
 
         resize();
@@ -84,20 +129,24 @@ PhysLab.c2d = (function () {
     }
 
     /**
-     * 取得滑鼠／觸控事件在畫布上的座標，回傳「CSS 像素」：
-     * {x: clientX - rect.left, y: clientY - rect.top}。
+     * 取得滑鼠／觸控事件在畫布上的座標：
+     *   一般模式回傳 CSS 像素 {x: clientX - rect.left, y: clientY - rect.top}；
+     *   若傳入 logical 模式的 view，則反算信箱縮放/置中，回傳**邏輯座標**
+     *   （(x - offX) / scale），與 setup({logical}) 的繪圖座標直接互用。
      * 觸控事件依 evt.touches[0] || evt.changedTouches[0] || evt 取點。
-     * 注意：原頁以 (logicalWidth / rect.width) 換算至固定邏輯座標；改用
-     * setup() 後繪圖空間即 CSS 像素（換算係數為 1），故此處直接回傳
-     * CSS 像素，可與 setup() 的繪圖座標直接互用。
      * @param {HTMLCanvasElement} canvas 目標畫布
      * @param {MouseEvent|TouchEvent|PointerEvent} evt 指標事件
-     * @returns {{x:number, y:number}} CSS 像素座標
+     * @param {Object} [view] setup() 回傳的 view；有 view.logical 時回傳邏輯座標
+     * @returns {{x:number, y:number}} 座標（CSS 像素或邏輯像素）
      */
-    function pointerPos(canvas, evt) {
+    function pointerPos(canvas, evt, view) {
         var rect = canvas.getBoundingClientRect();
         var p = (evt.touches && evt.touches[0]) || (evt.changedTouches && evt.changedTouches[0]) || evt;
-        return { x: p.clientX - rect.left, y: p.clientY - rect.top };
+        var x = p.clientX - rect.left, y = p.clientY - rect.top;
+        if (view && view.logical && view.scale) {
+            return { x: (x - view.offX) / view.scale, y: (y - view.offY) / view.scale };
+        }
+        return { x: x, y: y };
     }
 
     /**
