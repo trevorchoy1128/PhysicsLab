@@ -18,9 +18,9 @@
         #left-panel > *, #right-panel > * { flex-shrink: 0; }
 
         /* ── 中央：電路畫布（上）＋ 類比儀錶（下）縱向堆疊 ── */
-        #canvas-wrap { flex-direction: column; padding: 12px; gap: 10px; }
+        #canvas-wrap { flex-direction: column; gap: 10px; }
         #circuit-stage { position: relative; flex: 1 1 60%; min-height: 0; }
-        #circuitCanvas { width: 100%; height: 100%; display: block; background: #eceff1; border-radius: 12px; box-shadow: inset 0 0 20px rgba(0,0,0,0.06); cursor: grab; }
+        #circuitCanvas { width: 100%; height: 100%; display: block; background: var(--pl-bg); cursor: grab; }
         #circuitCanvas:active { cursor: grabbing; }
         #circuit-stage #hint { white-space: normal; max-width: 84%; text-align: center; line-height: 1.4; }
         .meters-container { flex: 0 0 36%; display: flex; gap: 12px; background: var(--pl-card); border: 1px solid var(--pl-border); border-radius: 12px; padding: 10px; }
