@@ -14,6 +14,7 @@
 <link rel="stylesheet" href="../../../assets/css/labgray.css">
 <script src="../../../assets/js/core.js"></script>
 <script src="../../../assets/js/i18n.js"></script>
+<script src="../../../assets/js/canvas2d.js"></script>
 
 <style>
     /* ── 版面鐵律：滿版三欄、面板內卡片不被壓縮 ── */
@@ -21,11 +22,8 @@
     #left-panel > *, #right-panel > * { flex-shrink: 0; }
     .hidden { display: none !important; }
 
-    /* ── 中央畫布（One Dark 深底 → 淺色實驗台；電路/燈泡/亮度色保留） ── */
-    #canvas-wrap { padding: 12px; }
-    #simCanvas { flex: 1; min-width: 0; width: 100%; height: 100%; align-self: stretch;
-        background: radial-gradient(circle at 50% 40%, #eef2f7, #dfe4ea);
-        border: 1px solid var(--pl-border); border-radius: 14px; touch-action: none; }
+    /* ── 中央畫布：貼邊無縫（填滿 #canvas-wrap、無外框；view.clear() 以淺灰填滿信箱） ── */
+    #simCanvas { display: block; width: 100%; height: 100%; touch-action: none; }
 
     /* ── 滑桿 + 數字輸入（保留原雙輸入功能） ── */
     .row-inline { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
@@ -647,19 +645,18 @@ PhysLab.i18n.register({
        繪圖
        ============================================================ */
     const canvas = document.getElementById('simCanvas');
-    const ctx = canvas.getContext('2d');
     let cssW = 0, cssH = 0;
     const LIGHT_WIRE = '#9aa7b2', PARTICLE = '#ffe14d', TXT = '#334155';
 
-    function resize() {
-        const dpr = window.devicePixelRatio || 1;
-        const rect = canvas.getBoundingClientRect();
-        cssW = rect.width; cssH = rect.height;
-        canvas.width = Math.round(cssW * dpr);
-        canvas.height = Math.round(cssH * dpr);
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    }
-    window.addEventListener('resize', resize);
+    /* 共用畫布：真・貼邊無縫（緩衝隨容器；繪圖座標＝CSS 像素，與編輯器格點/幾何一致；
+       view.clear() 以淺灰 #e2e6eb 填滿整個緩衝，與 #canvas-wrap 同色無縫；autoResize 監聽視窗與 canvas 尺寸） */
+    const view = PhysLab.c2d.setup(canvas, {
+        bg: '#e2e6eb',
+        onResize: function () { cssW = view.w; cssH = view.h; }
+    });
+    const ctx = view.ctx;
+    cssW = view.w; cssH = view.h;
+    function resize() { view.resize(); cssW = view.w; cssH = view.h; }
 
     const glowOf = (P) => clamp(Math.pow(P / sim.Pnorm, 0.45), 0, 1);
     const pctOf = (P) => Math.round(clamp(P / sim.Pnorm, 0, 1) * 100);
@@ -880,7 +877,7 @@ PhysLab.i18n.register({
     let startT = performance.now();
     function frame(now) {
         const phase = (now - startT) / 1000;
-        ctx.clearRect(0, 0, cssW, cssH);
+        view.clear();
         if (!sim) { requestAnimationFrame(frame); return; }
         if (state.view === 'compare') {
             const halfW = cssW / 2, titleY = 22;
@@ -1096,10 +1093,8 @@ PhysLab.i18n.register({
        畫布互動（自訂模式 = 編輯器）
        ============================================================ */
     function canvasPos(e) {
-        const rect = canvas.getBoundingClientRect();
-        const t = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]);
-        const cx = t ? t.clientX : e.clientX, cy = t ? t.clientY : e.clientY;
-        return { x: cx - rect.left, y: cy - rect.top };
+        // 非 logical 模式 → 回傳 CSS 像素，與編輯器格點/幾何座標一致（含觸控 fallback）
+        return PhysLab.c2d.pointerPos(canvas, e, view);
     }
     function editorComponentAt(x, y) {
         for (let i = editor.components.length - 1; i >= 0; i--) {
