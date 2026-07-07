@@ -1,612 +1,641 @@
-﻿<!DOCTYPE html>
-<html lang="zh-TW">
+<!DOCTYPE html>
+<html lang="zh-Hant">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DSE 物理：進階光學模擬器 (折射與色散)</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        /* 確保 SVG 內的文字無法被選取，提升拖曳體驗 */
-        svg { user-select: none; touch-action: none; }
-        .draggable-node { cursor: grab; transition: transform 0.1s; }
-        .draggable-node:active { cursor: grabbing; transform: scale(1.2); }
-        /* 自訂捲軸樣式 */
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; rounded: 8px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-    
-    /* Home button */
-    #home-btn {
-        position: fixed;
-        bottom: 16px;
-        left: 16px;
-        z-index: 99999;
-        background: rgba(30,41,59,0.85);
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-        border: 1px solid rgba(255,255,255,0.3);
-        border-radius: 10px;
-        padding: 8px 14px;
-        font-size: 13px;
-        font-weight: bold;
-        color: #fff;
-        text-decoration: none;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.25);
-        transition: background 0.2s, transform 0.2s;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-    #home-btn:hover {
-        background: rgba(30,41,59,0.95);
-        transform: translateY(-2px);
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DSE 物理：進階光學模擬器 (折射與色散)</title>
 
-        /* -- Responsive (Mobile / Tablet) -- */
-        @media (max-width: 768px) {
-            #ui-panel, .ui-panel {
-                width: calc(100vw - 20px) !important;
-                max-width: 100vw !important;
-                max-height: 45vh !important;
-                overflow-y: auto !important;
-                top: auto !important;
-                bottom: 0 !important;
-                left: 0 !important;
-                right: 0 !important;
-                border-radius: 12px 12px 0 0 !important;
-                padding: 12px !important;
-                font-size: 12px !important;
-            }
-            #ui-panel h2, .ui-panel h2 { font-size: 14px !important; margin: 0 0 6px 0 !important; }
-            #ui-panel h3, .ui-panel h3 { font-size: 13px !important; }
-            #ui-panel label, .ui-panel label { font-size: 11px !important; }
-            #ui-panel input[type=range], .ui-panel input[type=range] { height: 20px !important; }
-            #ui-panel .btn, .ui-panel .btn { padding: 7px 4px !important; font-size: 11px !important; }
-        }
-        @media (min-width: 769px) and (max-width: 1024px) {
-            #ui-panel, .ui-panel {
-                width: 260px !important;
-                font-size: 13px !important;
-            }
-        }
-    </style>
+<!-- ═══════════ 共用資源（載入順序固定，不可 defer/async） ═══════════ -->
+<link rel="stylesheet" href="../../../assets/css/tokens.css">
+<link rel="stylesheet" href="../../../assets/css/labgray.css">
+<script src="../../../assets/js/core.js"></script>
+<script src="../../../assets/js/i18n.js"></script>
+
+<style>
+    /* ── 頁面獨有樣式（共用 chrome 見 assets/css/labgray.css）── */
+
+    /* 版面鐵律：滿版三欄、面板內卡片不被壓縮（成對使用） */
+    body { height: 100vh; overflow: hidden; }
+    #left-panel > *, #right-panel > * { flex-shrink: 0; }
+
+    /* SVG 光學舞台（viewBox 0 0 700 600 自適應填滿 canvas-wrap） */
+    #simulation-svg {
+        flex: 1; width: 100%; height: 100%; min-width: 0;
+        background: #fff; user-select: none; touch-action: none;
+    }
+    /* 可拖曳節點（藍/黃圓點）游標與放大回饋 */
+    .draggable-node { cursor: grab; transition: transform 0.1s; }
+    .draggable-node:active { cursor: grabbing; transform: scale(1.2); }
+
+    /* 舞台左上操作提示浮片 */
+    .svg-hint {
+        position: absolute; top: 14px; left: 14px; max-width: 62%;
+        background: rgba(255,255,255,0.85); border: 1px solid var(--pl-border);
+        border-radius: 10px; padding: 7px 12px; font-size: 0.72rem; line-height: 1.5;
+        color: var(--pl-text-dim); backdrop-filter: blur(6px);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06); pointer-events: none; z-index: 10;
+    }
+    .pt-blue,  .op-blue  { color: #2563eb; font-weight: 700; }
+    .pt-amber, .op-amber { color: #d97706; font-weight: 700; }
+
+    /* 光譜模式鈕：按鈕色 = 該模式模擬出的光線波長色（教學線索，
+       沿用原版 spectrumStyles 對應；連續彩虹用紅→紫漸層呼應色散概念）。
+       始終可見；.active 態再疊加共用 chrome 的藍色高亮環。 */
+    #spectrum-buttons .dir-btn[data-mode="generic"]    { border-color: #f59e0b; background: #fffbeb; color: #b45309; }
+    #spectrum-buttons .dir-btn[data-mode="red"]        { border-color: #ef4444; background: #fef2f2; color: #b91c1c; }
+    #spectrum-buttons .dir-btn[data-mode="violet"]     { border-color: #a855f7; background: #faf5ff; color: #7e22ce; }
+    #spectrum-buttons .dir-btn[data-mode="extreme"]    { border-color: #a855f7; background: linear-gradient(90deg, #fef2f2, #faf5ff); color: #7e22ce; }
+    #spectrum-buttons .dir-btn[data-mode="discrete"]   { border-color: #3b82f6; background: #eff6ff; color: #1d4ed8; }
+    #spectrum-buttons .dir-btn[data-mode="continuous"] { border-color: #a855f7; background: linear-gradient(90deg, #fee2e2, #fef3c7 45%, #dcfce7 65%, #ede9fe); color: #334155; }
+    /* active：保留波長底色，另加藍環標示當前選取 */
+    #spectrum-buttons .dir-btn.active { box-shadow: 0 0 0 2px var(--pl-accent); font-weight: 700; }
+</style>
 </head>
-<body class="min-h-screen bg-slate-50 p-4 font-sans text-slate-800 flex flex-col items-center">
+<body>
 
+<!-- ═══════════ 頂欄 ═══════════ -->
+<div id="topbar">
+    <div style="display:flex;align-items:center;gap:16px;">
+        <button type="button" class="panel-toggle-btn" id="btn-toggle-left">
+            <span>☰</span> <span data-i18n="topbar.controls">控制</span>
+        </button>
+        <div class="title-block">
+            <h1 data-i18n="topbar.title">DSE 物理：進階光學模擬器 (折射與色散)</h1>
+            <p data-i18n="topbar.subtitle">HKDSE Physics · Book 3 · Chapter 2 · 玻璃磚與稜鏡</p>
+        </div>
+    </div>
+    <div class="tb-actions">
+        <button type="button" class="panel-toggle-btn" id="btn-toggle-right">
+            <span>📖</span> <span data-i18n="topbar.info">資訊</span>
+        </button>
+    </div>
+</div>
 
-    <h1 class="text-2xl md:text-3xl font-bold text-slate-700 mb-4 text-center">
-        DSE 物理：進階光學模擬器 (折射與色散)
-    </h1>
+<div id="main">
 
-    <div class="flex flex-col md:flex-row gap-4 w-full max-w-7xl h-[calc(100vh-6rem)] min-h-[600px]">
-        
-        <div class="flex-1 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden relative flex flex-col">
-            <div class="absolute top-4 left-4 bg-white/80 backdrop-blur px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm text-xs text-slate-600 z-10 pointer-events-none">
-                💡 提示：可直接拖曳 <span class="text-blue-600 font-bold">藍點</span> 移動位置，拖曳 <span class="text-amber-500 font-bold">黃點</span> 改變角度。
+    <!-- ═══════════ 左側控制面板 ═══════════ -->
+    <div id="left-panel">
+
+        <div class="card">
+            <div class="card-header">👁 <span data-i18n="panel.display.header">顯示選項</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <div class="toggle-row" id="row-rays">
+                    <div class="toggle-track on" id="opt-rays"><div class="toggle-thumb"></div></div>
+                    <span data-i18n="panel.display.rays">顯示光線</span>
+                </div>
+                <div class="toggle-row" id="row-normals">
+                    <div class="toggle-track on" id="opt-normals"><div class="toggle-thumb"></div></div>
+                    <span data-i18n="panel.display.normals">顯示法線</span>
+                </div>
+                <div class="toggle-row" id="row-angles">
+                    <div class="toggle-track on" id="opt-angles"><div class="toggle-thumb"></div></div>
+                    <span data-i18n="panel.display.angles">顯示角度</span>
+                </div>
+                <div class="toggle-row" id="row-node">
+                    <div class="toggle-track on" id="opt-node"><div class="toggle-thumb"></div></div>
+                    <span data-i18n="panel.display.node">顯示拖曳點</span>
+                </div>
             </div>
-            <svg id="simulation-svg" viewBox="0 0 700 600" class="w-full h-full bg-white touch-none">
-                </svg>
         </div>
 
-        <div class="w-full md:w-80 lg:w-96 flex flex-col gap-5 bg-white p-5 rounded-xl shadow-sm border border-slate-200 overflow-y-auto custom-scrollbar shrink-0">
-            
-            <div class="grid grid-cols-2 gap-2">
-                <button id="btn-toggle-rays" class="flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium border transition-colors"></button>
-                <button id="btn-toggle-normals" class="flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium border transition-colors"></button>
-                <button id="btn-toggle-angles" class="flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium border transition-colors"></button>
-                <button id="btn-toggle-node" class="flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium border transition-colors"></button>
-            </div>
-
-            <div class="space-y-2">
-                <label class="text-xs font-semibold text-slate-500 block">選擇形狀：</label>
-                <div class="flex gap-2 bg-slate-100 p-1 rounded-lg">
-                    <button id="btn-shape-rect" class="flex-1 py-1.5 rounded-md text-sm font-medium transition-colors">長方形</button>
-                    <button id="btn-shape-tri" class="flex-1 py-1.5 rounded-md text-sm font-medium transition-colors">稜鏡</button>
+        <div class="card">
+            <div class="card-header">🔷 <span data-i18n="panel.shape.header">選擇形狀</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <div class="dir-btn-group">
+                    <button type="button" class="dir-btn active" id="btn-shape-rect" data-i18n="panel.shape.rect">長方形</button>
+                    <button type="button" class="dir-btn" id="btn-shape-tri" data-i18n="panel.shape.tri">稜鏡</button>
                 </div>
             </div>
+        </div>
 
-            <div class="space-y-2">
-                <label class="text-xs font-semibold text-slate-500 block">光線模式 (Light Mode)：</label>
-                <div class="grid grid-cols-2 gap-2" id="spectrum-buttons">
-                    <button data-mode="generic" class="py-1.5 text-xs rounded border transition-colors">單色光 (基礎)</button>
-                    <button data-mode="red" class="py-1.5 text-xs rounded border transition-colors">單色紅光</button>
-                    <button data-mode="violet" class="py-1.5 text-xs rounded border transition-colors">單色紫光</button>
-                    <button data-mode="extreme" class="py-1.5 text-xs rounded border transition-colors">紅紫雙色</button>
-                    <button data-mode="discrete" class="py-1.5 text-xs rounded border transition-colors">離散光譜</button>
-                    <button data-mode="continuous" class="py-1.5 text-xs rounded border transition-colors">連續彩虹</button>
+        <div class="card">
+            <div class="card-header">🌈 <span data-i18n="panel.mode.header">光線模式 (Light Mode)</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <div class="dir-btn-group" id="spectrum-buttons">
+                    <button type="button" class="dir-btn active" data-mode="generic" data-i18n="panel.mode.generic">單色光 (基礎)</button>
+                    <button type="button" class="dir-btn" data-mode="red" data-i18n="panel.mode.red">單色紅光</button>
+                    <button type="button" class="dir-btn" data-mode="violet" data-i18n="panel.mode.violet">單色紫光</button>
+                    <button type="button" class="dir-btn" data-mode="extreme" data-i18n="panel.mode.extreme">紅紫雙色</button>
+                    <button type="button" class="dir-btn" data-mode="discrete" data-i18n="panel.mode.discrete">離散光譜</button>
+                    <button type="button" class="dir-btn" data-mode="continuous" data-i18n="panel.mode.continuous">連續彩虹</button>
                 </div>
             </div>
+        </div>
 
-            <div class="flex flex-col gap-5 mt-2">
-                <div class="space-y-2">
-                    <div class="flex justify-between items-center">
-                        <label class="font-semibold text-sm text-slate-700">入射角 (Angle)</label>
-                        <span id="val-angle" class="text-amber-600 text-sm font-bold bg-amber-50 px-2 py-0.5 rounded border border-amber-200">45.0°</span>
-                    </div>
-                    <input type="range" id="input-angle" min="-89.9" max="89.9" step="0.1" value="45" class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-amber-500">
+        <div class="card">
+            <div class="card-header">📐 <span data-i18n="panel.param.header">光線參數</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <div class="slider-row">
+                    <div class="slider-head"><label data-i18n="panel.param.angle">入射角 (Angle)</label><span class="val" id="val-angle">45.0°</span></div>
+                    <input type="range" id="input-angle" min="-89.9" max="89.9" step="0.1" value="45">
                 </div>
-
-                <div class="space-y-2">
-                    <div class="flex justify-between items-center">
-                        <label class="font-semibold text-sm text-slate-700">基準折射率 (n)</label>
-                        <span id="val-refractive" class="text-blue-600 text-sm font-bold bg-blue-50 px-2 py-0.5 rounded border border-blue-200">1.50</span>
-                    </div>
-                    <input type="range" id="input-refractive" min="1.1" max="2.5" step="0.01" value="1.50" class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600">
+                <div class="slider-row">
+                    <div class="slider-head"><label data-i18n="panel.param.refractive">基準折射率 (n)</label><span class="val" id="val-refractive">1.50</span></div>
+                    <input type="range" id="input-refractive" min="1.1" max="2.5" step="0.01" value="1.50">
                 </div>
-            </div>
-            
-            <div class="mt-auto p-3 rounded-lg border-l-4 bg-blue-50 border-blue-500">
-                <p class="text-xs text-slate-600 leading-relaxed">
-                    <strong>操作說明：</strong><br>
-                    1. 拖曳介面上的 <span class="text-blue-600 font-bold">藍色圓點</span> 可改變光線入射位置。<br>
-                    2. 拖曳光線尾端的 <span class="text-amber-500 font-bold">黃色圓點</span> 可直接改變入射角。
-                </p>
             </div>
         </div>
     </div>
 
-    <script>
-        // --- 狀態管理 ---
-        const state = {
-            shape: 'rectangle',
-            entryEdgeIndex: 0,
-            entryPosition: 50,
-            incidentAngle: 45,
-            baseRefractiveIndex: 1.50,
-            showNormals: true,
-            showRefractedRays: true,
-            showAngles: true,
-            showDragNode: true,
-            spectrumMode: 'generic',
-            dragType: null
-        };
+    <!-- ═══════════ 中央 SVG 光學視圖 ═══════════ -->
+    <div id="canvas-wrap">
+        <div class="svg-hint" data-i18n-html="hint.drag">
+            💡 提示：可直接拖曳 <span class="pt-blue">藍點</span> 移動位置，拖曳 <span class="pt-amber">黃點</span> 改變角度。
+        </div>
+        <svg id="simulation-svg" viewBox="0 0 700 600"></svg>
+    </div>
 
-        const shapes = {
-            rectangle: { vertices: [{ x: 200, y: 200 }, { x: 500, y: 200 }, { x: 500, y: 450 }, { x: 200, y: 450 }] },
-            triangle: { vertices: [{ x: 350, y: 150 }, { x: 550, y: 450 }, { x: 150, y: 450 }] }
-        };
+    <!-- ═══════════ 右側資訊面板 ═══════════ -->
+    <div id="right-panel">
+        <div class="guide-box">
+            <h4>📘 <span data-i18n="info.opHeader">操作說明</span></h4>
+            <div class="info-box" data-i18n-html="info.ops">
+                <strong>操作說明：</strong><br>
+                1. 拖曳介面上的 <span class="op-blue">藍色圓點</span> 可改變光線入射位置。<br>
+                2. 拖曳光線尾端的 <span class="op-amber">黃色圓點</span> 可直接改變入射角。
+            </div>
+        </div>
+    </div>
+</div>
 
-        // --- 向量數學輔助函數 ---
-        const vAdd = (a, b) => ({ x: a.x + b.x, y: a.y + b.y });
-        const vSub = (a, b) => ({ x: a.x - b.x, y: a.y - b.y });
-        const vMul = (v, s) => ({ x: v.x * s, y: v.y * s });
-        const vDot = (a, b) => a.x * b.x + a.y * b.y;
-        const vMag = (v) => Math.sqrt(v.x * v.x + v.y * v.y);
-        const vNorm = (v) => { 
-            const m = vMag(v); 
-            return m === 0 ? { x: 0, y: 0 } : { x: v.x / m, y: v.y / m }; 
-        };
-        const vRot = (v, angle) => ({
-            x: v.x * Math.cos(angle) - v.y * Math.sin(angle),
-            y: v.x * Math.sin(angle) + v.y * Math.cos(angle)
-        });
-        const vCross = (a, b) => a.x * b.y - a.y * b.x;
+<!-- ═══════════ 頁面字典（zh 必填；en 缺字自動回退 zh） ═══════════ -->
+<script>
+PhysLab.i18n.register({
+    zh: {
+        'topbar.title': 'DSE 物理：進階光學模擬器 (折射與色散)',
+        'topbar.subtitle': 'HKDSE Physics · Book 3 · Chapter 2 · 玻璃磚與稜鏡',
+        'topbar.controls': '控制',
+        'topbar.info': '資訊',
+        'panel.display.header': '顯示選項',
+        'panel.display.rays': '顯示光線',
+        'panel.display.normals': '顯示法線',
+        'panel.display.angles': '顯示角度',
+        'panel.display.node': '顯示拖曳點',
+        'panel.shape.header': '選擇形狀',
+        'panel.shape.rect': '長方形',
+        'panel.shape.tri': '稜鏡',
+        'panel.mode.header': '光線模式 (Light Mode)',
+        'panel.mode.generic': '單色光 (基礎)',
+        'panel.mode.red': '單色紅光',
+        'panel.mode.violet': '單色紫光',
+        'panel.mode.extreme': '紅紫雙色',
+        'panel.mode.discrete': '離散光譜',
+        'panel.mode.continuous': '連續彩虹',
+        'panel.param.header': '光線參數',
+        'panel.param.angle': '入射角 (Angle)',
+        'panel.param.refractive': '基準折射率 (n)',
+        'hint.drag': '💡 提示：可直接拖曳 <span class="pt-blue">藍點</span> 移動位置，拖曳 <span class="pt-amber">黃點</span> 改變角度。',
+        'info.opHeader': '操作說明',
+        'info.ops': '<strong>操作說明：</strong><br>1. 拖曳介面上的 <span class="op-blue">藍色圓點</span> 可改變光線入射位置。<br>2. 拖曳光線尾端的 <span class="op-amber">黃色圓點</span> 可直接改變入射角。',
+        'canvas.air': '空氣 (Air) n = 1.0'
+    },
+    en: {}
+});
+</script>
 
-        function rayIntersectSegment(rayOrigin, rayDir, p1, p2) {
-            const v1 = vSub(rayOrigin, p1);
-            const v2 = vSub(p2, p1);
-            const v3 = { x: -rayDir.y, y: rayDir.x };
-            const dot = vDot(v2, v3);
-            if (Math.abs(dot) < 1e-6) return null;
+<!-- ═══════════ 頁面邏輯（SVG 光學物理逐字保留） ═══════════ -->
+<script>
+    // --- 狀態管理 ---
+    const state = {
+        shape: 'rectangle',
+        entryEdgeIndex: 0,
+        entryPosition: 50,
+        incidentAngle: 45,
+        baseRefractiveIndex: 1.50,
+        showNormals: true,
+        showRefractedRays: true,
+        showAngles: true,
+        showDragNode: true,
+        spectrumMode: 'generic',
+        dragType: null
+    };
 
-            const t1 = vCross(v2, v1) / dot;
-            const t2 = vDot(v1, v3) / dot;
+    const shapes = {
+        rectangle: { vertices: [{ x: 200, y: 200 }, { x: 500, y: 200 }, { x: 500, y: 450 }, { x: 200, y: 450 }] },
+        triangle: { vertices: [{ x: 350, y: 150 }, { x: 550, y: 450 }, { x: 150, y: 450 }] }
+    };
 
-            if (t1 > 1e-4 && t2 >= 0 && t2 <= 1) {
-                return { t: t1, point: vAdd(rayOrigin, vMul(rayDir, t1)) };
+    // --- 向量數學輔助函數 ---
+    const vAdd = (a, b) => ({ x: a.x + b.x, y: a.y + b.y });
+    const vSub = (a, b) => ({ x: a.x - b.x, y: a.y - b.y });
+    const vMul = (v, s) => ({ x: v.x * s, y: v.y * s });
+    const vDot = (a, b) => a.x * b.x + a.y * b.y;
+    const vMag = (v) => Math.sqrt(v.x * v.x + v.y * v.y);
+    const vNorm = (v) => {
+        const m = vMag(v);
+        return m === 0 ? { x: 0, y: 0 } : { x: v.x / m, y: v.y / m };
+    };
+    const vRot = (v, angle) => ({
+        x: v.x * Math.cos(angle) - v.y * Math.sin(angle),
+        y: v.x * Math.sin(angle) + v.y * Math.cos(angle)
+    });
+    const vCross = (a, b) => a.x * b.y - a.y * b.x;
+
+    function rayIntersectSegment(rayOrigin, rayDir, p1, p2) {
+        const v1 = vSub(rayOrigin, p1);
+        const v2 = vSub(p2, p1);
+        const v3 = { x: -rayDir.y, y: rayDir.x };
+        const dot = vDot(v2, v3);
+        if (Math.abs(dot) < 1e-6) return null;
+
+        const t1 = vCross(v2, v1) / dot;
+        const t2 = vDot(v1, v3) / dot;
+
+        if (t1 > 1e-4 && t2 >= 0 && t2 <= 1) {
+            return { t: t1, point: vAdd(rayOrigin, vMul(rayDir, t1)) };
+        }
+        return null;
+    }
+
+    // --- 繪製角度弧線 ---
+    function generateAngleArcSVG(p, d1, d2, radius, text, color) {
+        if (!p || !d1 || !d2 || isNaN(radius) || radius <= 0) return '';
+
+        let a1 = Math.atan2(d1.y, d1.x);
+        let a2 = Math.atan2(d2.y, d2.x);
+
+        let diff = a2 - a1;
+        while (diff > Math.PI) diff -= 2 * Math.PI;
+        while (diff < -Math.PI) diff += 2 * Math.PI;
+
+        const sweepFlag = diff > 0 ? 1 : 0;
+        if (Math.abs(diff) < 0.01) return '';
+
+        const start = vAdd(p, vMul(d1, radius));
+        const end = vAdd(p, vMul(d2, radius));
+
+        if (isNaN(start.x) || isNaN(start.y) || isNaN(end.x) || isNaN(end.y)) return '';
+
+        const midAngle = a1 + diff / 2;
+        const textP = vAdd(p, vMul({x: Math.cos(midAngle), y: Math.sin(midAngle)}, radius + 14));
+
+        return `
+            <g>
+                <path d="M ${start.x} ${start.y} A ${radius} ${radius} 0 0 ${sweepFlag} ${end.x} ${end.y}" fill="none" stroke="${color}" stroke-width="1.5" stroke-dasharray="2,2" />
+                <text x="${textP.x}" y="${textP.y}" fill="${color}" font-size="12" font-weight="bold" text-anchor="middle" dominant-baseline="middle">${text}</text>
+            </g>
+        `;
+    }
+
+    // --- 核心模擬邏輯 ---
+    function calculateSimulation() {
+        const polygonData = shapes[state.shape];
+        const polygon = polygonData.vertices;
+
+        const safeEdgeIdx = state.entryEdgeIndex % polygon.length;
+        const p1 = polygon[safeEdgeIdx], p2 = polygon[(safeEdgeIdx + 1) % polygon.length];
+
+        const entryPoint = vAdd(p1, vMul(vSub(p2, p1), state.entryPosition / 100));
+        const edgeDir = vSub(p2, p1);
+        const normal = vNorm({ x: edgeDir.y, y: -edgeDir.x });
+        const outwardNormal = vMul(normal, -1);
+
+        const incRad = (-state.incidentAngle * Math.PI) / 180;
+        const rayDirIn = vRot(outwardNormal, incRad);
+
+        const n1 = 1.0;
+        let lightBeams = [];
+
+        if (state.spectrumMode === 'generic') {
+            lightBeams.push({ nOffset: 0, color: '#f59e0b', type: 'generic', width: 2.5, opacity: 1 });
+        } else if (state.spectrumMode === 'red') {
+            lightBeams.push({ nOffset: -0.04, color: '#ef4444', type: 'red', width: 2.5, opacity: 1 });
+        } else if (state.spectrumMode === 'violet') {
+            lightBeams.push({ nOffset: 0.04, color: '#a855f7', type: 'violet', width: 2.5, opacity: 1 });
+        } else if (state.spectrumMode === 'discrete') {
+            lightBeams = [
+                { nOffset: -0.04, color: '#ef4444', type: 'red', width: 2.5, opacity: 1 },
+                { nOffset: -0.02, color: '#eab308', type: 'other', width: 2.5, opacity: 1 },
+                { nOffset: 0,     color: '#22c55e', type: 'other', width: 2.5, opacity: 1 },
+                { nOffset: 0.02,  color: '#3b82f6', type: 'other', width: 2.5, opacity: 1 },
+                { nOffset: 0.04,  color: '#a855f7', type: 'violet', width: 2.5, opacity: 1 }
+            ];
+        } else if (state.spectrumMode === 'extreme') {
+            lightBeams = [
+                { nOffset: -0.04, color: '#ef4444', type: 'red', width: 2.5, opacity: 1 },
+                { nOffset: 0.04,  color: '#a855f7', type: 'violet', width: 2.5, opacity: 1 }
+            ];
+        } else if (state.spectrumMode === 'continuous') {
+            const steps = 30;
+            for (let i = 0; i <= steps; i++) {
+                const t = i / steps;
+                const type = i === 0 ? 'red' : (i === steps ? 'violet' : 'other');
+                lightBeams.push({ nOffset: -0.04 + (0.08 * t), color: `hsl(${t * 275}, 100%, 50%)`, type, width: 3, opacity: 0.6 });
             }
-            return null;
         }
 
-        // --- 繪製角度弧線 ---
-        function generateAngleArcSVG(p, d1, d2, radius, text, color) {
-            if (!p || !d1 || !d2 || isNaN(radius) || radius <= 0) return '';
+        const allRays = [];
+        const normalsToDraw = [{ p: entryPoint, n: normal }];
+        const anglesToDraw = [];
+        const arrowsToDraw = [];
+        const beamEvents = [];
 
-            let a1 = Math.atan2(d1.y, d1.x);
-            let a2 = Math.atan2(d2.y, d2.x);
-            
-            let diff = a2 - a1;
-            while (diff > Math.PI) diff -= 2 * Math.PI;
-            while (diff < -Math.PI) diff += 2 * Math.PI;
-            
-            const sweepFlag = diff > 0 ? 1 : 0;
-            if (Math.abs(diff) < 0.01) return ''; 
-            
-            const start = vAdd(p, vMul(d1, radius));
-            const end = vAdd(p, vMul(d2, radius));
-            
-            if (isNaN(start.x) || isNaN(start.y) || isNaN(end.x) || isNaN(end.y)) return '';
+        let inColor = '#94a3b8';
+        if (state.spectrumMode === 'generic') inColor = '#f59e0b';
+        else if (state.spectrumMode === 'red') inColor = '#ef4444';
+        else if (state.spectrumMode === 'violet') inColor = '#a855f7';
 
-            const midAngle = a1 + diff / 2;
-            const textP = vAdd(p, vMul({x: Math.cos(midAngle), y: Math.sin(midAngle)}, radius + 14));
-            
-            return `
-                <g>
-                    <path d="M ${start.x} ${start.y} A ${radius} ${radius} 0 0 ${sweepFlag} ${end.x} ${end.y}" fill="none" stroke="${color}" stroke-width="1.5" stroke-dasharray="2,2" />
-                    <text x="${textP.x}" y="${textP.y}" fill="${color}" font-size="12" font-weight="bold" text-anchor="middle" dominant-baseline="middle">${text}</text>
-                </g>
-            `;
-        }
+        const rayStartPoint = vAdd(entryPoint, vMul(rayDirIn, -180));
+        allRays.push({ p1: rayStartPoint, p2: entryPoint, color: inColor, width: 3, opacity: 1 });
 
-        // --- 核心模擬邏輯 ---
-        function calculateSimulation() {
-            const polygonData = shapes[state.shape];
-            const polygon = polygonData.vertices;
-            
-            const safeEdgeIdx = state.entryEdgeIndex % polygon.length;
-            const p1 = polygon[safeEdgeIdx], p2 = polygon[(safeEdgeIdx + 1) % polygon.length];
-            
-            const entryPoint = vAdd(p1, vMul(vSub(p2, p1), state.entryPosition / 100));
-            const edgeDir = vSub(p2, p1);
-            const normal = vNorm({ x: edgeDir.y, y: -edgeDir.x }); 
-            const outwardNormal = vMul(normal, -1);
+        if (state.showRefractedRays) {
+            lightBeams.forEach(beam => {
+                const n2 = state.baseRefractiveIndex + beam.nOffset;
+                const sinTheta2 = (n1 / n2) * Math.sin(incRad);
+                if (Math.abs(sinTheta2) > 1.0) return;
 
-            const incRad = (-state.incidentAngle * Math.PI) / 180;
-            const rayDirIn = vRot(outwardNormal, incRad);
+                const refRad = Math.asin(sinTheta2);
+                let currentDir = vRot(outwardNormal, refRad);
+                let currentOrigin = entryPoint;
 
-            const n1 = 1.0;
-            let lightBeams = [];
-            
-            if (state.spectrumMode === 'generic') {
-                lightBeams.push({ nOffset: 0, color: '#f59e0b', type: 'generic', width: 2.5, opacity: 1 });
-            } else if (state.spectrumMode === 'red') {
-                lightBeams.push({ nOffset: -0.04, color: '#ef4444', type: 'red', width: 2.5, opacity: 1 });
-            } else if (state.spectrumMode === 'violet') {
-                lightBeams.push({ nOffset: 0.04, color: '#a855f7', type: 'violet', width: 2.5, opacity: 1 });
-            } else if (state.spectrumMode === 'discrete') {
-                lightBeams = [
-                    { nOffset: -0.04, color: '#ef4444', type: 'red', width: 2.5, opacity: 1 },
-                    { nOffset: -0.02, color: '#eab308', type: 'other', width: 2.5, opacity: 1 },
-                    { nOffset: 0,     color: '#22c55e', type: 'other', width: 2.5, opacity: 1 },
-                    { nOffset: 0.02,  color: '#3b82f6', type: 'other', width: 2.5, opacity: 1 },
-                    { nOffset: 0.04,  color: '#a855f7', type: 'violet', width: 2.5, opacity: 1 }
-                ];
-            } else if (state.spectrumMode === 'extreme') {
-                lightBeams = [
-                    { nOffset: -0.04, color: '#ef4444', type: 'red', width: 2.5, opacity: 1 },
-                    { nOffset: 0.04,  color: '#a855f7', type: 'violet', width: 2.5, opacity: 1 }
-                ];
-            } else if (state.spectrumMode === 'continuous') {
-                const steps = 30;
-                for (let i = 0; i <= steps; i++) {
-                    const t = i / steps;
-                    const type = i === 0 ? 'red' : (i === steps ? 'violet' : 'other');
-                    lightBeams.push({ nOffset: -0.04 + (0.08 * t), color: `hsl(${t * 275}, 100%, 50%)`, type, width: 3, opacity: 0.6 });
-                }
-            }
+                beamEvents.push({ type: 'entry', p: entryPoint, normal: normal, dirIn: rayDirIn, dirOut: currentDir, color: beam.color, beamType: beam.type });
 
-            const allRays = [];
-            const normalsToDraw = [{ p: entryPoint, n: normal }];
-            const anglesToDraw = [];
-            const arrowsToDraw = [];
-            const beamEvents = []; 
+                let bounces = 0;
+                const MAX_BOUNCES = 25; // 修正2：提高彈跳次數上限，解決高折射率下光線中途停止的問題
 
-            let inColor = '#94a3b8';
-            if (state.spectrumMode === 'generic') inColor = '#f59e0b';
-            else if (state.spectrumMode === 'red') inColor = '#ef4444';
-            else if (state.spectrumMode === 'violet') inColor = '#a855f7';
-            
-            const rayStartPoint = vAdd(entryPoint, vMul(rayDirIn, -180));
-            allRays.push({ p1: rayStartPoint, p2: entryPoint, color: inColor, width: 3, opacity: 1 });
-
-            if (state.showRefractedRays) {
-                lightBeams.forEach(beam => {
-                    const n2 = state.baseRefractiveIndex + beam.nOffset;
-                    const sinTheta2 = (n1 / n2) * Math.sin(incRad);
-                    if (Math.abs(sinTheta2) > 1.0) return; 
-
-                    const refRad = Math.asin(sinTheta2);
-                    let currentDir = vRot(outwardNormal, refRad);
-                    let currentOrigin = entryPoint;
-                    
-                    beamEvents.push({ type: 'entry', p: entryPoint, normal: normal, dirIn: rayDirIn, dirOut: currentDir, color: beam.color, beamType: beam.type });
-
-                    let bounces = 0;
-                    const MAX_BOUNCES = 25; // 修正2：提高彈跳次數上限，解決高折射率下光線中途停止的問題
-
-                    while (bounces < MAX_BOUNCES) {
-                        let closest = null, hitEdgeIdx = -1;
-                        for (let i = 0; i < polygon.length; i++) {
-                            const hit = rayIntersectSegment(currentOrigin, currentDir, polygon[i], polygon[(i + 1) % polygon.length]);
-                            if (hit && (!closest || hit.t < closest.t)) { closest = hit; hitEdgeIdx = i; }
-                        }
-                        if (!closest) break;
-
-                        const hitPoint = closest.point;
-                        allRays.push({ p1: currentOrigin, p2: hitPoint, color: beam.color, width: beam.width, opacity: beam.opacity });
-
-                        const hitEdgeDir = vSub(polygon[(hitEdgeIdx + 1) % polygon.length], polygon[hitEdgeIdx]);
-                        const hitNormal = vNorm({ x: hitEdgeDir.y, y: -hitEdgeDir.x });
-                        
-                        const cosThetaI = vDot(currentDir, hitNormal);
-                        const sinThetaI = Math.sin(Math.acos(Math.max(-1, Math.min(1, cosThetaI))));
-                        const sinThetaT = (n2 / n1) * sinThetaI;
-
-                        if (sinThetaT > 1.000001) {
-                            const nextDir = vSub(currentDir, vMul(hitNormal, 2 * vDot(currentDir, hitNormal)));
-                            beamEvents.push({ type: 'tir', p: hitPoint, normal: hitNormal, dirIn: currentDir, dirOut: nextDir, color: beam.color, beamType: beam.type });
-                            currentDir = nextDir;
-                            currentOrigin = hitPoint;
-                            bounces++;
-                        } else {
-                            const thetaT = Math.asin(Math.max(-1, Math.min(1, sinThetaT)));
-                            let T = vSub(currentDir, vMul(hitNormal, cosThetaI));
-                            T = vMag(T) > 1e-6 ? vNorm(T) : { x: 0, y: 0 };
-                            const exitDir = vAdd(vMul(hitNormal, Math.cos(thetaT)), vMul(T, Math.sin(thetaT)));
-                            
-                            allRays.push({ p1: hitPoint, p2: vAdd(hitPoint, vMul(exitDir, 200)), color: beam.color, width: beam.width, opacity: beam.opacity });
-                            beamEvents.push({ type: 'exit', p: hitPoint, normal: hitNormal, dirIn: currentDir, dirOut: exitDir, color: beam.color, beamType: beam.type });
-                            break;
-                        }
+                while (bounces < MAX_BOUNCES) {
+                    let closest = null, hitEdgeIdx = -1;
+                    for (let i = 0; i < polygon.length; i++) {
+                        const hit = rayIntersectSegment(currentOrigin, currentDir, polygon[i], polygon[(i + 1) % polygon.length]);
+                        if (hit && (!closest || hit.t < closest.t)) { closest = hit; hitEdgeIdx = i; }
                     }
-                });
+                    if (!closest) break;
 
-                const activeEvents = beamEvents.filter(e => {
-                    if (state.spectrumMode === 'generic' && e.beamType === 'generic') return true;
-                    if (state.spectrumMode === 'red' && e.beamType === 'red') return true;
-                    if (state.spectrumMode === 'violet' && e.beamType === 'violet') return true;
-                    if (state.spectrumMode === 'extreme' && (e.beamType === 'red' || e.beamType === 'violet')) return true;
-                    return false;
-                });
+                    const hitPoint = closest.point;
+                    allRays.push({ p1: currentOrigin, p2: hitPoint, color: beam.color, width: beam.width, opacity: beam.opacity });
 
-                activeEvents.forEach(ev => {
-                    if (ev.type === 'tir' || ev.type === 'exit') {
-                        if (!normalsToDraw.some(n => vMag(vSub(n.p, ev.p)) < 1)) {
-                            normalsToDraw.push({ p: ev.p, n: ev.normal });
-                        }
+                    const hitEdgeDir = vSub(polygon[(hitEdgeIdx + 1) % polygon.length], polygon[hitEdgeIdx]);
+                    const hitNormal = vNorm({ x: hitEdgeDir.y, y: -hitEdgeDir.x });
+
+                    const cosThetaI = vDot(currentDir, hitNormal);
+                    const sinThetaI = Math.sin(Math.acos(Math.max(-1, Math.min(1, cosThetaI))));
+                    const sinThetaT = (n2 / n1) * sinThetaI;
+
+                    if (sinThetaT > 1.000001) {
+                        const nextDir = vSub(currentDir, vMul(hitNormal, 2 * vDot(currentDir, hitNormal)));
+                        beamEvents.push({ type: 'tir', p: hitPoint, normal: hitNormal, dirIn: currentDir, dirOut: nextDir, color: beam.color, beamType: beam.type });
+                        currentDir = nextDir;
+                        currentOrigin = hitPoint;
+                        bounces++;
+                    } else {
+                        const thetaT = Math.asin(Math.max(-1, Math.min(1, sinThetaT)));
+                        let T = vSub(currentDir, vMul(hitNormal, cosThetaI));
+                        T = vMag(T) > 1e-6 ? vNorm(T) : { x: 0, y: 0 };
+                        const exitDir = vAdd(vMul(hitNormal, Math.cos(thetaT)), vMul(T, Math.sin(thetaT)));
+
+                        allRays.push({ p1: hitPoint, p2: vAdd(hitPoint, vMul(exitDir, 200)), color: beam.color, width: beam.width, opacity: beam.opacity });
+                        beamEvents.push({ type: 'exit', p: hitPoint, normal: hitNormal, dirIn: currentDir, dirOut: exitDir, color: beam.color, beamType: beam.type });
+                        break;
                     }
-
-                    const inwardNormal = vMul(ev.normal, -1);
-
-                    if (ev.type === 'entry' && Math.abs(state.incidentAngle) > 0.1) {
-                        anglesToDraw.push({ p: ev.p, d1: ev.normal, d2: vMul(ev.dirIn, -1), radius: 25, text: `${Math.abs(state.incidentAngle).toFixed(1)}°`, color: '#64748b' });
-                        const ang = Math.acos(Math.max(-1, Math.min(1, vDot(inwardNormal, ev.dirOut)))) * 180 / Math.PI;
-                        anglesToDraw.push({ p: ev.p, d1: inwardNormal, d2: ev.dirOut, radius: 45, text: `${ang.toFixed(1)}°`, color: ev.color });
-                    } 
-                    else if (ev.type === 'tir') {
-                        const angIn = Math.acos(Math.max(-1, Math.min(1, vDot(inwardNormal, vMul(ev.dirIn, -1))))) * 180 / Math.PI;
-                        anglesToDraw.push({ p: ev.p, d1: inwardNormal, d2: vMul(ev.dirIn, -1), radius: 25, text: `${angIn.toFixed(1)}°`, color: '#64748b' });
-                        const angOut = Math.acos(Math.max(-1, Math.min(1, vDot(inwardNormal, ev.dirOut)))) * 180 / Math.PI;
-                        anglesToDraw.push({ p: ev.p, d1: inwardNormal, d2: ev.dirOut, radius: 45, text: `${angOut.toFixed(1)}°`, color: ev.color });
-                    } 
-                    else if (ev.type === 'exit') {
-                        const angIn = Math.acos(Math.max(-1, Math.min(1, vDot(inwardNormal, vMul(ev.dirIn, -1))))) * 180 / Math.PI;
-                        anglesToDraw.push({ p: ev.p, d1: inwardNormal, d2: vMul(ev.dirIn, -1), radius: 25, text: `${angIn.toFixed(1)}°`, color: '#64748b' });
-                        const angOut = Math.acos(Math.max(-1, Math.min(1, vDot(ev.normal, ev.dirOut)))) * 180 / Math.PI;
-                        anglesToDraw.push({ p: ev.p, d1: ev.normal, d2: ev.dirOut, radius: 45, text: `${angOut.toFixed(1)}°`, color: ev.color });
-                    }
-                });
-            }
-
-            if (state.spectrumMode !== 'continuous') {
-                allRays.forEach(ray => {
-                    const len = vMag(vSub(ray.p2, ray.p1));
-                    if (len < 40) return; 
-                    const mid = vAdd(ray.p1, vMul(vSub(ray.p2, ray.p1), 0.5));
-                    const dir = vNorm(vSub(ray.p2, ray.p1));
-                    const perp = { x: -dir.y, y: dir.x };
-                    const pA = vAdd(mid, vMul(dir, 8));
-                    const pB = vAdd(vAdd(mid, vMul(dir, -6)), vMul(perp, 5));
-                    const pC = vAdd(vAdd(mid, vMul(dir, -6)), vMul(perp, -5));
-                    arrowsToDraw.push({ points: `${pA.x},${pA.y} ${pB.x},${pB.y} ${pC.x},${pC.y}`, color: ray.color });
-                });
-            }
-
-            return { polygonData, entryPoint, rayStartPoint, outwardNormal, rays: allRays, normalsToDraw, anglesToDraw, arrowsToDraw };
-        }
-
-        // --- 渲染畫面 ---
-        function render() {
-            const data = calculateSimulation();
-            const svg = document.getElementById('simulation-svg');
-            
-            const polygonPoints = data.polygonData.vertices.map(p => `${p.x},${p.y}`).join(' ');
-            let svgContent = `
-                <text x="350" y="40" fill="#64748b" font-size="16" text-anchor="middle" font-weight="bold">空氣 (Air) n = 1.0</text>
-                <polygon points="${polygonPoints}" fill="#e0f2fe" stroke="#0ea5e9" stroke-width="2" fill-opacity="0.4" />
-            `;
-
-            if (state.showNormals) {
-                data.normalsToDraw.forEach(n => {
-                    const p1 = vAdd(n.p, vMul(n.n, 70));
-                    const p2 = vAdd(n.p, vMul(n.n, -70));
-                    svgContent += `<line x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="6,6" />`;
-                });
-            }
-
-            data.rays.forEach(ray => {
-                svgContent += `<line x1="${ray.p1.x}" y1="${ray.p1.y}" x2="${ray.p2.x}" y2="${ray.p2.y}" stroke="${ray.color}" stroke-width="${ray.width}" opacity="${ray.opacity}" />`;
-            });
-
-            data.arrowsToDraw.forEach(arrow => {
-                svgContent += `<polygon points="${arrow.points}" fill="${arrow.color}" />`;
-            });
-
-            if (state.showAngles) {
-                data.anglesToDraw.forEach(ang => {
-                    svgContent += generateAngleArcSVG(ang.p, ang.d1, ang.d2, ang.radius, ang.text, ang.color);
-                });
-            }
-
-            if (state.showDragNode) {
-                svgContent += `<circle id="drag-node-pos" cx="${data.entryPoint.x}" cy="${data.entryPoint.y}" r="12" fill="#ffffff" stroke="#3b82f6" stroke-width="3" class="draggable-node" data-dragtype="position" />`;
-                svgContent += `<circle id="drag-node-angle" cx="${data.rayStartPoint.x}" cy="${data.rayStartPoint.y}" r="12" fill="#ffffff" stroke="#f59e0b" stroke-width="3" class="draggable-node" data-dragtype="angle" />`;
-            }
-
-            svg.innerHTML = svgContent;
-
-            const posNode = document.getElementById('drag-node-pos');
-            const angleNode = document.getElementById('drag-node-angle');
-            
-            if (posNode) posNode.addEventListener('pointerdown', (e) => handlePointerDown(e, 'position'));
-            if (angleNode) angleNode.addEventListener('pointerdown', (e) => handlePointerDown(e, 'angle'));
-
-            svg.dataset.entryX = data.entryPoint.x;
-            svg.dataset.entryY = data.entryPoint.y;
-            svg.dataset.normX = data.outwardNormal.x;
-            svg.dataset.normY = data.outwardNormal.y;
-
-            updateUI();
-        }
-
-        // --- 更新 UI 狀態 ---
-        function updateUI() {
-            const btnRays = document.getElementById('btn-toggle-rays');
-            btnRays.textContent = state.showRefractedRays ? "隱藏光線" : "顯示光線";
-            btnRays.className = `flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium border transition-colors ${state.showRefractedRays ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'}`;
-
-            const btnNormals = document.getElementById('btn-toggle-normals');
-            btnNormals.textContent = state.showNormals ? "隱藏法線" : "顯示法線";
-            btnNormals.className = `flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium border transition-colors ${state.showNormals ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'}`;
-
-            const btnAngles = document.getElementById('btn-toggle-angles');
-            btnAngles.textContent = state.showAngles ? "隱藏角度" : "顯示角度";
-            btnAngles.className = `flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium border transition-colors ${state.showAngles ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'}`;
-
-            const btnNode = document.getElementById('btn-toggle-node');
-            btnNode.textContent = state.showDragNode ? "隱藏拖曳點" : "顯示拖曳點";
-            btnNode.className = `flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium border transition-colors ${state.showDragNode ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'}`;
-
-            document.getElementById('btn-shape-rect').className = `flex-1 py-1.5 rounded-md text-sm font-medium transition-colors ${state.shape === 'rectangle' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:bg-slate-200'}`;
-            document.getElementById('btn-shape-tri').className = `flex-1 py-1.5 rounded-md text-sm font-medium transition-colors ${state.shape === 'triangle' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:bg-slate-200'}`;
-
-            const spectrumStyles = {
-                generic: 'bg-amber-50 border-amber-400 text-amber-700 font-bold',
-                red: 'bg-red-50 border-red-300 text-red-700 font-bold',
-                violet: 'bg-purple-50 border-purple-300 text-purple-700 font-bold',
-                extreme: 'bg-slate-100 border-slate-400 font-bold',
-                discrete: 'bg-blue-50 border-blue-300 text-blue-700 font-bold',
-                continuous: 'bg-gradient-to-r from-red-100 to-purple-100 border-purple-300 font-bold'
-            };
-
-            document.querySelectorAll('#spectrum-buttons button').forEach(btn => {
-                const mode = btn.getAttribute('data-mode');
-                if (state.spectrumMode === mode) {
-                    btn.className = `py-1.5 text-xs rounded border transition-colors ${spectrumStyles[mode]}`;
-                } else {
-                    btn.className = `py-1.5 text-xs rounded border transition-colors bg-white border-slate-200 hover:bg-slate-50`;
                 }
             });
 
-            document.getElementById('val-angle').textContent = `${state.incidentAngle.toFixed(1)}°`;
-            document.getElementById('input-angle').value = state.incidentAngle;
-            
-            document.getElementById('val-refractive').textContent = state.baseRefractiveIndex.toFixed(2);
+            const activeEvents = beamEvents.filter(e => {
+                if (state.spectrumMode === 'generic' && e.beamType === 'generic') return true;
+                if (state.spectrumMode === 'red' && e.beamType === 'red') return true;
+                if (state.spectrumMode === 'violet' && e.beamType === 'violet') return true;
+                if (state.spectrumMode === 'extreme' && (e.beamType === 'red' || e.beamType === 'violet')) return true;
+                return false;
+            });
+
+            activeEvents.forEach(ev => {
+                if (ev.type === 'tir' || ev.type === 'exit') {
+                    if (!normalsToDraw.some(n => vMag(vSub(n.p, ev.p)) < 1)) {
+                        normalsToDraw.push({ p: ev.p, n: ev.normal });
+                    }
+                }
+
+                const inwardNormal = vMul(ev.normal, -1);
+
+                if (ev.type === 'entry' && Math.abs(state.incidentAngle) > 0.1) {
+                    anglesToDraw.push({ p: ev.p, d1: ev.normal, d2: vMul(ev.dirIn, -1), radius: 25, text: `${Math.abs(state.incidentAngle).toFixed(1)}°`, color: '#64748b' });
+                    const ang = Math.acos(Math.max(-1, Math.min(1, vDot(inwardNormal, ev.dirOut)))) * 180 / Math.PI;
+                    anglesToDraw.push({ p: ev.p, d1: inwardNormal, d2: ev.dirOut, radius: 45, text: `${ang.toFixed(1)}°`, color: ev.color });
+                }
+                else if (ev.type === 'tir') {
+                    const angIn = Math.acos(Math.max(-1, Math.min(1, vDot(inwardNormal, vMul(ev.dirIn, -1))))) * 180 / Math.PI;
+                    anglesToDraw.push({ p: ev.p, d1: inwardNormal, d2: vMul(ev.dirIn, -1), radius: 25, text: `${angIn.toFixed(1)}°`, color: '#64748b' });
+                    const angOut = Math.acos(Math.max(-1, Math.min(1, vDot(inwardNormal, ev.dirOut)))) * 180 / Math.PI;
+                    anglesToDraw.push({ p: ev.p, d1: inwardNormal, d2: ev.dirOut, radius: 45, text: `${angOut.toFixed(1)}°`, color: ev.color });
+                }
+                else if (ev.type === 'exit') {
+                    const angIn = Math.acos(Math.max(-1, Math.min(1, vDot(inwardNormal, vMul(ev.dirIn, -1))))) * 180 / Math.PI;
+                    anglesToDraw.push({ p: ev.p, d1: inwardNormal, d2: vMul(ev.dirIn, -1), radius: 25, text: `${angIn.toFixed(1)}°`, color: '#64748b' });
+                    const angOut = Math.acos(Math.max(-1, Math.min(1, vDot(ev.normal, ev.dirOut)))) * 180 / Math.PI;
+                    anglesToDraw.push({ p: ev.p, d1: ev.normal, d2: ev.dirOut, radius: 45, text: `${angOut.toFixed(1)}°`, color: ev.color });
+                }
+            });
         }
 
-        // --- 事件綁定 ---
-        document.getElementById('btn-toggle-rays').addEventListener('click', () => { state.showRefractedRays = !state.showRefractedRays; render(); });
-        document.getElementById('btn-toggle-normals').addEventListener('click', () => { state.showNormals = !state.showNormals; render(); });
-        document.getElementById('btn-toggle-angles').addEventListener('click', () => { state.showAngles = !state.showAngles; render(); });
-        document.getElementById('btn-toggle-node').addEventListener('click', () => { state.showDragNode = !state.showDragNode; render(); });
-
-        document.getElementById('btn-shape-rect').addEventListener('click', () => { 
-            state.shape = 'rectangle'; state.entryEdgeIndex = 0; state.entryPosition = 50; render(); 
-        });
-        document.getElementById('btn-shape-tri').addEventListener('click', () => { 
-            state.shape = 'triangle'; state.entryEdgeIndex = 2; state.entryPosition = 50; render(); 
-        });
-
-        document.querySelectorAll('#spectrum-buttons button').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                state.spectrumMode = e.target.getAttribute('data-mode');
-                render();
+        if (state.spectrumMode !== 'continuous') {
+            allRays.forEach(ray => {
+                const len = vMag(vSub(ray.p2, ray.p1));
+                if (len < 40) return;
+                const mid = vAdd(ray.p1, vMul(vSub(ray.p2, ray.p1), 0.5));
+                const dir = vNorm(vSub(ray.p2, ray.p1));
+                const perp = { x: -dir.y, y: dir.x };
+                const pA = vAdd(mid, vMul(dir, 8));
+                const pB = vAdd(vAdd(mid, vMul(dir, -6)), vMul(perp, 5));
+                const pC = vAdd(vAdd(mid, vMul(dir, -6)), vMul(perp, -5));
+                arrowsToDraw.push({ points: `${pA.x},${pA.y} ${pB.x},${pB.y} ${pC.x},${pC.y}`, color: ray.color });
             });
+        }
+
+        return { polygonData, entryPoint, rayStartPoint, outwardNormal, rays: allRays, normalsToDraw, anglesToDraw, arrowsToDraw };
+    }
+
+    // --- 渲染畫面 ---
+    function render() {
+        const data = calculateSimulation();
+        const svg = document.getElementById('simulation-svg');
+
+        const polygonPoints = data.polygonData.vertices.map(p => `${p.x},${p.y}`).join(' ');
+        let svgContent = `
+            <text x="350" y="40" fill="#64748b" font-size="16" text-anchor="middle" font-weight="bold">${PhysLab.i18n.t('canvas.air')}</text>
+            <polygon points="${polygonPoints}" fill="#e0f2fe" stroke="#0ea5e9" stroke-width="2" fill-opacity="0.4" />
+        `;
+
+        if (state.showNormals) {
+            data.normalsToDraw.forEach(n => {
+                const p1 = vAdd(n.p, vMul(n.n, 70));
+                const p2 = vAdd(n.p, vMul(n.n, -70));
+                svgContent += `<line x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="6,6" />`;
+            });
+        }
+
+        data.rays.forEach(ray => {
+            svgContent += `<line x1="${ray.p1.x}" y1="${ray.p1.y}" x2="${ray.p2.x}" y2="${ray.p2.y}" stroke="${ray.color}" stroke-width="${ray.width}" opacity="${ray.opacity}" />`;
         });
 
-        document.getElementById('input-angle').addEventListener('input', (e) => {
-            let val = Number(e.target.value);
-            val = Math.max(-89.9, Math.min(89.9, val)); // 確保不超出邊界
-            state.incidentAngle = val;
+        data.arrowsToDraw.forEach(arrow => {
+            svgContent += `<polygon points="${arrow.points}" fill="${arrow.color}" />`;
+        });
+
+        if (state.showAngles) {
+            data.anglesToDraw.forEach(ang => {
+                svgContent += generateAngleArcSVG(ang.p, ang.d1, ang.d2, ang.radius, ang.text, ang.color);
+            });
+        }
+
+        if (state.showDragNode) {
+            svgContent += `<circle id="drag-node-pos" cx="${data.entryPoint.x}" cy="${data.entryPoint.y}" r="12" fill="#ffffff" stroke="#3b82f6" stroke-width="3" class="draggable-node" data-dragtype="position" />`;
+            svgContent += `<circle id="drag-node-angle" cx="${data.rayStartPoint.x}" cy="${data.rayStartPoint.y}" r="12" fill="#ffffff" stroke="#f59e0b" stroke-width="3" class="draggable-node" data-dragtype="angle" />`;
+        }
+
+        svg.innerHTML = svgContent;
+
+        const posNode = document.getElementById('drag-node-pos');
+        const angleNode = document.getElementById('drag-node-angle');
+
+        if (posNode) posNode.addEventListener('pointerdown', (e) => handlePointerDown(e, 'position'));
+        if (angleNode) angleNode.addEventListener('pointerdown', (e) => handlePointerDown(e, 'angle'));
+
+        svg.dataset.entryX = data.entryPoint.x;
+        svg.dataset.entryY = data.entryPoint.y;
+        svg.dataset.normX = data.outwardNormal.x;
+        svg.dataset.normY = data.outwardNormal.y;
+
+        updateUI();
+    }
+
+    // --- 更新 UI 狀態（樣板：綁定新 chrome 控件） ---
+    function updateUI() {
+        document.getElementById('opt-rays').classList.toggle('on', state.showRefractedRays);
+        document.getElementById('opt-normals').classList.toggle('on', state.showNormals);
+        document.getElementById('opt-angles').classList.toggle('on', state.showAngles);
+        document.getElementById('opt-node').classList.toggle('on', state.showDragNode);
+
+        document.getElementById('btn-shape-rect').classList.toggle('active', state.shape === 'rectangle');
+        document.getElementById('btn-shape-tri').classList.toggle('active', state.shape === 'triangle');
+
+        document.querySelectorAll('#spectrum-buttons .dir-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.getAttribute('data-mode') === state.spectrumMode);
+        });
+
+        document.getElementById('val-angle').textContent = `${state.incidentAngle.toFixed(1)}°`;
+        document.getElementById('input-angle').value = state.incidentAngle;
+
+        document.getElementById('val-refractive').textContent = state.baseRefractiveIndex.toFixed(2);
+    }
+
+    // --- 事件綁定（樣板） ---
+    document.getElementById('row-rays').addEventListener('click', () => { state.showRefractedRays = !state.showRefractedRays; render(); });
+    document.getElementById('row-normals').addEventListener('click', () => { state.showNormals = !state.showNormals; render(); });
+    document.getElementById('row-angles').addEventListener('click', () => { state.showAngles = !state.showAngles; render(); });
+    document.getElementById('row-node').addEventListener('click', () => { state.showDragNode = !state.showDragNode; render(); });
+
+    document.getElementById('btn-shape-rect').addEventListener('click', () => {
+        state.shape = 'rectangle'; state.entryEdgeIndex = 0; state.entryPosition = 50; render();
+    });
+    document.getElementById('btn-shape-tri').addEventListener('click', () => {
+        state.shape = 'triangle'; state.entryEdgeIndex = 2; state.entryPosition = 50; render();
+    });
+
+    document.querySelectorAll('#spectrum-buttons button').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            state.spectrumMode = e.currentTarget.getAttribute('data-mode');
             render();
         });
+    });
 
-        document.getElementById('input-refractive').addEventListener('input', (e) => {
-            state.baseRefractiveIndex = Number(e.target.value);
-            render();
-        });
-
-        // --- 拖曳邏輯 ---
-        const svgElement = document.getElementById('simulation-svg');
-
-        function handlePointerDown(e, type) {
-            state.dragType = type;
-            e.target.setPointerCapture(e.pointerId);
-        }
-
-        function handlePointerMove(e) {
-            if (!state.dragType) return;
-            
-            const rect = svgElement.getBoundingClientRect();
-            const x = (e.clientX - rect.left) * (700 / rect.width);
-            const y = (e.clientY - rect.top) * (600 / rect.height);
-            const mouseP = { x, y };
-
-            if (state.dragType === 'position') {
-                const polygon = shapes[state.shape].vertices;
-                let minDistSq = Infinity, bestEdgeIdx = 0, bestT = 0.5;
-
-                for (let i = 0; i < polygon.length; i++) {
-                    const p1 = polygon[i], p2 = polygon[(i + 1) % polygon.length];
-                    const edge = vSub(p2, p1), mouseVec = vSub(mouseP, p1);
-                    const edgeLenSq = vDot(edge, edge);
-                    if (edgeLenSq === 0) continue;
-
-                    let t = vDot(mouseVec, edge) / edgeLenSq;
-                    t = Math.max(0.02, Math.min(0.98, t));
-                    
-                    const proj = vAdd(p1, vMul(edge, t));
-                    const distVec = vSub(mouseP, proj);
-                    const distSq = vDot(distVec, distVec);
-
-                    if (distSq < minDistSq) {
-                        minDistSq = distSq;
-                        bestEdgeIdx = i;
-                        bestT = t;
-                    }
-                }
-                state.entryEdgeIndex = bestEdgeIdx;
-                state.entryPosition = bestT * 100;
-            } 
-            else if (state.dragType === 'angle') {
-                const entryP = { x: parseFloat(svgElement.dataset.entryX), y: parseFloat(svgElement.dataset.entryY) };
-                const outNorm = { x: parseFloat(svgElement.dataset.normX), y: parseFloat(svgElement.dataset.normY) };
-                
-                const incomingDir = vSub(entryP, mouseP);
-                if (vMag(incomingDir) < 10) return; // 避免滑鼠過於靠近中心點時造成的計算異常
-
-                let angleRad = Math.atan2(outNorm.y, outNorm.x) - Math.atan2(incomingDir.y, incomingDir.x);
-                
-                while (angleRad > Math.PI) angleRad -= 2 * Math.PI;
-                while (angleRad < -Math.PI) angleRad += 2 * Math.PI;
-                
-                let newAngle = angleRad * (180 / Math.PI);
-                
-                // 修正3：在拖曳時同樣限制最大角度為 89.9，徹底避免 90 度飄移
-                newAngle = Math.max(-89.9, Math.min(89.9, newAngle));
-                state.incidentAngle = newAngle;
-            }
-            
-            render();
-        }
-
-        function handlePointerUp(e) {
-            if (state.dragType) {
-                state.dragType = null;
-                if (e.target.hasPointerCapture(e.pointerId)) {
-                    e.target.releasePointerCapture(e.pointerId);
-                }
-            }
-        }
-
-        svgElement.addEventListener('pointermove', handlePointerMove);
-        svgElement.addEventListener('pointerup', handlePointerUp);
-        svgElement.addEventListener('pointercancel', handlePointerUp);
-
-        // 初始渲染
+    document.getElementById('input-angle').addEventListener('input', (e) => {
+        let val = Number(e.target.value);
+        val = Math.max(-89.9, Math.min(89.9, val)); // 確保不超出邊界
+        state.incidentAngle = val;
         render();
-    </script>
-    <a id="home-btn" href="../../../index.html">&#127968; &#20027;&#38913;</a>
+    });
+
+    document.getElementById('input-refractive').addEventListener('input', (e) => {
+        state.baseRefractiveIndex = Number(e.target.value);
+        render();
+    });
+
+    // --- 拖曳邏輯 ---
+    const svgElement = document.getElementById('simulation-svg');
+
+    function handlePointerDown(e, type) {
+        state.dragType = type;
+        e.target.setPointerCapture(e.pointerId);
+    }
+
+    function handlePointerMove(e) {
+        if (!state.dragType) return;
+
+        const rect = svgElement.getBoundingClientRect();
+        const x = (e.clientX - rect.left) * (700 / rect.width);
+        const y = (e.clientY - rect.top) * (600 / rect.height);
+        const mouseP = { x, y };
+
+        if (state.dragType === 'position') {
+            const polygon = shapes[state.shape].vertices;
+            let minDistSq = Infinity, bestEdgeIdx = 0, bestT = 0.5;
+
+            for (let i = 0; i < polygon.length; i++) {
+                const p1 = polygon[i], p2 = polygon[(i + 1) % polygon.length];
+                const edge = vSub(p2, p1), mouseVec = vSub(mouseP, p1);
+                const edgeLenSq = vDot(edge, edge);
+                if (edgeLenSq === 0) continue;
+
+                let t = vDot(mouseVec, edge) / edgeLenSq;
+                t = Math.max(0.02, Math.min(0.98, t));
+
+                const proj = vAdd(p1, vMul(edge, t));
+                const distVec = vSub(mouseP, proj);
+                const distSq = vDot(distVec, distVec);
+
+                if (distSq < minDistSq) {
+                    minDistSq = distSq;
+                    bestEdgeIdx = i;
+                    bestT = t;
+                }
+            }
+            state.entryEdgeIndex = bestEdgeIdx;
+            state.entryPosition = bestT * 100;
+        }
+        else if (state.dragType === 'angle') {
+            const entryP = { x: parseFloat(svgElement.dataset.entryX), y: parseFloat(svgElement.dataset.entryY) };
+            const outNorm = { x: parseFloat(svgElement.dataset.normX), y: parseFloat(svgElement.dataset.normY) };
+
+            const incomingDir = vSub(entryP, mouseP);
+            if (vMag(incomingDir) < 10) return; // 避免滑鼠過於靠近中心點時造成的計算異常
+
+            let angleRad = Math.atan2(outNorm.y, outNorm.x) - Math.atan2(incomingDir.y, incomingDir.x);
+
+            while (angleRad > Math.PI) angleRad -= 2 * Math.PI;
+            while (angleRad < -Math.PI) angleRad += 2 * Math.PI;
+
+            let newAngle = angleRad * (180 / Math.PI);
+
+            // 修正3：在拖曳時同樣限制最大角度為 89.9，徹底避免 90 度飄移
+            newAngle = Math.max(-89.9, Math.min(89.9, newAngle));
+            state.incidentAngle = newAngle;
+        }
+
+        render();
+    }
+
+    function handlePointerUp(e) {
+        if (state.dragType) {
+            state.dragType = null;
+            if (e.target.hasPointerCapture(e.pointerId)) {
+                e.target.releasePointerCapture(e.pointerId);
+            }
+        }
+    }
+
+    svgElement.addEventListener('pointermove', handlePointerMove);
+    svgElement.addEventListener('pointerup', handlePointerUp);
+    svgElement.addEventListener('pointercancel', handlePointerUp);
+
+    // 面板開關（SVG 依 viewBox 自適應，無需額外 resize）
+    PhysLab.ui.bindPanelToggle('btn-toggle-left', 'left-panel', render);
+    PhysLab.ui.bindPanelToggle('btn-toggle-right', 'right-panel', render);
+
+    // 語言切換：重繪 SVG（空氣標籤經 t() 生成）；靜態 data-i18n 由 i18n 自動處理
+    PhysLab.i18n.onChange(function () { render(); });
+
+    // 初始渲染
+    render();
+</script>
 </body>
 </html>
