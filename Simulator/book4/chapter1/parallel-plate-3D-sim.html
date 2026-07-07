@@ -1,968 +1,1076 @@
-﻿<!DOCTYPE html>
-<html lang="zh-HK">
+<!DOCTYPE html>
+<!-- ⚠ 唯一特許 ES module 例外（three@0.160 + importmap）：保留不降級，勿仿製。
+     新模擬器一律用 assets/templates/sim-template.html（three r128 classic script）。 -->
+<html lang="zh-Hant">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>勻強電場與粒子動力學模擬 | HK DSE Physics</title>
-    
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
-    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-    
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Microsoft JhengHei', '微軟正黑體', Arial, sans-serif; background: linear-gradient(135deg, #1f4037 0%, #99f2c8 100%); overflow: hidden; color: #333; }
-        #container { display: flex; height: 100vh; width: 100vw; overflow: hidden; }
-        
-        #canvas-container { flex: 1; position: relative; min-width: 0; background-color: #f8f9fa; } 
-        canvas { display: block; outline: none; touch-action: none; }
-        
-        /* 左上角浮動資訊卡片 */
-        #info { position: absolute; top: 15px; left: 15px; background: rgba(255, 255, 255, 0.95); padding: 20px; border-radius: 12px; font-size: 14px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); width: 320px; z-index: 10; pointer-events: none; }
-        #info h2 { margin-bottom: 12px; color: #1f4037; font-size: 18px; pointer-events: auto; border-bottom: 2px solid rgba(31, 64, 55, 0.1); padding-bottom: 8px;}
-        #info p { margin: 8px 0; line-height: 1.5; pointer-events: auto; display: flex; justify-content: space-between; align-items: center;}
-        
-        #show-panel-btn { position: absolute; top: 15px; right: 15px; z-index: 20; padding: 10px 15px; background: rgba(255, 255, 255, 0.95); color: #1f4037; border: 2px solid #1f4037; border-radius: 8px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.2); transition: all 0.3s; display: none; }
-        #show-panel-btn:hover { background: #1f4037; color: white; }
-        
-        /* 右側控制面板 */
-        #controls { width: 380px; flex-shrink: 0; background: white; padding: 20px; overflow-y: auto; box-shadow: -2px 0 15px rgba(0,0,0,0.3); z-index: 10; transition: margin-right 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
-        #controls.hidden { margin-right: -380px; }
-        #controls h1 { color: #1f4037; margin-bottom: 15px; font-size: 22px; text-align: center; }
-        
-        /* 折疊選單樣式 */
-        details.control-group { margin-bottom: 15px; background: #f4f7f6; border-radius: 8px; border-left: 4px solid #1f4037; transition: all 0.3s ease; }
-        details.control-group.display { border-left-color: #8e44ad; }
-        details.control-group summary { padding: 12px; font-size: 15px; font-weight: bold; color: #333; cursor: pointer; outline: none; list-style: none; display: flex; justify-content: space-between; align-items: center; user-select: none; }
-        details.control-group summary::-webkit-details-marker { display: none; }
-        details.control-group summary::after { content: '▼'; font-size: 12px; color: #666; margin-left: 10px; }
-        details[open].control-group summary::after { content: '▲'; }
-        .details-content { padding: 0 12px 12px 12px; }
-        
-        .control-item { margin-bottom: 15px; }
-        .control-item label { display: block; margin-bottom: 5px; color: #555; font-size: 13px; font-weight: bold; }
-        .control-item input[type="range"], .control-item select { width: 100%; outline: none; }
-        .control-item input[type="range"] { height: 6px; border-radius: 3px; background: #ddd; -webkit-appearance: none; margin-top: 5px; }
-        .control-item input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #1f4037; cursor: pointer; transition: all 0.2s; }
-        .control-item select { height: 38px; border-radius: 6px; border: 1px solid #ddd; padding: 0 10px; font-size: 14px; font-weight: bold; color: #333; cursor: pointer; background: #fff;}
-        .value-display { display: inline-block; float: right; color: #1a73e8; font-weight: bold; font-family: 'Courier New', monospace; font-size: 14px;}
-        
-        .checkbox-label { display: flex; align-items: center; font-size: 14px; font-weight: bold; color: #444; cursor: pointer; margin-bottom: 10px; }
-        .checkbox-label input { margin-right: 8px; width: 16px; height: 16px; cursor: pointer; accent-color: #1f4037; }
-        
-        /* 按鈕樣式 */
-        button.action-btn { width: 100%; padding: 12px; margin-top: 8px; background: linear-gradient(135deg, #1f4037 0%, #2b5876 100%); color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; transition: all 0.3s; }
-        button.action-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(31, 64, 55, 0.4); }
-        button#hide-panel-btn { background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); margin-bottom: 15px; }
-        
-        #btn-launch { background: linear-gradient(135deg, #e67e22 0%, #d35400 100%); font-size: 16px; margin-bottom: 5px; box-shadow: 0 4px 15px rgba(230, 126, 34, 0.4); }
-        #btn-launch:active { transform: scale(0.95); }
-        @keyframes pulse-anim { 0% { box-shadow: 0 0 0 0 rgba(230, 126, 34, 0.7); } 70% { box-shadow: 0 0 0 8px rgba(230, 126, 34, 0); } 100% { box-shadow: 0 0 0 0 rgba(230, 126, 34, 0); } }
-        .btn-pulse-effect { animation: pulse-anim 2s infinite; }
-        
-        .btn-sub-action { background: rgba(41, 128, 185, 0.1); color: #2980b9; border: 1px solid rgba(41, 128, 185, 0.3); }
-        .btn-sub-action:hover { background: rgba(41, 128, 185, 0.2); color: #2980b9; transform: none; box-shadow: none; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>勻強電場與粒子動力學模擬 | HK DSE Physics</title>
 
-        /* FBD 粒子上方浮動標籤 */
-        .fbd-label {
-            position: absolute;
-            font-weight: 900;
-            font-size: 18px;
-            pointer-events: none;
-            display: none;
-            text-shadow: 1px 1px 0 #fff, -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 0px 2px 5px rgba(0,0,0,0.3);
-            z-index: 5;
-            font-family: 'SF Pro Display', Arial, sans-serif;
-            transform: translate(-50%, -50%);
-        }
+<!-- ═══════════ CDN 外部資源 ═══════════ -->
+<!-- three.js ES module（唯一特許例外；importmap 指向 jsdelivr，版本鎖 0.160.0） -->
+<script type="importmap">
+{
+    "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+}
+</script>
+<!-- KaTeX 0.16.9（公式排版） -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<!-- GSAP 3.12.2（動畫 ticker / 補間） -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
 
-        /* 小提示框 */
-        .hint-box { font-size: 12px; color: #555; background: rgba(142, 68, 173, 0.1); padding: 10px; border-left: 3px solid #8e44ad; border-radius: 4px; margin-top: 10px; line-height: 1.5; }
+<!-- ═══════════ 共用資源（classic script，載入順序固定，不可 defer/async） ═══════════
+     與頁面的 three module script 並存（classic 與 module 可共存）：core → i18n → quiz -->
+<link rel="stylesheet" href="../../../assets/css/tokens.css">
+<link rel="stylesheet" href="../../../assets/css/labgray.css">
+<script src="../../../assets/js/core.js"></script>
+<script src="../../../assets/js/i18n.js"></script>
+<script src="../../../assets/js/quiz.js"></script>
 
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.15); border-radius: 3px; }
-    
-        /* -- Responsive (Mobile / Tablet) -- */
-        @media (max-width: 768px) {
-            #ui-panel, .ui-panel {
-                width: calc(100vw - 20px) !important;
-                max-width: 100vw !important;
-                max-height: 45vh !important;
-                overflow-y: auto !important;
-                top: auto !important;
-                bottom: 0 !important;
-                left: 0 !important;
-                right: 0 !important;
-                border-radius: 12px 12px 0 0 !important;
-                padding: 12px !important;
-                font-size: 12px !important;
-            }
-            #ui-panel h2, .ui-panel h2 { font-size: 14px !important; margin: 0 0 6px 0 !important; }
-            #ui-panel h3, .ui-panel h3 { font-size: 13px !important; }
-            #ui-panel label, .ui-panel label { font-size: 11px !important; }
-            #ui-panel input[type=range], .ui-panel input[type=range] { height: 20px !important; }
-            #ui-panel .btn, .ui-panel .btn { padding: 7px 4px !important; font-size: 11px !important; }
-        }
-        @media (min-width: 769px) and (max-width: 1024px) {
-            #ui-panel, .ui-panel {
-                width: 260px !important;
-                font-size: 13px !important;
-            }
-        }
-    </style>
+<style>
+    /* ── 頁面獨有樣式（共用 chrome 見 assets/css/labgray.css）── */
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-    <script type="importmap">
-        {
-            "imports": {
-                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-            }
-        }
-    </script>
+    /* 版面鐵律：滿版不捲動、面板卡片不被壓縮 */
+    html, body { height: 100vh; }
+    body { overflow: hidden; }
+    #left-panel > *, #right-panel > * { flex-shrink: 0; }
+
+    /* 實驗模式下拉選單（保留原生 <select> 以維持 modeSelect.value 物理邏輯不變） */
+    .pl-select { width: 100%; height: 36px; border-radius: 8px; border: 1px solid var(--pl-border);
+        padding: 0 10px; font-size: 0.76rem; font-weight: 600; color: var(--pl-text-dim);
+        background: var(--pl-inset); cursor: pointer; }
+
+    /* checkbox 開關（保留 input.checked 供物理讀取；純 CSS 呈現為 lab-gray 撥桿） */
+    .toggle-row input.pl-switch { -webkit-appearance: none; appearance: none; width: 32px; height: 18px;
+        border-radius: 9px; background: var(--pl-border); position: relative; cursor: pointer;
+        flex-shrink: 0; transition: background 0.2s; margin: 0; }
+    .toggle-row input.pl-switch:checked { background: var(--pl-blue); }
+    .toggle-row input.pl-switch::after { content: ''; position: absolute; top: 2px; left: 2px;
+        width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: left 0.2s;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+    .toggle-row input.pl-switch:checked::after { left: 16px; }
+
+    /* FBD 浮動標籤（隔離體圖 W / Fₑ / T，位置投影自 3D 座標） */
+    .fbd-label { position: absolute; font-weight: 900; font-size: 18px; pointer-events: none;
+        display: none; z-index: 5; transform: translate(-50%, -50%);
+        text-shadow: 1px 1px 0 #fff, -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 0 2px 5px rgba(0,0,0,0.3); }
+
+    /* 讀數格配色（對應各物理量色系） */
+    .rc-e  { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; }
+    .rc-a  { background: #f5f3ff; border-color: #ddd6fe; color: #6d28d9; }
+    .rc-x, .rc-y { background: var(--pl-inset); border-color: var(--pl-border); color: var(--pl-text-dim); }
+    .rc-th { background: #fdf4ff; border-color: #f5d0fe; color: #a21caf; }
+    .rc-t  { background: #fef2f2; border-color: #fecaca; color: #b91c1c; }
+    .rc-w  { background: #f0fdf4; border-color: #bbf7d0; color: #166534; }
+
+    /* KaTeX 公式段 */
+    .formula-lines { font-size: 0.72rem; color: var(--pl-text-faint); line-height: 2.0; margin-top: 12px; }
+
+    /* 懸掛點控制區 */
+    .pendulum-title { font-size: 0.72rem; color: var(--pl-text-dim); font-weight: 700; margin: 10px 0 8px; }
+    .hint-box { font-size: 0.68rem; color: var(--pl-text-faint); background: var(--pl-accent-bg);
+        padding: 9px 10px; border-left: 3px solid var(--pl-accent); border-radius: 6px;
+        margin-top: 10px; line-height: 1.6; }
+
+    /* 動作按鈕變體 */
+    .btn-launch { background: var(--pl-accent); border-color: var(--pl-accent-deep); color: #fff; }
+    .btn-launch:hover { background: var(--pl-accent-deep); }
+    .btn-sub { background: var(--pl-inset); color: var(--pl-text-dim); }
+    .btn-sub:hover { background: var(--pl-card-head); }
+    .btn-sub.active { border-color: var(--pl-accent); background: var(--pl-accent-bg); color: var(--pl-accent-deep); box-shadow: 0 0 0 1px var(--pl-accent); }
+    @keyframes pulse-anim { 0% { box-shadow: 0 0 0 0 rgba(2,132,199,0.5); } 70% { box-shadow: 0 0 0 8px rgba(2,132,199,0); } 100% { box-shadow: 0 0 0 0 rgba(2,132,199,0); } }
+    .btn-pulse-effect { animation: pulse-anim 2s infinite; }
+</style>
 </head>
 <body>
 
-    <div id="container">
-        <div id="canvas-container">
-            
+<!-- ═══════════ 頂欄 ═══════════ -->
+<div id="topbar">
+    <div style="display:flex;align-items:center;gap:16px;">
+        <button type="button" class="panel-toggle-btn" id="btn-toggle-left">
+            <span>☰</span> <span data-i18n="topbar.controls">控制</span>
+        </button>
+        <div class="title-block">
+            <h1 data-i18n="topbar.title">⚡ 勻強電場與粒子動力學</h1>
+            <p data-i18n="topbar.subtitle">HKDSE Physics · Book 4 · Chapter 1 · 平行板電容器</p>
+        </div>
+    </div>
+    <div class="tb-actions">
+        <button type="button" class="panel-toggle-btn" id="btn-toggle-right">
+            <span>📖</span> <span data-i18n="topbar.info">資訊</span>
+        </button>
+    </div>
+</div>
+
+<div id="main">
+
+    <!-- ═══════════ 左側控制面板 ═══════════ -->
+    <div id="left-panel">
+
+        <div class="card">
+            <div class="card-header">🧪 <span data-i18n="panel.mode.title">實驗模式</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <div class="mode-label" data-i18n="panel.mode.label">實驗模式 Mode</div>
+                <select id="mode-select" class="pl-select">
+                    <option value="parabolic" selected data-i18n="mode.parabolic">模式一：水平拋物線偏轉</option>
+                    <option value="millikan" data-i18n="mode.millikan">模式二：密立根油滴平衡 (Eq=mg)</option>
+                    <option value="pendulum" data-i18n="mode.pendulum">模式三：懸垂帶電小球平衡 (Pendulum)</option>
+                </select>
+                <button class="action-btn btn-launch btn-pulse-effect" id="btn-launch" data-i18n="btn.launch" style="width:100%;margin-top:10px;">🚀 重新放置小球 (Release)</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">🎚️ <span data-i18n="panel.params.title">主控參數</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <div class="slider-row">
+                    <div class="slider-head"><label data-i18n="slider.voltage">電壓 Voltage (V)</label><span class="val" id="v-val">2000 V</span></div>
+                    <input type="range" id="v-slider" min="0" max="10000" step="50" value="2000">
+                </div>
+                <div class="slider-row">
+                    <div class="slider-head"><label data-i18n="slider.distance">板距 Distance (d)</label><span class="val" id="d-val">10.0 cm</span></div>
+                    <input type="range" id="d-slider" min="4" max="20" step="0.1" value="10.0">
+                </div>
+                <div class="slider-row">
+                    <div class="slider-head"><label data-i18n="slider.charge">電荷量 Charge (q)</label><span class="val" id="q-val">-1.0 × 10⁻³ C</span></div>
+                    <input type="range" id="q-slider" min="-5.0" max="5.0" step="0.1" value="-1.0">
+                </div>
+                <div class="slider-row">
+                    <div class="slider-head"><label data-i18n="slider.mass">質量 Mass (m)</label><span class="val" id="m-val">1.0 kg</span></div>
+                    <input type="range" id="m-slider" min="0.1" max="5.0" step="0.1" value="1.0">
+                </div>
+
+                <div id="pendulum-controls" style="display:none;">
+                    <div class="pendulum-title" data-i18n="pendulum.title">📍 勻強電場證明 (可移動懸掛點)</div>
+                    <div class="slider-row">
+                        <div class="slider-head"><label data-i18n="pendulum.pivotX">懸掛點 X 座標 (cm)</label><span class="val" id="pivot-x-val">0.0</span></div>
+                        <input type="range" id="pivot-x-slider" min="-3" max="3" step="0.1" value="0.0">
+                    </div>
+                    <div class="slider-row">
+                        <div class="slider-head"><label data-i18n="pendulum.pivotY">懸掛點 Y 座標 (cm)</label><span class="val" id="pivot-y-val">12.0</span></div>
+                        <input type="range" id="pivot-y-slider" min="4" max="24" step="0.1" value="12.0">
+                    </div>
+                    <div class="hint-box" data-i18n-html="pendulum.hint">💡 嘗試<b>直接拖動畫面中的紫色點</b>。<br>👉 系統已更新物理邊界，確保小球<b>永遠不會掉出或穿透</b>平行電板的範圍！</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">👁️ <span data-i18n="panel.visual.title">環境與視覺設定</span><span class="chevron">▾</span></div>
+            <div class="card-body">
+                <label class="toggle-row"><input type="checkbox" class="pl-switch" id="efield-toggle" checked><span><span data-i18n="opt.efield">↗️ 顯示動態電場線</span> (<span class="math-katex">\vec{E}</span>)</span></label>
+                <label class="toggle-row"><input type="checkbox" class="pl-switch" id="fbd-toggle" checked><span data-i18n="opt.fbd">📊 實時隔離體圖 (FBD 綁定粒子)</span></label>
+                <label class="toggle-row"><input type="checkbox" class="pl-switch" id="gravity-toggle"><span><span data-i18n="opt.gravity">🌍 考慮重力</span> (<span class="math-katex">g=9.81\text{ m/s}^2</span>)</span></label>
+
+                <button class="action-btn btn-sub" id="btn-swap-plates" data-i18n="btn.swap" style="width:100%;margin-top:8px;">🔄 互換極板位置 (+ / -)</button>
+                <button class="action-btn btn-sub" id="btn-view-toggle" style="width:100%;margin-top:6px;">🎥 切換至純平 2D 橫切面 (2D View)</button>
+            </div>
+        </div>
+
+        <button class="action-btn btn-reset" id="btn-reset" data-i18n="btn.reset" style="width:100%;">🔄 重置所有參數</button>
+    </div>
+
+    <!-- ═══════════ 中央 3D 視圖 ═══════════ -->
+    <div id="canvas-wrap">
+        <div id="view3d">
             <div id="label-w" class="fbd-label" style="color: #27ae60;">W</div>
             <div id="label-fe" class="fbd-label" style="color: #e74c3c;">F<sub style="font-size: 11px;">e</sub></div>
             <div id="label-t" class="fbd-label" style="color: #8e44ad;">T</div>
-
-            <div id="info">
-                <h2>⚡ 實時物理數據</h2>
-                <p><strong>電場 E :</strong> <span id="data-e" class="value-display">20000 V/m</span></p>
-                
-                <div id="data-standard">
-                    <p><strong>加速度 a :</strong> <span id="data-a" class="value-display">0.00 m/s²</span></p>
-                    <p><strong>X 座標 :</strong> <span id="data-x" class="value-display">-0.15 m</span></p>
-                    <p><strong>Y 座標 :</strong> <span id="data-y" class="value-display">0.00 m</span></p>
-                </div>
-                
-                <div id="data-pendulum" style="display:none;">
-                    <p><strong>偏轉角 θ :</strong> <span id="data-theta" class="value-display">0.0°</span></p>
-                    <p><strong>繩張力 T :</strong> <span id="data-t-val" class="value-display">0.00 N</span></p>
-                    <p><strong>重力 W :</strong> <span id="data-w" class="value-display">0.00 N</span></p>
-                </div>
-
-                <hr style="margin: 15px 0; border: 0; border-top: 1px solid #ddd;">
-                
-                <p id="math-standard" style="font-size: 13px; color: #777; display: block; line-height: 1.8;">
-                    電場強度: <span class="math-katex">E = \frac{V}{d}</span><br>
-                    淨作用力: <span class="math-katex">F_{net} = F_e - W</span><br>
-                    加速度: <span class="math-katex">a = \frac{F_{net}}{m}</span>
-                </p>
-                <p id="math-pendulum" style="font-size: 13px; color: #777; display: none; line-height: 1.8;">
-                    電場強度: <span class="math-katex">E = \frac{V}{d}</span><br>
-                    平衡角關係: <span class="math-katex">\tan\theta = \frac{F_e}{W}</span><br>
-                    張力平衡: <span class="math-katex">T = \sqrt{W^2 + F_e^2}</span>
-                </p>
-            </div>
-
-            <button id="show-panel-btn">⬅️ 顯示控制面板</button>
-        </div>
-
-        <div id="controls">
-            <button class="action-btn" id="hide-panel-btn">隱藏面板 ➡️</button>
-            <h1>🎛️ 實驗控制台</h1>
-
-            <div class="control-group" style="background: #fff3e0; border-left: 4px solid #e67e22; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-                <div class="control-item" style="margin-bottom: 12px;">
-                    <label style="color: #d35400;">實驗模式 Mode</label>
-                    <select id="mode-select">
-                        <option value="parabolic" selected>模式一：水平拋物線偏轉</option>
-                        <option value="millikan">模式二：密立根油滴平衡 (Eq=mg)</option>
-                        <option value="pendulum">模式三：懸垂帶電小球平衡 (Pendulum)</option>
-                    </select>
-                </div>
-                <button class="action-btn btn-pulse-effect" id="btn-launch">🚀 重新放置小球 (Release)</button>
-            </div>
-
-            <details class="control-group" open>
-                <summary>主控參數 (Parameters)</summary>
-                <div class="details-content">
-                    <div class="control-item">
-                        <label>電壓 Voltage (V) <span class="value-display" id="v-val">2000 V</span></label>
-                        <input type="range" id="v-slider" min="0" max="10000" step="50" value="2000">
-                    </div>
-                    <div class="control-item">
-                        <label>板距 Distance (d) <span class="value-display" id="d-val">10.0 cm</span></label>
-                        <input type="range" id="d-slider" min="4" max="20" step="0.1" value="10.0">
-                    </div>
-                    <div class="control-item">
-                        <label>電荷量 Charge (q) <span class="value-display" id="q-val">-1.0 × 10⁻³ C</span></label>
-                        <input type="range" id="q-slider" min="-5.0" max="5.0" step="0.1" value="-1.0">
-                    </div>
-                    <div class="control-item">
-                        <label>質量 Mass (m) <span class="value-display" id="m-val">1.0 kg</span></label>
-                        <input type="range" id="m-slider" min="0.1" max="5.0" step="0.1" value="1.0">
-                    </div>
-
-                    <div id="pendulum-controls" style="display:none; padding-top:15px; border-top:1px dashed #ccc; margin-top:15px;">
-                        <h4 style="font-size: 14px; color: #8e44ad; margin-bottom: 10px;">📍 勻強電場證明 (可移動懸掛點)</h4>
-                        <div class="control-item">
-                            <label style="color:#666;">懸掛點 X 座標 (cm) <span class="value-display" id="pivot-x-val" style="color:#8e44ad;">0.0</span></label>
-                            <input type="range" id="pivot-x-slider" min="-3" max="3" step="0.1" value="0.0">
-                        </div>
-                        <div class="control-item">
-                            <label style="color:#666;">懸掛點 Y 座標 (cm) <span class="value-display" id="pivot-y-val" style="color:#8e44ad;">12.0</span></label>
-                            <input type="range" id="pivot-y-slider" min="4" max="24" step="0.1" value="12.0">
-                        </div>
-                        <div class="hint-box">
-                            💡 嘗試<b>直接拖動畫面中的紫色點</b>。<br>
-                            👉 系統已更新物理邊界，確保小球<b>永遠不會掉出或穿透</b>平行電板的範圍！
-                        </div>
-                    </div>
-
-                </div>
-            </details>
-
-            <details class="control-group display" open>
-                <summary>環境與視覺設定 (Visuals)</summary>
-                <div class="details-content">
-                    <label class="checkbox-label">
-                        <input type="checkbox" id="efield-toggle" checked> ↗️ 顯示動態電場線 (<span class="math-katex">\vec{E}</span>)
-                    </label>
-                    <label class="checkbox-label" style="color: #1f4037;">
-                        <input type="checkbox" id="fbd-toggle" checked> 📊 實時隔離體圖 (FBD 綁定粒子)
-                    </label>
-                    <label class="checkbox-label" style="color: #d35400; margin-bottom: 15px; border-bottom: 1px solid #ddd; padding-bottom: 10px;">
-                        <input type="checkbox" id="gravity-toggle"> 🌍 考慮重力 (<span class="math-katex">g=9.81\text{ m/s}^2</span>)
-                    </label>
-
-                    <button id="btn-swap-plates" class="action-btn btn-sub-action">🔄 互換極板位置 (+ / -)</button>
-                    <button id="btn-view-toggle" class="action-btn btn-sub-action" style="background: rgba(103, 58, 183, 0.1); color: #673ab7; border-color: rgba(103, 58, 183, 0.3);">🎥 切換至純平 2D 橫切面 (2D View)</button>
-                </div>
-            </details>
-
-            <button class="action-btn" id="btn-reset" style="background: #95a5a6; color: #fff;">🔄 重置所有參數</button>
+            <div id="hint" data-i18n="status.hint">🖱️ 左鍵旋轉視角 · 滾輪縮放 · 懸垂模式可拖動紫色懸掛點</div>
         </div>
     </div>
 
-    <!-- sim3d-load-guard: three.js 模組載入失敗提示 -->
-    <script>
-      window.__sim3dOK = false;
-      window.addEventListener('load', function () {
+    <!-- ═══════════ 右側資訊面板 ═══════════ -->
+    <div id="right-panel">
+
+        <div class="formula-box">
+            <h4>⚡ <span data-i18n="data.title">實時物理數據</span></h4>
+            <div class="readout-grid">
+                <div class="readout-cell rc-e" style="grid-column:1/-1;"><small data-i18n="readout.e">電場 E</small><span id="data-e">20000 V/m</span></div>
+            </div>
+            <div id="data-standard" style="margin-top:6px;">
+                <div class="readout-grid">
+                    <div class="readout-cell rc-a"><small data-i18n="readout.a">加速度 a</small><span id="data-a">0.00 m/s²</span></div>
+                    <div class="readout-cell rc-x"><small data-i18n="readout.x">X 座標</small><span id="data-x">-0.15 m</span></div>
+                    <div class="readout-cell rc-y" style="grid-column:1/-1;"><small data-i18n="readout.y">Y 座標</small><span id="data-y">0.00 m</span></div>
+                </div>
+            </div>
+            <div id="data-pendulum" style="margin-top:6px;display:none;">
+                <div class="readout-grid">
+                    <div class="readout-cell rc-th"><small data-i18n="readout.theta">偏轉角 θ</small><span id="data-theta">0.0°</span></div>
+                    <div class="readout-cell rc-t"><small data-i18n="readout.tension">繩張力 T</small><span id="data-t-val">0.00 N</span></div>
+                    <div class="readout-cell rc-w" style="grid-column:1/-1;"><small data-i18n="readout.w">重力 W</small><span id="data-w">0.00 N</span></div>
+                </div>
+            </div>
+
+            <div id="math-standard" class="formula-lines">
+                <span data-i18n="formula.eStrength">電場強度:</span> <span class="math-katex">E = \frac{V}{d}</span><br>
+                <span data-i18n="formula.fnet">淨作用力:</span> <span class="math-katex">F_{net} = F_e - W</span><br>
+                <span data-i18n="formula.accel">加速度:</span> <span class="math-katex">a = \frac{F_{net}}{m}</span>
+            </div>
+            <div id="math-pendulum" class="formula-lines" style="display:none;">
+                <span data-i18n="formula.eStrength">電場強度:</span> <span class="math-katex">E = \frac{V}{d}</span><br>
+                <span data-i18n="formula.balanceAngle">平衡角關係:</span> <span class="math-katex">\tan\theta = \frac{F_e}{W}</span><br>
+                <span data-i18n="formula.tension2">張力平衡:</span> <span class="math-katex">T = \sqrt{W^2 + F_e^2}</span>
+            </div>
+        </div>
+
+        <div class="guide-box">
+            <h4>📘 <span data-i18n="guide.title">逐步引導</span></h4>
+            <div id="guide-text"></div>
+            <div id="guide-step-no"></div>
+            <div class="guide-nav">
+                <button type="button" onclick="PhysLab.guide.go(-1)" data-i18n="guide.prev">← 上一步</button>
+                <button type="button" onclick="PhysLab.guide.go(1)" data-i18n="guide.next">下一步 →</button>
+            </div>
+        </div>
+
+        <div class="quiz-box">
+            <h4>📝 <span data-i18n="quiz.title">概念測驗</span></h4>
+            <div class="quiz-q" id="quiz-q"></div>
+            <div class="quiz-options" id="quiz-options"></div>
+            <div id="quiz-feedback"></div>
+            <button type="button" id="quiz-next" onclick="PhysLab.quiz.next()" data-i18n="quiz.nextBtn">下一題 →</button>
+        </div>
+
+    </div>
+</div>
+
+<!-- ═══════════ 頁面字典（zh 必填；en 缺字自動回退 zh） ═══════════ -->
+<script>
+PhysLab.i18n.register({
+    zh: {
+        'topbar.title': '⚡ 勻強電場與粒子動力學',
+        'topbar.subtitle': 'HKDSE Physics · Book 4 · Chapter 1 · 平行板電容器',
+        'topbar.controls': '控制',
+        'topbar.info': '資訊',
+
+        'panel.mode.title': '實驗模式',
+        'panel.mode.label': '實驗模式 Mode',
+        'mode.parabolic': '模式一：水平拋物線偏轉',
+        'mode.millikan': '模式二：密立根油滴平衡 (Eq=mg)',
+        'mode.pendulum': '模式三：懸垂帶電小球平衡 (Pendulum)',
+        'btn.launch': '🚀 重新放置小球 (Release)',
+
+        'panel.params.title': '主控參數',
+        'slider.voltage': '電壓 Voltage (V)',
+        'slider.distance': '板距 Distance (d)',
+        'slider.charge': '電荷量 Charge (q)',
+        'slider.mass': '質量 Mass (m)',
+
+        'pendulum.title': '📍 勻強電場證明 (可移動懸掛點)',
+        'pendulum.pivotX': '懸掛點 X 座標 (cm)',
+        'pendulum.pivotY': '懸掛點 Y 座標 (cm)',
+        'pendulum.hint': '💡 嘗試<b>直接拖動畫面中的紫色點</b>。<br>👉 系統已更新物理邊界，確保小球<b>永遠不會掉出或穿透</b>平行電板的範圍！',
+
+        'panel.visual.title': '環境與視覺設定',
+        'opt.efield': '↗️ 顯示動態電場線',
+        'opt.fbd': '📊 實時隔離體圖 (FBD 綁定粒子)',
+        'opt.gravity': '🌍 考慮重力',
+        'btn.swap': '🔄 互換極板位置 (+ / -)',
+        'btn.viewTo2d': '🎥 切換至純平 2D 橫切面 (2D View)',
+        'btn.viewTo3d': '🎥 切換回 3D 透視視角 (3D View)',
+        'btn.reset': '🔄 重置所有參數',
+
+        'status.hint': '🖱️ 左鍵旋轉視角 · 滾輪縮放 · 懸垂模式可拖動紫色懸掛點',
+
+        'data.title': '實時物理數據',
+        'readout.e': '電場 E',
+        'readout.a': '加速度 a',
+        'readout.x': 'X 座標',
+        'readout.y': 'Y 座標',
+        'readout.theta': '偏轉角 θ',
+        'readout.tension': '繩張力 T',
+        'readout.w': '重力 W',
+
+        'formula.eStrength': '電場強度:',
+        'formula.fnet': '淨作用力:',
+        'formula.accel': '加速度:',
+        'formula.balanceAngle': '平衡角關係:',
+        'formula.tension2': '張力平衡:',
+
+        'guide.title': '逐步引導',
+        'guide.prev': '← 上一步',
+        'guide.next': '下一步 →',
+        'guide.steps': [
+            '步驟 1：本模擬器示範帶電粒子在平行板「勻強電場」中的運動。左上選單可切換三種情境。',
+            '步驟 2：調整<b>電壓 V</b> 與<b>板距 d</b>，觀察電場 <b>E = V/d</b> 的變化；電場線密度會即時反映 E 的大小。',
+            '步驟 3：改變<b>電荷量 q</b> 與<b>質量 m</b>，按「重新放置小球」再釋放，觀察拋物線偏轉軌跡。',
+            '步驟 4：開啟「考慮重力」比較電力 Fₑ 與重力 W；密立根模式下兩者可達平衡（qE = mg）。',
+            '步驟 5：切換至「懸垂帶電小球」模式，拖動紫色懸掛點，驗證電場處處均勻（同一偏轉角）。'
+        ],
+
+        'quiz.title': '概念測驗',
+        'quiz.nextBtn': '下一題 →',
+        'quiz.bank': [
+            {
+                q: '平行板間的勻強電場 E 與電壓 V、板距 d 的關係為？',
+                opts: ['E = V · d', 'E = V / d', 'E = d / V', 'E = V + d'],
+                ans: 1,
+                exp: 'E = V / d：勻強電場中，電場強度等於兩板電位差除以板間距離。'
+            },
+            {
+                q: '電壓不變下，將板距 d 增大，板間電場 E 會如何變化？',
+                opts: ['增大', '減小', '不變', '先增後減'],
+                ans: 1,
+                exp: '由 E = V / d，電壓固定時 d 增大則 E 減小。'
+            },
+            {
+                q: '一顆帶負電的粒子置於方向朝下的電場中，所受電力方向為？',
+                opts: ['向下', '向上', '向左', '為零'],
+                ans: 1,
+                exp: '電力 F = qE；負電荷受力方向與電場方向相反，故電場朝下時電力朝上。'
+            },
+            {
+                q: '密立根油滴實驗中，油滴靜止懸浮時電力與重力的關係為？',
+                opts: ['qE = mg', 'qE = 2mg', 'qE 恆大於 mg', 'qE = 0'],
+                ans: 0,
+                exp: '平衡時電力等於重力：qE = mg，油滴不受淨力而懸浮不動。'
+            }
+        ]
+    },
+    en: {
+        /* 英文翻譯待補（key 與 zh 相同；缺字自動回退 zh） */
+    }
+});
+</script>
+
+<!-- ═══════════ three.js 模組載入失敗守衛（classic script；與 module 並存） ═══════════ -->
+<script>
+    window.__sim3dOK = false;
+    window.addEventListener('load', function () {
         setTimeout(function () {
-          if (window.__sim3dOK || document.getElementById('sim3d-load-error')) return;
-          var o = document.createElement('div');
-          o.id = 'sim3d-load-error';
-          o.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;background:#0f172a;color:#fff;font-family:system-ui,\'Noto Sans HK\',sans-serif;font-size:18px;line-height:1.7';
-          o.innerHTML = '⚠️ 無法載入 3D 元件（three.js）<br>請檢查網路連線後重新整理頁面。';
-          document.body.appendChild(o);
+            if (window.__sim3dOK) return;
+            window.PhysLab.ui.showBlocker(window.PhysLab.i18n.t('sim3d.loadError'));
         }, 6000);
-      });
-    </script>
+    });
+</script>
 
-    <script type="module">
-        import * as THREE from 'three';
-        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+<!-- ═══════════ 場景 · 物理 · GSAP（ES module；逐字保留，僅改容器尺寸與 UI 接線） ═══════════ -->
+<script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-        // --- 面板收合邏輯 ---
-        const controlsPanel = document.getElementById('controls');
-        const showBtn = document.getElementById('show-panel-btn');
-        const hideBtn = document.getElementById('hide-panel-btn');
-        hideBtn.addEventListener('click', () => { controlsPanel.classList.add('hidden'); showBtn.style.display = 'block'; setTimeout(() => window.dispatchEvent(new Event('resize')), 400); });
-        showBtn.addEventListener('click', () => { controlsPanel.classList.remove('hidden'); showBtn.style.display = 'none'; setTimeout(() => window.dispatchEvent(new Event('resize')), 400); });
+    // --- 面板收合邏輯（改用共用 chrome：PhysLab.ui.bindPanelToggle，接回原 resize 流程） ---
+    function scheduleResize() { requestAnimationFrame(function () { window.dispatchEvent(new Event('resize')); }); }
+    window.PhysLab.ui.bindPanelToggle('btn-toggle-left', 'left-panel', scheduleResize);
+    window.PhysLab.ui.bindPanelToggle('btn-toggle-right', 'right-panel', scheduleResize);
 
-        // --- 場景與渲染器設定 ---
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0xf0f4f8); 
-        
-        const canvasContainer = document.getElementById('canvas-container');
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(canvasContainer.clientWidth, window.innerHeight);
-        renderer.setPixelRatio(window.devicePixelRatio);
-        canvasContainer.appendChild(renderer.domElement);
-        window.__sim3dOK = true;
-        (function(){ var e = document.getElementById('sim3d-load-error'); if (e) e.remove(); })();
+    // --- 場景與渲染器設定 ---
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xe2e6eb);
 
-        // --- 相機系統 ---
-        const aspect = canvasContainer.clientWidth / window.innerHeight;
-        const perspCamera = new THREE.PerspectiveCamera(45, aspect, 0.1, 1000);
-        perspCamera.position.set(0, 10, 60); 
-        const fog3D = new THREE.Fog(0xf0f4f8, 40, 120);
-        scene.fog = fog3D; 
+    const canvasContainer = document.getElementById('view3d');
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    canvasContainer.appendChild(renderer.domElement);
+    window.__sim3dOK = true;
+    window.PhysLab.ui.hideBlocker();
 
-        const viewSize = 18; 
-        const orthoCamera = new THREE.OrthographicCamera(-viewSize * aspect, viewSize * aspect, viewSize, -viewSize, 0.1, 1000);
-        orthoCamera.position.set(0, 10, 45);
-        orthoCamera.lookAt(0, 10, 0);
+    // --- 相機系統 ---
+    const aspect = canvasContainer.clientWidth / canvasContainer.clientHeight;
+    const perspCamera = new THREE.PerspectiveCamera(45, aspect, 0.1, 1000);
+    perspCamera.position.set(0, 10, 60);
+    const fog3D = new THREE.Fog(0xe2e6eb, 40, 120);
+    scene.fog = fog3D;
 
-        let activeCamera = perspCamera;
-        let is2DView = false;
+    const viewSize = 18;
+    const orthoCamera = new THREE.OrthographicCamera(-viewSize * aspect, viewSize * aspect, viewSize, -viewSize, 0.1, 1000);
+    orthoCamera.position.set(0, 10, 45);
+    orthoCamera.lookAt(0, 10, 0);
 
-        const controls = new OrbitControls(activeCamera, renderer.domElement);
-        controls.enableDamping = true;
-        controls.dampingFactor = 0.05;
-        controls.target.set(0, 5, 0);
+    let activeCamera = perspCamera;
+    let is2DView = false;
 
-        // --- 光源設定 ---
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
-        scene.add(ambientLight);
-        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        dirLight.position.set(15, 30, 20);
-        scene.add(dirLight);
+    const controls = new OrbitControls(activeCamera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.target.set(0, 5, 0);
 
-        // --- 智能貼圖生成器 ---
-        function createExactTexture(sign, physWidth, physHeight, bgColorHex, textColorHex) {
-            const pixelsPerUnit = 64; 
-            const canvas = document.createElement('canvas');
-            canvas.width = Math.max(1, Math.round(physWidth * pixelsPerUnit));
-            canvas.height = Math.max(1, Math.round(physHeight * pixelsPerUnit));
-            
-            const ctx = canvas.getContext('2d');
-            ctx.fillStyle = bgColorHex;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = textColorHex;
-            
-            if (physHeight >= physWidth * 2) {
-                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                let fontSize = canvas.width * 0.8;
-                ctx.font = `bold ${Math.round(fontSize)}px sans-serif`;
-                let stepY = canvas.width * 1.5; 
-                for (let y = stepY / 2; y < canvas.height; y += stepY) { ctx.fillText(sign, canvas.width / 2, y + fontSize * 0.05); }
-            } else if (physWidth >= physHeight * 2) {
-                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                let fontSize = canvas.height * 0.8;
-                ctx.font = `bold ${Math.round(fontSize)}px sans-serif`;
-                let stepX = canvas.height * 1.5;
-                for (let x = stepX / 2; x < canvas.width; x += stepX) { ctx.fillText(sign, x, canvas.height / 2 + fontSize * 0.05); }
+    // --- 光源設定 ---
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
+    scene.add(ambientLight);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    dirLight.position.set(15, 30, 20);
+    scene.add(dirLight);
+
+    // --- 智能貼圖生成器 ---
+    function createExactTexture(sign, physWidth, physHeight, bgColorHex, textColorHex) {
+        const pixelsPerUnit = 64;
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(physWidth * pixelsPerUnit));
+        canvas.height = Math.max(1, Math.round(physHeight * pixelsPerUnit));
+
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = bgColorHex;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = textColorHex;
+
+        if (physHeight >= physWidth * 2) {
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            let fontSize = canvas.width * 0.8;
+            ctx.font = `bold ${Math.round(fontSize)}px sans-serif`;
+            let stepY = canvas.width * 1.5;
+            for (let y = stepY / 2; y < canvas.height; y += stepY) { ctx.fillText(sign, canvas.width / 2, y + fontSize * 0.05); }
+        } else if (physWidth >= physHeight * 2) {
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            let fontSize = canvas.height * 0.8;
+            ctx.font = `bold ${Math.round(fontSize)}px sans-serif`;
+            let stepX = canvas.height * 1.5;
+            for (let x = stepX / 2; x < canvas.width; x += stepX) { ctx.fillText(sign, x, canvas.height / 2 + fontSize * 0.05); }
+        } else {
+            const stepX = 2.0 * pixelsPerUnit; const stepY = 2.0 * pixelsPerUnit;
+            let fontSize = Math.min(stepX, stepY) * 0.8;
+            ctx.font = `bold ${Math.round(fontSize)}px sans-serif`;
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            for (let x = stepX / 2; x < canvas.width; x += stepX) {
+                for (let y = stepY / 2; y < canvas.height; y += stepY) { ctx.fillText(sign, x, y + fontSize * 0.05); }
+            }
+        }
+
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+        return tex;
+    }
+
+    // --- 創建極板群組 ---
+    const hPlateGroup = new THREE.Group();
+    const vPlateGroup = new THREE.Group();
+    scene.add(hPlateGroup); scene.add(vPlateGroup);
+
+    const hGeom = new THREE.BoxGeometry(32, 0.6, 12);
+    const matPosH_LR = new THREE.MeshStandardMaterial({ map: createExactTexture('+', 12, 0.6, '#ff2222', '#ffffff'), metalness: 0.1, roughness: 0.5 });
+    const matPosH_TB = new THREE.MeshStandardMaterial({ map: createExactTexture('+', 32, 12, '#ff2222', '#ffffff'), metalness: 0.1, roughness: 0.5 });
+    const matPosH_Front = new THREE.MeshBasicMaterial({ map: createExactTexture('+', 32, 0.6, '#ff2222', '#ffffff') });
+    const matPosH_Back = new THREE.MeshStandardMaterial({ map: createExactTexture('+', 32, 0.6, '#ff2222', '#ffffff'), metalness: 0.1, roughness: 0.5 });
+    const hPosMaterials = [matPosH_LR, matPosH_LR, matPosH_TB, matPosH_TB, matPosH_Front, matPosH_Back];
+
+    const matNegH_LR = new THREE.MeshStandardMaterial({ map: createExactTexture('-', 12, 0.6, '#00aaff', '#ffffff'), metalness: 0.1, roughness: 0.5 });
+    const matNegH_TB = new THREE.MeshStandardMaterial({ map: createExactTexture('-', 32, 12, '#00aaff', '#ffffff'), metalness: 0.1, roughness: 0.5 });
+    const matNegH_Front = new THREE.MeshBasicMaterial({ map: createExactTexture('-', 32, 0.6, '#00aaff', '#ffffff') });
+    const matNegH_Back = new THREE.MeshStandardMaterial({ map: createExactTexture('-', 32, 0.6, '#00aaff', '#ffffff'), metalness: 0.1, roughness: 0.5 });
+    const hNegMaterials = [matNegH_LR, matNegH_LR, matNegH_TB, matNegH_TB, matNegH_Front, matNegH_Back];
+
+    const hPlatePositive = new THREE.Mesh(hGeom, hPosMaterials);
+    const hPlateNegative = new THREE.Mesh(hGeom, hNegMaterials);
+    hPlateGroup.add(hPlatePositive); hPlateGroup.add(hPlateNegative);
+
+    const vGeom = new THREE.BoxGeometry(0.6, 24, 12);
+    const matPosV_LR = new THREE.MeshStandardMaterial({ map: createExactTexture('+', 12, 24, '#ff2222', '#ffffff'), metalness: 0.1, roughness: 0.5 });
+    const matPosV_TB = new THREE.MeshStandardMaterial({ map: createExactTexture('+', 0.6, 12, '#ff2222', '#ffffff'), metalness: 0.1, roughness: 0.5 });
+    const matPosV_Front = new THREE.MeshBasicMaterial({ map: createExactTexture('+', 0.6, 24, '#ff2222', '#ffffff') });
+    const matPosV_Back = new THREE.MeshStandardMaterial({ map: createExactTexture('+', 0.6, 24, '#ff2222', '#ffffff'), metalness: 0.1, roughness: 0.5 });
+    const vPosMaterials = [matPosV_LR, matPosV_LR, matPosV_TB, matPosV_TB, matPosV_Front, matPosV_Back];
+
+    const matNegV_LR = new THREE.MeshStandardMaterial({ map: createExactTexture('-', 12, 24, '#00aaff', '#ffffff'), metalness: 0.1, roughness: 0.5 });
+    const matNegV_TB = new THREE.MeshStandardMaterial({ map: createExactTexture('-', 0.6, 12, '#00aaff', '#ffffff'), metalness: 0.1, roughness: 0.5 });
+    const matNegV_Front = new THREE.MeshBasicMaterial({ map: createExactTexture('-', 0.6, 24, '#00aaff', '#ffffff') });
+    const matNegV_Back = new THREE.MeshStandardMaterial({ map: createExactTexture('-', 0.6, 24, '#00aaff', '#ffffff'), metalness: 0.1, roughness: 0.5 });
+    const vNegMaterials = [matNegV_LR, matNegV_LR, matNegV_TB, matNegV_TB, matNegV_Front, matNegV_Back];
+
+    const vPlatePositive = new THREE.Mesh(vGeom, vPosMaterials);
+    const vPlateNegative = new THREE.Mesh(vGeom, vNegMaterials);
+    vPlateGroup.add(vPlatePositive); vPlateGroup.add(vPlateNegative);
+
+    let isSwapped = false;
+
+    // --- 動態電場線網格建構 ---
+    // 預先建立最高密度的網格，隨後依據 E 的大小動態控制 visible
+    const hLinesGroup = new THREE.Group();
+    const vLinesGroup = new THREE.Group();
+    scene.add(hLinesGroup); scene.add(vLinesGroup);
+    const arrowColor = 0x2c3e50;
+
+    // 建立水平極板的電場線 (間隔 1)
+    for (let x = -15; x <= 15; x += 1) {
+        for (let z = -3; z <= 3; z += 3) {
+            const arrow = new THREE.ArrowHelper(new THREE.Vector3(0, -1, 0), new THREE.Vector3(x, 0, z), 5, arrowColor, 1.2, 0.8);
+            arrow.userData = { x: x, z: z, isCenterRow: (z === 0) };
+            hLinesGroup.add(arrow);
+        }
+    }
+    // 建立垂直極板的電場線 (間隔 1)
+    for (let y = 0; y <= 24; y += 1) {
+        for (let z = -3; z <= 3; z += 3) {
+            const arrow = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, y, z), 5, arrowColor, 1.2, 0.8);
+            arrow.userData = { y: y, z: z, isCenterRow: (z === 0) };
+            vLinesGroup.add(arrow);
+        }
+    }
+
+    // --- 懸垂線與懸掛點 (Pendulum String & Pivot) ---
+    const pivotGeom = new THREE.BoxGeometry(1.2, 1.2, 1.2);
+    const pivotMat = new THREE.MeshStandardMaterial({ color: 0x8e44ad, roughness: 0.3 });
+    const pivotMesh = new THREE.Mesh(pivotGeom, pivotMat);
+    scene.add(pivotMesh);
+
+    const stringGeom = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 12.0, 0), new THREE.Vector3(0, 0, 0)]);
+    const stringMat = new THREE.LineBasicMaterial({ color: 0x555555, linewidth: 2 });
+    const stringMesh = new THREE.Line(stringGeom, stringMat);
+    scene.add(stringMesh);
+
+    // --- 粒子與軌跡 ---
+    const particleGeom = new THREE.SphereGeometry(0.5, 32, 32);
+    const particleMat = new THREE.MeshStandardMaterial({ roughness: 0.4 });
+    const particleMesh = new THREE.Mesh(particleGeom, particleMat);
+    scene.add(particleMesh);
+
+    const MAX_POINTS = 1000;
+    const trailGeom = new THREE.BufferGeometry();
+    const trailPositions = new Float32Array(MAX_POINTS * 3);
+    trailGeom.setAttribute('position', new THREE.BufferAttribute(trailPositions, 3));
+    const trailMat = new THREE.LineBasicMaterial({ color: 0x2c3e50, linewidth: 3 });
+    const trailLine = new THREE.Line(trailGeom, trailMat);
+    scene.add(trailLine);
+
+    // --- 隔離體圖 (FBD) 3D箭頭 ---
+    const arrowW = new THREE.ArrowHelper(new THREE.Vector3(0, -1, 0), new THREE.Vector3(), 1, 0x27ae60, 0.6, 0.5);
+    const arrowFe = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(), 1, 0xe74c3c, 0.6, 0.5);
+    const arrowT = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(), 1, 0x8e44ad, 0.6, 0.5);
+    scene.add(arrowW); scene.add(arrowFe); scene.add(arrowT);
+
+    // --- 物理變數 ---
+    let isRunning = false;
+    let posMeters = new THREE.Vector3();
+    let velMeters = new THREE.Vector3();
+    let theta = 0;
+    let omega = 0;
+
+    const PENDULUM_L_m = 0.04;
+
+    const RENDER_SCALE = 100;
+    const TIME_SCALE = 0.04;
+    let pointCount = 0;
+    let frameCounter = 0;
+
+    // --- DOM 元素獲取 ---
+    const vSlider = document.getElementById('v-slider');
+    const dSlider = document.getElementById('d-slider');
+    const qSlider = document.getElementById('q-slider');
+    const mSlider = document.getElementById('m-slider');
+    const modeSelect = document.getElementById('mode-select');
+    const gravToggle = document.getElementById('gravity-toggle');
+    const efieldToggle = document.getElementById('efield-toggle');
+    const fbdToggle = document.getElementById('fbd-toggle');
+    const btnSwapPlates = document.getElementById('btn-swap-plates');
+    const btnViewToggle = document.getElementById('btn-view-toggle');
+    const pivotXSlider = document.getElementById('pivot-x-slider');
+    const pivotYSlider = document.getElementById('pivot-y-slider');
+
+    btnSwapPlates.addEventListener('click', () => { isSwapped = !isSwapped; updateScene(); });
+
+    btnViewToggle.addEventListener('click', () => {
+        is2DView = !is2DView;
+        if (is2DView) {
+            activeCamera = orthoCamera; controls.object = activeCamera;
+            activeCamera.position.set(0, 10, 45); activeCamera.lookAt(0, 10, 0); controls.target.set(0, 10, 0);
+            controls.enableRotate = false; controls.update();
+            scene.fog = null;
+            btnViewToggle.textContent = window.PhysLab.i18n.t('btn.viewTo3d');
+            btnViewToggle.classList.add('active');
+        } else {
+            activeCamera = perspCamera; controls.object = activeCamera; controls.enableRotate = true;
+            activeCamera.position.set(0, 10, 60); activeCamera.lookAt(0, 5, 0); controls.target.set(0, 5, 0);
+            scene.fog = fog3D;
+            btnViewToggle.textContent = window.PhysLab.i18n.t('btn.viewTo2d');
+            btnViewToggle.classList.remove('active');
+        }
+        updateScene();
+    });
+
+    // 2D/3D 切換鈕文字（動態，data-i18n 無法涵蓋）：初始化並在語言切換時重繪
+    function refreshDynamicText() {
+        btnViewToggle.textContent = is2DView
+            ? window.PhysLab.i18n.t('btn.viewTo3d')
+            : window.PhysLab.i18n.t('btn.viewTo2d');
+    }
+    refreshDynamicText();
+    window.PhysLab.i18n.onChange(refreshDynamicText);
+
+    // --- 對數縮放函數 (計算 FBD 箭頭長度) ---
+    // 使用 ln(1+F) 函數，保證數值小的時候清晰，數值大的時候增長放緩，且不會超過設定的 Max (12)
+    function calculateArrowLength(forceValue) {
+        if (forceValue === 0) return 0.1;
+        let length = 1.5 * Math.log(1 + Math.abs(forceValue));
+        return Math.min(Math.max(0.1, length), 12); // 最短 0.1，最長 12
+    }
+
+    function updateFBDSim() {
+        if (!fbdToggle.checked) {
+            arrowW.visible = false; arrowFe.visible = false; arrowT.visible = false; return;
+        }
+
+        const V = parseFloat(vSlider.value);
+        const d_m = parseFloat(dSlider.value) / 100;
+        const q_C = parseFloat(qSlider.value) * 1e-3;
+        const m_kg = parseFloat(mSlider.value);
+        const mode = modeSelect.value;
+
+        const fieldDirX = isSwapped ? -1 : 1;
+        const fieldDirY = isSwapped ? 1 : -1;
+        const E = V / d_m;
+
+        const W_force = gravToggle.checked ? m_kg * 9.81 : 0;
+        let lenW = calculateArrowLength(W_force);
+
+        if (mode === 'pendulum') {
+            const F_e_x = q_C * E * fieldDirX;
+            let lenFe = calculateArrowLength(F_e_x);
+
+            const T_mag = W_force * Math.cos(theta) + F_e_x * Math.sin(theta) + m_kg * PENDULUM_L_m * omega * omega;
+            let lenT = calculateArrowLength(T_mag);
+
+            if (W_force > 0) {
+                arrowW.visible = true; arrowW.position.copy(particleMesh.position);
+                arrowW.setDirection(new THREE.Vector3(0, -1, 0));
+                arrowW.setLength(lenW, Math.min(0.6, lenW * 0.4), Math.min(0.5, lenW * 0.3));
+                arrowW.userData.offset = new THREE.Vector3(0, -lenW, 0);
+            } else arrowW.visible = false;
+
+            if (Math.abs(F_e_x) > 0) {
+                arrowFe.visible = true; arrowFe.position.copy(particleMesh.position);
+                const dirX = F_e_x >= 0 ? 1 : -1;
+                arrowFe.setDirection(new THREE.Vector3(dirX, 0, 0));
+                arrowFe.setLength(lenFe, Math.min(0.6, lenFe * 0.4), Math.min(0.5, lenFe * 0.3));
+                arrowFe.userData.offset = new THREE.Vector3(dirX * lenFe, 0, 0);
+            } else arrowFe.visible = false;
+
+            if (T_mag > 0) {
+                arrowT.visible = true; arrowT.position.copy(particleMesh.position);
+                const dirT = new THREE.Vector3(-Math.sin(theta), Math.cos(theta), 0).normalize();
+                arrowT.setDirection(dirT);
+                arrowT.setLength(lenT, Math.min(0.6, lenT * 0.4), Math.min(0.5, lenT * 0.3));
+                arrowT.userData.offset = dirT.multiplyScalar(lenT);
+            } else arrowT.visible = false;
+
+            document.getElementById('data-t-val').innerText = T_mag.toFixed(2) + ' N';
+            document.getElementById('data-w').innerText = W_force.toFixed(2) + ' N';
+
+        } else {
+            const F_e_y = q_C * E * fieldDirY;
+            let lenFe = calculateArrowLength(F_e_y);
+            arrowT.visible = false;
+
+            let offsetW = 0, offsetFe = 0;
+            if (gravToggle.checked && F_e_y < 0) { offsetW = 0.4; offsetFe = -0.4; }
+
+            if (W_force > 0) {
+                arrowW.visible = true; arrowW.position.copy(particleMesh.position).add(new THREE.Vector3(offsetW, 0, 0));
+                arrowW.setDirection(new THREE.Vector3(0, -1, 0));
+                arrowW.setLength(lenW, Math.min(0.6, lenW * 0.4), Math.min(0.5, lenW * 0.3));
+                arrowW.userData.offset = new THREE.Vector3(offsetW, -lenW, 0);
+            } else arrowW.visible = false;
+
+            if (Math.abs(F_e_y) > 0) {
+                arrowFe.visible = true; arrowFe.position.copy(particleMesh.position).add(new THREE.Vector3(offsetFe, 0, 0));
+                const dirY = F_e_y >= 0 ? 1 : -1;
+                arrowFe.setDirection(new THREE.Vector3(0, dirY, 0));
+                arrowFe.setLength(lenFe, Math.min(0.6, lenFe * 0.4), Math.min(0.5, lenFe * 0.3));
+                arrowFe.userData.offset = new THREE.Vector3(offsetFe, dirY * lenFe, 0);
+            } else arrowFe.visible = false;
+        }
+    }
+
+    function updateLabels() {
+        if (!fbdToggle.checked) {
+            document.getElementById('label-w').style.display = 'none'; document.getElementById('label-fe').style.display = 'none'; document.getElementById('label-t').style.display = 'none'; return;
+        }
+
+        const width = canvasContainer.clientWidth; const height = canvasContainer.clientHeight;
+
+        const updateLabel = (arrow, labelId) => {
+            const el = document.getElementById(labelId);
+            if (arrow.visible) {
+                const extend = arrow.userData.offset.clone().normalize().multiplyScalar(0.8);
+                const pos = particleMesh.position.clone().add(arrow.userData.offset).add(extend);
+                pos.project(activeCamera);
+                el.style.display = 'block';
+                el.style.left = `${(pos.x * .5 + .5) * width}px`;
+                el.style.top = `${(pos.y * -.5 + .5) * height}px`;
+            } else el.style.display = 'none';
+        };
+
+        updateLabel(arrowW, 'label-w');
+        updateLabel(arrowFe, 'label-fe');
+        updateLabel(arrowT, 'label-t');
+    }
+
+    function updateScene() {
+        const V = parseFloat(vSlider.value);
+        const d_cm = parseFloat(dSlider.value);
+        const d_m = d_cm / 100;
+        const q_val = parseFloat(qSlider.value);
+        const q_C = q_val * 1e-3;
+        const m_kg = parseFloat(mSlider.value);
+        const mode = modeSelect.value;
+
+        document.getElementById('v-val').innerText = `${V} V`;
+        document.getElementById('d-val').innerText = `${d_cm.toFixed(1)} cm`;
+        document.getElementById('q-val').innerText = `${q_val > 0 ? '+' : ''}${q_val.toFixed(1)} × 10⁻³ C`;
+        document.getElementById('m-val').innerText = `${m_kg.toFixed(1)} kg`;
+
+        const E = V / d_m;
+        document.getElementById('data-e').innerText = E.toFixed(0) + ' V/m';
+
+        // --- 判斷電場線密度 ---
+        // Max E 可達 10000 / 0.04 = 250,000 V/m
+        let stepMod = 6;
+        if (E >= 200000) stepMod = 1;      // 最高密度：每一格顯示
+        else if (E >= 120000) stepMod = 2; // 間隔 2
+        else if (E >= 60000) stepMod = 3;  // 間隔 3
+        else if (E >= 20000) stepMod = 4;  // 間隔 4
+        else if (E > 0) stepMod = 6;       // 最低密度：間隔 6
+
+        if (mode === 'pendulum') {
+            hPlateGroup.visible = false; vPlateGroup.visible = true;
+            hLinesGroup.visible = false; vLinesGroup.visible = efieldToggle.checked;
+            stringMesh.visible = true; pivotMesh.visible = true;
+
+            document.getElementById('data-standard').style.display = 'none';
+            document.getElementById('data-pendulum').style.display = 'block';
+            document.getElementById('math-standard').style.display = 'none';
+            document.getElementById('math-pendulum').style.display = 'block';
+            document.getElementById('pendulum-controls').style.display = 'block';
+
+            const maxPivotX = Math.max(0, d_cm / 2 - 0.5);
+            pivotXSlider.min = -maxPivotX; pivotXSlider.max = maxPivotX;
+            if (parseFloat(pivotXSlider.value) > maxPivotX) pivotXSlider.value = maxPivotX;
+            if (parseFloat(pivotXSlider.value) < -maxPivotX) pivotXSlider.value = -maxPivotX;
+
+            const pivotX_cm = parseFloat(pivotXSlider.value);
+            const pivotY_cm = parseFloat(pivotYSlider.value);
+            document.getElementById('pivot-x-val').innerText = pivotX_cm.toFixed(1);
+            document.getElementById('pivot-y-val').innerText = pivotY_cm.toFixed(1);
+
+            const pivotX_m = pivotX_cm / 100;
+            const pivotY_m = pivotY_cm / 100;
+
+            pivotMesh.position.set(pivotX_m * RENDER_SCALE, pivotY_m * RENDER_SCALE, 0);
+
+            const targetX = d_cm / 2;
+            if (!isSwapped) {
+                vPlatePositive.position.set(-targetX - 0.3, 12, 0);
+                vPlateNegative.position.set(targetX + 0.3, 12, 0);
             } else {
-                const stepX = 2.0 * pixelsPerUnit; const stepY = 2.0 * pixelsPerUnit;
-                let fontSize = Math.min(stepX, stepY) * 0.8;
-                ctx.font = `bold ${Math.round(fontSize)}px sans-serif`;
-                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                for (let x = stepX / 2; x < canvas.width; x += stepX) {
-                    for (let y = stepY / 2; y < canvas.height; y += stepY) { ctx.fillText(sign, x, y + fontSize * 0.05); }
-                }
-            }
-            
-            const tex = new THREE.CanvasTexture(canvas);
-            tex.colorSpace = THREE.SRGBColorSpace;
-            tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
-            return tex;
-        }
-
-        // --- 創建極板群組 ---
-        const hPlateGroup = new THREE.Group(); 
-        const vPlateGroup = new THREE.Group(); 
-        scene.add(hPlateGroup); scene.add(vPlateGroup);
-
-        const hGeom = new THREE.BoxGeometry(32, 0.6, 12);
-        const matPosH_LR = new THREE.MeshStandardMaterial({ map: createExactTexture('+', 12, 0.6, '#ff2222', '#ffffff'), metalness: 0.1, roughness: 0.5 });
-        const matPosH_TB = new THREE.MeshStandardMaterial({ map: createExactTexture('+', 32, 12, '#ff2222', '#ffffff'), metalness: 0.1, roughness: 0.5 });
-        const matPosH_Front = new THREE.MeshBasicMaterial({ map: createExactTexture('+', 32, 0.6, '#ff2222', '#ffffff') });
-        const matPosH_Back = new THREE.MeshStandardMaterial({ map: createExactTexture('+', 32, 0.6, '#ff2222', '#ffffff'), metalness: 0.1, roughness: 0.5 });
-        const hPosMaterials = [matPosH_LR, matPosH_LR, matPosH_TB, matPosH_TB, matPosH_Front, matPosH_Back];
-
-        const matNegH_LR = new THREE.MeshStandardMaterial({ map: createExactTexture('-', 12, 0.6, '#00aaff', '#ffffff'), metalness: 0.1, roughness: 0.5 });
-        const matNegH_TB = new THREE.MeshStandardMaterial({ map: createExactTexture('-', 32, 12, '#00aaff', '#ffffff'), metalness: 0.1, roughness: 0.5 });
-        const matNegH_Front = new THREE.MeshBasicMaterial({ map: createExactTexture('-', 32, 0.6, '#00aaff', '#ffffff') });
-        const matNegH_Back = new THREE.MeshStandardMaterial({ map: createExactTexture('-', 32, 0.6, '#00aaff', '#ffffff'), metalness: 0.1, roughness: 0.5 });
-        const hNegMaterials = [matNegH_LR, matNegH_LR, matNegH_TB, matNegH_TB, matNegH_Front, matNegH_Back];
-
-        const hPlatePositive = new THREE.Mesh(hGeom, hPosMaterials);
-        const hPlateNegative = new THREE.Mesh(hGeom, hNegMaterials);
-        hPlateGroup.add(hPlatePositive); hPlateGroup.add(hPlateNegative);
-
-        const vGeom = new THREE.BoxGeometry(0.6, 24, 12);
-        const matPosV_LR = new THREE.MeshStandardMaterial({ map: createExactTexture('+', 12, 24, '#ff2222', '#ffffff'), metalness: 0.1, roughness: 0.5 });
-        const matPosV_TB = new THREE.MeshStandardMaterial({ map: createExactTexture('+', 0.6, 12, '#ff2222', '#ffffff'), metalness: 0.1, roughness: 0.5 });
-        const matPosV_Front = new THREE.MeshBasicMaterial({ map: createExactTexture('+', 0.6, 24, '#ff2222', '#ffffff') });
-        const matPosV_Back = new THREE.MeshStandardMaterial({ map: createExactTexture('+', 0.6, 24, '#ff2222', '#ffffff'), metalness: 0.1, roughness: 0.5 });
-        const vPosMaterials = [matPosV_LR, matPosV_LR, matPosV_TB, matPosV_TB, matPosV_Front, matPosV_Back];
-
-        const matNegV_LR = new THREE.MeshStandardMaterial({ map: createExactTexture('-', 12, 24, '#00aaff', '#ffffff'), metalness: 0.1, roughness: 0.5 });
-        const matNegV_TB = new THREE.MeshStandardMaterial({ map: createExactTexture('-', 0.6, 12, '#00aaff', '#ffffff'), metalness: 0.1, roughness: 0.5 });
-        const matNegV_Front = new THREE.MeshBasicMaterial({ map: createExactTexture('-', 0.6, 24, '#00aaff', '#ffffff') });
-        const matNegV_Back = new THREE.MeshStandardMaterial({ map: createExactTexture('-', 0.6, 24, '#00aaff', '#ffffff'), metalness: 0.1, roughness: 0.5 });
-        const vNegMaterials = [matNegV_LR, matNegV_LR, matNegV_TB, matNegV_TB, matNegV_Front, matNegV_Back];
-
-        const vPlatePositive = new THREE.Mesh(vGeom, vPosMaterials);
-        const vPlateNegative = new THREE.Mesh(vGeom, vNegMaterials);
-        vPlateGroup.add(vPlatePositive); vPlateGroup.add(vPlateNegative);
-
-        let isSwapped = false;
-
-        // --- 動態電場線網格建構 ---
-        // 預先建立最高密度的網格，隨後依據 E 的大小動態控制 visible
-        const hLinesGroup = new THREE.Group();
-        const vLinesGroup = new THREE.Group();
-        scene.add(hLinesGroup); scene.add(vLinesGroup);
-        const arrowColor = 0x2c3e50; 
-        
-        // 建立水平極板的電場線 (間隔 1)
-        for (let x = -15; x <= 15; x += 1) {
-            for (let z = -3; z <= 3; z += 3) {
-                const arrow = new THREE.ArrowHelper(new THREE.Vector3(0, -1, 0), new THREE.Vector3(x, 0, z), 5, arrowColor, 1.2, 0.8);
-                arrow.userData = { x: x, z: z, isCenterRow: (z === 0) }; 
-                hLinesGroup.add(arrow);
-            }
-        }
-        // 建立垂直極板的電場線 (間隔 1)
-        for (let y = 0; y <= 24; y += 1) { 
-            for (let z = -3; z <= 3; z += 3) {
-                const arrow = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, y, z), 5, arrowColor, 1.2, 0.8);
-                arrow.userData = { y: y, z: z, isCenterRow: (z === 0) }; 
-                vLinesGroup.add(arrow);
-            }
-        }
-
-        // --- 懸垂線與懸掛點 (Pendulum String & Pivot) ---
-        const pivotGeom = new THREE.BoxGeometry(1.2, 1.2, 1.2); 
-        const pivotMat = new THREE.MeshStandardMaterial({ color: 0x8e44ad, roughness: 0.3 });
-        const pivotMesh = new THREE.Mesh(pivotGeom, pivotMat);
-        scene.add(pivotMesh);
-
-        const stringGeom = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 12.0, 0), new THREE.Vector3(0, 0, 0)]);
-        const stringMat = new THREE.LineBasicMaterial({ color: 0x555555, linewidth: 2 });
-        const stringMesh = new THREE.Line(stringGeom, stringMat);
-        scene.add(stringMesh);
-
-        // --- 粒子與軌跡 ---
-        const particleGeom = new THREE.SphereGeometry(0.5, 32, 32);
-        const particleMat = new THREE.MeshStandardMaterial({ roughness: 0.4 }); 
-        const particleMesh = new THREE.Mesh(particleGeom, particleMat);
-        scene.add(particleMesh);
-
-        const MAX_POINTS = 1000;
-        const trailGeom = new THREE.BufferGeometry();
-        const trailPositions = new Float32Array(MAX_POINTS * 3);
-        trailGeom.setAttribute('position', new THREE.BufferAttribute(trailPositions, 3));
-        const trailMat = new THREE.LineBasicMaterial({ color: 0x2c3e50, linewidth: 3 });
-        const trailLine = new THREE.Line(trailGeom, trailMat);
-        scene.add(trailLine);
-
-        // --- 隔離體圖 (FBD) 3D箭頭 ---
-        const arrowW = new THREE.ArrowHelper(new THREE.Vector3(0, -1, 0), new THREE.Vector3(), 1, 0x27ae60, 0.6, 0.5);
-        const arrowFe = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(), 1, 0xe74c3c, 0.6, 0.5);
-        const arrowT = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(), 1, 0x8e44ad, 0.6, 0.5);
-        scene.add(arrowW); scene.add(arrowFe); scene.add(arrowT);
-
-        // --- 物理變數 ---
-        let isRunning = false;
-        let posMeters = new THREE.Vector3();
-        let velMeters = new THREE.Vector3();
-        let theta = 0; 
-        let omega = 0; 
-        
-        const PENDULUM_L_m = 0.04; 
-        
-        const RENDER_SCALE = 100;
-        const TIME_SCALE = 0.04;
-        let pointCount = 0;
-        let frameCounter = 0;
-
-        // --- DOM 元素獲取 ---
-        const vSlider = document.getElementById('v-slider');
-        const dSlider = document.getElementById('d-slider');
-        const qSlider = document.getElementById('q-slider');
-        const mSlider = document.getElementById('m-slider');
-        const modeSelect = document.getElementById('mode-select');
-        const gravToggle = document.getElementById('gravity-toggle');
-        const efieldToggle = document.getElementById('efield-toggle');
-        const fbdToggle = document.getElementById('fbd-toggle');
-        const btnSwapPlates = document.getElementById('btn-swap-plates');
-        const btnViewToggle = document.getElementById('btn-view-toggle');
-        const pivotXSlider = document.getElementById('pivot-x-slider');
-        const pivotYSlider = document.getElementById('pivot-y-slider');
-
-        btnSwapPlates.addEventListener('click', () => { isSwapped = !isSwapped; updateScene(); });
-
-        btnViewToggle.addEventListener('click', () => {
-            is2DView = !is2DView;
-            if (is2DView) {
-                activeCamera = orthoCamera; controls.object = activeCamera;
-                activeCamera.position.set(0, 10, 45); activeCamera.lookAt(0, 10, 0); controls.target.set(0, 10, 0); 
-                controls.enableRotate = false; controls.update();
-                scene.fog = null; 
-                btnViewToggle.innerText = '🎥 切換回 3D 透視視角 (3D View)';
-                btnViewToggle.style.background = 'rgba(41, 128, 185, 0.1)'; btnViewToggle.style.color = '#2980b9';
-            } else {
-                activeCamera = perspCamera; controls.object = activeCamera; controls.enableRotate = true; 
-                activeCamera.position.set(0, 10, 60); activeCamera.lookAt(0, 5, 0); controls.target.set(0, 5, 0);
-                scene.fog = fog3D;
-                btnViewToggle.innerText = '🎥 切換至純平 2D 橫切面 (2D View)';
-                btnViewToggle.style.background = 'rgba(103, 58, 183, 0.1)'; btnViewToggle.style.color = '#673ab7';
-            }
-            updateScene();
-        });
-
-        // --- 對數縮放函數 (計算 FBD 箭頭長度) ---
-        // 使用 ln(1+F) 函數，保證數值小的時候清晰，數值大的時候增長放緩，且不會超過設定的 Max (12)
-        function calculateArrowLength(forceValue) {
-            if (forceValue === 0) return 0.1;
-            let length = 1.5 * Math.log(1 + Math.abs(forceValue));
-            return Math.min(Math.max(0.1, length), 12); // 最短 0.1，最長 12
-        }
-
-        function updateFBDSim() {
-            if (!fbdToggle.checked) {
-                arrowW.visible = false; arrowFe.visible = false; arrowT.visible = false; return;
+                vPlateNegative.position.set(-targetX - 0.3, 12, 0);
+                vPlatePositive.position.set(targetX + 0.3, 12, 0);
             }
 
-            const V = parseFloat(vSlider.value);
-            const d_m = parseFloat(dSlider.value) / 100;
-            const q_C = parseFloat(qSlider.value) * 1e-3;
-            const m_kg = parseFloat(mSlider.value);
-            const mode = modeSelect.value;
-            
-            const fieldDirX = isSwapped ? -1 : 1; 
-            const fieldDirY = isSwapped ? 1 : -1; 
-            const E = V / d_m;
-            
-            const W_force = gravToggle.checked ? m_kg * 9.81 : 0;
-            let lenW = calculateArrowLength(W_force);
+            // 刷新垂直電場線
+            const fieldDirX = isSwapped ? -1 : 1;
+            vLinesGroup.children.forEach(arrow => {
+                const shouldShow = (Math.abs(arrow.userData.y) % stepMod === 0);
+                if (is2DView && !arrow.userData.isCenterRow) arrow.visible = false;
+                else arrow.visible = efieldToggle.checked && shouldShow && V > 0;
 
-            if (mode === 'pendulum') {
-                const F_e_x = q_C * E * fieldDirX;
-                let lenFe = calculateArrowLength(F_e_x);
-                
-                const T_mag = W_force * Math.cos(theta) + F_e_x * Math.sin(theta) + m_kg * PENDULUM_L_m * omega * omega;
-                let lenT = calculateArrowLength(T_mag);
+                arrow.position.x = isSwapped ? d_cm / 2 : -d_cm / 2;
+                arrow.setDirection(new THREE.Vector3(fieldDirX, 0, 0));
+                arrow.setLength(d_cm, 1.2, 0.8);
+            });
 
-                if (W_force > 0) {
-                    arrowW.visible = true; arrowW.position.copy(particleMesh.position);
-                    arrowW.setDirection(new THREE.Vector3(0, -1, 0));
-                    arrowW.setLength(lenW, Math.min(0.6, lenW * 0.4), Math.min(0.5, lenW * 0.3));
-                    arrowW.userData.offset = new THREE.Vector3(0, -lenW, 0);
-                } else arrowW.visible = false;
-
-                if (Math.abs(F_e_x) > 0) {
-                    arrowFe.visible = true; arrowFe.position.copy(particleMesh.position);
-                    const dirX = F_e_x >= 0 ? 1 : -1;
-                    arrowFe.setDirection(new THREE.Vector3(dirX, 0, 0));
-                    arrowFe.setLength(lenFe, Math.min(0.6, lenFe * 0.4), Math.min(0.5, lenFe * 0.3));
-                    arrowFe.userData.offset = new THREE.Vector3(dirX * lenFe, 0, 0);
-                } else arrowFe.visible = false;
-
-                if (T_mag > 0) {
-                    arrowT.visible = true; arrowT.position.copy(particleMesh.position);
-                    const dirT = new THREE.Vector3(-Math.sin(theta), Math.cos(theta), 0).normalize();
-                    arrowT.setDirection(dirT);
-                    arrowT.setLength(lenT, Math.min(0.6, lenT * 0.4), Math.min(0.5, lenT * 0.3));
-                    arrowT.userData.offset = dirT.multiplyScalar(lenT);
-                } else arrowT.visible = false;
-
-                document.getElementById('data-t-val').innerText = T_mag.toFixed(2) + ' N';
-                document.getElementById('data-w').innerText = W_force.toFixed(2) + ' N';
-
-            } else {
-                const F_e_y = q_C * E * fieldDirY;
-                let lenFe = calculateArrowLength(F_e_y);
-                arrowT.visible = false;
-
-                let offsetW = 0, offsetFe = 0;
-                if (gravToggle.checked && F_e_y < 0) { offsetW = 0.4; offsetFe = -0.4; } 
-
-                if (W_force > 0) {
-                    arrowW.visible = true; arrowW.position.copy(particleMesh.position).add(new THREE.Vector3(offsetW, 0, 0));
-                    arrowW.setDirection(new THREE.Vector3(0, -1, 0));
-                    arrowW.setLength(lenW, Math.min(0.6, lenW * 0.4), Math.min(0.5, lenW * 0.3));
-                    arrowW.userData.offset = new THREE.Vector3(offsetW, -lenW, 0);
-                } else arrowW.visible = false;
-
-                if (Math.abs(F_e_y) > 0) {
-                    arrowFe.visible = true; arrowFe.position.copy(particleMesh.position).add(new THREE.Vector3(offsetFe, 0, 0));
-                    const dirY = F_e_y >= 0 ? 1 : -1;
-                    arrowFe.setDirection(new THREE.Vector3(0, dirY, 0));
-                    arrowFe.setLength(lenFe, Math.min(0.6, lenFe * 0.4), Math.min(0.5, lenFe * 0.3));
-                    arrowFe.userData.offset = new THREE.Vector3(offsetFe, dirY * lenFe, 0);
-                } else arrowFe.visible = false;
-            }
-        }
-
-        function updateLabels() {
-            if (!fbdToggle.checked) {
-                document.getElementById('label-w').style.display = 'none'; document.getElementById('label-fe').style.display = 'none'; document.getElementById('label-t').style.display = 'none'; return;
-            }
-
-            const width = canvasContainer.clientWidth; const height = window.innerHeight;
-
-            const updateLabel = (arrow, labelId) => {
-                const el = document.getElementById(labelId);
-                if (arrow.visible) {
-                    const extend = arrow.userData.offset.clone().normalize().multiplyScalar(0.8);
-                    const pos = particleMesh.position.clone().add(arrow.userData.offset).add(extend);
-                    pos.project(activeCamera);
-                    el.style.display = 'block';
-                    el.style.left = `${(pos.x * .5 + .5) * width}px`;
-                    el.style.top = `${(pos.y * -.5 + .5) * height}px`;
-                } else el.style.display = 'none';
-            };
-
-            updateLabel(arrowW, 'label-w');
-            updateLabel(arrowFe, 'label-fe');
-            updateLabel(arrowT, 'label-t');
-        }
-
-        function updateScene() {
-            const V = parseFloat(vSlider.value);
-            const d_cm = parseFloat(dSlider.value);
-            const d_m = d_cm / 100;
-            const q_val = parseFloat(qSlider.value);
-            const q_C = q_val * 1e-3;
-            const m_kg = parseFloat(mSlider.value);
-            const mode = modeSelect.value;
-            
-            document.getElementById('v-val').innerText = `${V} V`;
-            document.getElementById('d-val').innerText = `${d_cm.toFixed(1)} cm`;
-            document.getElementById('q-val').innerText = `${q_val > 0 ? '+' : ''}${q_val.toFixed(1)} × 10⁻³ C`;
-            document.getElementById('m-val').innerText = `${m_kg.toFixed(1)} kg`;
-
-            const E = V / d_m;
-            document.getElementById('data-e').innerText = E.toFixed(0) + ' V/m';
-
-            // --- 判斷電場線密度 ---
-            // Max E 可達 10000 / 0.04 = 250,000 V/m
-            let stepMod = 6; 
-            if (E >= 200000) stepMod = 1;      // 最高密度：每一格顯示
-            else if (E >= 120000) stepMod = 2; // 間隔 2
-            else if (E >= 60000) stepMod = 3;  // 間隔 3
-            else if (E >= 20000) stepMod = 4;  // 間隔 4
-            else if (E > 0) stepMod = 6;       // 最低密度：間隔 6
-
-            if (mode === 'pendulum') {
-                hPlateGroup.visible = false; vPlateGroup.visible = true;
-                hLinesGroup.visible = false; vLinesGroup.visible = efieldToggle.checked;
-                stringMesh.visible = true; pivotMesh.visible = true;
-                
-                document.getElementById('data-standard').style.display = 'none';
-                document.getElementById('data-pendulum').style.display = 'block';
-                document.getElementById('math-standard').style.display = 'none';
-                document.getElementById('math-pendulum').style.display = 'block';
-                document.getElementById('pendulum-controls').style.display = 'block';
-                
-                const maxPivotX = Math.max(0, d_cm / 2 - 0.5);
-                pivotXSlider.min = -maxPivotX; pivotXSlider.max = maxPivotX;
-                if (parseFloat(pivotXSlider.value) > maxPivotX) pivotXSlider.value = maxPivotX;
-                if (parseFloat(pivotXSlider.value) < -maxPivotX) pivotXSlider.value = -maxPivotX;
-                
-                const pivotX_cm = parseFloat(pivotXSlider.value);
-                const pivotY_cm = parseFloat(pivotYSlider.value);
-                document.getElementById('pivot-x-val').innerText = pivotX_cm.toFixed(1);
-                document.getElementById('pivot-y-val').innerText = pivotY_cm.toFixed(1);
-
-                const pivotX_m = pivotX_cm / 100;
-                const pivotY_m = pivotY_cm / 100;
-                
-                pivotMesh.position.set(pivotX_m * RENDER_SCALE, pivotY_m * RENDER_SCALE, 0);
-
-                const targetX = d_cm / 2;
-                if (!isSwapped) {
-                    vPlatePositive.position.set(-targetX - 0.3, 12, 0);
-                    vPlateNegative.position.set(targetX + 0.3, 12, 0);
-                } else {
-                    vPlateNegative.position.set(-targetX - 0.3, 12, 0);
-                    vPlatePositive.position.set(targetX + 0.3, 12, 0);
-                }
-
-                // 刷新垂直電場線
-                const fieldDirX = isSwapped ? -1 : 1;
-                vLinesGroup.children.forEach(arrow => {
-                    const shouldShow = (Math.abs(arrow.userData.y) % stepMod === 0);
-                    if (is2DView && !arrow.userData.isCenterRow) arrow.visible = false;
-                    else arrow.visible = efieldToggle.checked && shouldShow && V > 0;
-                    
-                    arrow.position.x = isSwapped ? d_cm / 2 : -d_cm / 2;
-                    arrow.setDirection(new THREE.Vector3(fieldDirX, 0, 0));
-                    arrow.setLength(d_cm, 1.2, 0.8);
-                });
-
-                if (!isRunning) {
-                    posMeters.x = pivotX_m + PENDULUM_L_m * Math.sin(theta);
-                    posMeters.y = pivotY_m - PENDULUM_L_m * Math.cos(theta);
-                    posMeters.z = 0;
-
-                    const ballRadius_m = 0.005; // 0.5cm
-                    const limitX_m = d_m / 2 - ballRadius_m;
-                    if (posMeters.x > limitX_m) {
-                        posMeters.x = limitX_m;
-                        const sinVal = Math.max(-1, Math.min(1, (limitX_m - pivotX_m) / PENDULUM_L_m));
-                        theta = Math.asin(sinVal);
-                    } else if (posMeters.x < -limitX_m) {
-                        posMeters.x = -limitX_m;
-                        const sinVal = Math.max(-1, Math.min(1, (-limitX_m - pivotX_m) / PENDULUM_L_m));
-                        theta = Math.asin(sinVal);
-                    }
-
-                    particleMesh.position.copy(posMeters).multiplyScalar(RENDER_SCALE);
-                    document.getElementById('data-theta').innerText = (theta * 180 / Math.PI).toFixed(1) + '°';
-                    stringGeom.setFromPoints([pivotMesh.position, particleMesh.position]);
-                }
-            } else {
-                hPlateGroup.visible = true; vPlateGroup.visible = false;
-                hLinesGroup.visible = efieldToggle.checked; vLinesGroup.visible = false;
-                stringMesh.visible = false; pivotMesh.visible = false;
-                
-                document.getElementById('data-standard').style.display = 'block';
-                document.getElementById('data-pendulum').style.display = 'none';
-                document.getElementById('math-standard').style.display = 'block';
-                document.getElementById('math-pendulum').style.display = 'none';
-                document.getElementById('pendulum-controls').style.display = 'none';
-
-                const targetY = d_cm / 2;
-                if (!isSwapped) {
-                    hPlatePositive.position.set(0, targetY + 0.3, 0);
-                    hPlateNegative.position.set(0, -targetY - 0.3, 0);
-                } else {
-                    hPlateNegative.position.set(0, targetY + 0.3, 0);
-                    hPlatePositive.position.set(0, -targetY - 0.3, 0);
-                }
-
-                // 刷新水平電場線
-                const fieldDirY = isSwapped ? 1 : -1;
-                hLinesGroup.children.forEach(arrow => {
-                    const shouldShow = (Math.abs(arrow.userData.x) % stepMod === 0);
-                    if (is2DView && !arrow.userData.isCenterRow) arrow.visible = false;
-                    else arrow.visible = efieldToggle.checked && shouldShow && V > 0;
-
-                    arrow.position.y = isSwapped ? -d_cm / 2 : d_cm / 2;
-                    arrow.setDirection(new THREE.Vector3(0, fieldDirY, 0));
-                    arrow.setLength(d_cm, 1.2, 0.8);
-                });
-
-                if (!isRunning) {
-                    if (mode === 'parabolic') posMeters.set(-0.16, 0, 0); 
-                    else posMeters.set(0, 0, 0);
-                    particleMesh.position.copy(posMeters).multiplyScalar(RENDER_SCALE);
-                    document.getElementById('data-x').innerText = posMeters.x.toFixed(3) + ' m';
-                    document.getElementById('data-y').innerText = posMeters.y.toFixed(3) + ' m';
-                    
-                    const W = gravToggle.checked ? m_kg * 9.81 : 0;
-                    const F_e_y = q_C * E * fieldDirY;
-                    let ay = (F_e_y - W) / m_kg;
-                    document.getElementById('data-a').innerText = ay.toFixed(2) + ' m/s²';
-                }
-            }
-
-            if (q_val < 0) { particleMat.color.setHex(0x00aaff); particleMat.emissive.setHex(0x003366); } 
-            else if (q_val > 0) { particleMat.color.setHex(0xff2222); particleMat.emissive.setHex(0x660000); } 
-            else { particleMat.color.setHex(0x7f8c8d); particleMat.emissive.setHex(0x333333); }
-
-            updateFBDSim();
-        }
-
-        [vSlider, dSlider, qSlider, mSlider, gravToggle, efieldToggle, fbdToggle, pivotXSlider, pivotYSlider].forEach(el => el.addEventListener('input', updateScene));
-
-        modeSelect.addEventListener('change', (e) => {
-            isRunning = false; isSwapped = false; theta = 0; omega = 0;
-            if (e.target.value === 'parabolic') {
-                vSlider.value = 2000; dSlider.value = 10.0; qSlider.value = -1.0; mSlider.value = 1.0;
-                gravToggle.checked = false;
-            } else if (e.target.value === 'millikan') {
-                vSlider.value = 980; dSlider.value = 10.0; qSlider.value = -1.0; mSlider.value = 1.0;
-                gravToggle.checked = true;
-            } else {
-                vSlider.value = 4000; dSlider.value = 16.0; qSlider.value = 5.0; mSlider.value = 2.0;
-                gravToggle.checked = true;
-            }
-            updateScene(); resetTrail();
-        });
-
-        function resetTrail() { pointCount = 0; trailGeom.setDrawRange(0, 0); }
-
-        document.getElementById('btn-launch').addEventListener('click', () => {
-            isRunning = true; resetTrail(); frameCounter = 0; theta = 0; omega = 0;
-            const mode = modeSelect.value;
-            if (mode === 'parabolic') { posMeters.set(-0.16, 0, 0); velMeters.set(5.0, 0, 0); particleMesh.position.copy(posMeters).multiplyScalar(RENDER_SCALE); } 
-            else if (mode === 'millikan') { posMeters.set(0, 0, 0); velMeters.set(0, 0, 0); particleMesh.position.copy(posMeters).multiplyScalar(RENDER_SCALE); }
-            else { 
-                const pivotX_m = parseFloat(pivotXSlider.value) / 100;
-                const pivotY_m = parseFloat(pivotYSlider.value) / 100;
-                posMeters.set(pivotX_m, pivotY_m - PENDULUM_L_m, 0); 
-                velMeters.set(0, 0, 0); 
-                particleMesh.position.copy(posMeters).multiplyScalar(RENDER_SCALE);
-            }
-            updateFBDSim();
-            gsap.from("#btn-launch", { duration: 0.1, scale: 0.95, yoyo: true, repeat: 1 });
-        });
-
-        document.getElementById('btn-reset').addEventListener('click', () => {
-            isRunning = false; resetTrail(); theta = 0; omega = 0; updateScene();
-            gsap.from("#btn-reset", { duration: 0.1, scale: 0.95, yoyo: true, repeat: 1 });
-        });
-
-        const raycaster = new THREE.Raycaster();
-        const pointer = new THREE.Vector2();
-        const planeZ0 = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
-        let isDraggingPivot = false;
-
-        renderer.domElement.addEventListener('pointerdown', (event) => {
-            if (modeSelect.value !== 'pendulum') return;
-            const rect = renderer.domElement.getBoundingClientRect();
-            pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-            pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-            
-            raycaster.setFromCamera(pointer, activeCamera);
-            const intersects = raycaster.intersectObject(pivotMesh);
-            
-            if (intersects.length > 0) {
-                isDraggingPivot = true;
-                controls.enabled = false; 
-                document.body.style.cursor = 'grabbing';
-            }
-        });
-
-        renderer.domElement.addEventListener('pointermove', (event) => {
-            const rect = renderer.domElement.getBoundingClientRect();
-            pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-            pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-
-            if (isDraggingPivot) {
-                raycaster.setFromCamera(pointer, activeCamera);
-                const intersectPoint = new THREE.Vector3();
-                raycaster.ray.intersectPlane(planeZ0, intersectPoint);
-                
-                if (intersectPoint) {
-                    let newX_cm = (intersectPoint.x / RENDER_SCALE) * 100;
-                    let newY_cm = (intersectPoint.y / RENDER_SCALE) * 100;
-
-                    const d_cm = parseFloat(dSlider.value);
-                    const maxPivotX = Math.max(0, d_cm / 2 - 0.5);
-                    
-                    if (newX_cm > maxPivotX) newX_cm = maxPivotX;
-                    if (newX_cm < -maxPivotX) newX_cm = -maxPivotX;
-                    
-                    if (newY_cm > 24) newY_cm = 24;
-                    if (newY_cm < 4) newY_cm = 4;
-
-                    pivotXSlider.value = newX_cm.toFixed(1);
-                    pivotYSlider.value = newY_cm.toFixed(1);
-                    updateScene();
-                }
-            } else if (modeSelect.value === 'pendulum') {
-                raycaster.setFromCamera(pointer, activeCamera);
-                const intersects = raycaster.intersectObject(pivotMesh);
-                if (intersects.length > 0) {
-                    document.body.style.cursor = 'grab'; 
-                } else {
-                    document.body.style.cursor = 'default';
-                }
-            } else {
-                document.body.style.cursor = 'default';
-            }
-        });
-
-        window.addEventListener('pointerup', () => {
-            if (isDraggingPivot) {
-                isDraggingPivot = false;
-                controls.enabled = true; 
-                document.body.style.cursor = 'default';
-            }
-        });
-
-        // 物理循環動畫
-        gsap.ticker.add((time, deltaTime) => {
-            if (!isRunning) return;
-            
-            let dt = Math.min(deltaTime / 1000, 0.05) * TIME_SCALE;
-            const V = parseFloat(vSlider.value);
-            const d_m = parseFloat(dSlider.value) / 100;
-            const q_C = parseFloat(qSlider.value) * 1e-3;
-            const m_kg = parseFloat(mSlider.value);
-            const mode = modeSelect.value;
-            const E = V / d_m;
-            const W = gravToggle.checked ? m_kg * 9.81 : 0;
-
-            if (mode === 'pendulum') {
-                const fieldDirX = isSwapped ? -1 : 1;
-                const F_e_x = q_C * E * fieldDirX;
-                
-                const tau_net = F_e_x * PENDULUM_L_m * Math.cos(theta) - W * PENDULUM_L_m * Math.sin(theta);
-                let alpha = tau_net / (m_kg * PENDULUM_L_m * PENDULUM_L_m);
-
-                omega += alpha * dt;
-                omega *= 0.96; 
-                theta += omega * dt;
-
-                const pivotX_m = parseFloat(pivotXSlider.value) / 100;
-                const pivotY_m = parseFloat(pivotYSlider.value) / 100;
-
+            if (!isRunning) {
                 posMeters.x = pivotX_m + PENDULUM_L_m * Math.sin(theta);
-                posMeters.y = pivotY_m - PENDULUM_L_m * Math.cos(theta); 
+                posMeters.y = pivotY_m - PENDULUM_L_m * Math.cos(theta);
                 posMeters.z = 0;
 
                 const ballRadius_m = 0.005; // 0.5cm
                 const limitX_m = d_m / 2 - ballRadius_m;
-
                 if (posMeters.x > limitX_m) {
                     posMeters.x = limitX_m;
                     const sinVal = Math.max(-1, Math.min(1, (limitX_m - pivotX_m) / PENDULUM_L_m));
                     theta = Math.asin(sinVal);
-                    if (omega > 0) omega *= -0.5; 
                 } else if (posMeters.x < -limitX_m) {
                     posMeters.x = -limitX_m;
                     const sinVal = Math.max(-1, Math.min(1, (-limitX_m - pivotX_m) / PENDULUM_L_m));
                     theta = Math.asin(sinVal);
-                    if (omega < 0) omega *= -0.5; 
                 }
 
                 particleMesh.position.copy(posMeters).multiplyScalar(RENDER_SCALE);
-
-                stringGeom.setFromPoints([pivotMesh.position, particleMesh.position]);
                 document.getElementById('data-theta').innerText = (theta * 180 / Math.PI).toFixed(1) + '°';
-                
+                stringGeom.setFromPoints([pivotMesh.position, particleMesh.position]);
+            }
+        } else {
+            hPlateGroup.visible = true; vPlateGroup.visible = false;
+            hLinesGroup.visible = efieldToggle.checked; vLinesGroup.visible = false;
+            stringMesh.visible = false; pivotMesh.visible = false;
+
+            document.getElementById('data-standard').style.display = 'block';
+            document.getElementById('data-pendulum').style.display = 'none';
+            document.getElementById('math-standard').style.display = 'block';
+            document.getElementById('math-pendulum').style.display = 'none';
+            document.getElementById('pendulum-controls').style.display = 'none';
+
+            const targetY = d_cm / 2;
+            if (!isSwapped) {
+                hPlatePositive.position.set(0, targetY + 0.3, 0);
+                hPlateNegative.position.set(0, -targetY - 0.3, 0);
             } else {
-                const fieldDirY = isSwapped ? 1 : -1;
-                const F_e_y = q_C * E * fieldDirY;
-                let ay = (F_e_y - W) / m_kg;
+                hPlateNegative.position.set(0, targetY + 0.3, 0);
+                hPlatePositive.position.set(0, -targetY - 0.3, 0);
+            }
 
-                velMeters.y += ay * dt; posMeters.x += velMeters.x * dt; posMeters.y += velMeters.y * dt;
+            // 刷新水平電場線
+            const fieldDirY = isSwapped ? 1 : -1;
+            hLinesGroup.children.forEach(arrow => {
+                const shouldShow = (Math.abs(arrow.userData.x) % stepMod === 0);
+                if (is2DView && !arrow.userData.isCenterRow) arrow.visible = false;
+                else arrow.visible = efieldToggle.checked && shouldShow && V > 0;
+
+                arrow.position.y = isSwapped ? -d_cm / 2 : d_cm / 2;
+                arrow.setDirection(new THREE.Vector3(0, fieldDirY, 0));
+                arrow.setLength(d_cm, 1.2, 0.8);
+            });
+
+            if (!isRunning) {
+                if (mode === 'parabolic') posMeters.set(-0.16, 0, 0);
+                else posMeters.set(0, 0, 0);
                 particleMesh.position.copy(posMeters).multiplyScalar(RENDER_SCALE);
-
-                document.getElementById('data-a').innerText = ay.toFixed(2) + ' m/s²';
                 document.getElementById('data-x').innerText = posMeters.x.toFixed(3) + ' m';
                 document.getElementById('data-y').innerText = posMeters.y.toFixed(3) + ' m';
+
+                const W = gravToggle.checked ? m_kg * 9.81 : 0;
+                const F_e_y = q_C * E * fieldDirY;
+                let ay = (F_e_y - W) / m_kg;
+                document.getElementById('data-a').innerText = ay.toFixed(2) + ' m/s²';
             }
-
-            updateFBDSim();
-
-            frameCounter++;
-            if (frameCounter % 2 === 0 && pointCount < MAX_POINTS && mode !== 'pendulum') {
-                trailPositions[pointCount * 3] = particleMesh.position.x;
-                trailPositions[pointCount * 3 + 1] = particleMesh.position.y;
-                trailPositions[pointCount * 3 + 2] = particleMesh.position.z;
-                pointCount++;
-                trailGeom.attributes.position.needsUpdate = true;
-                trailGeom.setDrawRange(0, pointCount);
-            }
-
-            if (mode !== 'pendulum') {
-                const limitY_m = d_m / 2 - 0.005;
-                if (Math.abs(posMeters.y) >= limitY_m) {
-                    isRunning = false; 
-                    posMeters.y = posMeters.y > 0 ? limitY_m : -limitY_m;
-                    particleMesh.position.copy(posMeters).multiplyScalar(RENDER_SCALE);
-                    updateFBDSim();
-                }
-                if (posMeters.x > 0.16 || posMeters.x < -0.16) isRunning = false; 
-            }
-        });
-
-        // 渲染循環
-        function render() {
-            controls.update(); updateLabels(); 
-            renderer.render(scene, activeCamera); 
-            requestAnimationFrame(render);
         }
-        
-        // 視窗縮放自適應
-        window.addEventListener('resize', () => {
-            const width = canvasContainer.clientWidth; const height = window.innerHeight; const newAspect = width / height;
-            perspCamera.aspect = newAspect; perspCamera.updateProjectionMatrix();
-            orthoCamera.left = -viewSize * newAspect; orthoCamera.right = viewSize * newAspect;
-            orthoCamera.top = viewSize; orthoCamera.bottom = -viewSize; orthoCamera.updateProjectionMatrix();
-            renderer.setSize(width, height);
-        });
 
-        updateScene(); render();
-        
-        window.addEventListener('DOMContentLoaded', () => {
-            const maths = document.querySelectorAll('.math-katex');
-            maths.forEach(math => { katex.render(math.textContent, math, { throwOnError: false, displayMode: false }); });
-        });
-    </script>
+        if (q_val < 0) { particleMat.color.setHex(0x00aaff); particleMat.emissive.setHex(0x003366); }
+        else if (q_val > 0) { particleMat.color.setHex(0xff2222); particleMat.emissive.setHex(0x660000); }
+        else { particleMat.color.setHex(0x7f8c8d); particleMat.emissive.setHex(0x333333); }
+
+        updateFBDSim();
+    }
+
+    [vSlider, dSlider, qSlider, mSlider, gravToggle, efieldToggle, fbdToggle, pivotXSlider, pivotYSlider].forEach(el => el.addEventListener('input', updateScene));
+
+    modeSelect.addEventListener('change', (e) => {
+        isRunning = false; isSwapped = false; theta = 0; omega = 0;
+        if (e.target.value === 'parabolic') {
+            vSlider.value = 2000; dSlider.value = 10.0; qSlider.value = -1.0; mSlider.value = 1.0;
+            gravToggle.checked = false;
+        } else if (e.target.value === 'millikan') {
+            vSlider.value = 980; dSlider.value = 10.0; qSlider.value = -1.0; mSlider.value = 1.0;
+            gravToggle.checked = true;
+        } else {
+            vSlider.value = 4000; dSlider.value = 16.0; qSlider.value = 5.0; mSlider.value = 2.0;
+            gravToggle.checked = true;
+        }
+        updateScene(); resetTrail();
+    });
+
+    function resetTrail() { pointCount = 0; trailGeom.setDrawRange(0, 0); }
+
+    document.getElementById('btn-launch').addEventListener('click', () => {
+        isRunning = true; resetTrail(); frameCounter = 0; theta = 0; omega = 0;
+        const mode = modeSelect.value;
+        if (mode === 'parabolic') { posMeters.set(-0.16, 0, 0); velMeters.set(5.0, 0, 0); particleMesh.position.copy(posMeters).multiplyScalar(RENDER_SCALE); }
+        else if (mode === 'millikan') { posMeters.set(0, 0, 0); velMeters.set(0, 0, 0); particleMesh.position.copy(posMeters).multiplyScalar(RENDER_SCALE); }
+        else {
+            const pivotX_m = parseFloat(pivotXSlider.value) / 100;
+            const pivotY_m = parseFloat(pivotYSlider.value) / 100;
+            posMeters.set(pivotX_m, pivotY_m - PENDULUM_L_m, 0);
+            velMeters.set(0, 0, 0);
+            particleMesh.position.copy(posMeters).multiplyScalar(RENDER_SCALE);
+        }
+        updateFBDSim();
+        gsap.from("#btn-launch", { duration: 0.1, scale: 0.95, yoyo: true, repeat: 1 });
+    });
+
+    document.getElementById('btn-reset').addEventListener('click', () => {
+        isRunning = false; resetTrail(); theta = 0; omega = 0; updateScene();
+        gsap.from("#btn-reset", { duration: 0.1, scale: 0.95, yoyo: true, repeat: 1 });
+    });
+
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+    const planeZ0 = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+    let isDraggingPivot = false;
+
+    renderer.domElement.addEventListener('pointerdown', (event) => {
+        if (modeSelect.value !== 'pendulum') return;
+        const rect = renderer.domElement.getBoundingClientRect();
+        pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+        raycaster.setFromCamera(pointer, activeCamera);
+        const intersects = raycaster.intersectObject(pivotMesh);
+
+        if (intersects.length > 0) {
+            isDraggingPivot = true;
+            controls.enabled = false;
+            document.body.style.cursor = 'grabbing';
+        }
+    });
+
+    renderer.domElement.addEventListener('pointermove', (event) => {
+        const rect = renderer.domElement.getBoundingClientRect();
+        pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+        if (isDraggingPivot) {
+            raycaster.setFromCamera(pointer, activeCamera);
+            const intersectPoint = new THREE.Vector3();
+            raycaster.ray.intersectPlane(planeZ0, intersectPoint);
+
+            if (intersectPoint) {
+                let newX_cm = (intersectPoint.x / RENDER_SCALE) * 100;
+                let newY_cm = (intersectPoint.y / RENDER_SCALE) * 100;
+
+                const d_cm = parseFloat(dSlider.value);
+                const maxPivotX = Math.max(0, d_cm / 2 - 0.5);
+
+                if (newX_cm > maxPivotX) newX_cm = maxPivotX;
+                if (newX_cm < -maxPivotX) newX_cm = -maxPivotX;
+
+                if (newY_cm > 24) newY_cm = 24;
+                if (newY_cm < 4) newY_cm = 4;
+
+                pivotXSlider.value = newX_cm.toFixed(1);
+                pivotYSlider.value = newY_cm.toFixed(1);
+                updateScene();
+            }
+        } else if (modeSelect.value === 'pendulum') {
+            raycaster.setFromCamera(pointer, activeCamera);
+            const intersects = raycaster.intersectObject(pivotMesh);
+            if (intersects.length > 0) {
+                document.body.style.cursor = 'grab';
+            } else {
+                document.body.style.cursor = 'default';
+            }
+        } else {
+            document.body.style.cursor = 'default';
+        }
+    });
+
+    window.addEventListener('pointerup', () => {
+        if (isDraggingPivot) {
+            isDraggingPivot = false;
+            controls.enabled = true;
+            document.body.style.cursor = 'default';
+        }
+    });
+
+    // 物理循環動畫
+    gsap.ticker.add((time, deltaTime) => {
+        if (!isRunning) return;
+
+        let dt = Math.min(deltaTime / 1000, 0.05) * TIME_SCALE;
+        const V = parseFloat(vSlider.value);
+        const d_m = parseFloat(dSlider.value) / 100;
+        const q_C = parseFloat(qSlider.value) * 1e-3;
+        const m_kg = parseFloat(mSlider.value);
+        const mode = modeSelect.value;
+        const E = V / d_m;
+        const W = gravToggle.checked ? m_kg * 9.81 : 0;
+
+        if (mode === 'pendulum') {
+            const fieldDirX = isSwapped ? -1 : 1;
+            const F_e_x = q_C * E * fieldDirX;
+
+            const tau_net = F_e_x * PENDULUM_L_m * Math.cos(theta) - W * PENDULUM_L_m * Math.sin(theta);
+            let alpha = tau_net / (m_kg * PENDULUM_L_m * PENDULUM_L_m);
+
+            omega += alpha * dt;
+            omega *= 0.96;
+            theta += omega * dt;
+
+            const pivotX_m = parseFloat(pivotXSlider.value) / 100;
+            const pivotY_m = parseFloat(pivotYSlider.value) / 100;
+
+            posMeters.x = pivotX_m + PENDULUM_L_m * Math.sin(theta);
+            posMeters.y = pivotY_m - PENDULUM_L_m * Math.cos(theta);
+            posMeters.z = 0;
+
+            const ballRadius_m = 0.005; // 0.5cm
+            const limitX_m = d_m / 2 - ballRadius_m;
+
+            if (posMeters.x > limitX_m) {
+                posMeters.x = limitX_m;
+                const sinVal = Math.max(-1, Math.min(1, (limitX_m - pivotX_m) / PENDULUM_L_m));
+                theta = Math.asin(sinVal);
+                if (omega > 0) omega *= -0.5;
+            } else if (posMeters.x < -limitX_m) {
+                posMeters.x = -limitX_m;
+                const sinVal = Math.max(-1, Math.min(1, (-limitX_m - pivotX_m) / PENDULUM_L_m));
+                theta = Math.asin(sinVal);
+                if (omega < 0) omega *= -0.5;
+            }
+
+            particleMesh.position.copy(posMeters).multiplyScalar(RENDER_SCALE);
+
+            stringGeom.setFromPoints([pivotMesh.position, particleMesh.position]);
+            document.getElementById('data-theta').innerText = (theta * 180 / Math.PI).toFixed(1) + '°';
+
+        } else {
+            const fieldDirY = isSwapped ? 1 : -1;
+            const F_e_y = q_C * E * fieldDirY;
+            let ay = (F_e_y - W) / m_kg;
+
+            velMeters.y += ay * dt; posMeters.x += velMeters.x * dt; posMeters.y += velMeters.y * dt;
+            particleMesh.position.copy(posMeters).multiplyScalar(RENDER_SCALE);
+
+            document.getElementById('data-a').innerText = ay.toFixed(2) + ' m/s²';
+            document.getElementById('data-x').innerText = posMeters.x.toFixed(3) + ' m';
+            document.getElementById('data-y').innerText = posMeters.y.toFixed(3) + ' m';
+        }
+
+        updateFBDSim();
+
+        frameCounter++;
+        if (frameCounter % 2 === 0 && pointCount < MAX_POINTS && mode !== 'pendulum') {
+            trailPositions[pointCount * 3] = particleMesh.position.x;
+            trailPositions[pointCount * 3 + 1] = particleMesh.position.y;
+            trailPositions[pointCount * 3 + 2] = particleMesh.position.z;
+            pointCount++;
+            trailGeom.attributes.position.needsUpdate = true;
+            trailGeom.setDrawRange(0, pointCount);
+        }
+
+        if (mode !== 'pendulum') {
+            const limitY_m = d_m / 2 - 0.005;
+            if (Math.abs(posMeters.y) >= limitY_m) {
+                isRunning = false;
+                posMeters.y = posMeters.y > 0 ? limitY_m : -limitY_m;
+                particleMesh.position.copy(posMeters).multiplyScalar(RENDER_SCALE);
+                updateFBDSim();
+            }
+            if (posMeters.x > 0.16 || posMeters.x < -0.16) isRunning = false;
+        }
+    });
+
+    // 渲染循環
+    function render() {
+        controls.update(); updateLabels();
+        renderer.render(scene, activeCamera);
+        requestAnimationFrame(render);
+    }
+
+    // 視窗縮放自適應（改用容器尺寸，非 window.innerHeight） ---
+    window.addEventListener('resize', () => {
+        const width = canvasContainer.clientWidth; const height = canvasContainer.clientHeight; const newAspect = width / height;
+        perspCamera.aspect = newAspect; perspCamera.updateProjectionMatrix();
+        orthoCamera.left = -viewSize * newAspect; orthoCamera.right = viewSize * newAspect;
+        orthoCamera.top = viewSize; orthoCamera.bottom = -viewSize; orthoCamera.updateProjectionMatrix();
+        renderer.setSize(width, height);
+    });
+
+    updateScene(); render();
+
+    // 逐步引導與概念測驗（內容存於 i18n 字典，切換語言自動重繪）
+    window.PhysLab.guide.init({ stepsKey: 'guide.steps' });
+    window.PhysLab.quiz.init({ bankKey: 'quiz.bank' });
+
+    window.addEventListener('DOMContentLoaded', () => {
+        const maths = document.querySelectorAll('.math-katex');
+        maths.forEach(math => { katex.render(math.textContent, math, { throwOnError: false, displayMode: false }); });
+    });
+</script>
 </body>
 </html>
