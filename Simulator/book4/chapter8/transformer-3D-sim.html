@@ -55,6 +55,17 @@
             background: rgba(248,250,252,0.97); backdrop-filter: blur(6px);
             box-shadow: var(--pl-shadow-float);
             display: flex; flex-direction: column; overflow: hidden;
+            /* 使用者可自由縮放（右下角手柄）；overflow:hidden 為 resize 生效必要條件 */
+            resize: both;
+            min-width: 260px; min-height: 180px;
+            max-width: 90vw; max-height: 80vh;
+        }
+        /* 放大縮放手柄的可見度（右下角） */
+        #view2d-wrap::after {
+            content: ''; position: absolute; right: 2px; bottom: 2px; width: 12px; height: 12px;
+            pointer-events: none; z-index: 21;
+            background:
+                linear-gradient(135deg, transparent 0 50%, var(--pl-text-faint) 50% 60%, transparent 60% 70%, var(--pl-text-faint) 70% 80%, transparent 80%);
         }
         #view2d-head {
             padding: 7px 12px; font-size: 0.72rem; font-weight: 700; color: var(--pl-text-dim);
@@ -416,8 +427,8 @@ PhysLab.i18n.register({
         'label3d.core': '鐵芯（共用磁路）',
         'label3d.prim': '初級線圈 Np',
         'label3d.sec': '次級線圈 Ns',
-        'label3d.source': 'AC 電源',
-        'label3d.sourceDc': 'DC 電源',
+        'label3d.source': '交流電源（市電插頭）',
+        'label3d.sourceDc': '直流電源（電池）',
         'label3d.bulb': '燈泡負載',
         'label3d.flux': '磁通 Φ',
         'label3d.react': '副線圈反抗磁通 Φₛ',
@@ -662,23 +673,45 @@ PhysLab.sim3d.ready(function () {
     /* ============================================================
        AC / DC 電源符號
        ============================================================ */
+    // 圓角矩形（相容寫法，不依賴 ctx.roundRect）
+    function faceRoundRect(c, x, y, w, h, r) {
+        c.beginPath();
+        c.moveTo(x + r, y);
+        c.arcTo(x + w, y, x + w, y + h, r);
+        c.arcTo(x + w, y + h, x, y + h, r);
+        c.arcTo(x, y + h, x, y, r);
+        c.arcTo(x, y, x + w, y, r);
+        c.closePath();
+    }
     function sourceFaceTexture(ac) {
         var cv = document.createElement('canvas'); cv.width = 128; cv.height = 128;
         var c = cv.getContext('2d');
+        // 背景圓盤
         c.fillStyle = '#f8fafc'; c.beginPath(); c.arc(64, 64, 58, 0, Math.PI * 2); c.fill();
-        c.strokeStyle = '#1e293b'; c.lineWidth = 6; c.stroke();
-        c.strokeStyle = '#1d4ed8'; c.lineWidth = 7; c.lineCap = 'round';
+        c.strokeStyle = '#1e293b'; c.lineWidth = 6; c.beginPath(); c.arc(64, 64, 58, 0, Math.PI * 2); c.stroke();
         if (ac) {
-            c.beginPath();
-            for (var x = 26; x <= 102; x++) {
-                var y = 64 - 24 * Math.sin((x - 26) / (102 - 26) * Math.PI * 2);
-                if (x === 26) c.moveTo(x, y); else c.lineTo(x, y);
-            }
-            c.stroke();
+            // 三腳插頭（英式 3-pin plug）= 市電交流
+            c.fillStyle = '#d4a017';                       // 黃銅插腳
+            c.fillRect(59, 24, 10, 36);                    // 地腳（頂中、較長）
+            c.fillRect(42, 40, 9, 20);                     // 左腳
+            c.fillRect(77, 40, 9, 20);                     // 右腳
+            c.fillStyle = '#334155';                       // 插頭主體
+            faceRoundRect(c, 37, 58, 54, 46, 11); c.fill();
+            c.strokeStyle = '#1e293b'; c.lineWidth = 2;
+            faceRoundRect(c, 37, 58, 54, 46, 11); c.stroke();
+            c.fillStyle = '#94a3b8'; c.beginPath(); c.arc(64, 90, 4, 0, Math.PI * 2); c.fill();  // 中央螺絲
         } else {
-            c.beginPath(); c.moveTo(30, 52); c.lineTo(98, 52); c.stroke();      // 長線 +
-            c.lineWidth = 7;
-            c.beginPath(); c.moveTo(46, 78); c.lineTo(82, 78); c.stroke();      // 短線 −
+            // 電池（含 +／− 端子）= 直流
+            c.fillStyle = '#16a34a';                       // 電池主體
+            faceRoundRect(c, 34, 42, 60, 52, 9); c.fill();
+            c.strokeStyle = '#14532d'; c.lineWidth = 3;
+            faceRoundRect(c, 34, 42, 60, 52, 9); c.stroke();
+            c.fillStyle = '#dcfce7'; c.fillRect(36, 61, 56, 15);   // 淺色標籤帶
+            c.fillStyle = '#94a3b8';                       // 正極端子（頂中凸起）
+            faceRoundRect(c, 56, 32, 16, 12, 3); c.fill();
+            c.strokeStyle = '#052e16'; c.lineWidth = 5; c.lineCap = 'round';
+            c.beginPath(); c.moveTo(47, 54); c.lineTo(61, 54); c.moveTo(54, 47); c.lineTo(54, 61); c.stroke();  // + （上）
+            c.beginPath(); c.moveTo(69, 85); c.lineTo(83, 85); c.stroke();                                        // − （下）
         }
         var tex = new THREE.CanvasTexture(cv); tex.needsUpdate = true;
         return tex;
@@ -1004,11 +1037,11 @@ PhysLab.sim3d.ready(function () {
         var pShow = showCurrent;
         if (acMode) {
             var ff = freq / 50;                             // f 越高流動越快（呼應動畫速率）
-            var spd = (0.04 + 0.22 * absEmf) * ff;          // 基礎速率調慢約一半，振幅越大越快
+            var spd = (0.02 + 0.10 * absEmf) * ff;          // 再減慢約一半，令方向與流動更清晰
             marchDots(primFlow, curSign, spd, dt, pShow);   // 初級：跟 AC 反向
             marchDots(secFlow,  curSign, spd, dt, pShow);   // 次級：同步反向
         } else {
-            marchDots(primFlow, 1, 0.14, dt, pShow);        // DC：初級穩定單向流動（直流仍有電流）
+            marchDots(primFlow, 1, 0.07, dt, pShow);        // DC：初級穩定單向流動（直流仍有電流）
             marchDots(secFlow,  1, 0,    dt, false);        // DC：次級無電流→停流、隱藏
         }
     }
@@ -1311,6 +1344,14 @@ PhysLab.sim3d.ready(function () {
     el('view2d-close').title = t('canvas.closeTitle');
     ctx.onResize(resize2D);
     resize2D();
+
+    // 使用者拖曳右下角手柄縮放浮動視窗 → 重設 canvas drawing buffer，波形不變糊/不裁切
+    if (typeof ResizeObserver !== 'undefined') {
+        var vtObserver = new ResizeObserver(function () {
+            if (!el('view2d-wrap').classList.contains('panel-hidden')) resize2D();
+        });
+        vtObserver.observe(el('view2d-wrap'));
+    }
 
     PhysLab.guide.init({ stepsKey: 'guide.steps' });
     PhysLab.quiz.init({ bankKey: 'quiz.bank' });
