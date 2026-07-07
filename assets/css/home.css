@@ -1,0 +1,237 @@
+/* ============================================================================
+   PhysicsLab — assets/css/home.css
+   ----------------------------------------------------------------------------
+   首頁（index.html）專用樣式。取代原本的 Tailwind browser CDN + Font Awesome，
+   以 tokens.css 的 --pl-* token 重建首頁視覺：漸層頁首 + 分頁（模擬器/公式列表）
+   + 按 Book/Chapter 的卡片格。純靜態導覽頁，不接 i18n/core。
+   斷點與全站協調（600px 為主要行動裝置斷點）。
+   ============================================================================ */
+
+body {
+    font-family: var(--pl-font);
+    color: var(--pl-text);
+    background: var(--pl-bg);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    line-height: 1.5;
+}
+
+/* ── 頁首 site-header：漸層取自全站深色 chrome（topbar-edge → accent-deep），
+      與全站深色 topbar #1e293b 系協調，同時保留原首頁「hero 漸層」觀感 ── */
+.site-header {
+    background: linear-gradient(120deg, var(--pl-topbar-edge) 0%, var(--pl-topbar) 45%, var(--pl-accent-deep) 100%);
+    color: var(--pl-text-inv);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+}
+.site-header-inner {
+    max-width: 72rem;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+}
+.site-title {
+    font-size: 1.875rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+.site-title .atom {
+    display: inline-block;
+    animation: pl-spin 8s linear infinite;
+}
+@keyframes pl-spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+.site-subtitle {
+    margin-top: 0.5rem;
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.82);
+}
+
+/* ── 分頁列 tab-bar ── */
+.tab-bar-wrap {
+    max-width: 72rem;
+    margin: 0 auto;
+    padding: 0 1rem;
+}
+.tab-bar {
+    display: flex;
+    gap: 0.25rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.25);
+}
+.tab-btn {
+    padding: 0.75rem 1.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    font-family: inherit;
+    color: rgba(255, 255, 255, 0.7);
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    transition: color 0.2s, border-color 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.tab-btn:hover { color: #fff; }
+.tab-btn.active {
+    color: #fff;
+    border-bottom-color: #fff;
+}
+
+/* ── 主內容 ── */
+.site-main {
+    flex: 1 1 auto;
+    width: 100%;
+    max-width: 72rem;
+    margin: 0 auto;
+    padding: 2.5rem 1rem;
+}
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* ── Book 區段 ── */
+.book-section {
+    margin-bottom: 3rem;
+    /* 每區段的強調色（section 線、badge、卡片連結 hover）由修飾類設定 */
+    --sec-line: var(--pl-accent);
+    --badge-bg: var(--pl-accent);
+    --card-accent: var(--pl-accent-deep);
+    --card-accent-bg: var(--pl-accent-bg);
+}
+.book-section.sec-b3 {
+    --sec-line: #3b82f6; --badge-bg: #2563eb;
+    --card-accent: #2563eb; --card-accent-bg: #eff6ff;
+}
+.book-section.sec-b4 {
+    --sec-line: #f59e0b; --badge-bg: #f59e0b;
+    --card-accent: #d97706; --card-accent-bg: #fffbeb;
+}
+.book-section.sec-formula {
+    --sec-line: #10b981; --badge-bg: #f59e0b;
+    --card-accent: #047857; --card-accent-bg: #ecfdf5;
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding-bottom: 0.5rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 2px solid var(--sec-line);
+}
+.book-badge {
+    background: var(--badge-bg);
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.25rem 0.6rem;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+.section-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--pl-text-strong);
+}
+
+/* ── 卡片格 ── */
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+.sim-card {
+    background: var(--pl-card);
+    border: 1px solid var(--pl-border-soft);
+    border-radius: var(--pl-radius);
+    box-shadow: var(--pl-shadow-card);
+    overflow: hidden;
+    transition: box-shadow 0.2s, transform 0.2s;
+}
+.sim-card:hover {
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+}
+.card-header {
+    background: var(--pl-card-head);
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--pl-border);
+    font-weight: 600;
+    color: var(--pl-text-dim);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.card-header .ch-icon { font-size: 1.1rem; }
+.card-body {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+/* ── 卡片內連結 ── */
+.sim-link {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.625rem;
+    border-radius: var(--pl-radius-sm);
+    text-decoration: none;
+    color: var(--pl-text);
+    transition: background 0.15s;
+}
+.sim-link:hover { background: var(--card-accent-bg); }
+.sim-name { font-weight: 500; }
+.sim-link:hover .sim-name { color: var(--card-accent); }
+
+/* ── 標籤 badge：2D/公式=綠，3D=紫（值取自原首頁 emerald/purple-100） ── */
+.tag {
+    flex-shrink: 0;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.1rem 0.5rem;
+    border-radius: 4px;
+    white-space: nowrap;
+}
+.tag-2d,
+.tag-formula {
+    background: #d1fae5;
+    color: #065f46;
+}
+.tag-3d {
+    background: #f3e8ff;
+    color: #6b21a8;
+}
+
+/* ── 頁尾 ── */
+.site-footer {
+    background: var(--pl-topbar);
+    color: var(--pl-text-mute);
+    text-align: center;
+    padding: 1.5rem;
+    font-size: 0.875rem;
+    border-top: 1px solid var(--pl-topbar-edge);
+}
+.site-footer .footer-sub {
+    font-size: 0.75rem;
+    color: var(--pl-text-faint);
+    margin-top: 0.25rem;
+}
+
+/* ── 響應式（與全站斷點協調） ── */
+@media (max-width: 600px) {
+    .site-header-inner { padding: 1.5rem 1rem; }
+    .site-title { font-size: 1.4rem; }
+    .tab-btn { padding: 0.625rem 0.75rem; font-size: 0.75rem; }
+    .site-main { padding: 1.75rem 1rem; }
+    .section-title { font-size: 1.25rem; }
+    .card-grid { grid-template-columns: 1fr; }
+}

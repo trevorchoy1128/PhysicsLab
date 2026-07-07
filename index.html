@@ -1,307 +1,260 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>物理模擬實驗室</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        .animate-spin-slow {
-            animation: spin 8s linear infinite;
-        }
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
-
-        /* ── 響應式補充 ── */
-        @media (max-width: 480px) {
-            /* Tab 按鈕在超小螢幕改為可換行 */
-            .tab-btn { padding: 10px 12px; font-size: 12px; }
-            /* 卡片標題文字縮小 */
-            h1 { font-size: 1.4rem !important; }
-        }
-    </style>
+    <link rel="stylesheet" href="assets/css/tokens.css">
+    <link rel="stylesheet" href="assets/css/home.css">
 </head>
-<body class="bg-gray-50 text-gray-800 font-sans min-h-screen flex flex-col">
+<body>
 
-    <header class="bg-gradient-to-r from-blue-600 to-indigo-700 text-white shadow-md">
-        <div class="max-w-6xl mx-auto px-4 py-8 text-center sm:text-left sm:flex sm:justify-between sm:items-center">
-            <div>
-                <h1 class="text-3xl font-bold tracking-wide flex items-center justify-center sm:justify-start gap-3">
-                    <i class="fa-solid fa-atom animate-spin-slow"></i> 物理模擬實驗室
-                </h1>
-                <p class="text-blue-100 mt-2 text-sm sm:text-base">互動式物理現象模擬與可視化工具</p>
-            </div>
+    <header class="site-header">
+        <div class="site-header-inner">
+            <h1 class="site-title"><span class="atom">⚛️</span> 物理模擬實驗室</h1>
+            <p class="site-subtitle">互動式物理現象模擬與可視化工具</p>
         </div>
 
         <!-- Tab Navigation -->
-        <div class="max-w-6xl mx-auto px-4">
-            <div class="flex gap-1 border-b border-blue-500/40">
-                <button onclick="switchTab('simulator')" id="tab-btn-simulator"
-                    class="tab-btn px-6 py-3 text-sm font-semibold transition-all border-b-2 border-white text-white">
-                    <i class="fa-solid fa-flask mr-2"></i>模擬器
+        <div class="tab-bar-wrap">
+            <div class="tab-bar">
+                <button onclick="switchTab('simulator')" id="tab-btn-simulator" class="tab-btn active">
+                    <span>🧪</span>模擬器
                 </button>
-                <button onclick="switchTab('formula')" id="tab-btn-formula"
-                    class="tab-btn px-6 py-3 text-sm font-semibold transition-all border-b-2 border-transparent text-blue-200 hover:text-white">
-                    <i class="fa-solid fa-square-root-variable mr-2"></i>公式列表
+                <button onclick="switchTab('formula')" id="tab-btn-formula" class="tab-btn">
+                    <span>📐</span>公式列表
                 </button>
             </div>
         </div>
     </header>
 
-    <main class="flex-grow max-w-6xl w-full mx-auto px-4 py-10">
+    <main class="site-main">
 
         <!-- Simulator Tab -->
         <div id="tab-simulator" class="tab-content active">
 
-            <section class="mb-12">
-                <div class="border-b-2 border-blue-500 pb-2 mb-6 flex items-center gap-2">
-                    <span class="bg-blue-600 text-white text-xs font-bold px-2.5 py-1 rounded-sm uppercase tracking-wider">Book 3</span>
-                    <h2 class="text-2xl font-bold text-gray-900">波動與光學領域</h2>
+            <section class="book-section sec-b3">
+                <div class="section-header">
+                    <span class="book-badge">Book 3</span>
+                    <h2 class="section-title">波動與光學領域</h2>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <div class="bg-white rounded-xl shadow-xs border border-gray-100 overflow-hidden">
-                        <div class="bg-gray-100 px-4 py-3 border-b border-gray-200 font-semibold text-gray-700 flex items-center gap-2">
-                            <i class="fa-solid fa-square-rss text-blue-500"></i> Chapter 1: 光的反射
-                        </div>
-                        <div class="p-4 space-y-3">
-                            <a href="Simulator/book3/chapter1/basic-reflection-2D-sim.html" class="flex justify-between items-center p-2.5 hover:bg-blue-50 rounded-lg group transition-colors">
-                                <span class="group-hover:text-blue-600 font-medium">基礎反射模擬</span>
-                                <span class="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2 py-0.5 rounded">2D</span>
+                <div class="card-grid">
+                    <div class="sim-card">
+                        <div class="card-header"><span class="ch-icon">🪞</span> Chapter 1: 光的反射</div>
+                        <div class="card-body">
+                            <a href="Simulator/book3/chapter1/basic-reflection-2D-sim.html" class="sim-link">
+                                <span class="sim-name">基礎反射模擬</span>
+                                <span class="tag tag-2d">2D</span>
                             </a>
-                            <a href="Simulator/book3/chapter1/plane-mirror-reflection-2D-sim.html" class="flex justify-between items-center p-2.5 hover:bg-blue-50 rounded-lg group transition-colors">
-                                <span class="group-hover:text-blue-600 font-medium">平面鏡反射模擬</span>
-                                <span class="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2 py-0.5 rounded">2D</span>
+                            <a href="Simulator/book3/chapter1/plane-mirror-reflection-2D-sim.html" class="sim-link">
+                                <span class="sim-name">平面鏡反射模擬</span>
+                                <span class="tag tag-2d">2D</span>
                             </a>
-                            <a href="Simulator/book3/chapter1/diffuse-reflection-3D-sim.html" class="flex justify-between items-center p-2.5 hover:bg-blue-50 rounded-lg group transition-colors">
-                                <span class="group-hover:text-blue-600 font-medium">漫反射模擬</span>
-                                <span class="bg-purple-100 text-purple-800 text-xs font-semibold px-2 py-0.5 rounded">3D</span>
+                            <a href="Simulator/book3/chapter1/diffuse-reflection-3D-sim.html" class="sim-link">
+                                <span class="sim-name">漫反射模擬</span>
+                                <span class="tag tag-3d">3D</span>
                             </a>
-                            <a href="Simulator/book3/chapter1/periscope-3D-sim.html" class="flex justify-between items-center p-2.5 hover:bg-blue-50 rounded-lg group transition-colors">
-                                <span class="group-hover:text-blue-600 font-medium">潛望鏡模擬</span>
-                                <span class="bg-purple-100 text-purple-800 text-xs font-semibold px-2 py-0.5 rounded">3D</span>
+                            <a href="Simulator/book3/chapter1/periscope-3D-sim.html" class="sim-link">
+                                <span class="sim-name">潛望鏡模擬</span>
+                                <span class="tag tag-3d">3D</span>
                             </a>
-                            <a href="Simulator/book3/chapter1/plane-mirror-reflection-3D-sim.html" class="flex justify-between items-center p-2.5 hover:bg-blue-50 rounded-lg group transition-colors">
-                                <span class="group-hover:text-blue-600 font-medium">平面鏡反射空間模擬</span>
-                                <span class="bg-purple-100 text-purple-800 text-xs font-semibold px-2 py-0.5 rounded">3D</span>
+                            <a href="Simulator/book3/chapter1/plane-mirror-reflection-3D-sim.html" class="sim-link">
+                                <span class="sim-name">平面鏡反射空間模擬</span>
+                                <span class="tag tag-3d">3D</span>
                             </a>
                         </div>
                     </div>
 
-                    <div class="bg-white rounded-xl shadow-xs border border-gray-100 overflow-hidden">
-                        <div class="bg-gray-100 px-4 py-3 border-b border-gray-200 font-semibold text-gray-700 flex items-center gap-2">
-                            <i class="fa-solid fa-glass-water text-blue-500"></i> Chapter 2: 光的折射
-                        </div>
-                        <div class="p-4 space-y-3">
-                            <a href="Simulator/book3/chapter2/basic-refraction-2D-sim.html" class="flex justify-between items-center p-2.5 hover:bg-blue-50 rounded-lg group transition-colors">
-                                <span class="group-hover:text-blue-600 font-medium">基礎折射模擬</span>
-                                <span class="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2 py-0.5 rounded">2D</span>
+                    <div class="sim-card">
+                        <div class="card-header"><span class="ch-icon">🔷</span> Chapter 2: 光的折射</div>
+                        <div class="card-body">
+                            <a href="Simulator/book3/chapter2/basic-refraction-2D-sim.html" class="sim-link">
+                                <span class="sim-name">基礎折射模擬</span>
+                                <span class="tag tag-2d">2D</span>
                             </a>
-                            <a href="Simulator/book3/chapter2/glassblock-prism-2D-sim.html" class="flex justify-between items-center p-2.5 hover:bg-blue-50 rounded-lg group transition-colors">
-                                <span class="group-hover:text-blue-600 font-medium">玻璃磚與三稜鏡</span>
-                                <span class="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2 py-0.5 rounded">2D</span>
+                            <a href="Simulator/book3/chapter2/glassblock-prism-2D-sim.html" class="sim-link">
+                                <span class="sim-name">玻璃磚與三稜鏡</span>
+                                <span class="tag tag-2d">2D</span>
                             </a>
-                            <a href="Simulator/book3/chapter2/manylayers-2D-sim.html" class="flex justify-between items-center p-2.5 hover:bg-blue-50 rounded-lg group transition-colors">
-                                <span class="group-hover:text-blue-600 font-medium">多層介質折射</span>
-                                <span class="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2 py-0.5 rounded">2D</span>
+                            <a href="Simulator/book3/chapter2/manylayers-2D-sim.html" class="sim-link">
+                                <span class="sim-name">多層介質折射</span>
+                                <span class="tag tag-2d">2D</span>
                             </a>
-                            <a href="Simulator/book3/chapter2/optical-fibre-2D-sim.html" class="flex justify-between items-center p-2.5 hover:bg-blue-50 rounded-lg group transition-colors">
-                                <span class="group-hover:text-blue-600 font-medium">光纖全反射</span>
-                                <span class="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2 py-0.5 rounded">2D</span>
+                            <a href="Simulator/book3/chapter2/optical-fibre-2D-sim.html" class="sim-link">
+                                <span class="sim-name">光纖全反射</span>
+                                <span class="tag tag-2d">2D</span>
                             </a>
                         </div>
                     </div>
 
-                    <div class="bg-white rounded-xl shadow-xs border border-gray-100 overflow-hidden">
-                        <div class="bg-gray-100 px-4 py-3 border-b border-gray-200 font-semibold text-gray-700 flex items-center gap-2">
-                            <i class="fa-solid fa-eye text-blue-500"></i> Chapter 3: 透鏡成像
-                        </div>
-                        <div class="p-4 space-y-3">
-                            <a href="Simulator/book3/chapter3/lens-2D-sim.html" class="flex justify-between items-center p-2.5 hover:bg-blue-50 rounded-lg group transition-colors">
-                                <span class="group-hover:text-blue-600 font-medium">透鏡 2D 光路模擬</span>
-                                <span class="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2 py-0.5 rounded">2D</span>
+                    <div class="sim-card">
+                        <div class="card-header"><span class="ch-icon">🔍</span> Chapter 3: 透鏡成像</div>
+                        <div class="card-body">
+                            <a href="Simulator/book3/chapter3/lens-2D-sim.html" class="sim-link">
+                                <span class="sim-name">透鏡 2D 光路模擬</span>
+                                <span class="tag tag-2d">2D</span>
                             </a>
-                            <a href="Simulator/book3/chapter3/lens-3D-sim.html" class="flex justify-between items-center p-2.5 hover:bg-blue-50 rounded-lg group transition-colors">
-                                <span class="group-hover:text-blue-600 font-medium">透鏡 3D 成像模擬</span>
-                                <span class="bg-purple-100 text-purple-800 text-xs font-semibold px-2 py-0.5 rounded">3D</span>
+                            <a href="Simulator/book3/chapter3/lens-3D-sim.html" class="sim-link">
+                                <span class="sim-name">透鏡 3D 成像模擬</span>
+                                <span class="tag tag-3d">3D</span>
                             </a>
                         </div>
                     </div>
 
-                    <div class="bg-white rounded-xl shadow-xs border border-gray-100 overflow-hidden">
-                        <div class="bg-gray-100 px-4 py-3 border-b border-gray-200 font-semibold text-gray-700 flex items-center gap-2">
-                            <i class="fa-solid fa-chart-line text-blue-500"></i> Chapter 4: 波動圖像
-                        </div>
-                        <div class="p-4 space-y-3">
-                            <a href="Simulator/book3/chapter4/sd-st-graph-2D-sim.html" class="flex justify-between items-center p-2.5 hover:bg-blue-50 rounded-lg group transition-colors">
-                                <span class="group-hover:text-blue-600 font-medium">s-d / s-t 波動圖像</span>
-                                <span class="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2 py-0.5 rounded">2D</span>
+                    <div class="sim-card">
+                        <div class="card-header"><span class="ch-icon">📈</span> Chapter 4: 波動圖像</div>
+                        <div class="card-body">
+                            <a href="Simulator/book3/chapter4/sd-st-graph-2D-sim.html" class="sim-link">
+                                <span class="sim-name">s-d / s-t 波動圖像</span>
+                                <span class="tag tag-2d">2D</span>
                             </a>
-                            <a href="Simulator/book3/chapter4/transverse-wave-2D-sim.html" class="flex justify-between items-center p-2.5 hover:bg-blue-50 rounded-lg group transition-colors">
-                                <span class="group-hover:text-blue-600 font-medium">橫波傳播模擬</span>
-                                <span class="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2 py-0.5 rounded">2D</span>
+                            <a href="Simulator/book3/chapter4/transverse-wave-2D-sim.html" class="sim-link">
+                                <span class="sim-name">橫波傳播模擬</span>
+                                <span class="tag tag-2d">2D</span>
                             </a>
                         </div>
                     </div>
 
-                    <div class="bg-white rounded-xl shadow-xs border border-gray-100 overflow-hidden">
-                        <div class="bg-gray-100 px-4 py-3 border-b border-gray-200 font-semibold text-gray-700 flex items-center gap-2">
-                            <i class="fa-solid fa-water text-blue-500"></i> Chapter 5: 水波槽
-                        </div>
-                        <div class="p-4 space-y-3">
-                            <a href="Simulator/book3/chapter5/watertank-3D-sim.html" class="flex justify-between items-center p-2.5 hover:bg-blue-50 rounded-lg group transition-colors">
-                                <span class="group-hover:text-blue-600 font-medium">水箱波紋模擬</span>
-                                <span class="bg-purple-100 text-purple-800 text-xs font-semibold px-2 py-0.5 rounded">3D</span>
+                    <div class="sim-card">
+                        <div class="card-header"><span class="ch-icon">🌊</span> Chapter 5: 水波槽</div>
+                        <div class="card-body">
+                            <a href="Simulator/book3/chapter5/watertank-3D-sim.html" class="sim-link">
+                                <span class="sim-name">水箱波紋模擬</span>
+                                <span class="tag tag-3d">3D</span>
                             </a>
                         </div>
                     </div>
                 </div>
             </section>
 
-            <section class="mb-12">
-                <div class="border-b-2 border-amber-500 pb-2 mb-6 flex items-center gap-2">
-                    <span class="bg-amber-500 text-white text-xs font-bold px-2.5 py-1 rounded-sm uppercase tracking-wider">Book 4</span>
-                    <h2 class="text-2xl font-bold text-gray-900">電磁學領域</h2>
+            <section class="book-section sec-b4">
+                <div class="section-header">
+                    <span class="book-badge">Book 4</span>
+                    <h2 class="section-title">電磁學領域</h2>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <div class="bg-white rounded-xl shadow-xs border border-gray-100 overflow-hidden">
-                        <div class="bg-gray-100 px-4 py-3 border-b border-gray-200 font-semibold text-gray-700 flex items-center gap-2">
-                            <i class="fa-solid fa-bolt-lightning text-amber-500"></i> Chapter 1: 靜電學
-                        </div>
-                        <div class="p-4 space-y-3">
-                            <a href="Simulator/book4/chapter1/charge-induction-methods-sim.html" class="flex justify-between items-center p-2.5 hover:bg-amber-50 rounded-lg group transition-colors">
-                                <span class="group-hover:text-amber-600 font-medium">感應起電方法模擬</span>
-                                <span class="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2 py-0.5 rounded">2D</span>
+                <div class="card-grid">
+                    <div class="sim-card">
+                        <div class="card-header"><span class="ch-icon">⚡</span> Chapter 1: 靜電學</div>
+                        <div class="card-body">
+                            <a href="Simulator/book4/chapter1/charge-induction-methods-sim.html" class="sim-link">
+                                <span class="sim-name">感應起電方法模擬</span>
+                                <span class="tag tag-2d">2D</span>
                             </a>
-                            <a href="Simulator/book4/chapter1/electrostatic-force-sim.html" class="flex justify-between items-center p-2.5 hover:bg-amber-50 rounded-lg group transition-colors">
-                                <span class="group-hover:text-amber-600 font-medium">靜電力模擬</span>
-                                <span class="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2 py-0.5 rounded">2D</span>
+                            <a href="Simulator/book4/chapter1/electrostatic-force-sim.html" class="sim-link">
+                                <span class="sim-name">靜電力模擬</span>
+                                <span class="tag tag-2d">2D</span>
                             </a>
-                            <a href="Simulator/book4/chapter1/electric-field-sim.html" class="flex justify-between items-center p-2.5 hover:bg-amber-50 rounded-lg group transition-colors">
-                                <span class="group-hover:text-amber-600 font-medium">電場模擬</span>
-                                <span class="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2 py-0.5 rounded">2D</span>
+                            <a href="Simulator/book4/chapter1/electric-field-sim.html" class="sim-link">
+                                <span class="sim-name">電場模擬</span>
+                                <span class="tag tag-2d">2D</span>
                             </a>
-                            <a href="Simulator/book4/chapter1/parallel-plate-3D-sim.html" class="flex justify-between items-center p-2.5 hover:bg-amber-50 rounded-lg group transition-colors">
-                                <span class="group-hover:text-amber-600 font-medium">平行電板</span>
-                                <span class="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2 py-0.5 rounded">3D</span>
+                            <a href="Simulator/book4/chapter1/parallel-plate-3D-sim.html" class="sim-link">
+                                <span class="sim-name">平行電板</span>
+                                <span class="tag tag-3d">3D</span>
                             </a>
                         </div>
                     </div>
 
-                    <div class="bg-white rounded-xl shadow-xs border border-gray-100 overflow-hidden">
-                        <div class="bg-gray-100 px-4 py-3 border-b border-gray-200 font-semibold text-gray-700 flex items-center gap-2">
-                            <i class="fa-solid fa-plug-circle-bolt text-amber-500"></i> Chapter 2: 電流、電壓與電阻
-                        </div>
-                        <div class="p-4 space-y-3">
-                            <a href="Simulator/book4/chapter2/length-thickness-resistance-3D-sim.html" class="flex justify-between items-center p-2.5 hover:bg-amber-50 rounded-lg group transition-colors">
-                                <span class="group-hover:text-amber-600 font-medium">電阻與長度/截面積關係</span>
-                                <span class="bg-purple-100 text-purple-800 text-xs font-semibold px-2 py-0.5 rounded">3D</span>
+                    <div class="sim-card">
+                        <div class="card-header"><span class="ch-icon">🔌</span> Chapter 2: 電流、電壓與電阻</div>
+                        <div class="card-body">
+                            <a href="Simulator/book4/chapter2/length-thickness-resistance-3D-sim.html" class="sim-link">
+                                <span class="sim-name">電阻與長度/截面積關係</span>
+                                <span class="tag tag-3d">3D</span>
                             </a>
-                            <a href="Simulator/book4/chapter2/ohmic-nonohmic-conductor-3D-sim.html" class="flex justify-between items-center p-2.5 hover:bg-amber-50 rounded-lg group transition-colors">
-                                <span class="group-hover:text-amber-600 font-medium">歐姆與非歐姆導體</span>
-                                <span class="bg-purple-100 text-purple-800 text-xs font-semibold px-2 py-0.5 rounded">3D</span>
+                            <a href="Simulator/book4/chapter2/ohmic-nonohmic-conductor-3D-sim.html" class="sim-link">
+                                <span class="sim-name">歐姆與非歐姆導體</span>
+                                <span class="tag tag-3d">3D</span>
                             </a>
-                            <a href="Simulator/book4/chapter2/series-parallel-connection-sim.html" class="flex justify-between items-center p-2.5 hover:bg-amber-50 rounded-lg group transition-colors">
-                                <span class="group-hover:text-amber-600 font-medium">串聯與並聯電路</span>
-                                <span class="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2 py-0.5 rounded">2D</span>
+                            <a href="Simulator/book4/chapter2/series-parallel-connection-sim.html" class="sim-link">
+                                <span class="sim-name">串聯與並聯電路</span>
+                                <span class="tag tag-2d">2D</span>
                             </a>
-                            <a href="Simulator/book4/chapter2/power-brightness-2D-sim.html" class="flex justify-between items-center p-2.5 hover:bg-amber-50 rounded-lg group transition-colors">
-                                <span class="group-hover:text-amber-600 font-medium">電功率與亮度（挑戰賽）</span>
-                                <span class="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2 py-0.5 rounded">2D</span>
+                            <a href="Simulator/book4/chapter2/power-brightness-2D-sim.html" class="sim-link">
+                                <span class="sim-name">電功率與亮度（挑戰賽）</span>
+                                <span class="tag tag-2d">2D</span>
                             </a>
-                            <a href="Simulator/book4/chapter2/circuit-analogy.html" class="flex justify-between items-center p-2.5 hover:bg-amber-50 rounded-lg group transition-colors">
-                                <span class="group-hover:text-amber-600 font-medium">電流類比模擬 (電荷流動 vs 物流)</span>
-                                <span class="bg-purple-100 text-purple-800 text-xs font-semibold px-2 py-0.5 rounded">3D</span>
+                            <a href="Simulator/book4/chapter2/circuit-analogy.html" class="sim-link">
+                                <span class="sim-name">電流類比模擬 (電荷流動 vs 物流)</span>
+                                <span class="tag tag-3d">3D</span>
                             </a>
-                            <a href="Simulator/book4/chapter2/penguin-slide-3D-sim.html" class="flex justify-between items-center p-2.5 hover:bg-amber-50 rounded-lg group transition-colors">
-                                <span class="group-hover:text-amber-600 font-medium">企鵝滑梯（電勢能轉換類比）</span>
-                                <span class="bg-purple-100 text-purple-800 text-xs font-semibold px-2 py-0.5 rounded">3D</span>
+                            <a href="Simulator/book4/chapter2/penguin-slide-3D-sim.html" class="sim-link">
+                                <span class="sim-name">企鵝滑梯（電勢能轉換類比）</span>
+                                <span class="tag tag-3d">3D</span>
                             </a>
                         </div>
                     </div>
 
-                    <div class="bg-white rounded-xl shadow-xs border border-gray-100 overflow-hidden">
-                        <div class="bg-gray-100 px-4 py-3 border-b border-gray-200 font-semibold text-gray-700 flex items-center gap-2">
-                            <i class="fa-solid fa-magnet text-amber-500"></i> Chapter 5: 電流與磁場
-                        </div>
-                        <div class="p-4 space-y-3">
-                            <a href="Simulator/book4/chapter5/bar-magnetic-field-lines-sim.html" class="flex justify-between items-center p-2.5 hover:bg-amber-50 rounded-lg group transition-colors">
-                                <span class="group-hover:text-amber-600 font-medium">條形磁鐵磁場線模擬</span>
-                                <span class="bg-purple-100 text-purple-800 text-xs font-semibold px-2 py-0.5 rounded">3D</span>
+                    <div class="sim-card">
+                        <div class="card-header"><span class="ch-icon">🧲</span> Chapter 5: 電流與磁場</div>
+                        <div class="card-body">
+                            <a href="Simulator/book4/chapter5/bar-magnetic-field-lines-sim.html" class="sim-link">
+                                <span class="sim-name">條形磁鐵磁場線模擬</span>
+                                <span class="tag tag-3d">3D</span>
                             </a>
-                            <a href="Simulator/book4/chapter5/right-hand-grip-rule-3D-sim.html" class="flex justify-between items-center p-2.5 hover:bg-amber-50 rounded-lg group transition-colors">
-                                <span class="group-hover:text-amber-600 font-medium">右手定則模擬器</span>
-                                <span class="bg-purple-100 text-purple-800 text-xs font-semibold px-2 py-0.5 rounded">3D</span>
+                            <a href="Simulator/book4/chapter5/right-hand-grip-rule-3D-sim.html" class="sim-link">
+                                <span class="sim-name">右手定則模擬器</span>
+                                <span class="tag tag-3d">3D</span>
                             </a>
                         </div>
                     </div>
 
-                    <div class="bg-white rounded-xl shadow-xs border border-gray-100 overflow-hidden">
-                        <div class="bg-gray-100 px-4 py-3 border-b border-gray-200 font-semibold text-gray-700 flex items-center gap-2">
-                            <i class="fa-solid fa-bolt text-amber-500"></i> Chapter 6: 電磁感應與馬達
-                        </div>
-                        <div class="p-4 space-y-3">
-                            <a href="Simulator/book4/chapter6/DC-motor-3D-sim.html" class="flex justify-between items-center p-2.5 hover:bg-amber-50 rounded-lg group transition-colors">
-                                <span class="group-hover:text-amber-600 font-medium">直流馬達模擬</span>
-                                <span class="bg-purple-100 text-purple-800 text-xs font-semibold px-2 py-0.5 rounded">3D</span>
+                    <div class="sim-card">
+                        <div class="card-header"><span class="ch-icon">⚙️</span> Chapter 6: 電磁感應與馬達</div>
+                        <div class="card-body">
+                            <a href="Simulator/book4/chapter6/DC-motor-3D-sim.html" class="sim-link">
+                                <span class="sim-name">直流馬達模擬</span>
+                                <span class="tag tag-3d">3D</span>
                             </a>
-                            <a href="Simulator/book4/chapter6/flemings-left-hand-rule-3D-sim.html" class="flex justify-between items-center p-2.5 hover:bg-amber-50 rounded-lg group transition-colors">
-                                <span class="group-hover:text-amber-600 font-medium">弗林明左手定則模擬</span>
-                                <span class="bg-purple-100 text-purple-800 text-xs font-semibold px-2 py-0.5 rounded">3D</span>
+                            <a href="Simulator/book4/chapter6/flemings-left-hand-rule-3D-sim.html" class="sim-link">
+                                <span class="sim-name">弗林明左手定則模擬</span>
+                                <span class="tag tag-3d">3D</span>
                             </a>
-                            <a href="Simulator/book4/chapter6/parallel-wires-force-3D-sim.html" class="flex justify-between items-center p-2.5 hover:bg-amber-50 rounded-lg group transition-colors">
-                                <span class="group-hover:text-amber-600 font-medium">平行導線相互作用模擬</span>
-                                <span class="bg-purple-100 text-purple-800 text-xs font-semibold px-2 py-0.5 rounded">3D</span>
+                            <a href="Simulator/book4/chapter6/parallel-wires-force-3D-sim.html" class="sim-link">
+                                <span class="sim-name">平行導線相互作用模擬</span>
+                                <span class="tag tag-3d">3D</span>
                             </a>
-                            <a href="Simulator/book4/chapter6/charged-particle-fields-3D-sim.html" class="flex justify-between items-center p-2.5 hover:bg-amber-50 rounded-lg group transition-colors">
-                                <span class="group-hover:text-amber-600 font-medium">帶電粒子於磁場/電場模擬</span>
-                                <span class="bg-purple-100 text-purple-800 text-xs font-semibold px-2 py-0.5 rounded">3D</span>
+                            <a href="Simulator/book4/chapter6/charged-particle-fields-3D-sim.html" class="sim-link">
+                                <span class="sim-name">帶電粒子於磁場/電場模擬</span>
+                                <span class="tag tag-3d">3D</span>
                             </a>
                         </div>
                     </div>
 
-                    <div class="bg-white rounded-xl shadow-xs border border-gray-100 overflow-hidden">
-                        <div class="bg-gray-100 px-4 py-3 border-b border-gray-200 font-semibold text-gray-700 flex items-center gap-2">
-                            <i class="fa-solid fa-magnet text-amber-500"></i> Chapter 7: 電磁感應
-                        </div>
-                        <div class="p-4 space-y-3">
-                            <a href="Simulator/book4/chapter7/faraday-lenz-induction-3D-sim.html" class="flex justify-between items-center p-2.5 hover:bg-amber-50 rounded-lg group transition-colors">
-                                <span class="group-hover:text-amber-600 font-medium">磁鐵與線圈：法拉第 / 楞次定律</span>
-                                <span class="bg-purple-100 text-purple-800 text-xs font-semibold px-2 py-0.5 rounded">3D</span>
+                    <div class="sim-card">
+                        <div class="card-header"><span class="ch-icon">🔄</span> Chapter 7: 電磁感應</div>
+                        <div class="card-body">
+                            <a href="Simulator/book4/chapter7/faraday-lenz-induction-3D-sim.html" class="sim-link">
+                                <span class="sim-name">磁鐵與線圈：法拉第 / 楞次定律</span>
+                                <span class="tag tag-3d">3D</span>
                             </a>
-                            <a href="Simulator/book4/chapter7/coil-entering-field-3D-sim.html" class="flex justify-between items-center p-2.5 hover:bg-amber-50 rounded-lg group transition-colors">
-                                <span class="group-hover:text-amber-600 font-medium">線圈進出均勻磁場：動生電動勢與楞次阻力</span>
-                                <span class="bg-purple-100 text-purple-800 text-xs font-semibold px-2 py-0.5 rounded">3D</span>
+                            <a href="Simulator/book4/chapter7/coil-entering-field-3D-sim.html" class="sim-link">
+                                <span class="sim-name">線圈進出均勻磁場：動生電動勢與楞次阻力</span>
+                                <span class="tag tag-3d">3D</span>
                             </a>
-                            <a href="Simulator/book4/chapter7/AC-DC-generator-3D-sim.html" class="flex justify-between items-center p-2.5 hover:bg-amber-50 rounded-lg group transition-colors">
-                                <span class="group-hover:text-amber-600 font-medium">交流與直流發電機剖析</span>
-                                <span class="bg-purple-100 text-purple-800 text-xs font-semibold px-2 py-0.5 rounded">3D</span>
+                            <a href="Simulator/book4/chapter7/AC-DC-generator-3D-sim.html" class="sim-link">
+                                <span class="sim-name">交流與直流發電機剖析</span>
+                                <span class="tag tag-3d">3D</span>
                             </a>
-                            <a href="Simulator/book4/chapter7/eddy-current-3D-sim.html" class="flex justify-between items-center p-2.5 hover:bg-amber-50 rounded-lg group transition-colors">
-                                <span class="group-hover:text-amber-600 font-medium">渦電流特寫與制動（磁鐵下墜／鋁片擺動／跳起之環／電磁爐）</span>
-                                <span class="bg-purple-100 text-purple-800 text-xs font-semibold px-2 py-0.5 rounded">3D</span>
+                            <a href="Simulator/book4/chapter7/eddy-current-3D-sim.html" class="sim-link">
+                                <span class="sim-name">渦電流特寫與制動（磁鐵下墜／鋁片擺動／跳起之環／電磁爐）</span>
+                                <span class="tag tag-3d">3D</span>
                             </a>
-                            <a href="Simulator/book4/chapter7/flemings-right-hand-rule-3D-sim.html" class="flex justify-between items-center p-2.5 hover:bg-amber-50 rounded-lg group transition-colors">
-                                <span class="group-hover:text-amber-600 font-medium">直導線切割磁力線與弗萊明右手定則（發電）</span>
-                                <span class="bg-purple-100 text-purple-800 text-xs font-semibold px-2 py-0.5 rounded">3D</span>
+                            <a href="Simulator/book4/chapter7/flemings-right-hand-rule-3D-sim.html" class="sim-link">
+                                <span class="sim-name">直導線切割磁力線與弗萊明右手定則（發電）</span>
+                                <span class="tag tag-3d">3D</span>
                             </a>
                         </div>
                     </div>
 
-                    <div class="bg-white rounded-xl shadow-xs border border-gray-100 overflow-hidden">
-                        <div class="bg-gray-100 px-4 py-3 border-b border-gray-200 font-semibold text-gray-700 flex items-center gap-2">
-                            <i class="fa-solid fa-tower-broadcast text-amber-500"></i> Chapter 8: 變壓器與輸電
-                        </div>
-                        <div class="p-4 space-y-3">
-                            <a href="Simulator/book4/chapter8/transformer-3D-sim.html" class="flex justify-between items-center p-2.5 hover:bg-amber-50 rounded-lg group transition-colors">
-                                <span class="group-hover:text-amber-600 font-medium">理想變壓器：匝數比與升降壓</span>
-                                <span class="bg-purple-100 text-purple-800 text-xs font-semibold px-2 py-0.5 rounded">3D</span>
+                    <div class="sim-card">
+                        <div class="card-header"><span class="ch-icon">🗼</span> Chapter 8: 變壓器與輸電</div>
+                        <div class="card-body">
+                            <a href="Simulator/book4/chapter8/transformer-3D-sim.html" class="sim-link">
+                                <span class="sim-name">理想變壓器：匝數比與升降壓</span>
+                                <span class="tag tag-3d">3D</span>
                             </a>
                         </div>
                     </div>
@@ -313,105 +266,89 @@
         <!-- Formula List Tab -->
         <div id="tab-formula" class="tab-content">
 
-            <section class="mb-12">
-                <div class="border-b-2 border-emerald-500 pb-2 mb-6 flex items-center gap-2">
-                    <span class="bg-amber-500 text-white text-xs font-bold px-2.5 py-1 rounded-sm uppercase tracking-wider">Book 4</span>
-                    <h2 class="text-2xl font-bold text-gray-900">電磁學領域</h2>
+            <section class="book-section sec-formula">
+                <div class="section-header">
+                    <span class="book-badge">Book 4</span>
+                    <h2 class="section-title">電磁學領域</h2>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <div class="bg-white rounded-xl shadow-xs border border-gray-100 overflow-hidden">
-                        <div class="bg-gray-100 px-4 py-3 border-b border-gray-200 font-semibold text-gray-700 flex items-center gap-2">
-                            <i class="fa-solid fa-bolt-lightning text-emerald-500"></i> Chapter 1: 靜電學
-                        </div>
-                        <div class="p-4 space-y-3">
-                            <a href="Formula List/book4/chapter1-formula.html" class="flex justify-between items-center p-2.5 hover:bg-emerald-50 rounded-lg group transition-colors">
-                                <span class="group-hover:text-emerald-700 font-medium">靜電學公式全指南</span>
-                                <span class="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2 py-0.5 rounded">公式</span>
+                <div class="card-grid">
+                    <div class="sim-card">
+                        <div class="card-header"><span class="ch-icon">⚡</span> Chapter 1: 靜電學</div>
+                        <div class="card-body">
+                            <a href="Formula List/book4/chapter1-formula.html" class="sim-link">
+                                <span class="sim-name">靜電學公式全指南</span>
+                                <span class="tag tag-formula">公式</span>
                             </a>
                         </div>
                     </div>
 
-                    <div class="bg-white rounded-xl shadow-xs border border-gray-100 overflow-hidden">
-                        <div class="bg-gray-100 px-4 py-3 border-b border-gray-200 font-semibold text-gray-700 flex items-center gap-2">
-                            <i class="fa-solid fa-plug-circle-bolt text-emerald-500"></i> Chapter 2: 電流、電壓與電阻
-                        </div>
-                        <div class="p-4 space-y-3">
-                            <a href="Formula List/book4/chapter2-formula.html" class="flex justify-between items-center p-2.5 hover:bg-emerald-50 rounded-lg group transition-colors">
-                                <span class="group-hover:text-emerald-700 font-medium">電流、電壓與電阻公式全指南</span>
-                                <span class="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2 py-0.5 rounded">公式</span>
+                    <div class="sim-card">
+                        <div class="card-header"><span class="ch-icon">🔌</span> Chapter 2: 電流、電壓與電阻</div>
+                        <div class="card-body">
+                            <a href="Formula List/book4/chapter2-formula.html" class="sim-link">
+                                <span class="sim-name">電流、電壓與電阻公式全指南</span>
+                                <span class="tag tag-formula">公式</span>
                             </a>
                         </div>
                     </div>
 
-                    <div class="bg-white rounded-xl shadow-xs border border-gray-100 overflow-hidden">
-                        <div class="bg-gray-100 px-4 py-3 border-b border-gray-200 font-semibold text-gray-700 flex items-center gap-2">
-                            <i class="fa-solid fa-circle-nodes text-emerald-500"></i> Chapter 3: 實際電路
-                        </div>
-                        <div class="p-4 space-y-3">
-                            <a href="Formula List/book4/chapter3-formula.html" class="flex justify-between items-center p-2.5 hover:bg-emerald-50 rounded-lg group transition-colors">
-                                <span class="group-hover:text-emerald-700 font-medium">實際電路公式全指南</span>
-                                <span class="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2 py-0.5 rounded">公式</span>
+                    <div class="sim-card">
+                        <div class="card-header"><span class="ch-icon">🔗</span> Chapter 3: 實際電路</div>
+                        <div class="card-body">
+                            <a href="Formula List/book4/chapter3-formula.html" class="sim-link">
+                                <span class="sim-name">實際電路公式全指南</span>
+                                <span class="tag tag-formula">公式</span>
                             </a>
                         </div>
                     </div>
 
-                    <div class="bg-white rounded-xl shadow-xs border border-gray-100 overflow-hidden">
-                        <div class="bg-gray-100 px-4 py-3 border-b border-gray-200 font-semibold text-gray-700 flex items-center gap-2">
-                            <i class="fa-solid fa-house-signal text-emerald-500"></i> Chapter 4: 家居電學
-                        </div>
-                        <div class="p-4 space-y-3">
-                            <a href="Formula List/book4/chapter4-formula.html" class="flex justify-between items-center p-2.5 hover:bg-emerald-50 rounded-lg group transition-colors">
-                                <span class="group-hover:text-emerald-700 font-medium">家居電學公式全指南</span>
-                                <span class="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2 py-0.5 rounded">公式</span>
+                    <div class="sim-card">
+                        <div class="card-header"><span class="ch-icon">🏠</span> Chapter 4: 家居電學</div>
+                        <div class="card-body">
+                            <a href="Formula List/book4/chapter4-formula.html" class="sim-link">
+                                <span class="sim-name">家居電學公式全指南</span>
+                                <span class="tag tag-formula">公式</span>
                             </a>
                         </div>
                     </div>
 
-                    <div class="bg-white rounded-xl shadow-xs border border-gray-100 overflow-hidden">
-                        <div class="bg-gray-100 px-4 py-3 border-b border-gray-200 font-semibold text-gray-700 flex items-center gap-2">
-                            <i class="fa-solid fa-magnet text-emerald-500"></i> Chapter 5: 磁場
-                        </div>
-                        <div class="p-4 space-y-3">
-                            <a href="Formula List/book4/chapter5-formula.html" class="flex justify-between items-center p-2.5 hover:bg-emerald-50 rounded-lg group transition-colors">
-                                <span class="group-hover:text-emerald-700 font-medium">磁場公式全指南</span>
-                                <span class="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2 py-0.5 rounded">公式</span>
+                    <div class="sim-card">
+                        <div class="card-header"><span class="ch-icon">🧲</span> Chapter 5: 磁場</div>
+                        <div class="card-body">
+                            <a href="Formula List/book4/chapter5-formula.html" class="sim-link">
+                                <span class="sim-name">磁場公式全指南</span>
+                                <span class="tag tag-formula">公式</span>
                             </a>
                         </div>
                     </div>
 
-                    <div class="bg-white rounded-xl shadow-xs border border-gray-100 overflow-hidden">
-                        <div class="bg-gray-100 px-4 py-3 border-b border-gray-200 font-semibold text-gray-700 flex items-center gap-2">
-                            <i class="fa-solid fa-bolt text-emerald-500"></i> Chapter 6: 磁場產生的力
-                        </div>
-                        <div class="p-4 space-y-3">
-                            <a href="Formula List/book4/chapter6-formula.html" class="flex justify-between items-center p-2.5 hover:bg-emerald-50 rounded-lg group transition-colors">
-                                <span class="group-hover:text-emerald-700 font-medium">磁場產生的力公式全指南</span>
-                                <span class="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2 py-0.5 rounded">公式</span>
+                    <div class="sim-card">
+                        <div class="card-header"><span class="ch-icon">⚙️</span> Chapter 6: 磁場產生的力</div>
+                        <div class="card-body">
+                            <a href="Formula List/book4/chapter6-formula.html" class="sim-link">
+                                <span class="sim-name">磁場產生的力公式全指南</span>
+                                <span class="tag tag-formula">公式</span>
                             </a>
                         </div>
                     </div>
 
-                    <div class="bg-white rounded-xl shadow-xs border border-gray-100 overflow-hidden">
-                        <div class="bg-gray-100 px-4 py-3 border-b border-gray-200 font-semibold text-gray-700 flex items-center gap-2">
-                            <i class="fa-solid fa-rotate text-emerald-500"></i> Chapter 7: 電磁感應
-                        </div>
-                        <div class="p-4 space-y-3">
-                            <a href="Formula List/book4/chapter7-formula.html" class="flex justify-between items-center p-2.5 hover:bg-emerald-50 rounded-lg group transition-colors">
-                                <span class="group-hover:text-emerald-700 font-medium">電磁感應公式全指南</span>
-                                <span class="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2 py-0.5 rounded">公式</span>
+                    <div class="sim-card">
+                        <div class="card-header"><span class="ch-icon">🔄</span> Chapter 7: 電磁感應</div>
+                        <div class="card-body">
+                            <a href="Formula List/book4/chapter7-formula.html" class="sim-link">
+                                <span class="sim-name">電磁感應公式全指南</span>
+                                <span class="tag tag-formula">公式</span>
                             </a>
                         </div>
                     </div>
 
-                    <div class="bg-white rounded-xl shadow-xs border border-gray-100 overflow-hidden">
-                        <div class="bg-gray-100 px-4 py-3 border-b border-gray-200 font-semibold text-gray-700 flex items-center gap-2">
-                            <i class="fa-solid fa-tower-broadcast text-emerald-500"></i> Chapter 8: 變壓器與輸電
-                        </div>
-                        <div class="p-4 space-y-3">
-                            <a href="Formula List/book4/chapter8-formula.html" class="flex justify-between items-center p-2.5 hover:bg-emerald-50 rounded-lg group transition-colors">
-                                <span class="group-hover:text-emerald-700 font-medium">變壓器與輸電公式全指南</span>
-                                <span class="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2 py-0.5 rounded">公式</span>
+                    <div class="sim-card">
+                        <div class="card-header"><span class="ch-icon">🗼</span> Chapter 8: 變壓器與輸電</div>
+                        <div class="card-body">
+                            <a href="Formula List/book4/chapter8-formula.html" class="sim-link">
+                                <span class="sim-name">變壓器與輸電公式全指南</span>
+                                <span class="tag tag-formula">公式</span>
                             </a>
                         </div>
                     </div>
@@ -422,9 +359,9 @@
 
     </main>
 
-    <footer class="bg-gray-800 text-gray-400 py-6 text-center text-sm border-t border-gray-700">
+    <footer class="site-footer">
         <p>© 2026 trevorchoy1128.</p>
-        <p class="text-xs text-gray-500 mt-1">透過網頁技術進行物理即時運算</p>
+        <p class="footer-sub">透過網頁技術進行物理即時運算</p>
     </footer>
 
     <script>
@@ -432,17 +369,12 @@
             // Hide all tab content
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             // Reset all tab buttons
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.remove('border-white', 'text-white');
-                btn.classList.add('border-transparent', 'text-blue-200');
-            });
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
 
             // Show selected tab content
             document.getElementById('tab-' + tab).classList.add('active');
             // Highlight selected tab button
-            const activeBtn = document.getElementById('tab-btn-' + tab);
-            activeBtn.classList.remove('border-transparent', 'text-blue-200');
-            activeBtn.classList.add('border-white', 'text-white');
+            document.getElementById('tab-btn-' + tab).classList.add('active');
         }
     </script>
 
