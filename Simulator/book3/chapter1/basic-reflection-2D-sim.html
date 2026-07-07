@@ -14,19 +14,16 @@
     <link rel="stylesheet" href="../../../assets/css/labgray.css">
     <script src="../../../assets/js/core.js"></script>
     <script src="../../../assets/js/i18n.js"></script>
+    <script src="../../../assets/js/canvas2d.js"></script>
 
     <style>
         /* ── 頁面獨有 CSS ──
            畫布：保留原頁 800×460 邏輯座標系（幾何常數以邏輯像素寫死），
-           CSS 尺寸在 #canvas-wrap 內自適應，滑鼠座標換算沿用原頁
-           (logicalWidth / rect.width) 比例式，兩者相容。 */
+           真・貼邊無縫填滿 #canvas-wrap（信箱留白由 view.clear() 灰底補齊），
+           滑鼠座標換算改用 PhysLab.c2d.pointerPos（回傳邏輯座標）。 */
         #simCanvas {
-            width: min(100% - 28px, 800px);
-            aspect-ratio: 800 / 460;
-            margin: auto;
-            background: #fff;
-            border: 1.5px solid var(--pl-border);
-            border-radius: 12px;
+            width: 100%;
+            height: 100%;
             display: block;
         }
         /* 滑桿列右側的數字輸入框（保留原頁可直接鍵入角度的功能） */
@@ -152,8 +149,15 @@ PhysLab.i18n.register({
     const t = (k, p) => PhysLab.i18n.t(k, p);
 
     const canvas = document.getElementById('simCanvas');
-    const ctx = canvas.getContext('2d');
     const logicalWidth = 800, logicalHeight = 460;
+
+    // 貼邊無縫舞台：畫布填滿容器，繪圖座標維持 0..800 × 0..460 置中等比縮放
+    const view = PhysLab.c2d.setup(canvas, {
+        logical: { w: logicalWidth, h: logicalHeight },
+        bg: '#e2e6eb',
+        onResize: update
+    });
+    const ctx = view.ctx;
 
     // UI 元件
     const mRotSlider = document.getElementById('mRotSlider'), mRotNum = document.getElementById('mRotNum');
@@ -272,14 +276,7 @@ PhysLab.i18n.register({
 
     // 主渲染與幾何核心
     function update() {
-        const dpr = window.devicePixelRatio || 1;
-        if (canvas.width !== logicalWidth * dpr || canvas.height !== logicalHeight * dpr) {
-            canvas.width = logicalWidth * dpr;
-            canvas.height = logicalHeight * dpr;
-        }
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
-        ctx.scale(dpr, dpr);
-        ctx.clearRect(0, 0, logicalWidth, logicalHeight);
+        view.clear();
 
         const alphaDeg = parseFloat(mRotSlider.value);
         const alphaRad = alphaDeg * Math.PI / 180;
@@ -436,9 +433,8 @@ PhysLab.i18n.register({
     let isDraggingSource = false;
 
     canvas.addEventListener('mousedown', (e) => {
-        const rect = canvas.getBoundingClientRect();
-        const mouseX = (e.clientX - rect.left) * (logicalWidth / rect.width);
-        const mouseY = (e.clientY - rect.top) * (logicalHeight / rect.height);
+        const p = PhysLab.c2d.pointerPos(canvas, e, view);
+        const mouseX = p.x, mouseY = p.y;
 
         if (Math.hypot(mouseX - lightSrcX, mouseY - lightSrcY) < 25) {
             isDraggingSource = true;
@@ -447,9 +443,8 @@ PhysLab.i18n.register({
 
     // 升級至 window 監聽，杜絕快速拖曳造成的卡死
     window.addEventListener('mousemove', (e) => {
-        const rect = canvas.getBoundingClientRect();
-        const mouseX = (e.clientX - rect.left) * (logicalWidth / rect.width);
-        const mouseY = (e.clientY - rect.top) * (logicalHeight / rect.height);
+        const p = PhysLab.c2d.pointerPos(canvas, e, view);
+        const mouseX = p.x, mouseY = p.y;
 
         if (isDraggingSource) {
             let targetX = Math.max(40, Math.min(760, mouseX));
@@ -484,7 +479,7 @@ PhysLab.i18n.register({
     // 頁面初始化
     updateSliderBounds(); // 初始計算一次安全邊界
     update();
-    window.addEventListener('resize', update);
+    // resize 由 PhysLab.c2d.setup 的 autoResize（window resize + ResizeObserver）接管
 </script>
 </body>
 </html>
